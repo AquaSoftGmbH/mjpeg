@@ -367,7 +367,7 @@ static void load_frame( int num_frame )
 #endif		
 		pthread_mutex_init( &frame_buffer_lock, p_attr );
 
-        lum_mean = malloc(frame_buffer_size*sizeof(int));
+        lum_mean = new int[frame_buffer_size];
 
 		/*
           Pre-fill the buffer with one chunk of frames...
@@ -395,7 +395,7 @@ static void load_frame( int num_frame )
    /* We aren't allowed to go too far behind the last read
 	  either... */
 
-   if(num_frame+frame_buffer_size < frames_read )
+   if( num_frame+static_cast<int>(frame_buffer_size) < frames_read )
    {
 	   mjpeg_error("Internal:readframe: %d internal error - buffer flushed too soon", frame_buffer_size );
 	   abort();
@@ -440,10 +440,11 @@ int frame_lum_mean( int num_frame )
 }
 
 
-void read_stream_params( int *hsize, int *vsize, 
-			 int *frame_rate_code,
-			 int *interlacing_code,
-			 unsigned int *aspect_ratio_code)
+void read_stream_params( unsigned int *hsize, 
+                         unsigned int *vsize, 
+                         unsigned int *frame_rate_code,
+                         unsigned int *interlacing_code,
+                         unsigned int *aspect_ratio_code)
 {
    int n;
    y4m_ratio_t sar;

@@ -33,34 +33,39 @@
 
 #ifdef HAVE_X86CPU
 
+extern "C" 
+{
 
-
-int quant_non_intra_3dnow(	struct pict_data *picture,int16_t *src, int16_t *dst,
-							int mquant, int *nonsat_mquant);
-int quant_non_intra_sse(	struct pict_data *picture,int16_t *src, int16_t *dst,
-							int mquant, int *nonsat_mquant);
-int quant_non_intra_mmx(	struct pict_data *picture,int16_t *src, int16_t *dst,
-							int mquant, int *nonsat_mquant);
+int quant_non_intra_3dnow( Picture *picture,int16_t *src, int16_t *dst,
+						   int mquant, int *nonsat_mquant);
+int quant_non_intra_sse( Picture *picture,int16_t *src, int16_t *dst,
+						 int mquant, int *nonsat_mquant);
+int quant_non_intra_mmx( Picture *picture,int16_t *src, int16_t *dst,
+						 int mquant, int *nonsat_mquant);
 							
-int quantize_ni_mmx(short *dst, short *src, short *quant_mat, 
-						   short *i_quant_mat, 
-						   int imquant, int mquant, int sat_limit) __asm__ ("quantize_ni_mmx");
-int quant_weight_coeff_sum_mmx (short *blk, unsigned short*i_quant_mat ) __asm__ ("quant_weight_coeff_sum_mmx");
+int quantize_ni_mmx(int16_t *dst, int16_t *src, 
+					uint16_t *quant_mat, 
+					uint16_t *i_quant_mat, 
+					int imquant, int mquant, 
+					int sat_limit) __asm__ ("quantize_ni_mmx");
+int quant_weight_coeff_sum_mmx (int16_t *blk, uint16_t *i_quant_mat ) __asm__ ("quant_weight_coeff_sum_mmx");
 int cpuid_flags();
 
 void iquant_non_intra_m1_sse(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquant_non_intra_m1_sse");
 void iquant_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquant_non_intra_m1_mmx");
 
 
-void predcomp_00_mmxe(char *src,char *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_00_mmxe");
-void predcomp_10_mmxe(char *src,char *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_10_mmxe");
-void predcomp_11_mmxe(char *src,char *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_11_mmxe");
-void predcomp_01_mmxe(char *src,char *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_01_mmxe");
+void predcomp_00_mmxe(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_00_mmxe");
+void predcomp_10_mmxe(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_10_mmxe");
+void predcomp_11_mmxe(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_11_mmxe");
+void predcomp_01_mmxe(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_01_mmxe");
 
-void predcomp_00_mmx(char *src,char *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_00_mmx");
-void predcomp_10_mmx(char *src,char *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_10_mmx");
-void predcomp_11_mmx(char *src,char *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_11_mmx");
-void predcomp_01_mmx(char *src,char *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_01_mmx");
+void predcomp_00_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_00_mmx");
+void predcomp_10_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_10_mmx");
+void predcomp_11_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_11_mmx");
+void predcomp_01_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_01_mmx");
+
+}
 
 #endif
 

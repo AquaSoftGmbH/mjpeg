@@ -15,3 +15,8 @@
 		of compilation with SSE/MMX.
 	
 2000 Jul/Aug	Lots to add - see README for the summary...
+
+2003		A.Stevens
+		Shifted to C++ replaced original phase oriented processing
+		with macro-block oriented processing.
+		

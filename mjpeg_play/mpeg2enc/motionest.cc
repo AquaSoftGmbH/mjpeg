@@ -97,16 +97,6 @@ typedef struct subsampled_mb subsampled_mb_s;
   Main field and frame based motion estimation entry points.
 */
 
-static void frame_ME (pict_data_s *picture,
-								  int mboffset,
-								  int i, int j, struct mbinfo *mbi);
-
-static void field_ME (pict_data_s *picture,
-								  int mboffset,
-								  int i, int j, 
-								  struct mbinfo *mbi, 
-								  int secondfield, 
-								  int ipflag);
 
 static void frame_estimate (
 	uint8_t *org,
@@ -120,20 +110,20 @@ static void frame_estimate (
 	  mb_motion_s *bestbot,
 	 int imins[2][2], int jmins[2][2]);
 
-static void field_estimate (pict_data_s *picture,
+static void field_estimate (const Picture &picture,
 							uint8_t *toporg,
 							uint8_t *topref, 
 							uint8_t *botorg, 
 							uint8_t *botref,
 							subsampled_mb_s *ssmb,
-							int i, int j, int sx, int sy, int ipflag,
+							int i, int j, int sx, int sy,
 							mb_motion_s *bestfr,
 							mb_motion_s *best8u,
 							mb_motion_s *best8l,
 							mb_motion_s *bestsp);
 
 static void dpframe_estimate (
-	pict_data_s *picture,
+	const Picture &picture,
 	uint8_t *ref,
 	subsampled_mb_s *ssmb,
 	int i, int j, int iminf[2][2], int jminf[2][2],
@@ -142,7 +132,7 @@ static void dpframe_estimate (
 	int *vmcp);
 
 static void dpfield_estimate (
-	pict_data_s *picture,
+	const Picture &picture,
 	uint8_t *topref,
 	uint8_t *botref, 
 	uint8_t *mb,
@@ -181,7 +171,7 @@ void init_motion(void)
  *  as two half-height images side-by-side.
  */
 
-void motion_subsampled_lum( pict_data_s *picture )
+void motion_subsampled_lum( Picture *picture )
 {
 	int linestride;
 
@@ -217,45 +207,14 @@ void motion_subsampled_lum( pict_data_s *picture )
  */
 
 
-void motion_estimation(
-	pict_data_s *picture
-	)
+void motion_estimation(	Picture *picture )
 {
-	mbinfo_s *mbi = picture->mbinfo;
-	int i, j;
-	int mb_row_incr;			/* Offset increment to go down 1 row of mb's */
-	int mb_row_start;
-	mb_row_start = 0;
+	vector<MacroBlock>::iterator mbi;
 
-	if (picture->pict_struct==FRAME_PICTURE)
-	{			
-		mb_row_incr = 16*opt_phy_width;
-		/* loop through all macroblocks of a frame picture */
-		for (j=0; j<opt_enc_height2; j+=16)
-		{
-			for (i=0; i<opt_enc_width; i+=16)
-			{
-				frame_ME(picture,  mb_row_start, i,j, mbi);
-				mbi++;
-			}
-			mb_row_start += mb_row_incr;
-		}
-	}
-	else
-	{		
-		mb_row_incr = (16 * 2) * opt_phy_width;
-		/* loop through all macroblocks of a field picture */
-		for (j=0; j<opt_enc_height2; j+=16)
-		{
-			for (i=0; i<opt_enc_width; i+=16)
-			{
-				field_ME(picture, mb_row_start, i,j,
-						 mbi,picture->secondfield,picture->ipflag);
-				mbi++;
-			}
-			mb_row_start += mb_row_incr;
-		}
-	}
+    for( mbi = picture->mbinfo.begin(); mbi < picture->mbinfo.end(); ++mbi )
+    {
+        mbi->MotionEstimate();
+    }
 }
 
 /*
@@ -458,13 +417,12 @@ static void display_mb(mb_motion_s *lum_mc,
  * the current (dynamically selected) bigroup length and not the fixed
  * Maximum bi-group length M.
  */
-static void frame_ME(pict_data_s *picture,
-					 int mb_row_start,
-					 int i, int j, 
-					 mbinfo_s *mbi)
+void MacroBlock::FrameME()
 {
+    const Picture &picture = ParentPicture();
+    int i = TopleftX();
+    int j = TopleftY();
 	uint8_t **oldrefimg, **newrefimg;
-
 	mb_motion_s framef_mc;
 	mb_motion_s frameb_mc;
 	mb_motion_s dualpf_mc;
@@ -474,7 +432,7 @@ static void frame_ME(pict_data_s *picture,
 	mb_motion_s botfldb_mc;
 	mb_motion_s zeromot_mc;
 
-	int var,v0;
+	int intravar,v0;
 	int vmc,vmcf,vmcr,vmci;
 	int vmcfieldf,vmcfieldr,vmcfieldi;
 	subsampled_mb_s ssmb;
@@ -482,18 +440,20 @@ static void frame_ME(pict_data_s *picture,
 
 	int imins[2][2],jmins[2][2];
 	int imindmv,jmindmv,vmc_dp;
+
+    int mb_row_start = j*opt_phy_width;
 	
 	/* Select between the original or the reconstructed image for
 	   final refinement of motion estimation */
 	if( ctl_refine_from_rec )
 	{
-		oldrefimg = picture->oldref;
-		newrefimg = picture->newref;
+		oldrefimg = picture.oldref;
+		newrefimg = picture.newref;
 	}
 	else
 	{
-		oldrefimg = picture->oldorg;
-		newrefimg = picture->neworg;
+		oldrefimg = picture.oldorg;
+		newrefimg = picture.neworg;
 	}
 
 
@@ -504,12 +464,12 @@ static void frame_ME(pict_data_s *picture,
 	   it should really be replaced by additional pointers to
 	   seperate buffers.
 	*/
-	ssmb.mb = picture->curorg[0] + mb_row_start + i;
-	ssmb.umb = (uint8_t*)(picture->curorg[1] + (i>>1) + (mb_row_start>>2));
-	ssmb.vmb = (uint8_t*)(picture->curorg[2] + (i>>1) + (mb_row_start>>2));
-	ssmb.fmb = (uint8_t*)(picture->curorg[0] + fsubsample_offset + 
+	ssmb.mb = picture.curorg[0] + mb_row_start + i;
+	ssmb.umb = (uint8_t*)(picture.curorg[1] + (i>>1) + (mb_row_start>>2));
+	ssmb.vmb = (uint8_t*)(picture.curorg[2] + (i>>1) + (mb_row_start>>2));
+	ssmb.fmb = (uint8_t*)(picture.curorg[0] + fsubsample_offset + 
 						  ((i>>1) + (mb_row_start>>2)));
-	ssmb.qmb = (uint8_t*)(picture->curorg[0] + qsubsample_offset + 
+	ssmb.qmb = (uint8_t*)(picture.curorg[0] + qsubsample_offset + 
 						  (i>>2) + (mb_row_start>>4));
 
 
@@ -520,34 +480,35 @@ static void frame_ME(pict_data_s *picture,
 	zeromot_mc.fieldsel = 0;
 	zeromot_mc.fieldoff = 0;
 	zeromot_mc.blk = oldrefimg[0]+mb_row_start+i;
+    zeromot_mc.hx = zeromot_mc.hy = 0;
 
 	/* Compute variance MB as a measure of Intra-coding complexity
 	   We include chrominance information here, scaled to compensate
 	   for sub-sampling.  Silly MPEG forcing chrom/lum to have same
 	   quantisations... ;-)
 	 */
-	var = (*pvariance)(ssmb.mb,16,opt_phy_width) 
+	intravar = (*pvariance)(ssmb.mb,16,opt_phy_width) 
         + chrom_var_sum(&ssmb,16,opt_phy_width);
 
-	if (picture->pict_type==I_TYPE)
+	if (picture.pict_type==I_TYPE)
 	{
-		mbi->mb_type = MB_INTRA;
-        mbi->var = var;
+		mb_type = MB_INTRA;
+        var = intravar;
 	}
-	else if (picture->pict_type==P_TYPE)
+	else if (picture.pict_type==P_TYPE)
 	{
 
-		if (picture->frame_pred_dct )
+		if (picture.frame_pred_dct )
 		{
-			mb_me_search(picture->oldorg[0],oldrefimg[0],
+			mb_me_search(picture.oldorg[0],oldrefimg[0],
                          0,
                          &ssmb, opt_phy_width,
-                         i,j,picture->sxf,picture->syf,16,
+                         i,j,picture.sxf,picture.syf,16,
                          opt_enc_width,opt_enc_height, &framef_mc);
 			framef_mc.fieldoff = 0;
 			vmc = vmcf =
 				unidir_var_sum( &framef_mc, oldrefimg, &ssmb,  opt_phy_width, 16 );
-			mbi->motion_type = MC_FRAME;
+			motion_type = MC_FRAME;
 		}
 		else
 		{
@@ -557,9 +518,9 @@ static void frame_ME(pict_data_s *picture,
 			botssmb.umb = ssmb.umb+(opt_phy_width>>1);
 			botssmb.vmb = ssmb.vmb+(opt_phy_width>>1);
 
-			frame_estimate(picture->oldorg[0],oldrefimg[0],
+			frame_estimate(picture.oldorg[0],oldrefimg[0],
 						   &ssmb, &botssmb,
-						   i,j,picture->sxf,picture->syf,
+						   i,j,picture.sxf,picture.syf,
 						   &framef_mc,
 						   &topfldf_mc,
 						   &botfldf_mc,
@@ -585,20 +546,20 @@ static void frame_ME(pict_data_s *picture,
 			/* select between dual prime, frame and field prediction */
 			if ( ctl_M==1 && vmc_dp<vmcf && vmc_dp<vmcfieldf)
 			{
-				mbi->motion_type = MC_DMV;
+				motion_type = MC_DMV;
 				/* No chrominance squared difference measure yet.
 				   Assume identical to luminance */
 				vmc = vmc_dp + vmc_dp;
 			}
 			else if ( vmcf < vmcfieldf)
 			{
-				mbi->motion_type = MC_FRAME;
+				motion_type = MC_FRAME;
 				vmc = vmcf;
 					
 			}
 			else
 			{
-				mbi->motion_type = MC_FIELD;
+				motion_type = MC_FIELD;
 				vmc = vmcfieldf;
 			}
 		}
@@ -616,11 +577,16 @@ static void frame_ME(pict_data_s *picture,
 		 * 
 		 */
 
+        MV[0][0][0] = 0;
+        MV[0][0][1] = 0;
+        MV[1][0][0] = 0;
+        MV[1][0][1] = 0;
 
-		if (vmc>var && vmc > 12*256 )
+		if (vmc>intravar && vmc > 12*256 )
 		{
-			mbi->mb_type = MB_INTRA;
-            mbi->var = var;
+			mb_type = MB_INTRA;
+            var = intravar;
+
 		}
 		else
 		{
@@ -642,56 +608,57 @@ static void frame_ME(pict_data_s *picture,
 			{
 				/* use MC */
 				var = vmc;
-				mbi->mb_type = MB_FORWARD;
-				if (mbi->motion_type==MC_FRAME)
+				mb_type = MB_FORWARD;
+				if (motion_type==MC_FRAME)
 				{
-					mbi->MV[0][0][0] = framef_mc.pos.x - (i<<1);
-					mbi->MV[0][0][1] = framef_mc.pos.y - (j<<1);
+					MV[0][0][0] = framef_mc.pos.x - (i<<1);
+					MV[0][0][1] = framef_mc.pos.y - (j<<1);
+
 				}
-				else if (mbi->motion_type==MC_DMV)
+				else if (motion_type==MC_DMV)
 				{
 					/* these are FRAME vectors */
 					/* same parity vector */
-					mbi->MV[0][0][0] = dualpf_mc.pos.x - (i<<1);
-					mbi->MV[0][0][1] = (dualpf_mc.pos.y<<1) - (j<<1);
+					MV[0][0][0] = dualpf_mc.pos.x - (i<<1);
+					MV[0][0][1] = (dualpf_mc.pos.y<<1) - (j<<1);
 
 					/* opposite parity vector */
-					mbi->dmvector[0] = imindmv;
-					mbi->dmvector[1] = jmindmv;
+					dmvector[0] = imindmv;
+					dmvector[1] = jmindmv;
 				}
 				else
 				{
 					/* these are FRAME vectors */
-					mbi->MV[0][0][0] = topfldf_mc.pos.x - (i<<1);
-					mbi->MV[0][0][1] = (topfldf_mc.pos.y<<1) - (j<<1);
-					mbi->MV[1][0][0] = botfldf_mc.pos.x - (i<<1);
-					mbi->MV[1][0][1] = (botfldf_mc.pos.y<<1) - (j<<1);
-					mbi->mv_field_sel[0][0] = topfldf_mc.fieldsel;
-					mbi->mv_field_sel[1][0] = botfldf_mc.fieldsel;
+					MV[0][0][0] = topfldf_mc.pos.x - (i<<1);
+					MV[0][0][1] = (topfldf_mc.pos.y<<1) - (j<<1);
+					MV[1][0][0] = botfldf_mc.pos.x - (i<<1);
+					MV[1][0][1] = (botfldf_mc.pos.y<<1) - (j<<1);
+					mv_field_sel[0][0] = topfldf_mc.fieldsel;
+					mv_field_sel[1][0] = botfldf_mc.fieldsel;
 				}
-                mbi->var = vmc;
+                var = vmc;
 			}
 			else
 			{
 
 				/* No-MC */
-				mbi->mb_type = 0;
-				mbi->motion_type = MC_FRAME;
-				mbi->MV[0][0][0] = 0;
-				mbi->MV[0][0][1] = 0;
-				mbi->var = v0;
+				mb_type = 0;
+				motion_type = MC_FRAME;
+				MV[0][0][0] = 0;
+				MV[0][0][1] = 0;
+				var = v0;
 			}
 		}
 
 	}
 	else /* if (pict_type==B_TYPE) */
 	{
-		if (picture->frame_pred_dct )
+		if (picture.frame_pred_dct )
 		{
 
 			/* forward */
-			mb_me_search(picture->oldorg[0],oldrefimg[0],0,&ssmb,
-                         opt_phy_width,i,j,picture->sxf,picture->syf,
+			mb_me_search(picture.oldorg[0],oldrefimg[0],0,&ssmb,
+                         opt_phy_width,i,j,picture.sxf,picture.syf,
                          16,opt_enc_width,opt_enc_height,
                          &framef_mc
 					   );
@@ -700,8 +667,8 @@ static void frame_ME(pict_data_s *picture,
                                    opt_phy_width, 16 );
 
 			/* backward */
-			mb_me_search(picture->neworg[0],newrefimg[0],0,&ssmb, 
-                         opt_phy_width, i,j,picture->sxb,picture->syb,
+			mb_me_search(picture.neworg[0],newrefimg[0],0,&ssmb, 
+                         opt_phy_width, i,j,picture.sxb,picture.syb,
 						 16, opt_enc_width, opt_enc_height,
 						 &frameb_mc);
 			frameb_mc.fieldoff = 0;
@@ -724,20 +691,20 @@ static void frame_ME(pict_data_s *picture,
 			if (vmcf<=vmcr && vmcf<=vmci)
 			{
 				vmc = vmcf;
-				mbi->mb_type = MB_FORWARD;
+				mb_type = MB_FORWARD;
 			}
 			else if (vmcr<=vmci)
 			{
 				vmc = vmcr;
-				mbi->mb_type = MB_BACKWARD;
+				mb_type = MB_BACKWARD;
 			}
 			else
 			{
 				vmc = vmci;
-				mbi->mb_type = MB_FORWARD|MB_BACKWARD;
+				mb_type = MB_FORWARD|MB_BACKWARD;
 			}
 
-			mbi->motion_type = MC_FRAME;
+			motion_type = MC_FRAME;
 		}
 		else
 		{
@@ -748,9 +715,9 @@ static void frame_ME(pict_data_s *picture,
 			botssmb.vmb = ssmb.vmb+(opt_phy_width>>1);
 
 			/* forward prediction */
-			frame_estimate(picture->oldorg[0],oldrefimg[0],
+			frame_estimate(picture.oldorg[0],oldrefimg[0],
 						   &ssmb, &botssmb,
-						   i,j,picture->sxf,picture->syf,
+						   i,j,picture.sxf,picture.syf,
 						   &framef_mc,
 						   &topfldf_mc,
 						   &botfldf_mc,
@@ -758,9 +725,9 @@ static void frame_ME(pict_data_s *picture,
 
 
 			/* backward prediction */
-			frame_estimate(picture->neworg[0],newrefimg[0],
+			frame_estimate(picture.neworg[0],newrefimg[0],
 						   &ssmb, &botssmb,
-						   i,j,picture->sxb,picture->syb,
+						   i,j,picture.sxb,picture.syb,
 						   &frameb_mc,
 						   &topfldb_mc,
 						   &botfldb_mc,
@@ -794,45 +761,45 @@ static void frame_ME(pict_data_s *picture,
 				  && vmci<vmcr && vmci<vmcfieldr)
 			{
 				/* frame, interpolated */
-				mbi->mb_type = MB_FORWARD|MB_BACKWARD;
-				mbi->motion_type = MC_FRAME;
+				mb_type = MB_FORWARD|MB_BACKWARD;
+				motion_type = MC_FRAME;
 				vmc = vmci;
 			}
 			else if ( vmcfieldi<vmcf && vmcfieldi<vmcfieldf
 					   && vmcfieldi<vmcr && vmcfieldi<vmcfieldr)
 			{
 				/* field, interpolated */
-				mbi->mb_type = MB_FORWARD|MB_BACKWARD;
-				mbi->motion_type = MC_FIELD;
+				mb_type = MB_FORWARD|MB_BACKWARD;
+				motion_type = MC_FIELD;
 				vmc = vmcfieldi;
 			}
 			else if (vmcf<vmcfieldf && vmcf<vmcr && vmcf<vmcfieldr)
 			{
 				/* frame, forward */
-				mbi->mb_type = MB_FORWARD;
-				mbi->motion_type = MC_FRAME;
+				mb_type = MB_FORWARD;
+				motion_type = MC_FRAME;
 				vmc = vmcf;
 
 			}
 			else if ( vmcfieldf<vmcr && vmcfieldf<vmcfieldr)
 			{
 				/* field, forward */
-				mbi->mb_type = MB_FORWARD;
-				mbi->motion_type = MC_FIELD;
+				mb_type = MB_FORWARD;
+				motion_type = MC_FIELD;
 				vmc = vmcfieldf;
 			}
 			else if (vmcr<vmcfieldr)
 			{
 				/* frame, backward */
-				mbi->mb_type = MB_BACKWARD;
-				mbi->motion_type = MC_FRAME;
+				mb_type = MB_BACKWARD;
+				motion_type = MC_FRAME;
 				vmc = vmcr;
 			}
 			else
 			{
 				/* field, backward */
-				mbi->mb_type = MB_BACKWARD;
-				mbi->motion_type = MC_FIELD;
+				mb_type = MB_BACKWARD;
+				motion_type = MC_FIELD;
 				vmc = vmcfieldr;
 
 			}
@@ -850,58 +817,43 @@ static void frame_ME(pict_data_s *picture,
 		 * 
 		 */
 
-		if (vmc>var && vmc > 12*256)
+		if (vmc>intravar && vmc > 12*256)
         {
-			mbi->mb_type = MB_INTRA;
-            mbi->var = var;
+			mb_type = MB_INTRA;
+            var = intravar;
         }
 		else
 		{
-			mbi->var = vmc;
-			if (mbi->motion_type==MC_FRAME)
+			var = vmc;
+			if (motion_type==MC_FRAME)
 			{
 				/* forward */
-				mbi->MV[0][0][0] = framef_mc.pos.x - (i<<1);
-				mbi->MV[0][0][1] = framef_mc.pos.y - (j<<1);
+				MV[0][0][0] = framef_mc.pos.x - (i<<1);
+				MV[0][0][1] = framef_mc.pos.y - (j<<1);
 				/* backward */
-				mbi->MV[0][1][0] = frameb_mc.pos.x - (i<<1);
-				mbi->MV[0][1][1] = frameb_mc.pos.y - (j<<1);
+				MV[0][1][0] = frameb_mc.pos.x - (i<<1);
+				MV[0][1][1] = frameb_mc.pos.y - (j<<1);
 			}
 			else
 			{
 				/* these are FRAME vectors */
 				/* forward */
-				mbi->MV[0][0][0] = topfldf_mc.pos.x - (i<<1);
-				mbi->MV[0][0][1] = (topfldf_mc.pos.y<<1) - (j<<1);
-				mbi->MV[1][0][0] = botfldf_mc.pos.x - (i<<1);
-				mbi->MV[1][0][1] = (botfldf_mc.pos.y<<1) - (j<<1);
-				mbi->mv_field_sel[0][0] = topfldf_mc.fieldsel;
-				mbi->mv_field_sel[1][0] = botfldf_mc.fieldsel;
+				MV[0][0][0] = topfldf_mc.pos.x - (i<<1);
+				MV[0][0][1] = (topfldf_mc.pos.y<<1) - (j<<1);
+				MV[1][0][0] = botfldf_mc.pos.x - (i<<1);
+				MV[1][0][1] = (botfldf_mc.pos.y<<1) - (j<<1);
+				mv_field_sel[0][0] = topfldf_mc.fieldsel;
+				mv_field_sel[1][0] = botfldf_mc.fieldsel;
 				/* backward */
-				mbi->MV[0][1][0] = topfldb_mc.pos.x - (i<<1);
-				mbi->MV[0][1][1] = (topfldb_mc.pos.y<<1) - (j<<1);
-				mbi->MV[1][1][0] = botfldb_mc.pos.x - (i<<1);
-				mbi->MV[1][1][1] = (botfldb_mc.pos.y<<1) - (j<<1);
-				mbi->mv_field_sel[0][1] = topfldb_mc.fieldsel;
-				mbi->mv_field_sel[1][1] = botfldb_mc.fieldsel;
+				MV[0][1][0] = topfldb_mc.pos.x - (i<<1);
+				MV[0][1][1] = (topfldb_mc.pos.y<<1) - (j<<1);
+				MV[1][1][0] = botfldb_mc.pos.x - (i<<1);
+				MV[1][1][1] = (botfldb_mc.pos.y<<1) - (j<<1);
+				mv_field_sel[0][1] = topfldb_mc.fieldsel;
+				mv_field_sel[1][1] = botfldb_mc.fieldsel;
 			}
 		}
 	}
-#ifdef DEBUG_MC
-	if( picture->present >= 275 && picture->present <= 275 &&
-		i == 16*18 && j == 9*16 )
-	{
-		fprintf(stderr," PIC INFO: %d %d %d\n",
-				picture->present, picture->pict_type, picture->temp_ref );
-		fprintf( stderr,"MC mvf(%d,%d)%d/%d mvb(%d,%d)%d/%d i=%d var=%d type=%d\n",
-				 mbi->MV[0][0][0],mbi->MV[0][0][1], vmcf, framef_mc.sad,
-				 mbi->MV[0][1][0],mbi->MV[0][1][1], vmcr, frameb_mc.sad,
-				 vmci, mbi->var, mbi->mb_type
-				 );
-
-		display_mb( &frameb_mc, newrefimg, &ssmb, width, 16 );
-	}
-#endif
 }
 
 
@@ -910,12 +862,6 @@ static void frame_ME(pict_data_s *picture,
  * picture: picture object for which MC is to be computed.
  * mbi:    pointer to macroblock info of picture object
  * mb_row_start: offset in chrominance block of start of this MB's row
- * secondfield: indicates second field of a frame (in P fields this means
- *              that reference field of opposite parity is in curref instead
- *              of oldref)
- * ipflag: indicates a P type field which is the second field of a frame
- *         in which the first field is I type (this restricts predictions
- *         to be based only on the opposite parity (=I) field)
  *
  * results:
  * mbi->
@@ -925,13 +871,11 @@ static void frame_ME(pict_data_s *picture,
  *  motion_type: MC_FIELD, MC_16X8
  *
  */
-static void field_ME(
-	pict_data_s *picture,
-	int mb_row_start,
-	int i, int j, 
-	mbinfo_s *mbi, 
-	int secondfield, int ipflag)
+void MacroBlock::FieldME()
 {
+    const Picture &picture = ParentPicture();
+    int i = TopleftX();
+    int j = TopleftY();
 	int w2;
 	uint8_t **oldrefimg, **newrefimg;
 	uint8_t *toporg, *topref, *botorg, *botref;
@@ -944,30 +888,29 @@ static void field_ME(
 	int dmc8f,dmc8r;
 	int vmc_dp,dctl_dp;
 
-
 	/* Select between the original or the reconstructed image for
 	   final refinement of motion estimation */
 	if( ctl_refine_from_rec )
 	{
-		oldrefimg = picture->oldref;
-		newrefimg = picture->newref;
+		oldrefimg = picture.oldref;
+		newrefimg = picture.newref;
 	}
 	else
 	{
-		oldrefimg = picture->oldorg;
-		newrefimg = picture->neworg;
+		oldrefimg = picture.oldorg;
+		newrefimg = picture.neworg;
 	}
 
 	w2 = opt_phy_width<<1;
 
 	/* Fast motion data sits at the end of the luminance buffer */
-	ssmb.mb = picture->curorg[0] + i + w2*j;
-	ssmb.umb = picture->curorg[1] + ((i>>1)+(w2>>1)*(j>>1));
-	ssmb.vmb = picture->curorg[2] + ((i>>1)+(w2>>1)*(j>>1));
-	ssmb.fmb = picture->curorg[0] + fsubsample_offset+((i>>1)+(w2>>1)*(j>>1));
-	ssmb.qmb = picture->curorg[0] + qsubsample_offset+ (i>>2)+(w2>>2)*(j>>2);
+	ssmb.mb = picture.curorg[0] + i + w2*j;
+	ssmb.umb = picture.curorg[1] + ((i>>1)+(w2>>1)*(j>>1));
+	ssmb.vmb = picture.curorg[2] + ((i>>1)+(w2>>1)*(j>>1));
+	ssmb.fmb = picture.curorg[0] + fsubsample_offset+((i>>1)+(w2>>1)*(j>>1));
+	ssmb.qmb = picture.curorg[0] + qsubsample_offset+ (i>>2)+(w2>>2)*(j>>2);
 
-	if (picture->pict_struct==BOTTOM_FIELD)
+	if (picture.pict_struct==BOTTOM_FIELD)
 	{
 		ssmb.mb += opt_phy_width;
 		ssmb.umb += (opt_phy_width >> 1);
@@ -978,39 +921,39 @@ static void field_ME(
 
 	var = (*pvariance)(ssmb.mb,16,w2) + chrom_var_sum(&ssmb,16,w2);
         
-	if(picture->pict_type==I_TYPE)
+	if(picture.pict_type==I_TYPE)
     {
-		mbi->mb_type = MB_INTRA;
-        mbi->var = var;
+		mb_type = MB_INTRA;
+        var = var;
     }
-	else if (picture->pict_type==P_TYPE)
+	else if (picture.pict_type==P_TYPE)
 	{
-		toporg = picture->oldorg[0];
+		toporg = picture.oldorg[0];
 		topref = oldrefimg[0];
-		botorg = picture->oldorg[0];
+		botorg = picture.oldorg[0];
 		botref = oldrefimg[0];
                                                         
-		if (secondfield)
+		if (picture.secondfield)
 		{
 			/* opposite parity field is in same frame */
-			if (picture->pict_struct==TOP_FIELD)
+			if (picture.pict_struct==TOP_FIELD)
 			{
 				/* current is top field */
-				botorg = picture->curorg[0] ;
-				botref = picture->curref[0];
+				botorg = picture.curorg[0] ;
+				botref = picture.curref[0];
 			}
 			else
 			{
 				/* current is bottom field */
-				toporg = picture->curorg[0];
-				topref = picture->curref[0];
+				toporg = picture.curorg[0];
+				topref = picture.curref[0];
 			}
 			if( frame_num > 8 )
 				frame_num = (frame_num + 1) - 1 ;
 		}
 		field_estimate(picture,
 					   toporg,topref,botorg,botref,&ssmb,
-					   i,j,picture->sxf,picture->syf,ipflag,
+					   i,j,picture.sxf,picture.syf,
 					   &fieldf_mc,
 					   &field8uf_mc,
 					   &field8lf_mc,
@@ -1018,7 +961,7 @@ static void field_ME(
 		dmcfield = fieldf_mc.sad;
 		dmc8f = field8uf_mc.sad + field8lf_mc.sad;
 		dctl_dp = 100000000;		/* Suppress compiler warning */
-		if (ctl_M==1 && !ipflag)  /* generic condition which permits Dual Prime */
+		if (ctl_M==1 && !picture.ipflag)  /* generic condition which permits Dual Prime */
 		{
 			dpfield_estimate(picture,
 							 topref,botref,ssmb.mb,i,j,
@@ -1028,10 +971,10 @@ static void field_ME(
 			dctl_dp = dualp_mc.sad;
 		}
 		/* select between dual prime, field and 16x8 prediction */
-		if (ctl_M==1 && !ipflag && dctl_dp<dmc8f && dctl_dp<dmcfield)
+		if (ctl_M==1 && !picture.ipflag && dctl_dp<dmc8f && dctl_dp<dmcfield)
 		{
 			/* Dual Prime prediction */
-			mbi->motion_type = MC_DMV;
+			motion_type = MC_DMV;
 			dmc = dualp_mc.sad;
 			vmc = vmc_dp;
 
@@ -1039,7 +982,7 @@ static void field_ME(
 		else if (dmc8f<dmcfield)
 		{
 			/* 16x8 prediction */
-			mbi->motion_type = MC_16X8;
+			motion_type = MC_16X8;
 			/* upper and lower half blocks */
 			vmc =  field8uf_mc.var + unidir_pred_var( &field8uf_mc, ssmb.mb, w2, 8);
 			vmc += field8lf_mc.var + unidir_pred_var( &field8lf_mc, ssmb.mb, w2, 8);
@@ -1047,7 +990,7 @@ static void field_ME(
 		else
 		{
 			/* field prediction */
-			mbi->motion_type = MC_FIELD;
+			motion_type = MC_FIELD;
 			vmc = fieldf_mc.var + unidir_pred_var( &fieldf_mc, ssmb.mb, w2, 16 );
 		}
 
@@ -1055,59 +998,59 @@ static void field_ME(
         
 		if ( vmc>var && vmc > 12*256)
         {
-			mbi->mb_type = MB_INTRA;
-            mbi->var = var;
+			mb_type = MB_INTRA;
+            var = var;
         }
 		else
 		{
 			/* zero MV field prediction from same parity ref. field
 			 * (not allowed if ipflag is set)
 			 */
-			if (!ipflag)
-				v0 = (*psumsq)(((picture->pict_struct==BOTTOM_FIELD) ? botref : topref) + i + w2*j,
+			if (!picture.ipflag)
+				v0 = (*psumsq)(((picture.pict_struct==BOTTOM_FIELD) ? botref : topref) + i + w2*j,
 							   ssmb.mb,w2,0,0,16);
 			else
 				v0 = 1234;			/* Keep Compiler happy... */
 
-			if (ipflag  || (4*v0>5*vmc ))
+			if (picture.ipflag  || (4*v0>5*vmc ))
 			{
-				mbi->mb_type = MB_FORWARD;
-                mbi->var = vmc;
-				if (mbi->motion_type==MC_FIELD)
+				mb_type = MB_FORWARD;
+                var = vmc;
+				if (motion_type==MC_FIELD)
 				{
-					mbi->MV[0][0][0] = fieldf_mc.pos.x - (i<<1);
-					mbi->MV[0][0][1] = fieldf_mc.pos.y - (j<<1);
-					mbi->mv_field_sel[0][0] = fieldf_mc.fieldsel;
+					MV[0][0][0] = fieldf_mc.pos.x - (i<<1);
+					MV[0][0][1] = fieldf_mc.pos.y - (j<<1);
+					mv_field_sel[0][0] = fieldf_mc.fieldsel;
 				}
-				else if (mbi->motion_type==MC_DMV)
+				else if (motion_type==MC_DMV)
 				{
 					/* same parity vector */
-					mbi->MV[0][0][0] = fieldsp_mc.pos.x - (i<<1);
-					mbi->MV[0][0][1] = fieldsp_mc.pos.y - (j<<1);
+					MV[0][0][0] = fieldsp_mc.pos.x - (i<<1);
+					MV[0][0][1] = fieldsp_mc.pos.y - (j<<1);
 
 					/* opposite parity vector */
-					mbi->dmvector[0] = dualp_mc.pos.x;
-					mbi->dmvector[1] = dualp_mc.pos.y;
+					dmvector[0] = dualp_mc.pos.x;
+					dmvector[1] = dualp_mc.pos.y;
 				}
 				else
 				{
-					mbi->MV[0][0][0] = field8uf_mc.pos.x - (i<<1);
-					mbi->MV[0][0][1] = field8uf_mc.pos.y - (j<<1);
-					mbi->MV[1][0][0] = field8lf_mc.pos.x - (i<<1);
-					mbi->MV[1][0][1] = field8lf_mc.pos.y - ((j+8)<<1);
-					mbi->mv_field_sel[0][0] = field8uf_mc.fieldsel;
-					mbi->mv_field_sel[1][0] = field8lf_mc.fieldsel;
+					MV[0][0][0] = field8uf_mc.pos.x - (i<<1);
+					MV[0][0][1] = field8uf_mc.pos.y - (j<<1);
+					MV[1][0][0] = field8lf_mc.pos.x - (i<<1);
+					MV[1][0][1] = field8lf_mc.pos.y - ((j+8)<<1);
+					mv_field_sel[0][0] = field8uf_mc.fieldsel;
+					mv_field_sel[1][0] = field8lf_mc.fieldsel;
 				}
 			}
 			else
 			{
 				/* No MC */
-				mbi->mb_type = 0;
-                mbi->var = v0;
-				mbi->motion_type = MC_FIELD;
-				mbi->MV[0][0][0] = 0;
-				mbi->MV[0][0][1] = 0;
-				mbi->mv_field_sel[0][0] = (picture->pict_struct==BOTTOM_FIELD);
+				mb_type = 0;
+                var = v0;
+				motion_type = MC_FIELD;
+				MV[0][0][0] = 0;
+				MV[0][0][1] = 0;
+				mv_field_sel[0][0] = (picture.pict_struct==BOTTOM_FIELD);
 			}
 		}
 	}
@@ -1115,11 +1058,11 @@ static void field_ME(
 	{
 		/* forward prediction */
 		field_estimate(picture,
-					   picture->oldorg[0],
+					   picture.oldorg[0],
                        oldrefimg[0],
-					   picture->oldorg[0],
+					   picture.oldorg[0],
                        oldrefimg[0],
-                       &ssmb,i,j,picture->sxf,picture->syf,0,
+                       &ssmb,i,j,picture.sxf,picture.syf,
 					   &fieldf_mc,
 					   &field8uf_mc,
 					   &field8lf_mc,
@@ -1129,11 +1072,11 @@ static void field_ME(
 
 		/* backward prediction */
 		field_estimate(picture,
-					   picture->neworg[0],
+					   picture.neworg[0],
                        newrefimg[0],
-                       picture->neworg[0],
+                       picture.neworg[0],
                        newrefimg[0],
-					   &ssmb,i,j,picture->sxb,picture->syb,0,
+					   &ssmb,i,j,picture.sxb,picture.syb,
 					   &fieldb_mc,
 					   &field8ub_mc,
 					   &field8lb_mc,
@@ -1154,16 +1097,16 @@ static void field_ME(
 			&& dmcfieldi<dmcfieldr && dmcfieldi<dmc8r)
 		{
 			/* field, interpolated */
-			mbi->mb_type = MB_FORWARD|MB_BACKWARD;
-			mbi->motion_type = MC_FIELD;
+			mb_type = MB_FORWARD|MB_BACKWARD;
+			motion_type = MC_FIELD;
 			vmc = fieldf_mc.var + bidir_pred_var( &fieldf_mc, &fieldb_mc, ssmb.mb, w2, 16);
 		}
 		else if (dmc8i<dmcfieldf && dmc8i<dmc8f
 				 && dmc8i<dmcfieldr && dmc8i<dmc8r)
 		{
 			/* 16x8, interpolated */
-			mbi->mb_type = MB_FORWARD|MB_BACKWARD;
-			mbi->motion_type = MC_16X8;
+			mb_type = MB_FORWARD|MB_BACKWARD;
+			motion_type = MC_16X8;
 
 			/* upper and lower half blocks */
 			vmc =  field8uf_mc.var + bidir_pred_var( &field8uf_mc, &field8ub_mc, ssmb.mb, w2, 8);
@@ -1172,15 +1115,15 @@ static void field_ME(
 		else if (dmcfieldf<dmc8f && dmcfieldf<dmcfieldr && dmcfieldf<dmc8r)
 		{
 			/* field, forward */
-			mbi->mb_type = MB_FORWARD;
-			mbi->motion_type = MC_FIELD;
+			mb_type = MB_FORWARD;
+			motion_type = MC_FIELD;
 			vmc = fieldf_mc.var + unidir_pred_var( &fieldf_mc, ssmb.mb, w2, 16);
 		}
 		else if (dmc8f<dmcfieldr && dmc8f<dmc8r)
 		{
 			/* 16x8, forward */
-			mbi->mb_type = MB_FORWARD;
-			mbi->motion_type = MC_16X8;
+			mb_type = MB_FORWARD;
+			motion_type = MC_16X8;
 
 			/* upper and lower half blocks */
 			vmc = field8uf_mc.var +  unidir_pred_var( &field8uf_mc, ssmb.mb, w2, 8);
@@ -1189,15 +1132,15 @@ static void field_ME(
 		else if (dmcfieldr<dmc8r)
 		{
 			/* field, backward */
-			mbi->mb_type = MB_BACKWARD;
-			mbi->motion_type = MC_FIELD;
+			mb_type = MB_BACKWARD;
+			motion_type = MC_FIELD;
 			vmc = fieldb_mc.var + unidir_pred_var( &fieldb_mc, ssmb.mb, w2, 16 );
 		}
 		else
 		{
 			/* 16x8, backward */
-			mbi->mb_type = MB_BACKWARD;
-			mbi->motion_type = MC_16X8;
+			mb_type = MB_BACKWARD;
+			motion_type = MC_16X8;
 
 			/* upper and lower half blocks */
 			vmc =  field8ub_mc.var + unidir_pred_var( &field8ub_mc, ssmb.mb, w2, 8);
@@ -1208,38 +1151,38 @@ static void field_ME(
 		/* select between intra and non-intra coding */
 		if (vmc>var && vmc > 12*256)
         {
-			mbi->mb_type = MB_INTRA;
-            mbi->var = var;
+			mb_type = MB_INTRA;
+            var = var;
         }
 		else
 		{
-			if (mbi->motion_type==MC_FIELD)
+			if (motion_type==MC_FIELD)
 			{
 				/* forward */
-				mbi->MV[0][0][0] = fieldf_mc.pos.x - (i<<1);
-				mbi->MV[0][0][1] = fieldf_mc.pos.y - (j<<1);
-				mbi->mv_field_sel[0][0] = fieldf_mc.fieldsel;
+				MV[0][0][0] = fieldf_mc.pos.x - (i<<1);
+				MV[0][0][1] = fieldf_mc.pos.y - (j<<1);
+				mv_field_sel[0][0] = fieldf_mc.fieldsel;
 				/* backward */
-				mbi->MV[0][1][0] = fieldb_mc.pos.x - (i<<1);
-				mbi->MV[0][1][1] = fieldb_mc.pos.y - (j<<1);
-				mbi->mv_field_sel[0][1] = fieldb_mc.fieldsel;
+				MV[0][1][0] = fieldb_mc.pos.x - (i<<1);
+				MV[0][1][1] = fieldb_mc.pos.y - (j<<1);
+				mv_field_sel[0][1] = fieldb_mc.fieldsel;
 			}
 			else /* MC_16X8 */
 			{
 				/* forward */
-				mbi->MV[0][0][0] = field8uf_mc.pos.x - (i<<1);
-				mbi->MV[0][0][1] = field8uf_mc.pos.y - (j<<1);
-				mbi->mv_field_sel[0][0] = field8uf_mc.fieldsel;
-				mbi->MV[1][0][0] = field8lf_mc.pos.x - (i<<1);
-				mbi->MV[1][0][1] = field8lf_mc.pos.y - ((j+8)<<1);
-				mbi->mv_field_sel[1][0] = field8lf_mc.fieldsel;
+				MV[0][0][0] = field8uf_mc.pos.x - (i<<1);
+				MV[0][0][1] = field8uf_mc.pos.y - (j<<1);
+				mv_field_sel[0][0] = field8uf_mc.fieldsel;
+				MV[1][0][0] = field8lf_mc.pos.x - (i<<1);
+				MV[1][0][1] = field8lf_mc.pos.y - ((j+8)<<1);
+				mv_field_sel[1][0] = field8lf_mc.fieldsel;
 				/* backward */
-				mbi->MV[0][1][0] = field8ub_mc.pos.x - (i<<1);
-				mbi->MV[0][1][1] = field8ub_mc.pos.y - (j<<1);
-				mbi->mv_field_sel[0][1] = field8ub_mc.fieldsel;
-				mbi->MV[1][1][0] = field8lb_mc.pos.x - (i<<1);
-				mbi->MV[1][1][1] = field8lb_mc.pos.y - ((j+8)<<1);
-				mbi->mv_field_sel[1][1] = field8lb_mc.fieldsel;
+				MV[0][1][0] = field8ub_mc.pos.x - (i<<1);
+				MV[0][1][1] = field8ub_mc.pos.y - (j<<1);
+				mv_field_sel[0][1] = field8ub_mc.fieldsel;
+				MV[1][1][0] = field8lb_mc.pos.x - (i<<1);
+				MV[1][1][1] = field8lb_mc.pos.y - ((j+8)<<1);
+				mv_field_sel[1][1] = field8lb_mc.fieldsel;
 			}
 		}
 	}
@@ -1368,13 +1311,13 @@ static void frame_estimate(
  */
 
 static void field_estimate (
-	pict_data_s *picture,
+	const Picture &picture,
 	uint8_t *toporg,
 	uint8_t *topref, 
 	uint8_t *botorg, 
 	uint8_t *botref,
 	subsampled_mb_s *ssmb,
-	int i, int j, int sx, int sy, int ipflag,
+	int i, int j, int sx, int sy,
 	mb_motion_s *bestfld,
 	mb_motion_s *best8u,
 	mb_motion_s *best8l,
@@ -1394,8 +1337,8 @@ static void field_estimate (
 	botssmb.qmb = ssmb->qmb+(opt_phy_width>>2);
 
 	/* if ipflag is set, predict from field of opposite parity only */
-	notop = ipflag && (picture->pict_struct==TOP_FIELD);
-	nobot = ipflag && (picture->pict_struct==BOTTOM_FIELD);
+	notop = picture.ipflag && (picture.pict_struct==TOP_FIELD);
+	nobot = picture.ipflag && (picture.pict_struct==BOTTOM_FIELD);
 
 	/* field prediction */
 
@@ -1422,7 +1365,7 @@ static void field_estimate (
 	botfld_mc.fieldoff = opt_phy_width;
 
 	/* same parity prediction (only valid if ipflag==0) */
-	if (picture->pict_struct==TOP_FIELD)
+	if (picture.pict_struct==TOP_FIELD)
 	{
 		*bestsp = topfld_mc;
 	}
@@ -1522,7 +1465,7 @@ static void field_estimate (
 }
 
 static void dpframe_estimate (
-	pict_data_s *picture,
+	const Picture &picture,
 	uint8_t *ref,
 	subsampled_mb_s *ssmb,
 	
@@ -1572,7 +1515,7 @@ static void dpframe_estimate (
 				/* mvxs and mvys scaling*/
 				is<<=1;
 				js<<=1;
-				if (picture->topfirst == ppred)
+				if (picture.topfirst == ppred)
 				{
 					/* second field: scale by 1/3 */
 					is = (is>=0) ? (is+1)/3 : -((-is+1)/3);
@@ -1583,7 +1526,7 @@ static void dpframe_estimate (
 			}
 
 			/* vector for prediction from field of opposite 'parity' */
-			if (picture->topfirst)
+			if (picture.topfirst)
 			{
 				/* vector for prediction of top field from bottom field */
 				it0 = ((is+(is>0))>>1);
@@ -1693,7 +1636,7 @@ static void dpframe_estimate (
 }
 
 static void dpfield_estimate(
-	pict_data_s *picture,
+	const Picture &picture,
 	uint8_t *topref,
 	uint8_t *botref, 
 	uint8_t *mb,
@@ -1718,7 +1661,7 @@ static void dpfield_estimate(
 	/* Note: only for P pictures! */
 
 	/* Assign opposite and same reference pointer */
-	if (picture->pict_struct==TOP_FIELD)
+	if (picture.pict_struct==TOP_FIELD)
 	{
 		sameref = topref;    
 		oppref = botref;
@@ -1740,7 +1683,7 @@ static void dpfield_estimate(
 	mvyo0 = (mvys+(mvys>0)) >> 1;  /* mvys / / 2*/
 
 			/* vertical field shift correction */
-	if (picture->pict_struct==TOP_FIELD)
+	if (picture.pict_struct==TOP_FIELD)
 		mvyo0--;
 	else
 		mvyo0++;

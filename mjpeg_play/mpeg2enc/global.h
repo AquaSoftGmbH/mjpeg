@@ -34,11 +34,20 @@
  * GLOBAL is defined in exactly one file (mpeg2enc.c)
  */
 
+#ifdef __cplusplus
+#define CLINKAGE "C"
+#else
+#define CLINKAGE
+#endif
+
 #ifndef GLOBAL
 #define EXTERN extern
 #else
 #define EXTERN
 #endif
+
+#define EXTERNTBL extern CLINKAGE
+
 
 //#define BITCOUNT_OFFSET  800000000LL
 #define BITCOUNT_OFFSET  0LL
@@ -60,16 +69,16 @@ void init_idct (void);
 /* motionest.c */
 
 void init_motion (void);
-void motion_estimation (pict_data_s *picture);
-void motion_subsampled_lum( pict_data_s *picture );
+void motion_estimation (Picture *picture);
+void motion_subsampled_lum( Picture *picture );
 
 /* mpeg2enc.c */
-uint8_t *bufalloc( size_t size );
+void *bufalloc( size_t size );
 
 /* predict.c */
 void init_predict(void);
 
-void predict (pict_data_s *picture);
+void predict (Picture *picture);
 
 /* putbits.c */
 void initbits (void);
@@ -83,17 +92,17 @@ void putseqext (void);
 void putseqdispext (void);
 void putuserdata (const uint8_t *userdata, int len);
 void putgophdr (int frame, int closed_gop);
-void putpicthdr (pict_data_s *picture);
-void putpictcodext (pict_data_s *picture);
+void putpicthdr (Picture *picture);
+void putpictcodext (Picture *picture);
 void putseqend (void);
 
 /* putmpg.c */
-void putintrablk (pict_data_s *picture, int16_t *blk, int cc);
-void putnonintrablk (pict_data_s *picture,int16_t *blk);
+void putintrablk (Picture *picture, int16_t *blk, int cc);
+void putnonintrablk (Picture *picture,int16_t *blk);
 void putmv (int dmv, int f_code);
 
 /* putpic.c */
-void putpict (pict_data_s *picture);
+void putpict (Picture *picture);
 
 /* putseq.c */
 void putseq (void);
@@ -111,19 +120,19 @@ void putcbp (int cbp);
 
 /* quantize.c */
 
-void iquantize( pict_data_s *picture );
-void quant_intra (	pict_data_s *picture,
+void iquantize( Picture *picture );
+void quant_intra (	Picture *picture,
 					int16_t *src, int16_t *dst, 
 					int mquant, int *nonsat_mquant);
-int quant_non_intra( pict_data_s *picture,
+int quant_non_intra( Picture *picture,
 						   int16_t *src, int16_t *dst,
 							int mquant, int *nonsat_mquant);
 void iquant_intra ( int16_t *src, int16_t *dst, int dc_prec, int mquant);
 void iquant_non_intra (int16_t *src, int16_t *dst, int mquant);
 void init_quantizer(void);
-int  next_larger_quant( pict_data_s *picture, int quant );
+int  next_larger_quant( Picture *picture, int quant );
 
-extern int (*pquant_non_intra)(pict_data_s *picture, int16_t *src, int16_t *dst,
+extern int (*pquant_non_intra)(Picture *picture, int16_t *src, int16_t *dst,
 						int mquant, int *nonsat_mquant);
 
 extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
@@ -132,30 +141,32 @@ extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
 /* ratectl.c */
 void rc_init_seq (int reinit);
 void rc_init_GOP ( int np, int nb);
-void rc_init_pict (pict_data_s *picture);
-void rc_update_pict (pict_data_s *picture);
-int rc_start_mb (pict_data_s *picture);
-int rc_calc_mquant (pict_data_s *picture,int j);
-void vbv_end_of_picture (pict_data_s *picture);
-void calc_vbv_delay (pict_data_s *picture);
+void rc_init_pict (Picture *picture);
+void rc_update_pict (Picture *picture);
+int rc_start_mb (Picture *picture);
+int rc_calc_mquant (Picture *picture,int j);
+void vbv_end_of_picture (Picture *picture);
+void calc_vbv_delay (Picture *picture);
 double inv_scale_quant( int q_scale_type, int raw_code );
 int scale_quant( int q_scale_type, double quant );
 
 /* readpic.c */
 int readframe (int frame_num, uint8_t *frame[]);
 int frame_lum_mean(int frame_num);
-void read_stream_params( int *hsize, int *vsize, int *frame_rate_code,
-						 int *topfirst, unsigned int *aspect_code );
+void read_stream_params( unsigned int *hsize, unsigned int *vsize, 
+						 unsigned int *frame_rate_code,
+						 unsigned int  *interlacing_code, 
+						 unsigned int *aspect_code );
 
 /* stats.c */
-void calcSNR (pict_data_s *picture);
+void calcSNR (Picture *picture);
 void stats (void);
 
 /* transfrm.c */
-void transform (pict_data_s *picture);
+void transform (Picture *picture);
 
-void itransform ( pict_data_s *picture);
-void dct_type_estimation (pict_data_s *picture );
+void itransform ( Picture *picture);
+void dct_type_estimation (Picture *picture );
 
 void init_transform(void);
 
@@ -165,20 +176,20 @@ void writeframe (int frame_num, uint8_t *frame[]);
 
 /* global variables */
 
-EXTERN const char version[]
+EXTERNTBL const char version[]
 #ifdef GLOBAL
   ="MSSG+ 1.3 2001/6/10 (development of mpeg2encode V1.2, 96/07/19)"
 #endif
 ;
 
-EXTERN const char author[]
+EXTERNTBL const char author[]
 #ifdef GLOBAL
   ="(C) 1996, MPEG Software Simulation Group, (C) 2000, 2001,2002 Andrew Stevens, Rainer Johanni"
 #endif
 ;
 
 /* zig-zag scan */
-EXTERN const uint8_t zig_zag_scan[64]
+EXTERNTBL const uint8_t zig_zag_scan[64]
 #ifdef GLOBAL
 =
 {
@@ -191,7 +202,7 @@ EXTERN const uint8_t zig_zag_scan[64]
 ;
 
 /* alternate scan */
-EXTERN const uint8_t alternate_scan[64]
+EXTERNTBL const uint8_t alternate_scan[64]
 #ifdef GLOBAL
 =
 {
@@ -204,7 +215,7 @@ EXTERN const uint8_t alternate_scan[64]
 ;
 
 /* default intra quantization matrix */
-EXTERN const uint16_t default_intra_quantizer_matrix[64]
+EXTERNTBL const uint16_t default_intra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
 {
@@ -220,7 +231,7 @@ EXTERN const uint16_t default_intra_quantizer_matrix[64]
 #endif
 ;
 
-EXTERN const uint16_t hires_intra_quantizer_matrix[64]
+EXTERNTBL const uint16_t hires_intra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
 {
@@ -236,7 +247,7 @@ EXTERN const uint16_t hires_intra_quantizer_matrix[64]
 #endif
 ;
 
-EXTERN const uint16_t default_nonintra_quantizer_matrix[64]
+EXTERNTBL const uint16_t default_nonintra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
 {
@@ -255,14 +266,14 @@ EXTERN const uint16_t default_nonintra_quantizer_matrix[64]
 
 /* Hires non intra quantization matrix.  THis *is*
 	the MPEG default...	 */
-EXTERN const uint16_t *hires_nonintra_quantizer_matrix
+EXTERNTBL const uint16_t *hires_nonintra_quantizer_matrix
 #ifdef GLOBAL
 = &default_nonintra_quantizer_matrix[0]
 #endif
 ;
 
 /* non-linear quantization coefficient table */
-EXTERN const uint8_t non_linear_mquant_table[32]
+EXTERNTBL const uint8_t non_linear_mquant_table[32]
 #ifdef GLOBAL
 =
 {
@@ -279,7 +290,7 @@ EXTERN const uint8_t non_linear_mquant_table[32]
  * it is up to the designer to determine most of the quantization levels
  */
 
-EXTERN const uint8_t map_non_linear_mquant[113] 
+EXTERNTBL const uint8_t map_non_linear_mquant[113] 
 #ifdef GLOBAL
 =
 {
@@ -292,16 +303,17 @@ EXTERN const uint8_t map_non_linear_mquant[113]
 #endif
 ;
 
-EXTERN const char pict_type_char[6]
+EXTERNTBL const char pict_type_char[6]
 #ifdef GLOBAL
 = {'X', 'I', 'P', 'B', 'D', 'X'}
 #endif
 ;
 
+
 /* Support for the picture layer(!) insertion of scan data fieldsas
    MPEG user-data section as part of I-frames.  */
 
-EXTERN const uint8_t dummy_svcd_scan_data[14]
+EXTERNTBL const uint8_t dummy_svcd_scan_data[14]
 #ifdef GLOBAL
 = {
 	0x10,                       /* Scan data tag */
@@ -317,18 +329,18 @@ EXTERN const uint8_t dummy_svcd_scan_data[14]
 
 
 
-EXTERN const char *statname
+EXTERNTBL const char *statname
 #ifdef GLOBAL
  = "mpeg2enc.stat"
 #endif
 ;
+
 
 /*
   How many frames to read in one go and the size of the frame data buffer.
 */
 
 #define READ_CHUNK_SIZE 5
-//#define FRAME_BUFFER_SIZE (READ_CHUNK_SIZE*9)
 
 /*
   How many frames encoding may be concurrently under way.
@@ -345,10 +357,10 @@ EXTERN const char *statname
  ************************************ */
 
 
-EXTERN int opt_horizontal_size, opt_vertical_size; /* frame size (pels) */
+EXTERN unsigned int opt_horizontal_size, opt_vertical_size; /* frame size (pels) */
 
-EXTERN int opt_aspectratio;			/* aspect ratio information (pel or display) */
-EXTERN int opt_frame_rate_code;		/* coded value of playback display
+EXTERN unsigned int opt_aspectratio;			/* aspect ratio information (pel or display) */
+EXTERN unsigned int opt_frame_rate_code;		/* coded value of playback display
 									 * frame rate */
 EXTERN int opt_dctsatlim;			/* Value to saturated DCT coeffs to */
 EXTERN double opt_frame_rate;		/* Playback display frames per
@@ -357,41 +369,41 @@ EXTERN double opt_frame_rate;		/* Playback display frames per
 									   the frame decode rate.
 									*/
 EXTERN double opt_bit_rate;			/* bits per second */
-EXTERN int opt_seq_hdr_every_gop;
-EXTERN int opt_seq_end_every_gop;   /* Useful for Stills
+EXTERN bool opt_seq_hdr_every_gop;
+EXTERN bool opt_seq_end_every_gop;   /* Useful for Stills
 									 * sequences... */
-EXTERN int opt_svcd_scan_data;
-EXTERN int opt_vbv_buffer_code;      /* Code for size of VBV buffer (*
+EXTERN bool opt_svcd_scan_data;
+EXTERN unsigned int opt_vbv_buffer_code;      /* Code for size of VBV buffer (*
 									  * 16 kbit) */
 EXTERN double opt_vbv_buffer_size;
-EXTERN int opt_still_size;		     /* If non-0 encode a stills
+EXTERN unsigned int opt_still_size;		     /* If non-0 encode a stills
 									  * sequence: 1 I-frame per
 									  * sequence pseudo VBR. Each
 									  * frame sized to opt_still_size
 									  * KB */
-EXTERN int opt_vbv_buffer_still_size;  /* vbv_buffer_size holds still
+EXTERN unsigned int opt_vbv_buffer_still_size;  /* vbv_buffer_size holds still
 										  size.  Ensure still size
 										  matches. */
 
-EXTERN int opt_constrparms;         /* constrained parameters flag (MPEG-1 only) */
-EXTERN int opt_load_iquant, 
-	opt_load_niquant;               /* use non-default quant. matrices */
+EXTERN bool opt_constrparms;         /* constrained parameters flag (MPEG-1 only) */
+EXTERN bool opt_load_iquant, 
+	        opt_load_niquant;        /* use non-default quant. matrices */
 
 
 
-EXTERN int opt_profile, opt_level; /* syntax / parameter constraints */
-EXTERN int opt_prog_seq; /* progressive sequence */
+EXTERN unsigned int opt_profile, opt_level; /* syntax / parameter constraints */
+EXTERN bool opt_prog_seq; /* progressive sequence */
 EXTERN int opt_chroma_format;
 EXTERN int opt_low_delay; /* no B pictures, skipped pictures */
 
 
 /* sequence specific data (sequence display extension) */
 
-EXTERN int opt_video_format; /* component, PAL, NTSC, SECAM or MAC */
-EXTERN int opt_color_primaries; /* source primary chromaticity coordinates */
-EXTERN int opt_transfer_characteristics; /* opto-electronic transfer char. (gamma) */
-EXTERN int opt_matrix_coefficients; /* Eg,Eb,Er / Y,Cb,Cr matrix coefficients */
-EXTERN int opt_display_horizontal_size, 
+EXTERN unsigned int opt_video_format; /* component, PAL, NTSC, SECAM or MAC */
+EXTERN unsigned int opt_color_primaries; /* source primary chromaticity coordinates */
+EXTERN unsigned int opt_transfer_characteristics; /* opto-electronic transfer char. (gamma) */
+EXTERN unsigned int opt_matrix_coefficients; /* Eg,Eb,Er / Y,Cb,Cr matrix coefficients */
+EXTERN unsigned int opt_display_horizontal_size, 
 	       opt_display_vertical_size; /* display size */
 
 
@@ -399,13 +411,13 @@ EXTERN int opt_display_horizontal_size,
 
 /* picture specific data (currently controlled by global flags) */
 
-EXTERN int opt_dc_prec;
-EXTERN int opt_topfirst;
+EXTERN unsigned int opt_dc_prec;
+EXTERN bool opt_topfirst;
 
 
-EXTERN int opt_mpeg1;				/* ISO/IEC IS 11172-2 sequence */
-EXTERN int opt_fieldpic;			/* use field pictures */
-EXTERN int opt_pulldown_32;			/* 3:2 Pulldown of movie material */
+EXTERN bool opt_mpeg1;				/* ISO/IEC IS 11172-2 sequence */
+EXTERN bool opt_fieldpic;			/* use field pictures */
+EXTERN bool opt_pulldown_32;		/* 3:2 Pulldown of movie material */
 
 
 

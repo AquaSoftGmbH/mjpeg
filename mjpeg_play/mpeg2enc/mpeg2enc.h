@@ -101,105 +101,16 @@ typedef enum coord { x_crd, y_crd} coord_e;
 typedef enum mc_dir { fwd, bwd } mc_dir_e;
 typedef enum field { top, bot }  field_e;
 
-
-
-/* macroblock information */
-struct mbinfo {
-	int mb_type; /* intra/forward/backward/interpolated */
-	int motion_type; /* frame/field/16x8/dual_prime */
-	int dct_type; /* field/frame DCT */
-	int mquant; /* quantization parameter */
-	int cbp; /* coded block pattern */
-	int skipped; /* skipped macroblock */
-	int MV[2][2][2]; /* motion vectors */
-	int mv_field_sel[2][2]; /* motion vertical field select */
-	int dmvector[2]; /* dual prime vectors */
-	double act; /* activity measure */
-	int i_act;  /* Activity measure if intra coded (I/P-frame) */
-	int p_act;  /* Activity measure for *forward* prediction (P-frame) */
-	int b_act;	/* Activity measure if bi-directionally coded (B-frame) */
-	int var; 	/* Macroblock luminance variance (measure of activity) */
-	short (*dctblocks)[64];
-#ifdef OUTPUT_STAT
-  double N_act;
-#endif
-
-};
-
-typedef struct mbinfo mbinfo_s;
+#include "macroblock.hh"
+#include "picture.hh"
  
 /* motion data */
 struct motion_data {
-  int forw_hor_f_code,forw_vert_f_code; /* vector range */
-  int sxf,syf; /* search range */
-  int back_hor_f_code,back_vert_f_code;
-  int sxb,syb;
+	unsigned int forw_hor_f_code,forw_vert_f_code; /* vector range */
+	unsigned int sxf,syf; /* search range */
+	unsigned int back_hor_f_code,back_vert_f_code;
+	unsigned int sxb,syb;
 };
-
-/* Transformed per-picture data  */
-
-struct pict_data
-{
-	int decode;					/* Number of frame in stream */
-	int present;				/* Number of frame in playback order */
-	/* multiple-reader/single-writer channels Synchronisation  
-	   sync only: no data is "read"/"written"
-	 */
-	sync_guard_t *ref_frame_completion;
-	sync_guard_t *prev_frame_completion;
-	sync_guard_t completion;
-
-	/* picture encoding source data  */
-	uint8_t **oldorg, **neworg;	/* Images for Old and new reference picts */
-	uint8_t **oldref, **newref;	/* original and reconstructed */
-	uint8_t **curorg, **curref;	/* Images for current pict orginal and*/
-								/* reconstructed */
-	uint8_t **pred;			/* Prediction based on MC (if any) */
-	int sxf, syf, sxb, syb;		/* MC search limits. */
-	int secondfield;			/* Second field of field frame */
-	int ipflag;					/* P pict in IP frame (FIELD pics only)*/
-
-	/* picture structure (header) data */
-
-	int temp_ref; /* temporal reference */
-	int pict_type; /* picture coding type (I, P or B) */
-	int vbv_delay; /* video buffering verifier delay (1/90000 seconds) */
-	int forw_hor_f_code, forw_vert_f_code;
-	int back_hor_f_code, back_vert_f_code; /* motion vector ranges */
-	int dc_prec;				/* DC coefficient prec for intra blocks */
-	int pict_struct;			/* picture structure (frame, top / bottom) */
-	int topfirst;				/* display top field first */
-	int frame_pred_dct;			/* Use only frame prediction... */
-	int intravlc;				/* Intra VLC format */
-	int q_scale_type;			/* Quantiser scale... */
-	int altscan;				/* Alternate scan  */
-	int repeatfirst;			/* repeat first field after second field */
-	int prog_frame;				/* progressive frame */
-
-	/* 8*8 block data, raw (unquantised) and quantised, and (eventually but
-	   not yet inverse quantised */
-	int16_t (*blocks)[64];
-	int16_t (*qblocks)[64];
-
-	/* macroblock side information array */
-	struct mbinfo *mbinfo;
-
-	/* Information for GOP start frames */
-	int gop_start;
-	int nb;						/* B frames in GOP */
-	int np;						/* P frames in GOP */
-	int new_seq;				/* GOP starts new sequence */
-
-	/* Statistics... */
-	int pad;
-	int split;
-	double AQ;
-	double SQ;
-	double avg_act;
-	double sum_avg_act;
-};
-
-typedef struct pict_data pict_data_s;
 
 
 

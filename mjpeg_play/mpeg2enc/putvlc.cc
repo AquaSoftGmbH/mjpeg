@@ -38,15 +38,13 @@
 static void putDC (const sVLCtable *tab, int val);
 
 /* generate variable length code for luminance DC coefficient */
-void putDClum(val)
-int val;
+void putDClum(int val)
 {
   putDC(DClumtab,val);
 }
 
 /* generate variable length code for chrominance DC coefficient */
-void putDCchrom(val)
-int val;
+void putDCchrom(int val)
 {
   putDC(DCchromtab,val);
 }
@@ -89,8 +87,7 @@ static void putDC(const sVLCtable *tab, int val)
 
 /* generate variable length code for first coefficient
  * of a non-intra block (7.2.2.2) */
-void putACfirst(run,val)
-int run,val;
+void putACfirst(int run, int val)
 {
   if (run==0 && (val==1 || val==-1)) /* these are treated differently */
     putbits(2|(val<0),2); /* generate '1s' (s=sign), (Table B-14, line 2) */
@@ -99,8 +96,7 @@ int run,val;
 }
 
 /* generate variable length code for other DCT coefficients (7.2.2) */
-void putAC(run,signed_level,vlcformat)
-int run,signed_level,vlcformat;
+void putAC(int run, int signed_level, int vlcformat)
 {
   int level, len;
   const VLCtable *ptab = NULL;
@@ -169,8 +165,7 @@ int run,signed_level,vlcformat;
 }
 
 /* generate variable length code for macroblock_address_increment (6.3.16) */
-void putaddrinc(addrinc)
-int addrinc;
+void putaddrinc(int addrinc)
 {
   while (addrinc>33)
   {
@@ -182,16 +177,14 @@ int addrinc;
 }
 
 /* generate variable length code for macroblock_type (6.3.16.1) */
-void putmbtype(pict_type,mb_type)
-int pict_type,mb_type;
+void putmbtype(int pict_type, int mb_type)
 {
   putbits(mbtypetab[pict_type-1][mb_type].code,
           mbtypetab[pict_type-1][mb_type].len);
 }
 
 /* generate variable length code for motion_code (6.3.16.3) */
-void putmotioncode(motion_code)
-int motion_code;
+void putmotioncode(int motion_code)
 {
   int abscode;
 
@@ -202,8 +195,7 @@ int motion_code;
 }
 
 /* generate variable length code for dmvector[t] (6.3.16.3), Table B-11 */
-void putdmv(dmv)
-int dmv;
+void putdmv(int dmv)
 {
   if (dmv==0)
     putbits(0,1);
@@ -217,8 +209,7 @@ int dmv;
  *
  * 4:2:2, 4:4:4 not implemented
  */
-void putcbp(cbp)
-int cbp;
+void putcbp(int cbp)
 {
   putbits(cbptable[cbp].code,cbptable[cbp].len);
 }

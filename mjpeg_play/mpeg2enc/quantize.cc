@@ -60,7 +60,7 @@
 
 
 /* Global function pointers for SIMD-dependent functions */
-int (*pquant_non_intra)(pict_data_s *picture, int16_t *src, int16_t *dst,
+int (*pquant_non_intra)(Picture *picture, int16_t *src, int16_t *dst,
 						int mquant, int *nonsat_mquant);
 int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
 
@@ -142,7 +142,7 @@ void init_quantizer(void)
  */
  
 
-int next_larger_quant( pict_data_s *picture, int quant )
+int next_larger_quant( Picture *picture, int quant )
 {
 	if( picture->q_scale_type )
 		{
@@ -173,12 +173,11 @@ int next_larger_quant( pict_data_s *picture, int quant )
  * RETURN: 1 If non-zero coefficients left after quantisaiont 0 otherwise
  */
 
-void quant_intra(
-	pict_data_s *picture,
-	int16_t *src, 
-	int16_t *dst,
-	int mquant,
-	int *nonsat_mquant
+void quant_intra( Picture *picture,
+				  int16_t *src, 
+				  int16_t *dst,
+				  int mquant,
+				  int *nonsat_mquant
 	)
 {
   int16_t *psrc,*pbuf;
@@ -289,7 +288,7 @@ int quant_weight_coeff_sum( int16_t *blk, uint16_t * i_quant_mat )
  */
 																							     											     
 int quant_non_intra(
-						   pict_data_s *picture,
+						   Picture *picture,
 						   int16_t *src, int16_t *dst,
 						   int mquant,
 						   int *nonsat_mquant)
@@ -487,7 +486,7 @@ void iquant_non_intra(int16_t *src, int16_t *dst, int mquant )
   }
 }
 
-void iquantize( pict_data_s *picture )
+void iquantize( Picture *picture )
 {
 	int j,k;
 	int16_t (*qblocks)[64] = picture->qblocks;

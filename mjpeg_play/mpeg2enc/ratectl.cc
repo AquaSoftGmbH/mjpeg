@@ -56,7 +56,7 @@
 
 /* private prototypes */
 
-static void calc_actj ( pict_data_s *picture, double *act_sum, double *var_sum);
+static void calc_actj ( Picture *picture, double *act_sum, double *var_sum);
 
 /*Constant bit-rate rate control variables */
 /* X's global complexity (Chi! not X!) measures.
@@ -277,10 +277,12 @@ void rc_init_seq(int reinit)
 	}
 	else
 	{
-		per_pict_bits = opt_fieldpic
-			? opt_bit_rate / field_rate
-			: opt_bit_rate / ctl_decode_frame_rate;
-		R = opt_bit_rate;
+		per_pict_bits = 
+			static_cast<int32_t>(opt_fieldpic
+								 ? opt_bit_rate / field_rate
+								 : opt_bit_rate / ctl_decode_frame_rate
+				);
+		R = static_cast<int32_t>(opt_bit_rate);
 	}
 
 	/* Everything else already set or adaptive */
@@ -341,7 +343,7 @@ void rc_init_seq(int reinit)
 	*/
 
 	init_quant = (ctl_quant_floor > 0.0 ? ctl_quant_floor : 6.0);
-	d0p = d0b = d0pb = d0i = init_quant * r / 62.0;
+	d0p = d0b = d0pb = d0i = static_cast<int>(init_quant * r / 62.0);
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: sequence initialization\n");
@@ -396,7 +398,8 @@ void rc_init_GOP( int np, int nb)
 		double recovery_gain = 
 			recovery_fraction > 1.0 ? 1.0 : overshoot_gain * recovery_fraction;
 		int available_bits = 
-			( opt_bit_rate+buffer_variation*recovery_gain)*fields_in_gop/field_rate;
+			static_cast<int>( (opt_bit_rate+buffer_variation*recovery_gain)
+							  * fields_in_gop/field_rate);
 		double Xsum = Ni*Xi+Np*Xp+Nb*Xb;
 		mjpeg_debug( "REST GOP INIT" );
 		I_pict_base_bits = (int32_t)(fields_per_pict*available_bits*Xi/Xsum);
@@ -416,7 +419,7 @@ void rc_init_GOP( int np, int nb)
 
 
 /* Step 1: compute target bits for current picture being coded */
-void rc_init_pict(pict_data_s *picture)
+void rc_init_pict(Picture *picture)
 {
 	double avg_K = 0.0;
 	double target_Q;
@@ -479,11 +482,16 @@ void rc_init_pict(pict_data_s *picture)
 		available_bits = per_pict_bits;
 	else
 	{
-		int feedback_correction = 
-			fast_tune ?	buffer_variation * overshoot_gain
-			: (buffer_variation+gop_buffer_correction) * overshoot_gain;
+		int feedback_correction =
+			static_cast<int>( fast_tune 
+							  ?	buffer_variation * overshoot_gain
+							  : (buffer_variation+gop_buffer_correction) 
+							    * overshoot_gain
+				);
 		available_bits = 
-			( opt_bit_rate+feedback_correction)*fields_in_gop/field_rate;
+			static_cast<int>( (opt_bit_rate+feedback_correction)
+							  * fields_in_gop/field_rate
+							  );
 	}
 
 	min_q = min_d = INT_MAX;
@@ -640,7 +648,7 @@ void rc_init_pict(pict_data_s *picture)
 
 
 
-static void calc_actj(pict_data_s *picture, double *act_sum, double *var_sum)
+static void calc_actj(Picture *picture, double *act_sum, double *var_sum)
 {
 	int i,j,k,l;
 	double actj,sum;
@@ -690,7 +698,7 @@ static void calc_actj(pict_data_s *picture, double *act_sum, double *var_sum)
 			for( l = 0; l < 6; ++l )
 				blksum += 
 					(*pquant_weight_coeff_sum)
-					    ( picture->mbinfo[k].dctblocks[l], i_q_mat ) ;
+					( picture->mbinfo[k].RawDCTblocks()[l], i_q_mat ) ;
 			actj = (double)blksum / (double)COEFFSUM_SCALE;
 			if( actj < 12.0 )
 				actj = 12.0;
@@ -707,7 +715,7 @@ static void calc_actj(pict_data_s *picture, double *act_sum, double *var_sum)
  * Update rate-controls statistics after pictures has ended..
  *
  */
-void rc_update_pict(pict_data_s *picture)
+void rc_update_pict(Picture *picture)
 {
 	double X;
 	double K;
@@ -936,11 +944,11 @@ void rc_update_pict(pict_data_s *picture)
    overall size.
  */
 static int init_quant;
-int rc_start_mb(pict_data_s *picture)
+int rc_start_mb(Picture *picture)
 {
 	
 	int mquant = scale_quant( picture->q_scale_type, d*62.0/r );
-	init_quant = mquant = intmax(mquant, ctl_quant_floor);
+	init_quant = mquant = intmax(mquant, static_cast<int>(ctl_quant_floor));
 
 /*
   fprintf(statfile,"rc_start_mb:\n");
@@ -950,7 +958,7 @@ int rc_start_mb(pict_data_s *picture)
 }
 
 /* Step 2: measure virtual buffer - estimated buffer discrepancy */
-int rc_calc_mquant( pict_data_s *picture,int j)
+int rc_calc_mquant( Picture *picture,int j)
 {
 	int mquant;
 	double dj, Qj, actj, N_actj, varj; 
@@ -1044,7 +1052,7 @@ int rc_calc_mquant( pict_data_s *picture,int j)
  * bit-stream.
  */
 
-void vbv_end_of_picture(pict_data_s *picture)
+void vbv_end_of_picture(Picture *picture)
 {
 	bitcnt_EOP = (bitcount()) - BITCOUNT_OFFSET;
 
@@ -1064,7 +1072,7 @@ void vbv_end_of_picture(pict_data_s *picture)
  * themselves.
  */
 
-void calc_vbv_delay(pict_data_s *picture)
+void calc_vbv_delay(Picture *picture)
 {
 	static double picture_delay;
 	static double next_ip_delay = 0.0; /* due to frame reordering delay */
@@ -1234,7 +1242,7 @@ void calc_vbv_delay(pict_data_s *picture)
 	if( !opt_mpeg1 || ctl_quant_floor != 0 || opt_still_size > 0)
 		picture->vbv_delay =  0xffff;
 	else if( opt_still_size > 0 )
-		picture->vbv_delay =  90000.0/opt_frame_rate/4;
+		picture->vbv_delay =  static_cast<int>(90000.0/opt_frame_rate/4);
 #endif
 
 }

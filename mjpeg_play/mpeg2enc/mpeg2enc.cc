@@ -56,6 +56,7 @@
 #include <getopt.h>
 #endif
 
+
 #define GLOBAL /* used by global.h */
 
 #include "global.h"
@@ -81,6 +82,7 @@ static void init_quantmat (void);
 # define O_BINARY 0
 #endif
 
+
 /* Command Parameter values.  These are checked and processed for
    defaults etc after parsing.  The resulting values then set the opt_
    variables that control the actual encoder.
@@ -92,8 +94,8 @@ static int param_nonvid_bitrate = 0;
 static int param_quant      = 0;
 static int param_searchrad  = 16;
 static int param_mpeg       = 1;
-static int param_aspect_ratio = 0;
-static int param_frame_rate  = 0;
+static unsigned int param_aspect_ratio = 0;
+static unsigned int param_frame_rate  = 0;
 static int param_fieldenc   = -1; /* 0: progressive, 
                                      1 = frame pictures, 
                                      interlace frames with field
@@ -109,7 +111,7 @@ static int param_video_buffer_size = 0;
 static int param_seq_length_limit = 0;
 static int param_min_GOP_size = -1;
 static int param_max_GOP_size = -1;
-static bool param_closed_GOPs = false;
+static int param_closed_GOPs = 0;
 static int param_preserve_B = 0;
 static int param_Bgrp_size = 3;
 static int param_num_cpus = 1;
@@ -121,7 +123,7 @@ static int param_still_size = 0;
 static int param_pad_stills_to_vbv_buffer_size = 0;
 static int param_vbv_buffer_still_size = 0;
 static int param_force_interlacing = Y4M_UNKNOWN;
-static int param_input_interlacing;
+static unsigned int param_input_interlacing;
 static int param_hack_svcd_hds_bug = 1;
 static int param_hack_altscan_bug = 0;
 static int param_mpeg2_dc_prec = 1;
@@ -131,7 +133,7 @@ static int param_ignore_constraints = 0;
    set encoding options */
 
 static mpeg_aspect_code_t strm_aspect_ratio;
-static int strm_frame_rate_code;
+static unsigned int strm_frame_rate_code;
 
 /* reserved: for later use */
 int param_422 = 0;
@@ -139,7 +141,7 @@ int param_422 = 0;
 
 static void DisplayFrameRates(void)
 {
- 	int i;
+ 	unsigned int i;
 	printf("Frame-rate codes:\n");
 	for( i = 0; i < mpeg_num_framerates; ++i )
 	{
@@ -150,7 +152,7 @@ static void DisplayFrameRates(void)
 
 static void DisplayAspectRatios(void)
 {
- 	int i;
+ 	unsigned int i;
 	printf("\nDisplay aspect ratio codes:\n");
 	for( i = 1; i <= mpeg_num_aspect_ratios[1]; ++i )
 	{
@@ -643,9 +645,7 @@ static int check_param_constraints(void)
 }
 
 
-int main(argc,argv)
-	int argc;
-	char *argv[];
+int main( int argc,	char *argv[] )
 {
 	char *outfilename=0;
 	int nerr = 0;
@@ -1057,9 +1057,9 @@ static struct option long_options[]={
 	specified byte boundary and checks for failure.
 	N.b.  don't try to free the resulting pointers, eh...
 */
-uint8_t *bufalloc( size_t size )
+void *bufalloc( size_t size )
 {
-	char *buf = malloc( size + BUFFER_ALIGN );
+	uint8_t *buf = static_cast<uint8_t *>(malloc( size + BUFFER_ALIGN ));
 	unsigned long adjust;
 
 	if( buf == NULL )
@@ -1069,7 +1069,7 @@ uint8_t *bufalloc( size_t size )
 	adjust = BUFFER_ALIGN-((unsigned long)buf)%BUFFER_ALIGN;
 	if( adjust == BUFFER_ALIGN )
 		adjust = 0;
-	return (uint8_t*)(buf+adjust);
+	return (void *)(buf+adjust);
 }
 
 /*********************
@@ -1115,7 +1115,8 @@ static void border_mark( uint8_t *frame,
 
 static void init_encoder(void)
 {
-	int i, n;
+	int i;
+    unsigned int n;
 	static int block_count_tab[3] = {6,8,12};
     int enc_chrom_width, enc_chrom_height;
 	initbits(); 
@@ -1156,6 +1157,7 @@ static void init_encoder(void)
 		ctl_parallel_read = true;
 		break;
 	}
+
 
 	ctl_44_red		= param_44_red;
 	ctl_22_red		= param_22_red;
@@ -1239,7 +1241,10 @@ static void init_encoder(void)
 		 for (i=0; i<3; i++)
 		 {
 			 frame_buffers[n][i] = 
-				 bufalloc( (i==0) ? lum_buffer_size : chrom_buffer_size );
+                 static_cast<uint8_t *>( bufalloc( (i==0) 
+                                                   ? lum_buffer_size 
+                                                   : chrom_buffer_size ) 
+                     );
 		 }
 
          border_mark(frame_buffers[n][0],
@@ -1680,38 +1685,38 @@ static void init_mpeg_parms(void)
 	/* search windows */
 	for (i=0; i<ctl_M; i++)
 	{
-		if (opt_motion_data[i].sxf > (4<<opt_motion_data[i].forw_hor_f_code)-1)
+		if (opt_motion_data[i].sxf > (4U<<opt_motion_data[i].forw_hor_f_code)-1)
 		{
 			mjpeg_info(
 				"reducing forward horizontal search width to %d",
 						(4<<opt_motion_data[i].forw_hor_f_code)-1);
-			opt_motion_data[i].sxf = (4<<opt_motion_data[i].forw_hor_f_code)-1;
+			opt_motion_data[i].sxf = (4U<<opt_motion_data[i].forw_hor_f_code)-1;
 		}
 
-		if (opt_motion_data[i].syf > (4<<opt_motion_data[i].forw_vert_f_code)-1)
+		if (opt_motion_data[i].syf > (4U<<opt_motion_data[i].forw_vert_f_code)-1)
 		{
 			mjpeg_info(
 				"reducing forward vertical search width to %d",
 				(4<<opt_motion_data[i].forw_vert_f_code)-1);
-			opt_motion_data[i].syf = (4<<opt_motion_data[i].forw_vert_f_code)-1;
+			opt_motion_data[i].syf = (4U<<opt_motion_data[i].forw_vert_f_code)-1;
 		}
 
 		if (i!=0)
 		{
-			if (opt_motion_data[i].sxb > (4<<opt_motion_data[i].back_hor_f_code)-1)
+			if (opt_motion_data[i].sxb > (4U<<opt_motion_data[i].back_hor_f_code)-1)
 			{
 				mjpeg_info(
 					"reducing backward horizontal search width to %d",
 					(4<<opt_motion_data[i].back_hor_f_code)-1);
-				opt_motion_data[i].sxb = (4<<opt_motion_data[i].back_hor_f_code)-1;
+				opt_motion_data[i].sxb = (4U<<opt_motion_data[i].back_hor_f_code)-1;
 			}
 
-			if (opt_motion_data[i].syb > (4<<opt_motion_data[i].back_vert_f_code)-1)
+			if (opt_motion_data[i].syb > (4U<<opt_motion_data[i].back_vert_f_code)-1)
 			{
 				mjpeg_info(
 					"reducing backward vertical search width to %d",
 					(4<<opt_motion_data[i].back_vert_f_code)-1);
-				opt_motion_data[i].syb = (4<<opt_motion_data[i].back_vert_f_code)-1;
+				opt_motion_data[i].syb = (4U<<opt_motion_data[i].back_vert_f_code)-1;
 			}
 		}
 	}

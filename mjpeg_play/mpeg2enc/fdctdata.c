@@ -60,8 +60,8 @@ const int16_t fdct_tg_all_16[] ATTR_ALIGN(8) __asm__ ("fdct_tg_all_16")  = {
 	-21746, -21746, -21746, -21746,	// tg * (2<<16) + 0.5
 	-19195, -19195, -19195, -19195,	//cos * (2<<16) + 0.5
 	23170, 23170, 23170, 23170 };	//cos * (2<<15) + 0.5
-const long long  fdct_one_corr ATTR_ALIGN(8) __asm__ ("fdct_one_corr") = 0x0001000100010001LL;
-const long fdct_r_row[2] ATTR_ALIGN(8) __asm__ ("fdct_r_row") = {RND_FRW_ROW, RND_FRW_ROW };
+const int64_t  fdct_one_corr ATTR_ALIGN(8) __asm__ ("fdct_one_corr") = 0x0001000100010001LL;
+const int32_t fdct_r_row[2] ATTR_ALIGN(8) __asm__ ("fdct_r_row") = {RND_FRW_ROW, RND_FRW_ROW };
 
 const int16_t tab_frw_01234567[] ATTR_ALIGN(8) __asm__ ("tab_frw_01234567") = {  // forward_dct coeff table
     //row0

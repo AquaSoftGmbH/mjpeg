@@ -33,7 +33,7 @@
 #include "global.h"
 
 /* generate variable length codes for an intra-coded block (6.2.6, 6.3.17) */
-void putintrablk(pict_data_s *picture,int16_t *blk, int cc)
+void putintrablk(Picture *picture,int16_t *blk, int cc)
 {
   int n, dct_diff, run, signed_level;
 
@@ -69,7 +69,7 @@ void putintrablk(pict_data_s *picture,int16_t *blk, int cc)
 }
 
 /* generate variable length codes for a non-intra-coded block (6.2.6, 6.3.17) */
-void putnonintrablk(pict_data_s *picture, int16_t *blk)
+void putnonintrablk(Picture *picture, int16_t *blk)
 {
   int n, run, signed_level, first;
 
@@ -103,8 +103,7 @@ void putnonintrablk(pict_data_s *picture, int16_t *blk)
 }
 
 /* generate variable length code for a motion vector component (7.6.3.1) */
-void putmv(dmv,f_code)
-int dmv,f_code;
+void putmv(int dmv, int f_code)
 {
   int r_size, f, vmin, vmax, dv, temp, motion_code, motion_residual;
 

@@ -10,8 +10,8 @@
 // assumes the programmer is familiar with IDCT mathematics, leaving the
 // form of the complete function up to the programmer's imagination.
 
-#include "mpeg2enc.h"
-#include "simd.h"
+#include <config.h>
+#include <mjpeg_types.h>
 
 //  ALGORITHM OVERVIEW
 //  ------------------

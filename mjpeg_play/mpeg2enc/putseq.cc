@@ -55,7 +55,7 @@
 
 static void set_pic_params( int decode,
 							int b_index,
-							pict_data_s *picture )
+							Picture *picture )
 {
 	picture->decode = decode;
 	picture->dc_prec = opt_dc_prec;
@@ -182,7 +182,7 @@ static void set_pic_params( int decode,
  *
  */
 
-static void set_2nd_field_params(pict_data_s *picture)
+static void set_2nd_field_params(Picture *picture)
 {
 	picture->secondfield = 1;
     picture->gop_start = 0;
@@ -355,8 +355,8 @@ struct _stream_state
 	double next_b_drop;		/* When next B frame drop is due in GOP */
 	int new_seq;				/* Current GOP/frame starts new sequence */
     int closed_gop;             /* Current GOP is closed */
-	int64_t next_split_point;
-	int64_t seq_split_length;
+	uint64_t next_split_point;
+	uint64_t seq_split_length;
 };
 
 typedef struct _stream_state stream_state_s;
@@ -425,7 +425,7 @@ static void gop_start( stream_state_s *ss )
     else
         bits_after_mux = (uint64_t)((frame_periods / opt_frame_rate) * 
                                     (ctl_nonvid_bit_rate + opt_bit_rate));
-	if( (ss->next_split_point != 0LL && bits_after_mux > ss->next_split_point)
+	if( (ss->next_split_point != 0ULL && bits_after_mux > ss->next_split_point)
 		|| (ss->i != 0 && opt_seq_end_every_gop)
 		)
 	{
@@ -516,7 +516,7 @@ static void gop_start( stream_state_s *ss )
 */
 
 static void I_or_P_frame_struct( stream_state_s *ss,
-								 pict_data_s *picture )
+								 Picture *picture )
 {
 	/* Temp ref of I frame in closed GOP of sequence is 0 We have to
 	   be a little careful with the end of stream special-case.
@@ -560,7 +560,7 @@ static void I_or_P_frame_struct( stream_state_s *ss,
 
 
 static void B_frame_struct(  stream_state_s *ss,
-							 pict_data_s *picture )
+							 Picture *picture )
 {
 	picture->temp_ref = ss->g - 1;
 	picture->present = ss->i-1;
@@ -605,28 +605,40 @@ static void next_seq_state( stream_state_s *ss )
 
 
 
-static void init_pict_data( pict_data_s *picture )
+static void init_pict_data( Picture *picture )
 {
-	int i;
+	int i,j;
 	/* Allocate buffers for picture transformation */
+	picture->blocks = 
+        static_cast<DCTblock*>(
+            bufalloc(mb_per_pict*block_count*sizeof(DCTblock)));
 	picture->qblocks =
-		(int16_t (*)[64])bufalloc(mb_per_pict*block_count*sizeof(int16_t [64]));
-	picture->mbinfo = 
-		(struct mbinfo *)bufalloc(mb_per_pict*sizeof(struct mbinfo));
+		static_cast<DCTblock *>(
+            bufalloc(mb_per_pict*block_count*sizeof(DCTblock)));
+    DCTblock *blocks = picture->blocks;
+    DCTblock *qblocks = picture->qblocks;
+    for (j=0; j<opt_enc_height2; j+=16)
+    {
+        for (i=0; i<opt_enc_width; i+=16)
+        {
+            picture->mbinfo.push_back(MacroBlock(*picture, i,j, 
+                                                 blocks,qblocks ));
+            blocks += block_count;
+            qblocks += block_count;
+        }
+    }
 
-	picture->blocks =
-		(int16_t (*)[64])bufalloc(mb_per_pict*block_count*sizeof(int16_t [64]));
 
-	picture->curref = (uint8_t**)bufalloc( sizeof( uint8_t[3] ) );
-	picture->curorg = (uint8_t**)bufalloc( sizeof( uint8_t[3] ) );
-	picture->pred = (uint8_t**)bufalloc( sizeof( uint8_t[3] ) );
+	picture->curref = new (uint8_t *)[3];
+	picture->curorg = new (uint8_t *)[3];
+	picture->pred   = new (uint8_t *)[3];
 
 	for( i = 0 ; i<3; i++)
 	{
 		int size =  (i==0) ? lum_buffer_size : chrom_buffer_size;
-		picture->curref[i] = bufalloc(size);
+		picture->curref[i] = static_cast<uint8_t *>(bufalloc(size));
 		picture->curorg[i] = NULL;
-		picture->pred[i]   = bufalloc(size);
+		picture->pred[i]   = static_cast<uint8_t *>(bufalloc(size));
 	}
 
 	/* The (non-existent) previous encoding using an as-yet un-used
@@ -655,7 +667,7 @@ static void init_pict_data( pict_data_s *picture )
 #define R_PICS (MAX_WORKER_THREADS+2)
 #define B_PICS (MAX_WORKER_THREADS+2)
 
-static void init_pictures( pict_data_s *ref_pictures, pict_data_s *b_pictures )
+static void init_pictures( Picture *ref_pictures, Picture *b_pictures )
 {
 
 	int i,j;
@@ -687,7 +699,7 @@ static void init_pictures( pict_data_s *ref_pictures, pict_data_s *b_pictures )
  */
 
 
-static void reconstruct( pict_data_s *picture)
+static void reconstruct( Picture *picture)
 {
 
 #ifndef OUTPUT_STAT
@@ -707,8 +719,31 @@ static mp_semaphore_t worker_available =  SEMAPHORE_INITIALIZER;
 static mp_semaphore_t picture_available = SEMAPHORE_INITIALIZER;
 static mp_semaphore_t picture_started = SEMAPHORE_INITIALIZER;
 
+#ifdef DEBUG_BLOCK_STRIPED
+static unsigned int checksum( uint8_t *buf, unsigned int len )
+{
+    unsigned int acc = 0;
+    unsigned int i;
+    for( i = 0; i < len; ++i )
+        acc += buf[i];
+    return acc;
+}
+#endif
 
-static void stencodeworker(pict_data_s *picture)
+static void encodembs(Picture *picture)
+{ 
+    vector<MacroBlock>::iterator mbi = picture->mbinfo.begin();
+
+	for( mbi = picture->mbinfo.begin(); mbi < picture->mbinfo.end(); ++mbi)
+	{
+        mbi->MotionEstimate();
+        mbi->Predict();
+        mbi->Transform();
+	}
+
+}
+
+static void stencodeworker(Picture *picture)
 {
 	/* ALWAYS do-able */
 	mjpeg_debug("Frame start %d %c %d %d",
@@ -739,11 +774,13 @@ static void stencodeworker(pict_data_s *picture)
 	   before starting the P field
 	*/
 
+#ifdef ORIGINAL_PHASE_BASED_PROC
 	motion_estimation(picture);
 	predict(picture);
-
-	/* No dependency */
 	transform(picture);
+#else
+    encodembs(picture);
+#endif
 	/* Depends on previous frame completion for IB and P */
 
 	putpict(picture);
@@ -768,10 +805,11 @@ static void stencodeworker(pict_data_s *picture)
 	}
 
 
-	mjpeg_info("Frame end %d %c quant=%3.2f %s",
+	mjpeg_info("Frame end %d %c quant=%3.2f total act=%8.1f %s", 
                picture->decode, 
 			   pict_type_char[picture->pict_type],
                picture->AQ,
+               picture->sum_avg_act,
                picture->pad ? "PAD" : "   "
         );
 			
@@ -783,7 +821,7 @@ static void stencodeworker(pict_data_s *picture)
   data it points to. K&R: hang your heads in shame...
 */
 
-typedef pict_data_s * pict_data_ptr;
+typedef Picture * pict_data_ptr;
 
 volatile static pict_data_ptr picture_to_encode;
 
@@ -799,7 +837,7 @@ static void *parencodeworker(void *start_arg)
 		mp_semaphore_wait( &picture_available );
 		/* Precisely *one* worker is started after update of
 		   picture_for_started_worker, so no need for handshake.  */
-		picture = (pict_data_s *)picture_to_encode;
+		picture = (Picture *)picture_to_encode;
 		mp_semaphore_signal( &picture_started, 1);
 
 		/* ALWAYS do-able */
@@ -828,6 +866,7 @@ static void *parencodeworker(void *start_arg)
 		   a special case.  We have to wait for completion of the I field
 		   before starting the P field
 		*/
+#ifdef ORIGINAL_PHASE_BASED_PROC
 		if( ctl_refine_from_rec )
 		{
 			sync_guard_test( picture->ref_frame_completion );
@@ -842,6 +881,10 @@ static void *parencodeworker(void *start_arg)
 
 		/* No dependency */
 		transform(picture);
+#else
+        sync_guard_test( picture->ref_frame_completion );
+        encodembs(picture);
+#endif
 		/* Depends on previous frame completion for IB and P */
 		sync_guard_test( picture->prev_frame_completion );
 		putpict(picture);
@@ -882,7 +925,7 @@ static void *parencodeworker(void *start_arg)
 }
 
 
-static void parencodepict( pict_data_s *picture )
+static void parencodepict( Picture *picture )
 {
 
 	mp_semaphore_wait( &worker_available );
@@ -900,7 +943,7 @@ static void parencodepict( pict_data_s *picture )
  *  at least two larger than the number of encoding worker threads.
  *  The despatcher thread *must* have to halt to wait for free
  *  worker threads *before* it re-uses the record for the
- *  pict_data_s record for the oldest frame that could still be needed
+ *  Picture record for the oldest frame that could still be needed
  *  by active worker threads.
  * 
  *  Buffers sizes are given by R_PICS and B_PICS
@@ -916,11 +959,11 @@ void putseq(void)
 	stream_state_s ss;
 	int cur_ref_idx = 0;
 	int cur_b_idx = 0;
-	pict_data_s b_pictures[B_PICS];
-	pict_data_s ref_pictures[R_PICS];
+	Picture b_pictures[B_PICS];
+	Picture ref_pictures[R_PICS];
 	pthread_t worker_threads[MAX_WORKER_THREADS];
-	pict_data_s *cur_picture, *old_picture;
-	pict_data_s *new_ref_picture, *old_ref_picture;
+	Picture *cur_picture, *old_picture;
+	Picture *new_ref_picture, *old_ref_picture;
 
 	init_pictures( ref_pictures, b_pictures );
 	if( ctl_max_encoding_frames > 1 )
@@ -972,7 +1015,7 @@ void putseq(void)
 		}
 		else
 		{
-			pict_data_s *new_b_picture;
+			Picture *new_b_picture;
 			/* B frame: no need to change the reference frames.
 			   The current frame data pointers are a 3rd set
 			   seperate from the reference data pointers.

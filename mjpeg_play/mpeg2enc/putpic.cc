@@ -59,7 +59,7 @@
  */
 static void putmvs(
 	pict_data_s *picture,
-	mbinfo_s *mb,
+	MacroBlock *mb,
 	int PMV[2][2][2],
 	int back
 	)
@@ -171,16 +171,14 @@ static void putmvs(
  *
  ******************/
 
-/*static int16_t testblock[64*6];*/
-
-void putpict(pict_data_s *picture )
+void putpict(Picture *picture )
 {
 	int i, j, k, comp, cc;
 	int mb_type;
 	int PMV[2][2][2];
 	int prev_mquant;
 	int cbp, MBAinc;
-	mbinfo_s *cur_mb;
+	MacroBlock *cur_mb;
 	int cur_mb_blocks;
 	short (*quant_blocks)[64] = picture->qblocks;
 	MBAinc = 0;          /* Annoying warning otherwise... */
@@ -411,7 +409,7 @@ void putpict(pict_data_s *picture )
 
 			if (picture->pict_struct==FRAME_PICTURE 
 				&& cbp && !picture->frame_pred_dct)
-				putbits(cur_mb->dct_type,1);
+				putbits(cur_mb->field_dct,1);
 
 			if (mb_type & MB_QUANT)
 			{

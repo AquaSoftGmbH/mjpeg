@@ -1,4 +1,25 @@
-Short Term
+Near Future improvements
+
+0.  Replace current variance based motion estimation mode selection
+	with DCT based selection.
+
+1.  Add DCT quantisation reduction for macro blocks whose original image
+	(INTRA) data is low-variance... this should help misty scenes
+
+2.	Split into front-end and library (for gstreamer etc) 
+	This will require removal of lots of nasty global scratch variables
+
+4.	Seperate the transformation phase (ME, pred, DCT) from the bit allocation
+	and coding phases. 
+	This will provide the basis for two-pass encoding and pipelined encoding.
+
+5.	Replace the current frame-based parallelism with striping in the 
+	ME/pred/DCT routine.
+
+6.	The rate control code is now a mess of int64_t , double and int. Needs
+	tidying... 
+
+Minor Tidying
 
 2.	The order of return from block_dist1_MMXE is silly.  Why not
 	retune in the order it is held and adjust find_best_one_pel_MMXE to
@@ -7,9 +28,6 @@ Short Term
 3.	For Motion estimation in -I 1 we really need both field *and* frame
 	sub-sampled images for motion estimation to be optimal.
 
-4.	The rate control code is now a mess of int64_t , double and int. Needs
-	tidying...
-
 
 5.	The code for scene-change gop sizing and ending sequences can in
 	some circumstances mess up as the sizing takes no account of
@@ -17,9 +35,8 @@ Short Term
 	0 not M-1.
 
 
-Medium Term
+Sometime....
 
-0.	Librarify for gstreamer
 
 
 1.  	Bring field sequence MC/prediction to same level as progressive	

@@ -91,7 +91,7 @@ double *pv,*pe;
 
 #endif
 
-void calcSNR(pict_data_s *picture)
+void calcSNR(Picture *picture)
 {
 
 #ifdef OUTPUT_STAT

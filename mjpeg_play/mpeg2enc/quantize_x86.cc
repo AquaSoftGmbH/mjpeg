@@ -74,7 +74,7 @@
  */
  
 int quant_non_intra_3dnow(	
-	pict_data_s *picture,
+	Picture *picture,
 	int16_t *src, int16_t *dst,
 	int mquant,
 	int *nonsat_mquant)
@@ -215,7 +215,7 @@ restart:
 static int trunc_mxcsr = 0x7f80;
  
 int quant_non_intra_sse(	
-	pict_data_s *picture,
+	Picture *picture,
 	int16_t *src, int16_t *dst,
 	int mquant,
 	int *nonsat_mquant)
@@ -354,7 +354,7 @@ restart:
  */
 																							     											     
 int quant_non_intra_mmx(
-	pict_data_s *picture,
+	Picture *picture,
 	int16_t *src, int16_t *dst,
 	int mquant,
 	int *nonsat_mquant)
@@ -392,7 +392,7 @@ int quant_non_intra_mmx(
 	{
 		imquant = (IQUANT_SCALE/mquant);
 		flags = quantize_ni_mmx( pdst, psrc, quant_mat, i_quant_mat, 
-										imquant, mquant, clipvalue );
+								 imquant, mquant, clipvalue );
 		nzflag = (nzflag << 1) |( !!(flags & 0xffff0000));
   
 		/* If we're saturating simply bump up quantization and start

@@ -159,13 +159,13 @@ static char profile_level_defined[5][4] =
 };
 
 static struct level_limits {
-  int hor_f_code;
-  int vert_f_code;
-  int hor_size;
-  int vert_size;
-  int sample_rate;
-  int opt_bit_rate; /* Mbit/s */
-  int vbv_buffer_size; /* 16384 bit steps */
+	unsigned int hor_f_code;
+	unsigned int vert_f_code;
+	unsigned int hor_size;
+	unsigned int vert_size;
+	unsigned int sample_rate;
+	unsigned int opt_bit_rate; /* Mbit/s */
+	unsigned int vbv_buffer_size; /* 16384 bit steps */
 } maxval_tab[4] =
 {
   {9, 5, 1920, 1152, 62668800, 80, 597}, /* HL */

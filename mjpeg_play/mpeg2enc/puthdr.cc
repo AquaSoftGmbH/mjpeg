@@ -75,7 +75,7 @@ void putseqhdr(void)
 	   sent 
 	*/
 	if(opt_mpeg1 && (ctl_quant_floor != 0 || opt_still_size > 0) ) {
-		putbits(-1,18);
+		putbits(0xfffff,18);
 	} else {
 		putbits((int)ceil(opt_bit_rate/400.0),18); /* bit_rate_value */
 	}
@@ -192,7 +192,7 @@ static int frametotc(int gop_timecode0_frame)
 }
 
 /* generate picture header (6.2.3, 6.3.10) */
-void putpicthdr(pict_data_s *picture)
+void putpicthdr(Picture *picture)
 {
 	alignbits();
 	putbits(PICTURE_START_CODE,32); /* picture_start_code */
@@ -225,7 +225,7 @@ void putpicthdr(pict_data_s *picture)
  *
  * composite display information (v_axis etc.) not implemented
  */
-void putpictcodext(pict_data_s *picture)
+void putpictcodext(Picture *picture)
 {
 	alignbits();
 	putbits(EXT_START_CODE,32); /* extension_start_code */
