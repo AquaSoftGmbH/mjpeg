@@ -384,7 +384,6 @@ void outputstreamprefix( clockticks *current_SCR)
 		bytepos_timecode ( bytes_output, current_SCR);
 		break;
 
-		default:
 	}
 
    /* Create the in-stream header if needed */

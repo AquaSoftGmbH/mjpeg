@@ -54,11 +54,11 @@ typedef enum
   {
     false = 0,
     true = 1
-  } _Bool;
+  } locBool;
 
 #  define false   false
 #  define true    true
-#  define bool _Bool
+#  define bool locBool
 # endif
 #endif
 
