@@ -89,7 +89,7 @@ typedef struct {
    rect *geometry;              /* X geometry string: what to capture */
    int  quality;                /* [0-100] video capture quality */
    int  tuner_frequency;        /* when using a TV-tuner, the tuner frequency can be set */
-   char *video_dev;             /* /dev-entry for the video device */
+   const char *video_dev;       /* /dev-entry for the video device */
 
    int  audio_size;             /* [0,8,16] audio sample size, 0 means no audio */
    int  audio_rate;             /* Audio rate supported by the soundcard (e.g. 11025, 22050, 44100) */
@@ -98,8 +98,8 @@ typedef struct {
    int  mute;                   /* [0,1] 0 = don't mute, 1 = mute (e.g. for a microphone) */
    char audio_src;              /* [lmc] l = Line-in, m = Microphone, c = CD-ROM */
    int  use_read;               /* whether to use 'read' (1) or mmap (0) for audio capture */
-   char *audio_dev;             /* /dev-entry for the audio device */
-   char *mixer_dev;             /* /dev-entry for the mixer device */
+   const char *audio_dev;       /* /dev-entry for the audio device */
+   const char *mixer_dev;       /* /dev-entry for the mixer device */
 
    int  single_frame;           /* [0,1] lavrec_main() captures one frame and returns */
    int  time_lapse;             /* [>=1] one out of each 'n' frames is captured (>=1) */
@@ -108,9 +108,9 @@ typedef struct {
    int  MJPG_bufsize;           /* buffer size (in kB) per MJPEG-buffer */
 
    char **files;                /* the files where to capture the video to */
-	int  num_files;              /* number of files in the files[]-array */
-	int max_file_size_mb;
-	int flush_count;			/* How often (in frames) to flush data to disk */
+   int  num_files;              /* number of files in the files[]-array */
+   int max_file_size_mb;
+   int flush_count;             /* How often (in frames) to flush data to disk */
    void (*output_statistics)(video_capture_stats *stats);      /* speaks for itself */
    void (*audio_captured)(char *audio, long sampes);           /* callback when audio has been grabbed */
    void (*video_captured)(char *video, long size, long count); /* callback when a frame has been grabbed */

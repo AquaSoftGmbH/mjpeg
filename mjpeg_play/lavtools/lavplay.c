@@ -335,7 +335,7 @@ static void process_input(char *buffer)
    }
 }
 
-static int set_option(char *name, char *value)
+static int set_option(const char *name, char *value)
 {
    /* return 1 means error, return 0 means okay */
    int nerr = 0;

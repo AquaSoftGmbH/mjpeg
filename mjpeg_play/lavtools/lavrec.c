@@ -1019,7 +1019,7 @@ static void check_command_line_options(int argc, char *argv[])
 /* Simply prints recording parameters */
 static void lavrec_print_properties()
 {
-	char *source;
+	const char *source;
 	mjpeg_info("Recording parameters:\n\n");
 	mjpeg_info("Output format:      %s\n",info->video_format=='q'?"Quicktime":
 		(info->video_format=='m'?"Movtar":"AVI"));

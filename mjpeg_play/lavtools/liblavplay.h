@@ -73,11 +73,11 @@ typedef struct {
    int  soft_full_screen;       /* [0-1] set software-driven full-screen/screen-output, 1 = yes, 0 = no */
    int  vw_x_offset;            /* onscreen hardware playback video window X offset */
    int  vw_y_offset;            /* onscreen hardware playback video window Y offset */
-   char *video_dev;             /* the video device */
-   char *display;               /* the X-display (only important for -H) */
+   const char *video_dev;       /* the video device */
+   const char *display;         /* the X-display (only important for -H) */
 
    int  audio;                  /* [0-1] Whether to play audio, 0 = no, 1 = yes */
-   char *audio_dev;             /* the audio device */
+   const char *audio_dev;       /* the audio device */
 
    int  continuous;             /* [0-1] 0 = quit when the video has been played, 1 = continue cycle */
    int  sync_correction;        /* [0-1] Whether to enable sync correction, 0 = no, 1 = yes */
