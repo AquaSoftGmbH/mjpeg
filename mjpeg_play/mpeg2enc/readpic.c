@@ -165,7 +165,6 @@ int readframe( int num_frame,
    frame[0] = frame_buffers[n][0];
    frame[1] = frame_buffers[n][1];
    frame[2] = frame_buffers[n][2];
-   frame[3] = frame_buffers[n][3];
 
 
    /* Read next look ahead chunk if this was the last 

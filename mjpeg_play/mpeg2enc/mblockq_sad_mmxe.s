@@ -1,10 +1,19 @@
+;;; 
+;;;  mblockq_sad_mmxe.s:  
+;;; 
+;;; Enhanced MMX optimized Sum Absolute Differences routines for macroblock 
+;;; quads (2 by 2 squares of adjacent macroblocks)
+
+;;; Explanation: the motion compensation search at 1-pel and 2*2 sub-sampled
+;;; evaluates macroblock quads.  A lot of memory accesses can be saved
+;;; if each quad is done together rather than each macroblock in the
+;;; quad handled individually.
+
+;;; TODO:		Really there ought to be MMX versions and the function's
+;;; specification should be documented...
 ;
-;  dist1_00.s:  SSE optimized SAD for macroblocks
-;
-;  Original Copyright (C) 2000 Chris Atenasio <chris@crud.net>
-;  Enhancements Copyright (C) 2000 Andrew Stevens <as@comlab.ox.ac.uk>
-		;; Yes, I tried prefetch-ing.  It makes no difference or makes
-		;; stuff *slower*.
+; Copyright (C) 2000 Andrew Stevens <as@comlab.ox.ac.uk>	
+
 
 ;
 ;  This program is free software; you can reaxstribute it and/or
@@ -22,95 +31,11 @@
 ;  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;
 ;
-;
 
+;;; CURRENTLY not used but used in testing as reference for tweaks...
+global mblockq_sad1_REF
 
-global dist1_00_SSE
-
-; int dist1_00(char *blk1,char *blk2,int lx,int h,int distlim);
-; distlim unused - costs more to check than the savings of
-; aborting the computation early from time to time...
-; eax = p1
-; ebx = p2
-; ecx = rowsleft
-; edx = lx;
-
-; mm0 = distance accumulator
-; mm1 = temp
-; mm2 = temp
-; mm3 = temp
-; mm4 = temp
-; mm5 = temp
-; mm6 = temp
-
-
-align 32
-dist1_00_SSE:
-	push ebp					; save frame pointer
-	mov ebp, esp				; link
-
-	push ebx
-	push ecx
-	push edx
-
-	pxor mm0, mm0		; zero acculumator
-
-	mov eax, [ebp+8]	; get p1
-dist1_00_0misalign:		
-	mov ebx, [ebp+12]	; get p2
-	mov edx, [ebp+16]	; get lx
-
-	mov ecx, [ebp+20]	; get rowsleft
-	jmp nextrow00sse
-align 32
-nextrow00sse:
-	movq mm4, [eax]		; load first 8 bytes of p1 (row 1)
-	psadbw mm4, [ebx]	; compare to first 8 bytes of p2 (row 1)
-	movq mm5, [eax+8]	; load next 8 bytes of p1 (row 1)
-	add eax, edx		; update pointer to next row
-	paddd mm0, mm4		; accumulate difference
-	
-	psadbw mm5, [ebx+8]	; compare to next 8 bytes of p2 (row 1)
-	add ebx, edx		; ditto
-	paddd mm0, mm5		; accumulate difference
-
-
-	movq mm6, [eax]		; load first 8 bytes of p1 (row 2)
-	psadbw mm6, [ebx]	; compare to first 8 bytes of p2 (row 2)
-	movq mm4, [eax+8]	; load next 8 bytes of p1 (row 2)
-	add eax, edx		; update pointer to next row
-	paddd mm0, mm6		; accumulate difference
-	
-	psadbw mm4, [ebx+8]	; compare to next 8 bytes of p2 (row 2)
-	add ebx, edx		; ditto
-	paddd mm0, mm4		; accumulate difference
-
-	;psubd mm2, mm3		; decrease rowsleft
-	;movq mm5, mm1		; copy distlim
-	;pcmpgtd mm5, mm0	; distlim > dist?
-	;pand mm2, mm5		; mask rowsleft with answer
-	;movd ecx, mm2		; move rowsleft to ecx
-
-	;add eax, edx		; update pointer to next row
-	;add ebx, edx		; ditto
-	
-	;test ecx, ecx		; check rowsleft
-	sub  ecx, 2
-	jnz nextrow00sse
-
-	movd eax, mm0		; store return value
-	
-	pop edx	
-	pop ecx	
-	pop ebx	
-
-	pop ebp	
-	emms
-	ret	
-
-global block_dist1_SSE
-
-; void block_dist1_SSE(char *blk1,char *blk2,int lx,int h,int *weightvec);
+; void mblockq_dist1_REF(char *blk1,char *blk2,int lx,int h,int *weightvec);
 ; eax = p1
 ; ebx = p2
 ; ecx = unused
@@ -128,7 +53,7 @@ global block_dist1_SSE
 ; mm7 = temp						
 
 align 32
-block_dist1_SSE:
+mblockq_dist1_REF:
 	push ebp					; save frame pointer
 	mov ebp, esp				; link
 	push eax
@@ -248,9 +173,9 @@ firstrow1:
 
 
 
-global block_dist1_MMXE
+global mblockq_dist1_mmxe
 
-; void block_dist1_MMXE(char *blk1,char *blk2,int lx,int h,int *weightvec);
+; void mblockq_dist1_mmxe(char *blk1,char *blk2,int lx,int h,int *weightvec);
 
 ; eax = p1
 ; ebx = p2
@@ -268,7 +193,7 @@ global block_dist1_MMXE
 ; mm7 = temp						
 
 align 32
-block_dist1_MMXE:
+mblockq_dist1_mmxe:
 	push ebp					; save frame pointer
 	mov ebp, esp				; link
 	push eax
@@ -394,96 +319,93 @@ firstrowe1:
 		
 	pop ebp	
 	emms
-	ret	
+	ret
 
+global mblockq_dist22_mmxe
 
+; void mblockq_dist22_mmxe(unsigned char *blk1,unsigned char *blk2,int flx,int fh, int* resvec);
 
-
-				
-
-global dist1_00_ASSE
-		;; This is a special version that only does aligned accesses...
-		;; Wonder if it'll make it faster on a P-III
-		;; ANSWER:		 NO its slower
-
-; int dist1_00(char *blk1,char *blk2,int lx,int h,int distlim);
-; distlim unused - costs more to check than the savings of
-; aborting the computation early from time to time...
 ; eax = p1
 ; ebx = p2
-; ecx = rowsleft
-; edx = lx;
+; ecx = counter temp
+; edx = flx;
 
 ; mm0 = distance accumulator
-; mm1 = temp
-; mm2 = right shift to adjust for mis-align
-; mm3 = left shift to adjust for mis-align
+; mm1 = distance accumulator
+; mm2 = previous p1 row
+; mm3 = previous p1 displaced by 1 byte...
 ; mm4 = temp
 ; mm5 = temp
 ; mm6 = temp
+; mm7 = temp / 0 if first row 0xff otherwise
 
 
 align 32
-dist1_00_ASSE:
-	push ebp					; save frame pointer
-	mov ebp, esp				; link
-
-	push ebx
+mblockq_dist22_mmxe:
+	push ebp		; save frame pointer
+	mov ebp, esp
+	push eax
+	push ebx	
 	push ecx
-	push edx
-		
+	push edx	
+
 	pxor mm0, mm0		; zero acculumator
+	pxor mm1, mm1		; zero acculumator
+	pxor mm2, mm2		; zero acculumator
+	pxor mm3, mm3		; zero acculumator						
 
 	mov eax, [ebp+8]	; get p1
-	mov ebx, eax
-	and ebx, 7					; Misalignment!
-	cmp ebx, 0
-	jz	near dist1_00_0misalign
-	sub eax, ebx				; Align eax
-	mov ecx, 8					; ecx = 8-misalignment
-	sub ecx, ebx
-	shl ebx, 3					; Convert into bit-shifts...
-	shl ecx, 3					
-	movd mm2, ebx				; mm2 = shift to start msb
-	movd mm3, ecx				; mm3 = shift to end lsb
-
 	mov ebx, [ebp+12]	; get p2
 	mov edx, [ebp+16]	; get lx
-	mov ecx, [ebp+20]	; get rowsleft
-	jmp nextrow00ssea
+	mov ecx, [ebp+20]
+	movq mm2, [eax+edx]
+	movq mm3, [eax+edx+1]
+	jmp nextrowbd22
 align 32
-nextrow00ssea:
-	movq mm4, [eax]				; load first 8 bytes of aligned p1 (row 1)
-	movq mm5, [eax+8]			; load next 8 bytes of aligned p1 (row 1)
-	movq mm6, mm5
-	psrlq mm4, mm2				; mm4 first 8 bytes of p1 proper
-	psllq mm5, mm3
-	por	  mm4, mm5
-	psadbw mm4, [ebx]	; compare to first 8 bytes of p2 
+nextrowbd22:
+	movq   mm5, [ebx]			; load previous row reference block
+								; mm2 /mm3 containts current row target block
+		
+	psadbw mm2, mm5				; Comparse (x+0,y+2)
+	paddd  mm1, mm2
+		
+	psadbw mm3, mm5				; Compare (x+2,y+2)
+	pshufw  mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+	paddd  mm1, mm3
 
-	movq mm7, [eax+16]			; load last 8 bytes of aligned p1
-	add eax, edx		; update pointer to next row
-	psrlq mm6, mm2				; mm6 2nd 8 bytes of p1 proper
-	psllq mm7, mm3
-	por   mm6, mm7
+	pshufw  mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64 					
 
+	movq mm2, [eax]				; Load current row traget block into mm2 / mm3
+	movq mm6, mm2
+	movq mm3, [eax+1]
+	sub	   eax, edx
+	sub	   ebx, edx
+	prefetcht0 [eax]
+	movq mm7, mm3		
 
-	paddd mm0, mm4		; accumulate difference
-	
-	psadbw mm6, [ebx+8]	; compare to next 8 bytes of p2 (row 1)
-	add ebx, edx		; ditto
-	paddd mm0, mm6		; accumulate difference
+	psadbw	mm6, mm5			; Compare (x+0,y+0)
+	paddd   mm0, mm6
+	pshufw  mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+	psadbw  mm7, mm5			; Compare (x+2,y+0)
+	paddd   mm0, mm7
+	pshufw  mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
 
-	sub  ecx, 1
-	jnz nextrow00ssea
+	sub ecx, 1
+	jnz nextrowbd22
 
-	movd eax, mm0		; store return value
-
+	mov  eax, [ebp+24]
+	movq [eax+0], mm0
+	movq [eax+8], mm1
 	pop edx	
 	pop ecx	
 	pop ebx	
+	pop eax
+	pop ebp
 
-	pop ebp	
 	emms
-	ret	
+	ret
 		
+
+
+
+

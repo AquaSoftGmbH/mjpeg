@@ -151,6 +151,7 @@ static void fullsearch (
 	int sx, int sy, int h, 
 	int xmax, int ymax,
 	mb_motion_s *motion );
+
 static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 							   int searched_size,
 							   int i0, int j0,
@@ -159,8 +160,12 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 							   int lx, int h, 
 							   mb_motion_s *res
 	);
+static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh, 
+								int null_mc_sad,
+						   		uint8_t *s22org,  uint8_t *s22blk, 
+							   int flx, int fh,  int searched_sub44_size );
 #ifdef X86_CPU
-static void find_best_one_pel_MMXE( uint8_t *org, uint8_t *blk,
+void find_best_one_pel_mmxe( uint8_t *org, uint8_t *blk,
 							   int searched_size,
 							   int i0, int j0,
 							   int ilow, int jlow,
@@ -168,6 +173,11 @@ static void find_best_one_pel_MMXE( uint8_t *org, uint8_t *blk,
 							   int lx, int h, 
 							   mb_motion_s *res
 	);
+
+int build_sub22_mcomps_mmxe( int i0,  int j0, int ihigh, int jhigh, 
+							 int null_mc_sad,
+							 uint8_t *s22org,  uint8_t *s22blk, 
+							 int flx, int fh,  int searched_sub44_size );
 #endif
 
 static int unidir_pred_var( const mb_motion_s *motion, 
@@ -181,10 +191,15 @@ static int bidir_pred_sad( const mb_motion_s *motion_f,
 
 static int variance(  uint8_t *mb, int lx);
 
-static int qdist1 ( uint8_t *blk1, uint8_t *blk2,  int qlx, int qh);
+static int dist22 ( uint8_t *blk1, uint8_t *blk2,  int qlx, int qh);
 
-static int fdist1 ( uint8_t *blk1, uint8_t *blk2,  int flx, int fh);
+static int dist44 ( uint8_t *blk1, uint8_t *blk2,  int flx, int fh);
 
+
+static int (*pbuild_sub22_mcomps)( int i0,  int j0, int ihigh, int jhigh, 
+								   int null_mc_sad,
+								   uint8_t *s22org,  uint8_t *s22blk, 
+								   int flx, int fh,  int searched_sub44_size );
 
 static void (*pfind_best_one_pel)( uint8_t *org, uint8_t *blk,
 							   int searched_size,
@@ -194,7 +209,7 @@ static void (*pfind_best_one_pel)( uint8_t *org, uint8_t *blk,
 							   int lx, int h, 
 							   mb_motion_s *res
 	);
-int (*pqblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
+static int (*pmblock_sub44_dists)( uint8_t *blk,  uint8_t *ref,
 							int ilow, int jlow,
 							int ihigh, int jhigh, 
 							int h, int rowstride, 
@@ -214,8 +229,8 @@ static int bdist1 (uint8_t *pf, uint8_t *pb,
 				   uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
 
 
-static int (*pfdist1) ( uint8_t *blk1, uint8_t *blk2,  int flx, int fh);
-static int (*pqdist1) ( uint8_t *blk1, uint8_t *blk2,  int qlx, int qh);
+static int (*pdist22) ( uint8_t *blk1, uint8_t *blk2,  int flx, int fh);
+static int (*pdist44) ( uint8_t *blk1, uint8_t *blk2,  int qlx, int qh);
 static int (*pdist1_00) ( uint8_t *blk1, uint8_t *blk2,  int lx, int h, int distlim);
 static int (*pdist1_01) (uint8_t *blk1, uint8_t *blk2, int lx, int h);
 static int (*pdist1_10) (uint8_t *blk1, uint8_t *blk2, int lx, int h);
@@ -243,8 +258,8 @@ void init_motion()
 
 	if( cpucap  == 0 )	/* No MMX/SSE etc support available */
 	{
-		pfdist1 = fdist1;
-		pqdist1 = qdist1;
+		pdist22 = dist22;
+		pdist44 = dist44;
 		pdist1_00 = dist1_00;
 		pdist1_01 = dist1_01;
 		pdist1_10 = dist1_10;
@@ -253,38 +268,41 @@ void init_motion()
 		pdist2 = dist2;
 		pbdist2 = bdist2;
 		pfind_best_one_pel = find_best_one_pel;
-	}
+		pbuild_sub22_mcomps	= build_sub22_mcomps;
+	 }
 #ifdef X86_CPU
 	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
 	{
 		fprintf( stderr, "SETTING EXTENDED MMX for MOTION!\n");
-		pfdist1 = fdist1_SSE;
-		pqdist1 = qdist1_SSE;
-		pdist1_00 = dist1_00_SSE;
-		pdist1_01 = dist1_01_SSE;
-		pdist1_10 = dist1_10_SSE;
-		pdist1_11 = dist1_11_SSE;
+		pdist22 = dist22_mmxe;
+		pdist44 = dist44_mmxe;
+		pdist1_00 = dist1_00_mmxe;
+		pdist1_01 = dist1_01_mmxe;
+		pdist1_10 = dist1_10_mmxe;
+		pdist1_11 = dist1_11_mmxe;
 		pbdist1 = bdist1_mmx;
 		pdist2 = dist2_mmx;
 		pbdist2 = bdist2_mmx;
-		pfind_best_one_pel = find_best_one_pel_MMXE;
-		pqblock_8grid_dists = qblock_8grid_dists_sse;
+		pfind_best_one_pel = find_best_one_pel_mmxe;
+		pbuild_sub22_mcomps	= build_sub22_mcomps_mmxe;
+		pmblock_sub44_dists = mblock_sub44_dists_mmxe;
 
 	}
 	else if(cpucap & ACCEL_X86_MMX) /* Ordinary MMX CPU */
 	{
 		fprintf( stderr, "SETTING MMX for MOTION!\n");
-		pfdist1 = fdist1_MMX;
-		pqdist1 = qdist1_MMX;
-		pdist1_00 = dist1_00_MMX;
-		pdist1_01 = dist1_01_MMX;
-		pdist1_10 = dist1_10_MMX;
-		pdist1_11 = dist1_11_MMX;
+		pdist22 = dist22_mmx;
+		pdist44 = dist44_mmx;
+		pdist1_00 = dist1_00_mmx;
+		pdist1_01 = dist1_01_mmx;
+		pdist1_10 = dist1_10_mmx;
+		pdist1_11 = dist1_11_mmx;
 		pbdist1 = bdist1_mmx;
 		pdist2 = dist2_mmx;
 		pbdist2 = bdist2_mmx;
 		pfind_best_one_pel = find_best_one_pel;
-		pqblock_8grid_dists = qblock_8grid_dists_mmx;
+		pbuild_sub22_mcomps	= build_sub22_mcomps;
+		pmblock_sub44_dists = mblock_sub44_dists_mmx;
 	}
 #endif
 }
@@ -1731,7 +1749,7 @@ static int build_sub44_mcomps( int ilow, int jlow, int ihigh, int jhigh,
 			old_s44orgblk = s44orgblk;
 			for( i = istrt; i <= iend; i += 4 )
 			{
-				s1 = ((*pqdist1)( s44orgblk,s44blk,qlx,qh) & 0xffff) + abs(i-i0) + abs(j-j0);
+				s1 = ((*pdist44)( s44orgblk,s44blk,qlx,qh) & 0xffff) + abs(i-i0) + abs(j-j0);
 				if( s1 < threshold )
 				{
 					sub44_mcomps[sub44_num_mcomps].x = i;
@@ -1748,7 +1766,7 @@ static int build_sub44_mcomps( int ilow, int jlow, int ihigh, int jhigh,
 #else
 
 		sub44_num_mcomps
-			= (*pqblock_8grid_dists)( s44orgblk, s44blk,
+			= (*pmblock_sub44_dists)( s44orgblk, s44blk,
 								  istrt, jstrt,
 								  iend, jend, 
 								  qh, qlx, 
@@ -1788,8 +1806,6 @@ static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh,
 	int jlim = jhigh-j0;
 	blockxy matchrec;
 	uint8_t *s22orgblk;
-	int resvec[4];
-	int lstrow=(fh-1)*flx;
 
 	sub22_num_mcomps = 0;
 	for( k = 0; k < searched_sub44_size; ++k )
@@ -1799,13 +1815,11 @@ static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh,
 		matchrec.y = sub44_mcomps[k].y;
 
 		s22orgblk =  s22org +((matchrec.y+j0)>>1)*flx +((matchrec.x+i0)>>1);
-		block_dist22_SSE(s22orgblk+lstrow, s22blk+lstrow, flx, fh, resvec);
 		for( i = 0; i < 4; ++i )
 		{
 			if( matchrec.x <= ilim && matchrec.y <= jlim )
 			{	
-				/*s = (*pfdist1)( s22orgblk,s22blk,flx,fh);*/
-				s =resvec[i];
+				s = (*pdist22)( s22orgblk,s22blk,flx,fh);
 				if( s < threshold )
 				{
 					sub22_mcomps[sub22_num_mcomps].x = (int8_t)matchrec.x;
@@ -1836,6 +1850,70 @@ static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh,
 						&sub22_num_mcomps, &min_weight );
 	return sub22_num_mcomps;
 }
+
+#ifdef X86_CPU
+int build_sub22_mcomps_mmxe( int i0,  int j0, int ihigh, int jhigh, 
+								int null_mc_sad,
+						   		uint8_t *s22org,  uint8_t *s22blk, 
+						   		int flx, int fh,  int searched_sub44_size )
+{
+	int i,k,s;
+	int threshold = 6*null_mc_sad / (2 * 2*mc_22_red);
+
+	int min_weight;
+	int ilim = ihigh-i0;
+	int jlim = jhigh-j0;
+	blockxy matchrec;
+	uint8_t *s22orgblk;
+	int resvec[4];
+
+	/* TODO: The calculation of the lstrow offset really belongs in
+       asm code... */
+	int lstrow=(fh-1)*flx;
+
+	sub22_num_mcomps = 0;
+	for( k = 0; k < searched_sub44_size; ++k )
+	{
+
+		matchrec.x = sub44_mcomps[k].x;
+		matchrec.y = sub44_mcomps[k].y;
+
+		s22orgblk =  s22org +((matchrec.y+j0)>>1)*flx +((matchrec.x+i0)>>1);
+		mblockq_dist22_mmxe(s22orgblk+lstrow, s22blk+lstrow, flx, fh, resvec);
+		for( i = 0; i < 4; ++i )
+		{
+			if( matchrec.x <= ilim && matchrec.y <= jlim )
+			{	
+				s =resvec[i];
+				if( s < threshold )
+				{
+					sub22_mcomps[sub22_num_mcomps].x = (int8_t)matchrec.x;
+					sub22_mcomps[sub22_num_mcomps].y = (int8_t)matchrec.y;
+					sub22_mcomps[sub22_num_mcomps].weight = s;
+					++sub22_num_mcomps;
+				}
+			}
+
+			if( i == 1 )
+			{
+				matchrec.x -= 2;
+				matchrec.y += 2;
+			}
+			else
+			{
+				matchrec.x += 2;
+			}
+		}
+
+	}
+
+	
+	sub_mean_reduction( sub22_mcomps, sub22_num_mcomps, 2,
+						&sub22_num_mcomps, &min_weight );
+	return sub22_num_mcomps;
+}
+
+#endif
 
 /*
   Search for the best 1-pel match within 1-pel of a good 2*2-pel match.
@@ -1906,7 +1984,7 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 }
 
 #ifdef X86_CPU
-static void find_best_one_pel_MMXE( uint8_t *org, uint8_t *blk,
+void find_best_one_pel_mmxe( uint8_t *org, uint8_t *blk,
 							   int searched_size,
 							   int i0, int j0,
 							   int ilow, int jlow,
@@ -1938,7 +2016,7 @@ static void find_best_one_pel_MMXE( uint8_t *org, uint8_t *blk,
 		penalty = abs(matchrec.x)+abs(matchrec.y);
 		
 
-		block_dist1_MMXE(orgblk,blk,lx,h, resvec);
+		mblockq_dist1_mmxe(orgblk,blk,lx,h, resvec);
 
 		for( i = 0; i < 4; ++i )
 		{
@@ -2070,10 +2148,10 @@ static void fullsearch(
 	   using the best fraction of the 4*4 estimates However we cover
 	   only coarsely... on 4-pel boundaries...  */
 
-	sub22_num_mcomps = build_sub22_mcomps( i0, j0, ihigh,  jhigh, 
-										best.sad,
-									  s22org, ssblk->fmb, flx, fh, 
-									  sub44_num_mcomps );
+	sub22_num_mcomps = (*pbuild_sub22_mcomps)( i0, j0, ihigh,  jhigh, 
+											   best.sad,
+											   s22org, ssblk->fmb, flx, fh, 
+											   sub44_num_mcomps );
 
 		
     /* Now choose best 1-pel match from what approximates (not exact
@@ -2462,7 +2540,7 @@ void fast_motion_data(uint8_t *blk, int picture_struct )
 }
 
 
-static int fdist1( uint8_t *s22blk1, uint8_t *s22blk2,int flx,int fh)
+static int dist22( uint8_t *s22blk1, uint8_t *s22blk2,int flx,int fh)
 {
 	uint8_t *p1 = s22blk1;
 	uint8_t *p2 = s22blk2;
@@ -2495,7 +2573,7 @@ static int fdist1( uint8_t *s22blk1, uint8_t *s22blk2,int flx,int fh)
  */
 
 
-static int qdist1( uint8_t *s44blk1, uint8_t *s44blk2,int qlx,int qh)
+static int dist44( uint8_t *s44blk1, uint8_t *s44blk2,int qlx,int qh)
 {
 	register uint8_t *p1 = s44blk1;
 	register uint8_t *p2 = s44blk2;

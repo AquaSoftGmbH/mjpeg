@@ -442,7 +442,7 @@ static void init()
 	
 	for(n=0;n<2*READ_LOOK_AHEAD;n++)
 	{
-         frame_buffers[n] = (uint8_t **) bufalloc(4*sizeof(uint8_t*));
+         frame_buffers[n] = (uint8_t **) bufalloc(3*sizeof(uint8_t*));
 		 for (i=0; i<3; i++)
 		 {
 			 frame_buffers[n][i] = 

@@ -1,6 +1,6 @@
 /*
  *
- * qblockdist_sse.
+ * mblock_sub44_sads_x86_h.c
  * Copyright (C) 2000 Andrew Stevens <as@comlab.ox.ac.uk>
  *
  * Fast block sum-absolute difference computation for a rectangular area 4*x
@@ -18,7 +18,7 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
- * mpeg2dec is distributed in the hope that it will be useful,
+ * mpeg2enc is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
@@ -34,20 +34,22 @@
  *
  * Generates a vector sad's for 4*4 sub-sampled pel (qpel) data (with
  * co-ordinates and top-left qpel address) from specified rectangle
- * against a specified 16*16 pel (4*4 qpel) reference block.  The
+ * against a specified 16*h pel (4*4 qpel) reference block.  The
  * generated vector contains results only for those sad's that fall
  * below twice the running best sad and are aligned on 8-pel
  * boundaries
  *
- * TODO: Experiment with doing 4-pel boundaries in the x-axis
- * and "seeding" the threshold with the sad for co-ordinates of the
- * reference block.
+ * Invariant: blk points to top-left sub-sampled pel for macroblock
+ * at (ilow,ihigh)
+ * i{low,high) j(low,high) must be multiples of 4.
  *
  * sad = Sum Absolute Differences
  *
+ * NOTES: for best efficiency i{low,high) should be multiples of 16.
+ *
  * */
 
-int SIMD_SUFFIX(qblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
+int SIMD_SUFFIX(mblock_sub44_dists)( uint8_t *blk,  uint8_t *ref,
 									 int ilow,int jlow,
 									 int ihigh, int jhigh, 
 									 int h, int rowstride, 
@@ -66,7 +68,7 @@ int SIMD_SUFFIX(qblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
 		for( x = ilow; x <= ihigh; x += 4)
 		{
 			int weight;
-			if( (x & 15) == 0 )
+			if( (x & 15) == (ilow & 15) )
 			{
 				load_blk( curblk, rowstride, h );
 			}

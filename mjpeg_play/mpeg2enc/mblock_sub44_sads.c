@@ -1,6 +1,6 @@
 /*
  *
- * qblock_sad_x86.c
+ * mblock_sub44_sads.c
  * Copyright (C) 2000 Andrew Stevens <as@comlab.ox.ac.uk>
  *
  * Fast block sum-absolute difference computation for a rectangular area 4*x
@@ -9,7 +9,7 @@
  * Used for 4*4 sub-sampled motion compensation calculations.
  *
  * This is actually just a shell that uses templates from the included
- * file "qblock_sad_x86_h.c".  I didn't trust the compiler to do a good
+ * file "mblock_sub44_sads_x86_h.c".  I didn't trust the compiler to do a good
  * job on nested inlining.  One day I'll experiment.
  * 
  *
@@ -97,7 +97,7 @@ static __inline__ void shift_blk(const uint32_t shift)
  *
  */
 
-static __inline__ int qblock_sad_sse(uint8_t *refblk, 
+static __inline__ int qblock_sad_mmxe(uint8_t *refblk, 
 								  uint32_t h,
 								  uint32_t rowstride)
 {
@@ -230,14 +230,14 @@ static __inline__ int qblock_sad_mmx(uint8_t *refblk,
 /*
  * Do the Extended MMX versions
  */
-#define SIMD_SUFFIX(x) x##_sse
-#include "qblock_sad_x86_h.c"
+#define SIMD_SUFFIX(x) x##_mmxe
+#include "mblock_sub44_sads_x86_h.c"
 #undef SIMD_SUFFIX
 /*
  * Do the original MMX versions
  */
 #define SIMD_SUFFIX(x) x##_mmx
-#include "qblock_sad_x86_h.c"
+#include "mblock_sub44_sads_x86_h.c"
 #undef SIMD_SUFFIX
 
 
