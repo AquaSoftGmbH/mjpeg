@@ -38,6 +38,7 @@
 #endif
 #include <ctype.h>
 #include <math.h>
+#include "cpu_accel.h"
 #include "mjpeg_types.h"
 #include "mjpeg_logging.h"
 #include "mpegconsts.h"
@@ -60,6 +61,16 @@ using std::auto_ptr;
 *************************************************************************/
 
 
+#if	!defined(HAVE_LROUND)
+extern "C" {
+long
+lround(double x)
+{
+	long l = ceil(x);
+	return(l);
+}
+};
+#endif
 
 
 
