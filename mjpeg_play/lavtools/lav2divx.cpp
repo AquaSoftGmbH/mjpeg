@@ -325,11 +325,24 @@ main ( int argc, char **argv )
 
 	EditList el;
 	// LavParam param = { 0, 0, 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0 };
-	LavParam param = { 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0, 0 };
-	LavBounds bounds;
-	LavBuffers buffer;
+	LavParam param;// = { 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0, 0 };
+	uint8_t *lavframe[3];
 
-	memset ( &bounds, 0, sizeof ( LavBounds ) );
+	param.offset = 0;
+	param.frames = 0;
+	param.mono = 0;
+	param.scenefile = NULL;
+	param.DV_deinterlace = 0;
+	param.spatial_tolerance = 440;
+	param.temporal_tolerance = 220;
+	param.default_temporal_tolerance = -1;
+	param.delta_lum_threshold = 4;
+	param.scene_detection_decimation = 2;
+	param.output_width = 0;
+	param.output_height = 0;
+	param.interlace = -1;
+	param.sar = y4m_sar_UNKNOWN;
+	param.dar = y4m_dar_4_3;
 
 	// double PI      = 3.14159265359f;    
 	// M_PI is the long version in 
@@ -748,7 +761,7 @@ main ( int argc, char **argv )
 	int colguessleftcount = 0;
 	int colguessrightcount = 0;
 
-	init ( &bounds, &param, &buffer );	// initialize lav2yuv code.
+	init(&param, lavframe);	// initialize lav2yuv code.
 
 #ifdef SUPPORT_READ_DV2
 	lav_init_dv_decoder();
@@ -777,7 +790,7 @@ main ( int argc, char **argv )
 
 	for ( int currentframe = 0; currentframe < opt_endframe; currentframe++ )
 	{
-		readframe ( currentframe, buffer.read_buf, &bounds, &param, &buffer, el );
+		readframe(currentframe, lavframe, &param, el);
 
 		gettimeofday ( &tv, &tz );
 		if ( ( tv.tv_sec != oldtime ) && ( !opt_guess ) )
@@ -799,9 +812,9 @@ main ( int argc, char **argv )
 		//
 		if ( asis < 1 )	//faster
 		{
-			memcpy ( framebuffer, buffer.read_buf[0], yplane );
-			memcpy ( framebuffer + yplane, buffer.read_buf[2], vplane );
-			memcpy ( framebuffer + yplane + vplane, buffer.read_buf[1], uplane );
+			memcpy ( framebuffer, lavframe[0], yplane );
+			memcpy ( framebuffer + yplane, lavframe[2], vplane );
+			memcpy ( framebuffer + yplane + vplane, lavframe[1], uplane );
 		}
 		else		// slower, but handles cropping.
 		{
@@ -813,11 +826,11 @@ main ( int argc, char **argv )
 				int chromaoffset = ( yy / 2 ) * chromaw;
 				int chromaoffsetsrc = ( ( yy + opt_y ) / 2 ) * chromawidth;
 				memcpy ( framebuffer + yy * opt_w,
-					 buffer.read_buf[0] + ( yy + opt_y ) * param.output_width + opt_x, opt_w );
-				memcpy ( framebuffer + yplane + chromaoffset, buffer.read_buf[2] + chromaoffsetsrc + chromax,
+					 lavframe[0] + ( yy + opt_y ) * param.output_width + opt_x, opt_w );
+				memcpy ( framebuffer + yplane + chromaoffset, lavframe[2] + chromaoffsetsrc + chromax,
 					 chromaw );
 				memcpy ( framebuffer + yplane + vplane + chromaoffset,
-					 buffer.read_buf[1] + chromaoffsetsrc + chromax, chromaw );
+					 lavframe[1] + chromaoffsetsrc + chromax, chromaw );
 			}
 		}
 

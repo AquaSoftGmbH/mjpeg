@@ -27,13 +27,15 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.                
 */
 
+#include <config.h>
+
 #include "lav_common.h"
+#include "jpegutils.h"
 #include "mpegconsts.h"
 
 static uint8_t jpeg_data[MAX_JPEG_LEN];
 
 uint8_t *filter_buf;
-int chroma_format = CHROMA420;
 
 #ifdef SUPPORT_READ_DV2
 
@@ -42,12 +44,12 @@ gint pitches[3];
 uint8_t *dv_frame[3] = {NULL,NULL,NULL};
 uint8_t *previous_Y;
 
-void frame_YUV422_to_YUV420P( uint8_t **output
-							  , uint8_t *input
-							  , int width
-							  , int height
-							  , LavParam *param
-	)
+void frame_YUV422_to_YUV420P( uint8_t **output,
+			      uint8_t *input,
+			      int width,
+			      int height,
+			      LavParam *param
+			      )
 {
     int i,j,w2,w4;
     char *y, *u, *v, *inp, *ym;
@@ -58,8 +60,7 @@ void frame_YUV422_to_YUV420P( uint8_t **output
     v = output[2];
 
     w4 = 4*width;
-    if (param->YUV_swap_lines) inp = input+2*width;
-    else inp = input;
+    inp = input;
 
     for (i=0; i<height; i+=2) {
         ym = y;
@@ -70,7 +71,6 @@ void frame_YUV422_to_YUV420P( uint8_t **output
             *(y++) = *(inp++);
             *(v++) = *(inp++);
         }
-        if (param->YUV_swap_lines) inp -= w4;
         switch (param->DV_deinterlace) {
         case 0:
         case 1:
@@ -94,9 +94,9 @@ void frame_YUV422_to_YUV420P( uint8_t **output
             y += width;
             break;
         }
-        if (param->YUV_swap_lines) inp += w4;
     }
 }
+
                     
 void frame_YUV420P_deinterlace(uint8_t **frame, 
         uint8_t *previous_Y, int width, int height,
@@ -143,7 +143,7 @@ void frame_YUV420P_deinterlace(uint8_t **frame,
                 }
             }
         }
-		mjpeg_info("De-Interlace mode 1, bob count = %d\n",cnt);
+	mjpeg_info("De-Interlace mode 1, bob count = %d\n",cnt);
         break;
     case 2:
         for (i=1; i<height-1; i+=2) {
@@ -231,66 +231,19 @@ static uint8_t *bufalloc(size_t size)
    return (uint8_t *) (buf + adjust);
 }
 
-void init(LavBounds *bounds, LavParam *param, LavBuffers *buffer)
+
+
+void init(LavParam *param, uint8_t *buffer[])
 {
-   int size, i;
+   param->luma_size = param->output_width * param->output_height;
+   param->chroma_width = param->output_width / 2;
+   param->chroma_height = param->output_height / 2;
+   param->chroma_size = param->chroma_height * param->chroma_width;
 
-   int chrom_top;
-   int chrom_bottom;
-
-   bounds->luma_offset = bounds->active_y * param->output_width;
-   bounds->luma_size = param->output_width * bounds->active_height;
-   bounds->luma_top_size = bounds->active_y * param->output_width;
-   bounds->luma_bottom_size =
-       (param->output_height - (bounds->active_y + bounds->active_height)) * param->output_width;
-
-   bounds->luma_left_size = bounds->active_x;
-   bounds->luma_right_offset = bounds->active_x + bounds->active_width;
-   bounds->luma_right_size = param->output_width - bounds->luma_right_offset;
-
-   bounds->chroma_width =
-       (chroma_format != CHROMA420) ? bounds->active_width : bounds->active_width / 2;
-   bounds->chroma_height =
-       (chroma_format != CHROMA420) ? bounds->active_height : bounds->active_height / 2;
-
-   chrom_top = (chroma_format != CHROMA420) ? bounds->active_y : bounds->active_y / 2;
-   chrom_bottom =
-       (chroma_format !=
-        CHROMA420) ? param->output_height - (bounds->chroma_height +
-                                      chrom_top) : param->output_height / 2 -
-       (bounds->chroma_height + chrom_top);
-
-   bounds->chroma_size = (chroma_format != CHROMA420) ? bounds->luma_size : bounds->luma_size / 4;
-   bounds->chroma_offset =
-       (chroma_format != CHROMA420) ? bounds->luma_offset : bounds->luma_offset / 4;
-   bounds->chroma_top_size =
-       (chroma_format != CHROMA420) ? bounds->luma_top_size : bounds->luma_top_size / 4;
-   bounds->chroma_bottom_size =
-       (chroma_format !=
-        CHROMA420) ? bounds->luma_bottom_size : bounds->luma_bottom_size / 4;
-
-   bounds->chroma_output_width =
-       (chroma_format != CHROMA420) ? param->output_width : param->output_width / 2;
-   bounds->chroma_output_height =
-       (chroma_format != CHROMA420) ? param->output_height : param->output_height / 2;
-   bounds->chroma_left_size =
-       (chroma_format != CHROMA420) ? bounds->active_x : bounds->active_x / 2;
-   bounds->chroma_right_offset = bounds->chroma_left_size + bounds->chroma_width;
-   bounds->chroma_right_size = bounds->chroma_output_width - bounds->chroma_right_offset;
-
-   memset(buffer->luma_blank, 0, sizeof(buffer->luma_blank));
-   memset(buffer->chroma_blank, 0x80, sizeof(buffer->chroma_blank));
-
-   for (i = 0; i < 3; i++) {
-      if (i == 0)
-         size = (param->output_width * param->output_height);
-      else
-         size = bounds->chroma_output_width * bounds->chroma_output_height;
-
-      buffer->read_buf[i] = bufalloc(size);
-      buffer->double_buf[i] = NULL;
-   }
-
+   buffer[0] = bufalloc(param->luma_size);
+   buffer[1] = bufalloc(param->chroma_size);
+   buffer[2] = bufalloc(param->chroma_size);
+   
 #ifdef SUPPORT_READ_DV2
    previous_Y  = bufalloc(param->output_width * param->output_height);
    dv_frame[0] = bufalloc(3 * param->output_width * param->output_height);
@@ -302,306 +255,174 @@ void init(LavBounds *bounds, LavParam *param, LavBuffers *buffer)
 }
 
 
-int readframe(	int numframe, 
-				uint8_t *frame[],
-				LavBounds *bounds,
-				LavParam *param,
-				LavBuffers *buffer,
-				EditList el
-	)
+
+
+int readframe(int numframe, 
+	      uint8_t *frame[],
+	      LavParam *param,
+	      EditList el)
 {
-	int len, i, res, data_format;
-	uint8_t *frame_tmp;
+  int len, i, res, data_format;
+  uint8_t *frame_tmp;
 
-	frame[0] = buffer->read_buf[0];
-	frame[1] = buffer->read_buf[1];
-	frame[2] = buffer->read_buf[2];
+  if (MAX_JPEG_LEN < el.max_frame_size) {
+    mjpeg_error_exit1( "Max size of JPEG frame = %ld: too big\n",
+		       el.max_frame_size);
+  }
+  
+  len = el_get_video_frame(jpeg_data, numframe, &el);
+  data_format = el_video_frame_data_format(numframe, &el);
+  
+  switch(data_format) {
 
-	if (MAX_JPEG_LEN < el.max_frame_size) {
-		mjpeg_error_exit1( "Max size of JPEG frame = %ld: too big\n",
-						   el.max_frame_size);
-	}
-
-	len = el_get_video_frame(jpeg_data, numframe, &el);
-
-	data_format = el_video_frame_data_format(numframe, &el);
-
-	switch(data_format) {
-	case DATAFORMAT_DV2 :
+  case DATAFORMAT_DV2 :
 #ifndef SUPPORT_READ_DV2
-		mjpeg_error("DV input was not configured at compile time\n");
-		res = 1;
+    mjpeg_error("DV input was not configured at compile time\n");
+    res = 1;
 #else
-		mjpeg_info("DV frame %d   len %d\n",numframe,len);
-		res = 0;
-		dv_parse_header(decoder, jpeg_data);
-		switch(decoder->sampling) {
-		case e_dv_sample_420:
+    mjpeg_info("DV frame %d   len %d\n",numframe,len);
+    res = 0;
+    dv_parse_header(decoder, jpeg_data);
+    switch(decoder->sampling) {
+    case e_dv_sample_420:
 #ifdef LIBDV_PAL_YV12
-			/* libdv decodes PAL DV directly as planar YUV 420
-			 * (YV12 or 4CC 0x32315659) if configured with the flag
-			 * --with-pal-yuv=YV12 which is not (!) the default
-			 */
-			pitches[0] = decoder->width;
-			pitches[1] = decoder->width / 2;
-			pitches[2] = decoder->width / 2;
-			if (pitches[0] != param->output_width ||
-				pitches[1] != bounds->chroma_output_width) {
-				mjpeg_error("for DV 4:2:0 only full width output is supported\n");
-				res = 1;
-			} else {
-				dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
-									 (guchar **) frame, pitches);
-				/* swap the U and V components */
-				frame_tmp = frame[2];
-				frame[2] = frame[1];
-				frame[1] = frame_tmp;
-			}
-			break;
+      /* libdv decodes PAL DV directly as planar YUV 420
+       * (YV12 or 4CC 0x32315659) if configured with the flag
+       * --with-pal-yuv=YV12 which is not (!) the default
+       */
+      pitches[0] = decoder->width;
+      pitches[1] = decoder->width / 2;
+      pitches[2] = decoder->width / 2;
+      if (pitches[0] != param->output_width ||
+	  pitches[1] != param->chroma_width) {
+	mjpeg_error("for DV 4:2:0 only full width output is supported\n");
+	res = 1;
+      } else {
+	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
+			     (guchar **) frame, pitches);
+	/* swap the U and V components */
+	frame_tmp = frame[2];
+	frame[2] = frame[1];
+	frame[1] = frame_tmp;
+      }
+      break;
 #endif
-		case e_dv_sample_411:
-		case e_dv_sample_422:
-			/* libdv decodes NTSC DV (native 411) and by default also PAL
-			 * DV (native 420) as packed YUV 422 (YUY2 or 4CC 0x32595559)
-			 * where the U and V information is repeated.  This can be
-			 * transformed to planar 420 (YV12 or 4CC 0x32315659).
-			 * For NTSC DV this transformation is lossy.
-			 */
-			pitches[0] = decoder->width * 2;
-			pitches[1] = 0;
-			pitches[2] = 0;
-			if (pitches[0] != 2*param->output_width) {
-				mjpeg_error("for DV only full width output is supported\n");
-				res = 1;
-			} else {
-				dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
-									 (guchar **) dv_frame, pitches);
-				frame_YUV422_to_YUV420P(frame, dv_frame[0], decoder->width,
-                                        decoder->height, param);
-
-			}
-			break;
-		default:
-			res = 1;
-			break;
-		}
-		if (res == 0 && (param->DV_deinterlace == 1 || param->DV_deinterlace == 2)) 
-		{
-			frame_YUV420P_deinterlace(frame, previous_Y, decoder->width,
-									  decoder->height, param->spatial_tolerance,
-									  param->default_temporal_tolerance, param->DV_deinterlace);
-			if (param->default_temporal_tolerance < 0)
-				param->default_temporal_tolerance = param->temporal_tolerance;
-			memcpy(previous_Y, frame[0], decoder->width * decoder->height);
-		}
+    case e_dv_sample_411:
+    case e_dv_sample_422:
+      /* libdv decodes NTSC DV (native 411) and by default also PAL
+       * DV (native 420) as packed YUV 422 (YUY2 or 4CC 0x32595559)
+       * where the U and V information is repeated.  This can be
+       * transformed to planar 420 (YV12 or 4CC 0x32315659).
+       * For NTSC DV this transformation is lossy.
+       */
+      pitches[0] = decoder->width * 2;
+      pitches[1] = 0;
+      pitches[2] = 0;
+      if (pitches[0] != 2*param->output_width) {
+	mjpeg_error("for DV only full width output is supported\n");
+	res = 1;
+      } else {
+	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
+			     (guchar **) dv_frame, pitches);
+	frame_YUV422_to_YUV420P(frame, dv_frame[0], decoder->width,
+				decoder->height, param);
+	
+      }
+      break;
+    default:
+      res = 1;
+      break;
+    }
+    if ((res == 0) &&
+	(param->DV_deinterlace == 1 || param->DV_deinterlace == 2)) 
+      {
+	frame_YUV420P_deinterlace(frame, previous_Y, decoder->width,
+				  decoder->height,
+				  param->spatial_tolerance,
+				  param->default_temporal_tolerance,
+				  param->DV_deinterlace);
+	if (param->default_temporal_tolerance < 0)
+	  param->default_temporal_tolerance = param->temporal_tolerance;
+	memcpy(previous_Y, frame[0], decoder->width * decoder->height);
+      }
 #endif
-		break;
-	case DATAFORMAT_YUV420 :
-		mjpeg_info("YUV420 frame %d   len %d\n",numframe,len);
-		frame_tmp = jpeg_data;
-		memcpy(frame[0], frame_tmp, param->output_width * param->output_height);
-		frame_tmp += param->output_width * param->output_height;
-		memcpy(frame[1], frame_tmp, param->output_width * param->output_height/4);
-		frame_tmp += param->output_width * param->output_height/4;
-		memcpy(frame[2], frame_tmp, param->output_width * param->output_height/4);
-		res = 0;
-		break;
-	default:
-		mjpeg_debug("MJPEG frame %d   len %d\n",numframe,len);
+    break;
 
-		res = decode_jpeg_raw(jpeg_data, len, el.video_inter,
-							  chroma_format, param->output_width, param->output_height,
-							  frame[0], frame[1], frame[2]);
+  case DATAFORMAT_YUV420 :
+    mjpeg_info("YUV420 frame %d   len %d\n",numframe,len);
+    frame_tmp = jpeg_data;
+    memcpy(frame[0], frame_tmp, param->output_width * param->output_height);
+    frame_tmp += param->output_width * param->output_height;
+    memcpy(frame[1], frame_tmp, param->output_width * param->output_height/4);
+    frame_tmp += param->output_width * param->output_height/4;
+    memcpy(frame[2], frame_tmp, param->output_width * param->output_height/4);
+    res = 0;
+    break;
 
-	}
-
-
-	if (res) {
-		mjpeg_warn( "Decoding of Frame %d failed\n", numframe);
-		/* TODO: Selective exit here... */
-		return 1;
-	}
-
-
-
-	if (param->noise_filt) {
-		uint8_t *bp;
-		uint8_t *p = frame[0] + param->output_width + 1;
-		uint8_t *end = frame[0] + param->output_width * (param->output_height - 1);
-
-		bp = filter_buf + param->output_width + 1;
-		if (param->noise_filt == 1) {
-			for (p = frame[0] + param->output_width + 1; p < end; ++p) {
-				register int f =
-					(p[-param->output_width - 1] + p[-param->output_width] +
-					 p[-param->output_width + 1] + p[-1] + p[1] + p[param->output_width -
-																	1] +
-					 p[param->output_width] + p[param->output_width + 1]);
-				f = f + ((*p) << 3) + ((*p) << 4);	/* 8 + (8 + 16) = 32 */
-				*bp = (f + 16) >> (4 + 1);
-				++bp;
-			}
-		} else if (param->noise_filt == 2) {
-			for (p = frame[0] + param->output_width + 1; p < end; ++p) {
-				register int f =
-					(p[-param->output_width - 1] + p[-param->output_width] +
-					 p[-param->output_width + 1] + p[-1] + p[1] + p[param->output_width -
-																	1] +
-					 p[param->output_width] + p[param->output_width + 1]);
-
-				f = f + ((*p) << 3);
-				*bp = (f + 8) >> (3 + 1);
-				++bp;
-			}
-		} else {
-			for (p = frame[0] + param->output_width + 1; p < end; ++p) {
-				register int f =
-					(p[-param->output_width - 1] + p[-param->output_width] +
-					 p[-param->output_width + 1] + p[-1] + p[1] + p[param->output_width -
-																	1] +
-					 p[param->output_width] + p[param->output_width + 1]);
-				/* f = f + (f<<1) + (*p << 3);
-				 *bp = (f + (1 << 4)) >> (3+2); */
-				f = f + (*p << 3);
-				*bp = (f + (1 << 2)) >> (3 + 1);
-				++bp;
-			}
-		}
-
-		bp = filter_buf + param->output_width + 1;
-		for (p = frame[0] + param->output_width + 1; p < end; ++p) {
-			*p = *bp;
-			++bp;
-		}
-
-
-	}
-
-	if (param->mono) {
-		for (i = 0; i < bounds->chroma_output_width * bounds->chroma_output_height; ++i) {
-			frame[1][i] = frame[2][i] = 0x80;
-		}
-	}
-	return 0;
-
+  default:
+    mjpeg_debug("MJPEG frame %d   len %d\n",numframe,len);
+    res = decode_jpeg_raw(jpeg_data, len, el.video_inter,
+			  CHROMA420,
+			  param->output_width, param->output_height,
+			  frame[0], frame[1], frame[2]);
+    
+  }
+  
+  
+  if (res) {
+    mjpeg_warn( "Decoding of Frame %d failed\n", numframe);
+    /* TODO: Selective exit here... */
+    return 1;
+  }
+  
+  
+  if (param->mono) {
+    for (i = 0;
+	 i < param->chroma_size;
+	 ++i) {
+      frame[1][i] = 0x80;
+      frame[2][i] = 0x80;
+    }
+  }
+  return 0;
+  
 }
 
 
-void writeoutYUV4MPEGheader(
-	int out_fd
-	, LavParam *param
-	, EditList el
-	)
+void writeoutYUV4MPEGheader(int out_fd,
+			    LavParam *param,
+			    EditList el,
+			    y4m_stream_info_t *streaminfo)
 {
-   //int frame_rate_code = yuv_fps2mpegcode (el.video_fps);
    int n;
-   y4m_stream_info_t stream_info;
 
-
-   /* this is old YUV4MPEG stream stuff - obsolete
-    * yuv_write_header (out_fd, param->output_width, param->output_height, frame_rate_code);
-    */
-
-   /* new YUV4MPEG streaming */
-   y4m_init_stream_info(&stream_info);
-   y4m_si_set_width(&stream_info, param->output_width);
-   y4m_si_set_height(&stream_info, param->output_height);
-   y4m_si_set_interlace(&stream_info, param->interlace );
-   y4m_si_set_framerate(&stream_info, mpeg_conform_framerate(el.video_fps));
+   y4m_si_set_width(streaminfo, param->output_width);
+   y4m_si_set_height(streaminfo, param->output_height);
+   y4m_si_set_interlace(streaminfo, param->interlace);
+   y4m_si_set_framerate(streaminfo, mpeg_conform_framerate(el.video_fps));
    if (!Y4M_RATIO_EQL(param->sar, y4m_sar_UNKNOWN)) {
-     y4m_si_set_sampleaspect(&stream_info, param->sar);
+     y4m_si_set_sampleaspect(streaminfo, param->sar);
    } else if ((el.video_sar_width != 0) || (el.video_sar_height != 0)) {
      y4m_ratio_t sar;
      sar.n = el.video_sar_width;
      sar.d = el.video_sar_height;
-     y4m_si_set_sampleaspect(&stream_info, sar);
+     y4m_si_set_sampleaspect(streaminfo, sar);
    } else {
      /* no idea! ...eh, just guess. */
      mjpeg_warn("unspecified sample-aspect-ratio --- taking a guess...\n");
-     y4m_si_set_sampleaspect(&stream_info,
+     y4m_si_set_sampleaspect(streaminfo,
 			     y4m_guess_sar(param->output_width, 
 					   param->output_height,
 					   param->dar));
    }
 
-   n = y4m_write_stream_header(out_fd, &stream_info);
+   n = y4m_write_stream_header(out_fd, streaminfo);
    if (n != Y4M_OK)
       mjpeg_error("Failed to write stream header: %s\n", y4m_strerr(n));
-   y4m_fini_stream_info(&stream_info);
 }
 
-void writeoutframeinYUV4MPEG(int out_fd,
-			     uint8_t *frame[],
-			     LavBounds *bounds,
-			     LavParam *param,
-			     LavBuffers *buffer,
-			     y4m_frame_info_t *frame_info)
-{
-   int i;
-   char *ptr;
-
-   /* new YUV4MPEG stream info */
-   /* NB: TODO - there's no frame info yet, since we don't need it yet */
-   i = y4m_write_frame_header(out_fd, frame_info); /* &frame_info */ 
-   if (i != Y4M_OK)
-      mjpeg_error("Failed to write frame header: %s\n", y4m_strerr(i));
-
-   for (i = 0; i < bounds->active_height; i++) {
-      ptr = &frame[0][bounds->luma_offset + (i * param->output_width)];
-      if (bounds->luma_left_size) {
-         memset(ptr, 0x00, bounds->luma_left_size);
-      }
-      if (bounds->luma_right_size) {
-         memset(&ptr[bounds->luma_right_offset], 0x00, bounds->luma_right_size);
-      }
-   }
-
-   for (i = 0; i < bounds->chroma_height; i++) {
-      ptr = &frame[1][bounds->chroma_offset + (i * bounds->chroma_output_width)];
-      if (bounds->chroma_left_size) {
-         memset(ptr, 0x80, bounds->chroma_left_size);
-      }
-
-      if (bounds->chroma_right_size) {
-         memset(&ptr[bounds->chroma_right_offset], 0x80, bounds->chroma_right_size);
-      }
-
-      ptr = &frame[2][bounds->chroma_offset + (i * bounds->chroma_output_width)];
-      if (bounds->chroma_left_size) {
-         memset(ptr, 0x80, bounds->chroma_left_size);
-      }
-
-      if (bounds->chroma_right_size) {
-         memset(&ptr[bounds->chroma_right_offset], 0x80, bounds->chroma_right_size);
-      }
-
-   }
-
-   if (bounds->luma_top_size) {
-      y4m_write(out_fd, buffer->luma_blank, bounds->luma_top_size);
-   }
-   y4m_write(out_fd, &frame[0][bounds->luma_offset], bounds->luma_size);
-   if (bounds->luma_bottom_size) {
-      y4m_write(out_fd, buffer->luma_blank, bounds->luma_bottom_size);
-   }
 
 
-   if (bounds->chroma_top_size) {
-      y4m_write(out_fd, buffer->chroma_blank, bounds->chroma_top_size);
-   }
-   y4m_write(out_fd, &frame[1][bounds->chroma_offset], bounds->chroma_size);
-   if (bounds->chroma_bottom_size) {
-      y4m_write(out_fd, buffer->chroma_blank, bounds->chroma_bottom_size);
-   }
-
-   if (bounds->chroma_top_size) {
-      y4m_write(out_fd, buffer->chroma_blank, bounds->chroma_top_size);
-   }
-   y4m_write(out_fd, &frame[2][bounds->chroma_offset], bounds->chroma_size);
-   if (bounds->chroma_bottom_size) {
-      y4m_write(out_fd, buffer->chroma_blank, bounds->chroma_bottom_size);
-   }
-}
 
 #ifdef SUPPORT_READ_DV2
 void lav_init_dv_decoder()

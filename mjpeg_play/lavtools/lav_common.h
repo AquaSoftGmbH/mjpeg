@@ -28,15 +28,8 @@
 */
 
 #include <config.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <string.h>
-#include <lav_io.h>
-#include <editlist.h>
-#include <math.h>
+
+#include "editlist.h"
 #include "yuv4mpeg.h"
 
 
@@ -46,8 +39,6 @@
 
 #define MAX_EDIT_LIST_FILES 256
 #define MAX_JPEG_LEN (3*576*768/2)
-
-const static char roundadj[4] = { 0, 0, 1, 2 };
 
 #define BUFFER_ALIGN 16
 
@@ -67,10 +58,8 @@ const static char roundadj[4] = { 0, 0, 1, 2 };
 typedef struct {
    int offset;
    int frames;
-   int noise_filt;
    int mono;
    char *scenefile;
-   int YUV_swap_lines; // = 0;
    int DV_deinterlace; // = 0;
    int spatial_tolerance; // = 440;
    int temporal_tolerance; // = 220;
@@ -82,55 +71,24 @@ typedef struct {
    int interlace;
    y4m_ratio_t sar; /* sample aspect ratio (default 0:0 == unspecified) */
    y4m_ratio_t dar; /* 'suggested' display aspect ratio */
+  
+  int chroma_width;
+  int chroma_height;
+  int luma_size;
+  int chroma_size;
 } LavParam;
-//=
-//{ 0, 0, 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0 } ;
 
-
-typedef struct {
-   int luma_size;
-   int luma_offset;
-   int luma_top_size;
-   int luma_bottom_size;
-   int luma_left_size;
-   int luma_right_size;
-   int luma_right_offset;
-   int chroma_size;
-   int chroma_offset;
-   int chroma_top_size;
-   int chroma_bottom_size;
-   int chroma_output_width;
-   int chroma_output_height;
-   int chroma_height;
-   int chroma_width;
-   int chroma_left_size;
-   int chroma_right_size;
-   int chroma_right_offset;
-   int active_x; //= 0;
-   int active_y; // = 0;
-   int active_width; // = 0;
-   int active_height; // = 0;
-} LavBounds;
-
-typedef struct {
-   uint8_t *read_buf[3];
-   uint8_t *double_buf[3];
-   uint8_t luma_blank[768 * 480];
-   uint8_t chroma_blank[768 * 480];
-} LavBuffers;
 
 int luminance_mean(uint8_t *frame[], int w, int h);
-int decode_jpeg_raw(uint8_t *jpeg_data, int len,
-                    int itype, int ctype, int width, int height,
-                    uint8_t *raw0, uint8_t *raw1,
-                    uint8_t *raw2);
 
-int readframe(int numframe, uint8_t *frame[], LavBounds *bounds, LavParam *param, LavBuffers *buffer, EditList el);
-void writeoutYUV4MPEGheader(int out_fd, LavParam *param, EditList el);
-void writeoutframeinYUV4MPEG(int out_fd, uint8_t *frame[], LavBounds *bounds, LavParam *param, LavBuffers *buffer, y4m_frame_info_t *frame_info);
-void init(LavBounds *bounds, LavParam *param, LavBuffers *buffer);
+int readframe(int numframe, uint8_t *frame[],
+	      LavParam *param, EditList el);
 
-y4m_ratio_t guess_sar(int width, int height);
+void writeoutYUV4MPEGheader(int out_fd, LavParam *param, EditList el,
+			    y4m_stream_info_t *streaminfo);
+
+void init(LavParam *param, uint8_t *frame[]);
+
 
 #ifdef SUPPORT_READ_DV2
 #include <libdv/dv.h>

@@ -1,19 +1,17 @@
 /* lavinfo - give info */
-#include "lav_common.h"
+
+#include <config.h>
+#include <stdio.h>
+#include <lav_io.h>
+#include <editlist.h>
+#include <mjpeg_logging.h>
 
 int verbose = -1;
 
 EditList el;
 
-LavBounds bounds;
-LavParam param = { 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0 };
-LavBuffers buffer;
-
-int main(argc, argv)
-	int argc;
-	char *argv[];
+int main(int argc, char *argv[])
 {
-	memset(&bounds, 0, sizeof(LavBounds));
 
    if(argc <=1) {
       printf("Usage: %s file1 [ file2 file3 ... ]\n",argv[0]);

@@ -40,11 +40,7 @@ void Usage(char *str)
    fprintf(stderr,
    "Usage: %s [params] inputfiles\n"
    "   where possible params are:\n"
-   "   -a widthxhight+x+y\n"
-   "   -n num     Noise filter (low-pass) [0..2] (default: 0)\n"
    "   -m         Force mono-chrome\n"
-   "   -x         Exchange fields for interlaced frames\n"
-   "   -F         Shift fields (corrects capturing frames wrong field first)\n"
    "   -S list.el Output a scene list with scene detection\n"
    "   -T num     Set scene detection threshold to num (default: 4)\n"
    "   -D num     Width decimation to use for scene detection (default: 2)\n"
@@ -58,8 +54,7 @@ void Usage(char *str)
    "   -f num     Only num frames are written to stdout (0 means all frames)\n"
    "   -I num     De-Interlacing mode for DV input (0,1,2,3)\n"
    "   -i num     De-Interlacing spatial threshold (default: 440)\n"
-   "   -j num     De-Interlacing temporal threshold (default: 220)\n"
-   "   -Y         switch field order in DV input\n",
+   "   -j num     De-Interlacing temporal threshold (default: 220)\n",
   str);
    exit(0);
 }
@@ -69,11 +64,9 @@ static int last_lum_mean;
 static int delta_lum;
 static int scene_num;
 static int scene_start;
-static int source_inter;
 
-LavBounds bounds;
-LavParam param = { 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0, 0 };
-LavBuffers buffer;
+LavParam param;
+uint8_t *frame_buf[3];
 
 void streamout(void)
 {
@@ -85,14 +78,16 @@ void streamout(void)
 	int fd_out = 1; // stdout.
    
 	char temp[32];
-	uint8_t *frame_buf[3];
+	
+	y4m_stream_info_t streaminfo;
 	y4m_frame_info_t frameinfo;
 
+	y4m_init_stream_info(&streaminfo);
 	y4m_init_frame_info(&frameinfo);
 
 
 	if (!param.scenefile)
-		writeoutYUV4MPEGheader(fd_out, &param, el);
+		writeoutYUV4MPEGheader(fd_out, &param, el, &streaminfo);
 	scene_num = scene_start = 0;
 	if (param.scenefile)
 	{
@@ -129,7 +124,7 @@ void streamout(void)
 
 	for (framenum = param.offset; framenum < (param.offset + param.frames); ++framenum) 
 	{
-		readframe(framenum, frame_buf, &bounds, &param, &buffer, el);
+	  readframe(framenum, frame_buf, &param, el);
 		if (param.scenefile) 
 		{
 			lum_mean =
@@ -162,7 +157,11 @@ void streamout(void)
 		} 
 		else
 		{
-			writeoutframeinYUV4MPEG(fd_out, frame_buf, &bounds, &param, &buffer, &frameinfo);
+		  int i;
+		  i = y4m_write_frame(fd_out,
+				      &streaminfo, &frameinfo, frame_buf);
+		  if (i != Y4M_OK)
+		    mjpeg_error("Failed to write frame: %s\n", y4m_strerr(i));
 		}
 	}
 	if (param.scenefile)
@@ -180,67 +179,30 @@ int main(argc, argv)
 	char *argv[];
 {
 	int n, nerr = 0;
-	char *geom;
-	char *end;
 
-	memset(&bounds, 0, sizeof(LavBounds));
-
+	param.offset = 0;
+	param.frames = 0;
+	param.mono = 0;
+	param.scenefile = NULL;
+	param.DV_deinterlace = 0;
+	param.spatial_tolerance = 440;
+	param.temporal_tolerance = 220;
+	param.default_temporal_tolerance = -1;
+	param.delta_lum_threshold = 4;
+	param.scene_detection_decimation = 2;
+	param.output_width = 0;
+	param.output_height = 0;
+	param.interlace = -1;
 	param.sar = y4m_sar_UNKNOWN;
 	param.dar = y4m_dar_4_3;
-	while ((n = getopt(argc, argv, "mYv:a:n:S:T:D:o:f:I:i:j:P:A:")) != EOF) {
+
+	while ((n = getopt(argc, argv, "mYv:S:T:D:o:f:I:i:j:P:A:")) != EOF) {
 		switch (n) {
-
-		case 'a':
-			geom = optarg;
-			bounds.active_width = strtol(geom, &end, 10);
-			if (*end != 'x' || bounds.active_width < 100) {
-				mjpeg_error("Bad width parameter\n");
-				nerr++;
-				break;
-			}
-
-			geom = end + 1;
-			bounds.active_height = strtol(geom, &end, 10);
-			if ((*end != '+' && *end != '\0') || bounds.active_height < 100) {
-				mjpeg_error( "Bad height parameter\n");
-				nerr++;
-				break;
-			}
-
-			if (*end == '\0')
-				break;
-
-			geom = end + 1;
-			bounds.active_x = strtol(geom, &end, 10);
-			if ((*end != '+' && *end != '\0') || bounds.active_x > 720) {
-				mjpeg_error( "Bad x parameter\n");
-				nerr++;
-				break;
-			}
-
-
-			geom = end + 1;
-			bounds.active_y = strtol(geom, &end, 10);
-			if (*end != '\0' || bounds.active_y > 240) {
-				mjpeg_error( "Bad y parameter\n");
-				nerr++;
-				break;
-			}
-			break;
-
 
 		case 'v':
 			verbose = atoi(optarg);
 			if (verbose < 0 ||verbose > 2) {
 				mjpeg_error( "-v option requires arg 0, 1, or 2\n");
-				nerr++;
-			}
-			break;
-
-		case 'n':
-			param.noise_filt = atoi(optarg);
-			if (param.noise_filt < 0 || param.noise_filt > 2) {
-				mjpeg_error( "-n option requires arg 0..2\n");
 				nerr++;
 			}
 			break;
@@ -268,10 +230,6 @@ int main(argc, argv)
 				mjpeg_error( "-i option requires a temporal tolerance between 0 and 65025\n");
 				nerr++;
 			}
-			break;
-
-		case 'Y':
-			param.YUV_swap_lines = 1;
 			break;
 
 		case 'm':
@@ -340,31 +298,10 @@ int main(argc, argv)
 		param.frames = el.video_frames - param.offset;
 	}
 
-	if (bounds.active_width == 0) {
-		bounds.active_width = param.output_width;
-	}
-
-	if (bounds.active_height == 0) {
-		bounds.active_height = param.output_height;
-	}
-
-
-	if (bounds.active_width + bounds.active_x > param.output_width) {
-		mjpeg_error( "active offset + active width > image size\n");
-		Usage(argv[0]);
-	}
-
-	if (bounds.active_height + bounds.active_y > param.output_height) {
-		mjpeg_error( "active offset + active height > image size\n");
-		Usage(argv[0]);
-	}
-
 	param.interlace = el.video_inter;
-	/* exchange fields if wanted */
-	source_inter = el.video_inter;
 
 
-	init(&bounds, &param, &buffer);
+	init(&param, frame_buf /*&buffer*/);
 
 #ifdef SUPPORT_READ_DV2
 	lav_init_dv_decoder();
