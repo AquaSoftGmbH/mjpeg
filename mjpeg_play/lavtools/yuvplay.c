@@ -129,6 +129,7 @@ int main(int argc, char *argv[])
 
    mjpeg_default_handler_verbosity(verbosity);
 
+   y4m_accept_extensions(1);
    y4m_init_stream_info(&streaminfo);
    y4m_init_frame_info(&frameinfo);
    if ((n = y4m_read_stream_header(in_fd, &streaminfo)) != Y4M_OK) {
@@ -136,6 +137,16 @@ int main(int argc, char *argv[])
          y4m_strerr(n));
       exit (1);
    }
+
+   switch (y4m_si_get_chroma(&streaminfo)) {
+   case Y4M_CHROMA_420JPEG:
+   case Y4M_CHROMA_420MPEG2:
+   case Y4M_CHROMA_420PALDV:
+     break;
+   default:
+     mjpeg_error_exit1("Cannot handle non-4:2:0 streams yet!");
+   }
+
    frame_width = y4m_si_get_width(&streaminfo);
    frame_height = y4m_si_get_height(&streaminfo);
 
