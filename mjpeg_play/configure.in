@@ -67,7 +67,7 @@ AM_PROG_AS
 dnl Initialize libtool
 AM_PROG_LIBTOOL
 
-AC_CHECK_HEADERS(fenv.h stdint.h inttypes.h sys/types.h stdbool.h getopt.h alloca.h sys/soundcard.h)
+AC_CHECK_HEADERS(fenv.h stdint.h inttypes.h sys/types.h getopt.h alloca.h sys/soundcard.h)
 
 dnl sizeof PRId64 etc...
 AC_CHECK_SIZEOF(int)
