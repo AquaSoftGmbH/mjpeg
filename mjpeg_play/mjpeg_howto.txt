@@ -142,8 +142,7 @@ cards but only with -d 4.
 All lavtools accept the %02d file description, so you do not have to name each 
 file, but that would also be a posibillity to do. 
 
-Note: More options are described in the lavrec.c file or take a look at the
-man-page.
+Note: More options are described in the man-page.
 
 There are more options, but with this you should be able to start.
 
@@ -213,6 +212,13 @@ The better way:
 
 The video is decoded and played by the hardware. The system load is now
 very low. This will play it back on-screen using the hardware.
+
+When you record with -d 1 somtimes it happend that the field were described 
+wrong top first, but it was a bottom first video. You notice this effect easily
+when you look at the logo of a tv company. Then try to play it back with
+the -x option. This changes the field order and fix the problem. But you also have to use the -x switch in lav2yuv. 
+But also try next time recording try to change the -f option to the opposite
+used before (a/A) this should change the field order while recording.
 
 You might also try:
 >lavplay -p C record.avi
@@ -519,7 +525,7 @@ broadcast material you should try the noise filters. This are for lav2yuv:
 -n [0..2] and -d [0..3], there are other filter,they are described later.
 
 Example:
-> lav2yuv stream.avi | mpeg2enc -b 1500 -n s -g 5 -G 20 -o video.m1v
+> lav2yuv stream.avi | mpeg2enc -b 1500 -n s -g 6 -G 20 -o video.m1v
 Here the stream.avi will be encoded with:
 -b 1500    : a Bitrate of 1500kBit/sec
 -n s       : the input Video norm is forced to SECAM
@@ -1032,7 +1038,13 @@ rather than letting lav2yuv do that.
 
 Multiplex with:
  
-> mplex -f 4 sound.mp2 video.m2v -o vcd_out.mpg
+> mplex -f 4 -V -b 400 -r 2750 sound.mp2 video.m2v -o vcd_out.mpg
+
+-f 4    : tells mplex to encode a SVCD,
+-V      : with a variable Bitrate
+-r 2750 : is the calculated Audio + Video Bitrate + 1-2% multiplex information
+-b 400  : is the Buffer aviable on the playback device, the same used for the 
+          video encoding (there the -V option). 
 
 Creating the CD:
 
@@ -1043,6 +1055,9 @@ Creates an videocd.bin, the data file, an a videocd.cue which is used as
 controllfile for cdcdao.
 
 In Linux use cdrdao to burn the image.
+
+Note: If you want to build "custom" VCD/SVCD you should try the 
+mplex -f 2 and -f 5 switches.
 
 Note: The VCD SVCD stuff may work on your HW player or not. There are
 many reports that it works quite well. Don't be woried if it does not
