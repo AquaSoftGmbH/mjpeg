@@ -1498,7 +1498,8 @@ static int lavplay_init(lavplay_t *info)
    
    /* Set field polarity for interlaced video */
    bp.odd_even = (editlist->video_inter==LAV_INTER_TOP_FIRST);
-   if (info->exchange_fields) bp.odd_even = !bp.odd_even;
+   //if (info->exchange_fields) bp.odd_even = !bp.odd_even;
+   //this is already done by the open_files() function
 
    /* Set these settings */
    if (!lavplay_mjpeg_set_params(info, &bp))
