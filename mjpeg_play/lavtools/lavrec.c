@@ -1340,13 +1340,14 @@ int main(int argc, char ** argv)
    
 	/* Determine device pixel width (DC10=768, BUZ=720 for PAL/SECAM, DC10=640, BUZ=720) */
    
-    res = ioctl(video_dev, VIDIOCGCAP,&vc);
-    if (res < 0) system_error("getting device capabilities","ioctl VIDIOCGCAP");
-    device_width=vc.maxwidth;
+	res = ioctl(video_dev, VIDIOCGCAP,&vc);
+	if (res < 0) system_error("getting device capabilities","ioctl VIDIOCGCAP");
+	device_width=vc.maxwidth;
 
 	/* Query and set params for capture */
 
 	res = ioctl(video_dev, MJPIOC_G_PARAMS, &bparm);
+
 	if(res<0) system_error("getting video parameters","ioctl MJPIOC_G_PARAMS");
 
 	bparm.decimation = 0;
@@ -1359,10 +1360,16 @@ int main(int argc, char ** argv)
 	bparm.TmpDcm         = (verdcm==1) ? 1 : 2;
 	bparm.field_per_buff = (verdcm==1) ? 2 : 1;
 
-	if( device_width == 720 ) /* Buz etc */
-		bparm.img_width      = (hordcm==1) ? 720 : 704;
-	else /* DC10 */
+	/*
+	 * If device is DC10 then do handle special else do the the
+	 * normal thing
+	 */
+	if (device_width == 768 || device_width == 640)
 		bparm.img_width      = (hordcm==1) ? device_width : (device_width-64);
+	else
+		bparm.img_width      = (hordcm==1) ? 720 : 704;
+	
+	
 		
 	bparm.img_height     = (norm==1)   ? 240 : 288;
 
