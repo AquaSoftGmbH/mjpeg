@@ -184,6 +184,23 @@ int y4m_parse_ratio(y4m_ratio_t *r, const char *s);
 y4m_ratio_t y4m_guess_sar(int width, int height, y4m_ratio_t dar);
 
 
+/*************************************************************************
+ *
+ * Chroma Subsampling Mode information
+ *
+ *  x_ratio, y_ratio  -  subsampling of chroma planes
+ *  x_offset, y_offset - offset of chroma sample grid,
+ *                        relative to luma (0,0) sample
+ *
+ *************************************************************************/
+
+y4m_ratio_t y4m_chroma_ss_x_ratio(int chroma_mode);
+y4m_ratio_t y4m_chroma_ss_y_ratio(int chroma_mode);
+#if 0
+y4m_ratio_t y4m_chroma_ss_x_offset(int chroma_mode, int field, int plane);
+y4m_ratio_t y4m_chroma_ss_y_offset(int chroma_mode, int field, int plane);
+#endif
+
 
 /************************************************************************
  *  'xtag' functions
