@@ -38,3 +38,7 @@ yuvcorrect_tune
 yuvfps
 multiblend.flt
 png2yuv
+pgmtoy4m
+y4mblack
+yuv4mpeg
+yuvinactive
