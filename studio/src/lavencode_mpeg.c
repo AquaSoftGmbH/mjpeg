@@ -69,12 +69,14 @@ void set_maxGop (GtkWidget *widget, gpointer data);
 void set_sequencesize (GtkWidget *widget, gpointer data);
 void set_nonvideorate (GtkWidget *widget, gpointer data);
 void update_vbr(void);
+void set_interlacing (GtkWidget *widget, gpointer data);
 
 /* Some variables */
 GList *samples = NULL; 
 GList *muxformat = NULL;
 GList *streamdata = NULL;
 GList *outputformat = NULL;
+GList *interlace_correct = NULL;
 struct encodingoptions tempenco;
 struct encodingoptions *point;    /* points to the encoding struct to change */
 int changed_streamdatarate;  /* shows if the rate was updated into the Glist */
@@ -87,7 +89,7 @@ GtkWidget *button_force_vcd, *combo_entry_searchradius, *combo_entry_muxfmt;
 GtkWidget *combo_entry_videobitrate, *combo_entry_decoderbuffer, *switch_vbr; 
 GtkWidget *combo_entry_streamrate, *combo_entry_qualityfa, *combo_entry_minGop;
 GtkWidget *combo_entry_maxGop, *combo_entry_sequencemb, *combo_entry_nonvideo;
-GtkWidget *combo_streamrate;
+GtkWidget *combo_streamrate, *combo_entry_interlacecorr;
 /* =============================================================== */
 /* Start of the code */
 
@@ -116,6 +118,7 @@ void init_tempenco(gpointer task)
   sprintf(tempenco.mode_keyword,"%s",(*point).mode_keyword);
   sprintf(tempenco.ininterlace_type,"%s",(*point).ininterlace_type);
   tempenco.addoutputnorm=(*point).addoutputnorm;
+  sprintf(tempenco.interlacecorr,"%s",(*point).interlacecorr);
   tempenco.outputformat=(*point).outputformat;
   tempenco.droplsb=(*point).droplsb;
   tempenco.noisefilter=(*point).noisefilter;
@@ -156,6 +159,9 @@ char val[LONGOPT];
   for (i = 0; i < tempenco.outputformat ;i++)
     outputformat = g_list_next (outputformat);
   gtk_entry_set_text(GTK_ENTRY(combo_entry_outputformat), outputformat->data);
+
+  gtk_entry_set_text(GTK_ENTRY(combo_entry_interlacecorr), 
+                                             tempenco.interlacecorr);
 
   sprintf(val,"%i",tempenco.droplsb);
   gtk_entry_set_text(GTK_ENTRY(combo_entry_samples), val);
@@ -284,15 +290,50 @@ void set_activewindow (GtkWidget *widget, gpointer data)
 
   test = gtk_entry_get_text(GTK_ENTRY(widget));
 
-/* Old version */
-//  if (strcmp(test,"as is") == 0)
-//    for (i=0; i < LONGOPT; i++)
-//       tempenco.notblacksize[i]='\0';
-//  else
-    sprintf(tempenco.notblacksize,"%s", test);
+  outputformat = g_list_last (outputformat);
+
+  for (i = (g_list_length (g_list_first(outputformat))-1) ; i > 0 ; i--)
+    {
+      if (strcmp (test,outputformat->data) == 0)
+                break;
+
+      outputformat = g_list_previous (outputformat);
+    }
+    tempenco.outputformat = i;
+
+  outputformat = g_list_first (outputformat);
 
   if (verbose)
     printf (" Set activ window to : %s\n", test);
+}
+
+/* Set the string fo the correction of the interlacing type */
+void set_interlacing (GtkWidget *widget, gpointer data)
+{
+  char *test;
+  int i;
+
+  i=0;
+
+  test = gtk_entry_get_text(GTK_ENTRY(widget));
+
+  interlace_correct = g_list_last (interlace_correct);
+
+  for (i = (g_list_length (g_list_first(interlace_correct))-1) ; i > 0 ; i--)
+    {
+      if (strcmp (test,interlace_correct->data) == 0)
+        {
+           strcpy(tempenco.interlacecorr,interlace_correct->data);
+           break;
+        }
+ 
+      interlace_correct = g_list_previous (interlace_correct);
+    }
+
+  interlace_correct = g_list_first (interlace_correct);
+
+  if (verbose)
+    printf (" Set Interlacing Correction to : %s \n", test);
 }
 
 /* set the output format of lav2yuv */
@@ -931,7 +972,7 @@ if (!samples)
 void create_video_options_layout (GtkWidget *table, int *tx, int *ty)
 {
 GtkWidget *label1, *combo_active, *combo_noisefilter; 
-GtkWidget *combo_samples, *combo_outputformat;
+GtkWidget *combo_samples, *combo_outputformat, *combo_interlacecorr;
 GList *noisefilter = NULL;
 GList *droplsb = NULL;
 GList *input_active_size = NULL;
@@ -959,6 +1000,14 @@ if (!outputformat)
    input_active_size = g_list_append (input_active_size, "352x210+0+39");
    input_active_size = g_list_append (input_active_size, "352x168+0+60");
    input_active_size = g_list_append (input_active_size, "700x500+10+30");
+
+if (!interlace_correct)
+  {
+   interlace_correct = g_list_append (interlace_correct, "not needed");
+   interlace_correct = g_list_append (interlace_correct, "exchange fields");
+   interlace_correct = g_list_append (interlace_correct, "shift fields");
+   interlace_correct = g_list_append (interlace_correct, "do both");
+  }
 
   label1 = gtk_label_new ("  Noise filter: ");
   gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
@@ -1022,6 +1071,23 @@ if (!outputformat)
   gtk_table_attach_defaults (GTK_TABLE (table),combo_outputformat,
                                         *tx+1, *tx+2, *ty, *ty+1);
   gtk_widget_show (combo_outputformat);
+  (*ty)++;
+
+  label1 = gtk_label_new ("  Interlacing correction: ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (label1);
+
+  combo_interlacecorr = gtk_combo_new();
+  gtk_combo_set_popdown_strings (GTK_COMBO (combo_interlacecorr), 
+                                               interlace_correct);
+  combo_entry_interlacecorr = GTK_COMBO (combo_interlacecorr)->entry;
+  gtk_widget_set_usize (combo_interlacecorr, 200, -2 );
+  gtk_signal_connect(GTK_OBJECT(combo_entry_interlacecorr), "changed",
+                      GTK_SIGNAL_FUNC (set_interlacing), NULL);
+  gtk_table_attach_defaults (GTK_TABLE (table),combo_interlacecorr,
+                                        *tx+1, *tx+2, *ty, *ty+1);
+  gtk_widget_show (combo_interlacecorr);
   (*ty)++;
 }
 
@@ -1298,6 +1364,7 @@ void accept_mpegoptions(GtkWidget *widget, gpointer data)
   sprintf((*point).mode_keyword,"%s",tempenco.mode_keyword);
   sprintf((*point).ininterlace_type,"%s",tempenco.ininterlace_type);
   (*point).addoutputnorm=tempenco.addoutputnorm;
+  sprintf((*point).interlacecorr,"%s",tempenco.interlacecorr);
   (*point).outputformat=tempenco.outputformat;
   (*point).droplsb=tempenco.droplsb;
   (*point).noisefilter=tempenco.noisefilter;
@@ -1333,6 +1400,8 @@ if (g_list_length (muxformat) == 0)
     muxformat = g_list_append (muxformat, "Auto MPEG 2");
     muxformat = g_list_append (muxformat, "standard SVCD");
     muxformat = g_list_append (muxformat, "user-rate SVCD");
+    muxformat = g_list_append (muxformat, "VCD Stills");
+    muxformat = g_list_append (muxformat, "SVCD Stills");
     muxformat = g_list_append (muxformat, "DVD");
   } 
 
@@ -1350,7 +1419,7 @@ if (g_list_length(streamdata) == 5)
 else
   changed_streamdatarate=1;
 
-
+ /* here the pointers are set to point to the correct set of mpeg options */
  init_tempenco(data);
 
   options_window = gtk_window_new(GTK_WINDOW_DIALOG);
