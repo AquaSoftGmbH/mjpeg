@@ -13,7 +13,6 @@ yuvdenoise \- Motion-Compensating-YUV4MPEG-frame-denoiser
 in an YUV4MPEG2 stream. This is useful to reduce the bitrate       
 needed to encode your captured movies for VCD and SVCD creation.
 
-
 .SH OPTIONS
 \fByuvdenoise\fP accepts the following options:
 
@@ -42,14 +41,14 @@ not make sense to go higher than 16, especially for VCD sizes.
 
 .TP 4
 .BI \-b " <x>,<y>,<w>,<h> Border Setting"
-If you already know parts of the image are and remain black all over
-the complete sequence of images, you may use something like this:
+If you already know parts of the image are and remain black over
+the complete sequence of images you may use something like this:
 
 yuvdenoise -b 16,16,704,560
 
 This will set all the pixels in the image outside that search window
-to absolute pure black. The area outside the search window will not go
-into the motion compensation algorithm and therefor you might have a
+to pure black. The area outside the search window will not go
+into the motion compensation algorithm which may give a moderate
 speed gain in processing the movie. 
 
 Sometimes it may be useful to have relative coordinates like this:
@@ -102,14 +101,14 @@ Yuvdenoise works by temporal lowpass filtering. To avoid
 motion-blur it transforms the previous image with a
 motion-compensation as close as possible to the present frame. This
 motion-compensation is performed on 4x4 pixel blocks. The result is
-wightened and a block of the transformed previous frame is (depending
+weighted and a block of the transformed previous frame is (depending
 on a matching coefficient) either taken in full, blended with the
 present image-block or discarded if the match is to bad.
 
 This procedure implies that the motion-compensation is very exact. If
 a video-encoder misses a transformed block it's not that bad, it only
 encodes a difference block there. If the denoiser fails to find a good
-matching block, the only solution is to exchange the found block with
+matching block the only solution is to exchange the found block with
 the original frame block. Therefor a great amount of time is spent to
 find good matches. This is the main reason why the denoiser does not
 run at full framerate at CIF resolution as you might have wished.
@@ -120,12 +119,12 @@ normally just can go without any options set:
 
 lav2yuv my-video.avi | yuvdenoise | mpeg2enc -t 1 -o my-video.m1v
 
-However, to obtain the best possible result, you should take care of
+However, to obtain the best possible result, you should take note of
 the following: 
 
 1. Grab at the maximum possible resolution (PAL 768x576
-pixels). Even do this if you just want to create a 352x288 pixel
-movie as downscaling reduces noise, too (and at no cost to
+pixels).  Do this even if you just want to create a 352x288 pixel
+movie as downscaling reduces noise (and at no cost to
 image-quality and/or sharpness in that case).
 
 2. First denoise, then scale! There are some rare situations where the
@@ -133,16 +132,16 @@ denoiser itself may introduce artifacts (blocks, etc...). The
 perceptibilty of these artifacts is reduced by this processing order.
 
 3. If your movie contains black borders use the -b option to turn them
-into real black. This helps the encoder a lot.
+into pure black. This helps the encoder use fewer bits to encode the data.
 
 4. You can greatly improve the recorded quality if you use correct
-cables. Only use HF-in (the antenna-cable ...) if you really can't
-connect your VCR/Camcorder by other means (Composite, S-Video or best
+cables.  Only use HF-in (the antenna-cable ...) if you really can't
+connect your VCR/Camcorder by other means (Composite, S-Video or
 SCART-RGB).
 
 5. If your movie is B&W only, then try the -B switch.
 
-Having said that, I normally use a command-line like this one:
+Having said all that, I normally use a command-line like this one:
 
 lav2yuv movie.avi | yuvdenoise -b 8,64,-8,-64 | yuvscaler -O
 SIZE_352x288 | mpeg2enc -f 1 -o movie.m1v
