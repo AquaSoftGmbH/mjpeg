@@ -309,7 +309,7 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 		mjpeg_info( "Selecting generic MPEG1 output profile");
 		if( video_buffer_size == 0 )
 			video_buffer_size = 46;
-		if( bitrate == 0 )
+		if (bitrate == 0)
 			bitrate = 1151929;
 		break;
 
@@ -317,9 +317,9 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 		mpeg = 1;
 		bitrate = 1151929;
 		video_buffer_size = 46;
-        preserve_B = true;
-        Bgrp_size = 3;
-        min_GOP_size = 9;
+        	preserve_B = true;
+        	Bgrp_size = 3;
+        	min_GOP_size = 9;
 		max_GOP_size = norm == 'n' ? 18 : 15;
 		mjpeg_info("VCD default options selected");
 		
@@ -328,14 +328,14 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 		mpeg = 1;
 		svcd_scan_data = 0;
 		seq_hdr_every_gop = 1;
-		if( bitrate == 0 )
+		if (bitrate == 0)
 			bitrate = 1151929;
-		if( video_buffer_size == 0 )
+		if (video_buffer_size == 0)
 			video_buffer_size = 46 * bitrate / 1151929;
-        if( seq_length_limit == 0 )
-            seq_length_limit = 700;
-        if( nonvid_bitrate == 0 )
-            nonvid_bitrate = 230;
+        	if (seq_length_limit == 0 )
+            		seq_length_limit = 700;
+        	if (nonvid_bitrate == 0)
+            		nonvid_bitrate = 230;
 		break;
 		
 	case  MPEG_FORMAT_MPEG2 : 
