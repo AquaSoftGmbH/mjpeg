@@ -289,6 +289,8 @@ int i;
     }
     tempenco.outputformat = i;
 
+  outputformat = g_list_first (outputformat);
+
   if (verbose)
     printf(" selected output format: %i \n", tempenco.outputformat);
 }
@@ -415,6 +417,8 @@ void set_mplex_muxfmt (GtkWidget *widget, gpointer data)
    }
 
   tempenco.muxformat = i;
+
+  muxformat = g_list_first (muxformat);
 
   if (verbose)
     printf(" selected multiplexing format: %i \n", tempenco.muxformat);
@@ -598,10 +602,6 @@ GList *nonvideorate = NULL;
   nonvideorate = g_list_append (nonvideorate, "170");
   nonvideorate = g_list_append (nonvideorate, "238");
 
-  g_list_first(muxformat);
-
-  printf("\n laenge %i \n",g_list_length (g_list_first(muxformat)));
- 
   label1 = gtk_label_new ("  Mux format: ");
   gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
   gtk_table_attach_defaults (GTK_TABLE (table), label1, *tx, *tx+1, *ty, *ty+1);
@@ -711,9 +711,12 @@ gchar *test;
 int i;
 
   i = 0;
+
   test = gtk_entry_get_text(GTK_ENTRY(widget));
-  
+
   samples = g_list_last (samples);
+
+  printf("Anzahl :%i, test : %s \n",g_list_length (g_list_first(samples)),test);
 
   for (i = (g_list_length (g_list_first(samples))) ; i > 0 ; i--)
     {
@@ -724,6 +727,8 @@ int i;
         }
       samples = g_list_previous (samples);
     }
+
+  samples = g_list_first (samples);
 
   if (verbose)
     printf(" selected audio samplerate: %i00\n", tempenco.outputbitrate);
@@ -758,7 +763,7 @@ void create_sound_encoding (GtkWidget *table,int *tx,int *ty)
 GtkWidget *label1, *combo_audiobit, *combo_samplerate, *button_force_no; 
 GSList *group_force;
 GList *abitrate = NULL;
-GList *samples = NULL;
+//GList *samples = NULL;
 
    abitrate = g_list_append (abitrate, "224");
    abitrate = g_list_append (abitrate, "160");
@@ -878,6 +883,7 @@ if (!outputformat)
    input_active_size = g_list_append (input_active_size, "348x278+2+2");
    input_active_size = g_list_append (input_active_size, "352x210+0+39");
    input_active_size = g_list_append (input_active_size, "352x168+0+60");
+   input_active_size = g_list_append (input_active_size, "700x500+10+30");
 
   label1 = gtk_label_new ("  Noise filter: ");
   gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
@@ -959,6 +965,7 @@ GList *output_window = NULL;
   yuvscalermode = g_list_append (yuvscalermode, "as is");
   yuvscalermode = g_list_append (yuvscalermode, "WIDE2STD");
   yuvscalermode = g_list_append (yuvscalermode, "WIDE2VCD");
+  yuvscalermode = g_list_append (yuvscalermode, "LINE_SWITCH");
   yuvscalermode = g_list_append (yuvscalermode, "FAST_WIDE2VCD");
   yuvscalermode = g_list_append (yuvscalermode, "RATIO_388_352_1_1");
   yuvscalermode = g_list_append (yuvscalermode, "RATIO_1_1_288_200");
@@ -969,8 +976,9 @@ GList *output_window = NULL;
   output_window = g_list_append (output_window, "VCD");
   output_window = g_list_append (output_window, "SVCD");
   output_window = g_list_append (output_window, "352x240");
-  output_window = g_list_append (output_window, "INTERLACED_ODD_FIRST");
-  output_window = g_list_append (output_window, "INTERLACED_EVEN_FIRST");
+//  Removed because not needed any more. Wait for an answer from Xavier 
+//  output_window = g_list_append (output_window, "INTERLACED_ODD_FIRST");
+//  output_window = g_list_append (output_window, "INTERLACED_EVEN_FIRST");
 
   label1 = gtk_label_new("  Input window: ");
   gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
@@ -1234,9 +1242,6 @@ void accept_mpegoptions(GtkWidget *widget, gpointer data)
   sprintf((*point).muxvbr,"%s",tempenco.muxvbr);
   (*point).streamdatarate=tempenco.streamdatarate;
   (*point).decoderbuffer=tempenco.decoderbuffer;
-
-  g_list_first (muxformat);
-
 }
 
 /* open a new window with all the options in it */
@@ -1257,8 +1262,8 @@ if (g_list_length (muxformat) == 0)
   } 
 
   printf("\n laenge %i \n", g_list_length (g_list_first(muxformat)));
-//  printf("\n laenge samples %i \n", g_list_length (g_list_first(samples)));
-  printf("\n laenge outputformat %i \n", g_list_length (g_list_first(outputformat)));
+  printf("\n laenge samples %i \n", g_list_length (g_list_first(samples)));
+//  printf("\n laenge outputformat %i \n", g_list_length (g_list_first(outputformat)));
  
 
  init_tempenco(data);
