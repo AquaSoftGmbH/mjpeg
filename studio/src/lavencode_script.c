@@ -859,11 +859,6 @@ n=0;
       sprintf(temp1, "%i", (*option).muxformat);
       mplex_command[n] = "-f"; n++;
       mplex_command[n] = temp1; n++;
-      if (( (*option).muxformat == 3) && ((*option).muxvbr[0] != '-' ) )
-      {
-        sprintf(temp1, "-V");
-        mplex_command[n] = temp1; n++;
-      }
    }
    if ((*option).streamdatarate != 0)
    {
@@ -873,7 +868,7 @@ n=0;
    }
    if ((*option).decoderbuffer != 46)
    {
-      sprintf(temp2, "%i", (*option).decoderbuffer);
+      sprintf(temp3, "%i", (*option).decoderbuffer);
       mplex_command[n] = "-r"; n++;
       mplex_command[n] = temp3; n++;
    }
@@ -894,7 +889,6 @@ n=0;
       mplex_command[n] = temp5; n++;
 
       filename_ext(ext, temp6, enc_videofile);
-      sprintf(temp6,"%s.%s", ext, enc_videofile);
       mplex_command[n] = temp6; n++;
 
       mplex_command[n] = "-o"; n++;
