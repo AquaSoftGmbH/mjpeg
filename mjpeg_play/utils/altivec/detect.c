@@ -35,6 +35,8 @@
 #include <signal.h>
 #include <setjmp.h>
 
+int detect_altivec(void);	/* placate OS/X's compiler with a prototype */
+
 static sigjmp_buf jmpbuf;
 
 static void sig_ill(int sig)
