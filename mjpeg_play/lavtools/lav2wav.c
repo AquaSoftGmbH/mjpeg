@@ -176,6 +176,8 @@ void Usage(char *str)
 {
    fprintf(stderr, "Usage: %s [options] inputfiles\n",str);
    fprintf(stderr, "where options are:\n");
+   fprintf(stderr, "-s num        Start extracting at video frame (num)\n");
+   fprintf(stderr, "-c num        Extract (num) frames of audio\n");
    fprintf(stderr, "-v num        verbose level\n");
  
    exit(0);
@@ -191,21 +193,27 @@ char    **argv;
 	int n,f;
 	int res;
 	int warned = 0;
+	int start_frame = 0;
+	int num_frames = -1;
 
-    while( (n=getopt(argc,argv,"v:")) != EOF)
+    while( (n=getopt(argc,argv,"v:s:c:")) != EOF)
     {
         switch(n) {
 
 	   case 'v':
 		verbose = atoi(optarg);
 		break;
-
-		case '?':
-			Usage(argv[0]);
+	   case 's':
+		start_frame = atoi(optarg);
+		break;
+	   case 'c':
+		num_frames = atoi(optarg);
+		break;
+	   case '?':
+		Usage(argv[0]);
         }
     }
 
- 
     /* Open editlist */
 
 
@@ -249,9 +257,16 @@ char    **argv;
  
 	/* Create wav header (skeleton) on stdout ... */
 	wav_header( el.audio_bits, el.audio_rate, el.audio_chans, 1);
+	/* skip to the start frame if specified */
+	f = 0;
+	if (start_frame != 0)
+		f = start_frame;
+	/* num_frames = -1, read em all, else read specified # */
+	if ( num_frames == -1)
+		num_frames = el.video_frames;
 
 	/* Stream out audio wav-style... in per-frame chunks */
-	for( f = 0; f < el.video_frames; ++f )
+	for( ; f < num_frames; ++f )
 	{
 		n = el_get_audio_data((char *)audio_buff, f, &el, 0);
 		if( n < 0 )
@@ -269,7 +284,7 @@ char    **argv;
 			}
 		}
 
-		else if( f < el.video_frames && ! warned )
+		else if( f < num_frames && ! warned )
 		{
 			fprintf( stderr, "%s: Warning: audio ends early at frame %d\n", argv[0], f );
 			warned = 1;
@@ -279,6 +294,5 @@ char    **argv;
 	wav_close(1);
 	exit(0);
 }
-		
-		
-		
+
+

@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 #include <lav_io.h>
 #include <editlist.h>
 
@@ -113,13 +114,15 @@ void Usage(char *str)
   printf("Usage: %s [params] inputfiles\n",str);
   printf("   where possible params are:\n");
   printf("   -a widthxhight+x+y\n");
-  printf("   -s num     Special output format option:\n");
-  printf("                 0 output like input, nothing special\n");
+  printf("   -f num     Special output format option:\n");
+  printf("                 0 output like input, nothing special (default)\n");
   printf("                 1 create half height/width output from interlaced input\n");
   printf("                 2 create 480 wide output from 720 wide input (for SVCD)\n");
   printf("                 3 create 352 wide output from 720 wide input (for vcd)\n");
   printf("   -d num     Drop lsbs of samples [0..3] (default: 0)\n");
   printf("   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
+  printf("   -s num     Start extracting at frame <num> (default: 0)\n");
+  printf("   -c num     Extract <num> frames of video (default: all)\n");
   printf("   -m         Force mono-chrome\n");
   exit(0);
 }
@@ -486,12 +489,22 @@ void writeoutframeinYUV4MPEG(unsigned char *frame[])
 	}
 }
 
-
-void streamout()
+/**
+ * write the video stream out, starting at <start> frame for <count> frames.
+ **/
+void streamout(int start, int count)
 {
 	int framenum;
 	writeoutYUV4MPEGheader();
-	for( framenum = 0; framenum < el.video_frames ; ++framenum )
+	
+	framenum = 0;
+	if (start != 0)
+	{
+		framenum = start;
+	}
+	if (count == -1)
+		count = el.video_frames;		
+	for( ; framenum < count ; ++framenum )
 	{
 		readframe(framenum,frame_buf);
 #ifdef	NEVER
@@ -508,8 +521,10 @@ char *argv[];
   int n, nerr = 0;
   char	*geom;
   char  *end;
+  int   start_frame = 0;
+  int   num_frames = -1;
 
-  while( (n=getopt(argc,argv,"v:a:s:d:n:")) != EOF)
+  while( (n=getopt(argc,argv,"v:a:s:d:n:f:c:")) != EOF)
   {
     switch(n) {
 
@@ -552,7 +567,7 @@ char *argv[];
 	break;
 	
 
-      case 's':
+      case 'f':
         param_special = atoi(optarg);
         if(param_special<0 || param_special>3)
         {
@@ -584,6 +599,12 @@ char *argv[];
 		break;
 	case 'm' :
 		param_mono = 1;
+		break;
+	case 's' :
+		start_frame = atoi(optarg);
+		break;
+	case 'c' :
+		num_frames = atoi(optarg);
 		break;
 	default:
 	  nerr++;
@@ -666,7 +687,7 @@ char *argv[];
 
   out_fd = 1; /* stdout */
   init();
-  streamout();
+  streamout(start_frame, num_frames);
 
   return 0;
 }
