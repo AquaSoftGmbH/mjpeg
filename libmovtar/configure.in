@@ -27,15 +27,19 @@ AC_TYPE_SIGNAL
 
 AC_DEFINE(RESULTS,"libmovtar.a movtar_split movtar_unify movtar_yuv422 movtar_index movtar_setinfo")
 
-AC_SUBST(SDL)
+AC_SUBST(SDL_LIBS)
+AC_SUBST(SDL_INCLUDE)
 AC_SUBST(MOVTAR_PLAY)
 dnl Check for SDL
-AM_PATH_SDL(1.1.3, have_SDL="yes" SDL="-lSDL -lpthread" MOVTAR_PLAY="movtar_play")
+AC_PATH_PROG(SDL_CONFIG, sdl-config, no)
+if test x$SDL_CONFIG != xno; then
+  AM_PATH_SDL(1.1.3, [ have_SDL="yes" SDL_LIBS="`$SDL_CONFIG --libs`" SDL_INCLUDE="`$SDL_CONFIG --cflags`" MOVTAR_PLAY="movtar_play" ])
+fi
 
-AC_SUBST(M4DATADIR)
-AC_ARG_WITH(m4data-prefix, [  --with-m4data-prefix=PFX  Where to put the libmovtar.m4 for autoconf [/usr/share/aclocal] ], 
-    M4DATADIR="$withval/aclocal", 
-    M4DATADIR="/usr/share/aclocal")
+dnl AC_SUBST(M4DATADIR)
+dnl AC_ARG_WITH(m4data-prefix, [  --with-m4data-prefix=PFX  Where to put the libmovtar.m4 for autoconf [/usr/share/aclocal] ], 
+dnl    M4DATADIR="$withval/aclocal", 
+dnl    M4DATADIR="/usr/share/aclocal")
 
 dnl madmac/gernot: This activates architecture specific changes (e g no MMX)
 case "$HOSTTYPE" in
@@ -93,11 +97,12 @@ AC_ARG_WITH(jpeg-mmx, [  --with-jpeg-mmx=PFX  Where to find the jpeg-mmx source 
 OLDLIBS="$LIBS"
 LIBS="-L $JPEGDIR $DEFAULT_JPEGDIR_L $LIBS"
 AC_SUBST(JPEG_INCLUDE)
+AC_SUBST(JPEG_LIBS)
 
 AC_CHECK_LIB( jpeg-mmx, jpeg_start_compress,
              	[	 
   			   		have_jpeg="yes"
-					LIBS="$LIBS -ljpeg-mmx"
+					JPEG_LIBS="$LIBS -ljpeg-mmx"
 					JPEG_INCLUDE="-I $JPEGDIR $DEFAULT_JPEGDIR_I"
  		     	],
              	[
@@ -113,7 +118,7 @@ then
 AC_CHECK_LIB( jpeg, jpeg_start_compress,
              	[	 
   			   		have_jpeg="yes"
-					LIBS="$LIBS -ljpeg"
+					JPEG_LIBS="$LIBS -ljpeg"
  		     	],
              	[
              		have_jpeg="no"
