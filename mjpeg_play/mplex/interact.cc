@@ -1,6 +1,7 @@
 #include <config.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <getopt.h>
 #include <sys/stat.h>
 
 #include <mjpeg_logging.h>
@@ -56,7 +57,7 @@ static void Usage(char *str)
 	fprintf( stderr, "          3 = Auto MPEG2, 4 = SVCD, 5 = user-rate SVCD\n");
 	fprintf( stderr, "          6 = VCD Stills, 7 = SVCD Stills, 8 = DVD\n");
 
-	fprintf( stderr, "         (N.b only 0 .. 5 currently implemented!*)\n" ); 
+	fprintf( stderr, "         (N.b only 0 .. 7 currently implemented!*)\n" ); 
 	fprintf( stderr, " -S size Maximum size of output file in M bytes (default: 2000) (0 = no limit)\n" );
 	fprintf( stderr, " -M      Generate a *single* multi-file program per\n"
 			         "sequence rather a program per file\n");

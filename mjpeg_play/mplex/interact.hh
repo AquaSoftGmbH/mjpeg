@@ -82,7 +82,7 @@ extern off_t opt_max_segment_size;
 #define MPLEX_DATE   "$Date$"
 
 
-#endif  __INTERACT_H__
+#endif // __INTERACT_H__
 
 
 /* 

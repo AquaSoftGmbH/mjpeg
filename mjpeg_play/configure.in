@@ -60,7 +60,9 @@ AC_PROG_LN_S
 AC_C_BIGENDIAN
 AC_C_CONST
 AC_C_INLINE
-AC_CHECK_HEADERS(fenv.h stdint.h inttypes.h stdbool.h alloca.h)
+
+AC_CHECK_HEADERS(fenv.h stdint.h inttypes.h sys/types.h stdbool.h alloca.h)
+AC_TYPE_SIGNAL
 
 
 dnl Set up the usual compiler infos...
@@ -70,6 +72,9 @@ AC_DEFINE(_FILE_OFFSET_BITS,64)
 else
 AC_DEFINE(_FILE_OFFSET_BITS,32)
 fi
+
+dnl system
+AC_CYGWIN
 
 dnl *********************************************************************
 dnl madmac/gernot: This activates architecture specific changes (e g no MMX)
@@ -390,12 +395,15 @@ EOF
      cat conftest.S >&AC_FD_CC
      rm -f conftest.*;
     fi
-    AC_PATH_PROG(NASM, nasm)
+    AC_PATH_PROGS(NASM, nasm nasmw)
     if test x$NASM = x -o x$NASM = x'"$NASM"'; then
       : # no nasm in the path
     else
      AC_DEFINE(HAVE_ASM_NASM)
      NASMFLAGS="-f elf"
+     if test x$CYGWIN = xyes; then
+       NASMFLAGS="-f coff"
+     fi
      AC_SUBST(NASMFLAGS)
     fi
   ],

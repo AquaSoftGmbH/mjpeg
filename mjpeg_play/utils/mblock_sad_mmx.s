@@ -25,6 +25,7 @@
 ;
 ;
 
+SECTION .text
 
 global sad_00_mmx
 

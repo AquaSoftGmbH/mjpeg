@@ -26,9 +26,5 @@ EXTRA_DIST = videodev_mjpeg.h format_codes.h mblock_sub44_sads_x86_h.c .cvsignor
 
 MAINTAINERCLEANFILES = Makefile.in
 
-
-ASM = nasm
-
-
 .s.o:
-	$(ASM) -o $@ -f elf $<
+	$(NASM) $(NASMFLAGS) -o $@ $<

@@ -82,49 +82,51 @@ int mblocks_sub44_mests_mmx( uint8_t *blk,  uint8_t *ref,
 							me_result_s *resvec);
 
 void mblock_sub22_nearest4_sads_mmxe(uint8_t *blk1,uint8_t *blk2,
-									 int frowstride,int fh, int* resvec);
+				     int frowstride,int fh, int* resvec) 
+                                     __asm__ ("mblock_sub22_nearest4_sads_mmxe");
 
 void mblock_nearest4_sads_mmxe(uint8_t *blk1, uint8_t *blk2, 
-							   int rowstride, int h, int *resvec);
+			       int rowstride, int h, int *resvec)
+                               __asm__ ("mblock_nearest4_sads_mmxe");
 
-int sad_00_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h, int distlim);
-int sad_01_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
-int sad_10_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
-int sad_11_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
+int sad_00_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h, int distlim) __asm__ ("sad_00_mmxe");
+int sad_01_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h) __asm__ ("sad_01_mmxe");
+int sad_10_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h) __asm__ ("sad_10_mmxe");
+int sad_11_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h) __asm__ ("sad_11_mmxe");
 
 
-int sad_sub22_mmxe ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh);
-int sad_sub44_mmxe ( uint8_t *blk1, uint8_t *blk2,  int qrowstride, int qh);
+int sad_sub22_mmxe ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh) __asm__ ("sad_sub22_mmxe");
+int sad_sub44_mmxe ( uint8_t *blk1, uint8_t *blk2,  int qrowstride, int qh) __asm__ ("sad_sub44_mmxe");
 int sumsq_mmx( uint8_t *blk1, uint8_t *blk2,
-			   int rowstride, int hx, int hy, int h);
+	       int rowstride, int hx, int hy, int h) __asm__ ("sumsq_mmx");
 int sumsq_sub22_mmx( uint8_t *blk1, uint8_t *blk2,
-				  int rowstride, int h);
+		     int rowstride, int h) __asm__ ("sumsq_sub22_mmx");
 int bsumsq_sub22_mmx( uint8_t *blk1f, uint8_t *blk1b, 
-				   uint8_t *blk2,
-				  int rowstride, int h);
+		      uint8_t *blk2,
+		      int rowstride, int h) __asm__ ("bsumsq_sub22_mmx");
 int bsumsq_mmx (uint8_t *pf, uint8_t *pb,
-				uint8_t *p2, int rowstride,
-				int hxf, int hyf, int hxb, int hyb, int h);
+		uint8_t *p2, int rowstride,
+		int hxf, int hyf, int hxb, int hyb, int h) __asm__ ("bsumsq_mmx");
 int bsad_mmx (uint8_t *pf, uint8_t *pb,
-				uint8_t *p2, int rowstride,
-				int hxf, int hyf, int hxb, int hyb, int h);
+	      uint8_t *p2, int rowstride,
+	      int hxf, int hyf, int hxb, int hyb, int h) __asm__ ("bsad_mmx");
 
-int variance_mmx( uint8_t *p, int size,	int rowstride);
+int variance_mmx( uint8_t *p, int size,	int rowstride) __asm__ ("variance_mmx");
 
-int sad_00_mmx ( uint8_t *blk1, uint8_t *blk2,  int rowstride, int h, int distlim);
-int sad_01_mmx(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
-int sad_10_mmx(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
-int sad_11_mmx(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
-int sad_sub22_mmx ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh);
-int sad_sub44_mmx (uint8_t *blk1, uint8_t *blk2,  int qrowstride, int qh);
+int sad_00_mmx ( uint8_t *blk1, uint8_t *blk2,  int rowstride, int h, int distlim) __asm__ ("sad_00_mmx");
+int sad_01_mmx(uint8_t *blk1, uint8_t *blk2, int rowstride, int h) __asm__ ("sad_01_mmx");
+int sad_10_mmx(uint8_t *blk1, uint8_t *blk2, int rowstride, int h) __asm__ ("sad_10_mmx");
+int sad_11_mmx(uint8_t *blk1, uint8_t *blk2, int rowstride, int h) __asm__ ("sad_11_mmx");
+int sad_sub22_mmx ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh) __asm__ ("sad_sub22_mmx");
+int sad_sub44_mmx (uint8_t *blk1, uint8_t *blk2,  int qrowstride, int qh) __asm__ ("sad_sub44_mmx");
 int sumsq_mmx  ( uint8_t *blk1, uint8_t *blk2,
-			   int rowstride, int hx, int hy, int h);
+		 int rowstride, int hx, int hy, int h) __asm__ ("sumsq_mmx");
 int bsumsq_mmx (uint8_t *pf, uint8_t *pb,
-				uint8_t *p2, int rowstride, 
-				int hxf, int hyf, int hxb, int hyb, int h);
+		uint8_t *p2, int rowstride, 
+		int hxf, int hyf, int hxb, int hyb, int h) __asm__ ("sumsq_mmx");
 int bsad_mmx (uint8_t *pf, uint8_t *pb,
-			  uint8_t *p2, int rowstride, 
-			  int hxf, int hyf, int hxb, int hyb, int h);
+	      uint8_t *p2, int rowstride, 
+	      int hxf, int hyf, int hxb, int hyb, int h) __asm__ ("bsad_mmx");
 
 #endif
 
@@ -476,7 +478,7 @@ static int build_sub22_mests( me_result_set *sub44set,
 }
 
 #ifdef HAVE_X86CPU 
-int build_sub22_mests_mmxe( me_result_set *sub44set,
+static int build_sub22_mests_mmxe( me_result_set *sub44set,
 							 me_result_set *sub22set,
 							 int i0,  int j0, int ihigh, int jhigh, 
 							 int null_ctl_sad,
@@ -610,7 +612,7 @@ static void find_best_one_pel( me_result_set *sub22set,
 }
 
 #ifdef HAVE_X86CPU 
-void find_best_one_pel_mmxe( me_result_set *sub22set,
+static void find_best_one_pel_mmxe( me_result_set *sub22set,
 							 uint8_t *org, uint8_t *blk,
 							 int i0, int j0,
 							 int ihigh, int jhigh,

@@ -35,15 +35,17 @@
 
 static sigjmp_buf sigill_recover;
 
-void sigillhandler(int sig )
+static RETSIGTYPE sigillhandler(int sig )
 {
 	siglongjmp( sigill_recover, 1 );
 }
 
-int testsseill()
+typedef RETSIGTYPE (*__sig_t)(int);
+
+static int testsseill()
 {
 	int illegal;
-	sig_t old_handler = signal( SIGILL, sigillhandler);
+	__sig_t old_handler = signal( SIGILL, sigillhandler);
 	if( sigsetjmp( sigill_recover, 1 ) == 0 )
 	{
 		asm ( "movups %xmm0, %xmm0" );

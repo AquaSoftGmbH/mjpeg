@@ -36,4 +36,4 @@
 
 
 
-#endif __YUV4MPEG_INTERN_H__
+#endif /* __YUV4MPEG_INTERN_H__ */

@@ -34,9 +34,5 @@ mpeg2enc_DEPENDENCIES = $(top_srcdir)/utils/libutils.a $(top_srcdir)/utils/libmo
 
 mpeg2enc_LDADD=-L$(top_srcdir)/utils -lmotion -lutils @PTHREAD_LIBS@ -lm
 
-
-ASM = nasm
-
-
 .s.o:
-	$(ASM) -o $@ -f elf $<
+	$(NASM) $(NASMFLAGS) -o $@ $<

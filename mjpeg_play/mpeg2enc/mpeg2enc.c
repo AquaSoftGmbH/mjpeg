@@ -52,6 +52,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
+#include <getopt.h>
 
 #define GLOBAL /* used by global.h */
 
@@ -181,7 +182,7 @@ static void Usage(char *str)
 	exit(0);
 }
 
-void set_format_presets()
+static void set_format_presets()
 {
 	switch( param_format  )
 	{

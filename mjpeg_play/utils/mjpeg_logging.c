@@ -36,7 +36,7 @@ static const char _rcsid[] = "$Id: ";
 static log_level_t mjpeg_log_verbosity = 0;
 
 
-int default_mjpeg_log_filter( log_level_t level )
+static int default_mjpeg_log_filter( log_level_t level )
 {
   int verb_from_env;
   if( mjpeg_log_verbosity == 0 )

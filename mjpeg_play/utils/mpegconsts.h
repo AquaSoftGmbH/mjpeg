@@ -104,4 +104,4 @@ mpeg_frame_rate_code_definition( mpeg_frame_rate_code_t code  );
 
 
 
-#endif __MPEGCONSTS_H__
+#endif /* __MPEGCONSTS_H__ */

@@ -51,6 +51,8 @@ twos:
 			dw	2
 			dw	2
 
+SECTION .text
+
 align 32
 sumsq_mmx:
 	push ebp			; save frame pointer

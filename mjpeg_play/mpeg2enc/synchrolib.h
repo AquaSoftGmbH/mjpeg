@@ -67,5 +67,6 @@ void mp_semaphore_wait( semaphore_t *sema);
 
 void mp_semaphore_signal( semaphore_t *sema, int count );
 
+void mp_semaphore_set( semaphore_t *sema );
 
 #endif

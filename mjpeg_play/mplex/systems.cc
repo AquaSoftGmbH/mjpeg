@@ -242,7 +242,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 
     if (pack != NULL)
     {
-		bcopy (pack->buf, index, pack->length);
+		memcpy (pack->buf, index, pack->length);
 		index += pack->length;
     }
 
@@ -251,7 +251,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 
     if (sys_header != NULL)
     {
-		bcopy (sys_header->buf, index, sys_header->length);
+		memcpy (sys_header->buf, index, sys_header->length);
 		index += sys_header->length;
     }
 

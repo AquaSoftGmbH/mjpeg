@@ -3,8 +3,6 @@
 
 #include <config.h>
 #include <stdio.h>
-#include <inttypes.h>
-
 
 typedef uint64_t bitcount_t;
 

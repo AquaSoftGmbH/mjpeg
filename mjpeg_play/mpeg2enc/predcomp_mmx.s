@@ -43,7 +43,7 @@ global predcomp_00_mmx
 ;;; mm1 = one's mask for src
 ;;; mm0 = zero mask for src...
 		
-
+SECTION .text
 
 align 32
 predcomp_00_mmx:
