@@ -60,11 +60,8 @@ int use_yuvplay_pipe = 0; /* see preview window while video is being encoded or 
 GtkWidget *progress_window;
 GtkWidget *tv_preview;
 int error = 0;
+struct encodingoptions *pointenc;    /* points to the encoding struct to be encodet */
 
-/* lists with  encodingoptions */
-GList *samples_old = NULL;
-// GList *outputformat = NULL;
-GList *yuvscalermode = NULL;
 /*-------------------------------------------------------------*/
 
 void lavencode_callback(int number, char *input);
@@ -78,8 +75,6 @@ void callback_pipes(gpointer data, gint source,GdkInputCondition condition);
 void audio_convert(void);
 void video_convert(void);
 void mplex_convert(void);
-void do_vcd(GtkWidget *widget, gpointer data);
-void do_svcd(GtkWidget *widget, gpointer data);
 void do_defaults(GtkWidget *widget, gpointer data);
 void input_callback( GtkWidget *widget, GtkWidget *input_select );
 void output_callback( GtkWidget *widget, GtkWidget *output_select );
@@ -91,38 +86,24 @@ void create_file_input(GtkWidget *widget, gpointer data);
 void file_ok_output( GtkWidget *w, GtkFileSelection *fs );
 void create_in_out (GtkWidget *hbox1, GtkWidget *vbox);
 void create_vcd_svcd (GtkWidget *hbox1, GtkWidget *vbox);
-// void set_audiobitrate (GtkWidget *widget, gpointer data);
-void set_samplebitrate (GtkWidget *widget, gpointer data);
-// void force_options (GtkWidget *widget, gpointer data);
-void create_sound_encoding_old (GtkWidget *table);
-// void set_videobit (GtkWidget *widget, gpointer data);
-void set_searchrad (GtkWidget *widget, gpointer data);
-void mpeg_option (GtkWidget *widget, gpointer data);
 void create_video_layout (GtkWidget *table);
 void create_file_output(GtkWidget *widget, gpointer data);
-// void set_noisefilter (GtkWidget *widget, gpointer data);
-// void set_drop_samples (GtkWidget *widget, gpointer data);
-// void set_outputformat (GtkWidget *widget, gpointer data);
-void create_yuvscaler_options (GtkWidget *hbox1, GtkWidget *vbox);
 void video_callback ( GtkWidget *widget, GtkWidget *video_entry );
 void file_ok_video ( GtkWidget *w, GtkFileSelection *fs );
 void create_file_video(GtkWidget *widget, gpointer data);
 void create_fileselect_video (GtkWidget *hbox1, GtkWidget *vbox);
 void create_video (GtkWidget *table);
-// void set_mplex_muxfmt (GtkWidget *widget, gpointer data);
 void create_mplex_options (GtkWidget *table);
 void encode_all (GtkWidget *widget, gpointer data);
 void create_buttons1 (GtkWidget *hbox1);
 void create_buttons2 (GtkWidget *hbox1);
 void create_mplex (GtkWidget *table);
 void create_status (GtkWidget *hbox1, GtkWidget *vbox);
-// void create_yuvscaler_layout (GtkWidget *table);
-// void set_activewindow (GtkWidget *widget, gpointer data);
-// void set_scalerstrings (GtkWidget *widget, gpointer data);
 void create_option_button(GSList *task_group, GtkWidget *table, 
        char task[LONGOPT], int encx, int ency);
 void create_task_layout(GtkWidget *table);
 void create_temp_files (GtkWidget *hbox1, GtkWidget *vbox);
+void set_task(GtkWidget *widget, gpointer data);
 
 /*************************** Programm starts here **************************/
 
@@ -430,27 +411,27 @@ void audio_convert()
 
    mp2enc_command[n] = MP2ENC_LOCATION; n++;
    mp2enc_command[n] = "-v 2"; n++;
-   if (encoding.forcevcd[0] == '-')
+   if ((*pointenc).forcevcd[0] == '-')
      {
-       mp2enc_command[n] = encoding.forcevcd;
+       mp2enc_command[n] = (*pointenc).forcevcd;
        n++;
      }
    else                   /* If VCD is set no other Options are needed */
      {
         mp2enc_command[n] = "-b"; n++;
-        sprintf(temp1,"%i", encoding.audiobitrate);
+        sprintf(temp1,"%i", (*pointenc).audiobitrate);
         mp2enc_command[n] = temp1; n++;
         mp2enc_command[n] = "-r"; n++;
-        sprintf(temp2, "%i00", encoding.outputbitrate);
+        sprintf(temp2, "%i00", (*pointenc).outputbitrate);
         mp2enc_command[n] = temp2; n++;
-       if (encoding.forcemono[0] == '-')
+       if ((*pointenc).forcemono[0] == '-')
          {
-           mp2enc_command[n] = encoding.forcemono;
+           mp2enc_command[n] = (*pointenc).forcemono;
            n++;
          }
-       if (encoding.forcestereo[0] == '-')
+       if ((*pointenc).forcestereo[0] == '-')
          {
-           mp2enc_command[n] = encoding.forcestereo;
+           mp2enc_command[n] = (*pointenc).forcestereo;
            n++;
          }
      }
@@ -497,10 +478,10 @@ void video_convert()
    mpeg2enc_command[n] = MPEG2ENC_LOCATION; n++;
    mpeg2enc_command[n] = "-v1"; n++;
    mpeg2enc_command[n] = "-b"; n++;
-   sprintf(temp4, "%i", encoding.bitrate);
+   sprintf(temp4, "%i", (*pointenc).bitrate);
    mpeg2enc_command[n] =  temp4; n++;
-   if(encoding.searchradius != 16) {
-      sprintf(temp6, "%i", encoding.searchradius);
+   if((*pointenc).searchradius != 16) {
+      sprintf(temp6, "%i", (*pointenc).searchradius);
       mpeg2enc_command[n] =  "-r"; n++;
       mpeg2enc_command[n] =  temp6; n++;
    }
@@ -508,21 +489,21 @@ void video_convert()
 /* And here the support fpr the different versions vo mjpeg tools */
    if (encoding_syntax_style == 140)
    {
-     if (encoding.muxformat >= 3)
+     if ((*pointenc).muxformat >= 3)
        {
          mpeg2enc_command[n] = "-m"; n++;
          mpeg2enc_command[n] = "2"; n++; 
        }
-     if ((encoding.muxformat != 0) && (encoding.muxformat != 3))
+     if (((*pointenc).muxformat != 0) && ((*pointenc).muxformat != 3))
        {
          mpeg2enc_command[n] = "-s"; n++;
        }
    }
    if (encoding_syntax_style == 150)
    {
-     if(encoding.muxformat != 0) 
+     if((*pointenc).muxformat != 0) 
        {
-         sprintf(temp5, "%i",encoding.muxformat);
+         sprintf(temp5, "%i",(*pointenc).muxformat);
          mpeg2enc_command[n] =  "-f"; n++;
          mpeg2enc_command[n] =  temp5; n++;
        }
@@ -554,39 +535,39 @@ void video_convert()
 
    /* Here, the command for the pipe for yuvscaler may be added */
 /* Old Version now checking for "as is"          */
-//   if ((strlen(encoding.input_use) > 0) ||
-//       (strlen(encoding.output_size) > 0) ||
-//       (strlen(encoding.mode_keyword) > 0) )
-     if ((strcmp(encoding.input_use,"as is") != 0) ||
-         (strcmp(encoding.output_size,"as is") != 0) ||
-         (strcmp(encoding.mode_keyword,"as is") != 0) )
+//   if ((strlen((*pointenc).input_use) > 0) ||
+//       (strlen((*pointenc).output_size) > 0) ||
+//       (strlen((*pointenc).mode_keyword) > 0) )
+     if ((strcmp((*pointenc).input_use,"as is") != 0) ||
+         (strcmp((*pointenc).output_size,"as is") != 0) ||
+         (strcmp((*pointenc).mode_keyword,"as is") != 0) )
    {
       n = 0;
       yuvscaler_command[n] = YUVSCALER_LOCATION; n++;
-      if (strlen(encoding.input_use) > 0 &&
-          strcmp(encoding.input_use,"as is") )
+      if (strlen((*pointenc).input_use) > 0 &&
+          strcmp((*pointenc).input_use,"as is") )
       {
          yuvscaler_command[n] = "-I"; n++;
-         yuvscaler_command[n] = encoding.input_use; n++;
+         yuvscaler_command[n] = (*pointenc).input_use; n++;
       }
-      if (strlen(encoding.ininterlace_type) > 0)
+      if (strlen((*pointenc).ininterlace_type) > 0)
       {
          yuvscaler_command[n] = "-I"; n++;
-         yuvscaler_command[n] = encoding.ininterlace_type; n++;
+         yuvscaler_command[n] = (*pointenc).ininterlace_type; n++;
       }
-      if (strlen(encoding.mode_keyword) > 0 &&
-          strcmp(encoding.mode_keyword,"as is") )
+      if (strlen((*pointenc).mode_keyword) > 0 &&
+          strcmp((*pointenc).mode_keyword,"as is") )
       {
          yuvscaler_command[n] = "-M"; n++;
-         yuvscaler_command[n] = encoding.mode_keyword; n++;
+         yuvscaler_command[n] = (*pointenc).mode_keyword; n++;
       }
-      if (strlen(encoding.output_size) > 0 &&
-          strcmp(encoding.output_size,"as is") )
+      if (strlen((*pointenc).output_size) > 0 &&
+          strcmp((*pointenc).output_size,"as is") )
       {
          yuvscaler_command[n] = "-O"; n++;
-         yuvscaler_command[n] = encoding.output_size; n++;
+         yuvscaler_command[n] = (*pointenc).output_size; n++;
       }
-      if (encoding.addoutputnorm == 1)
+      if ((*pointenc).addoutputnorm == 1)
       {
          sprintf(temp7, "-n%c", standard);
          yuvscaler_command[n] = temp7; n++;
@@ -606,27 +587,27 @@ void video_convert()
 
    n = 0;
    lav2yuv_command[n] = LAV2YUV_LOCATION; n++;
-   if (strlen(encoding.notblacksize) > 0 && 
-       strcmp(encoding.notblacksize,"as is") != 0) 
+   if (strlen((*pointenc).notblacksize) > 0 && 
+       strcmp((*pointenc).notblacksize,"as is") != 0) 
      {
       lav2yuv_command[n] = "-a"; n++;
-      lav2yuv_command[n] = encoding.notblacksize; n++;
+      lav2yuv_command[n] = (*pointenc).notblacksize; n++;
      }
-   if (encoding.outputformat > 0) 
+   if ((*pointenc).outputformat > 0) 
      {
-      sprintf(temp1, "%i", encoding.outputformat);
+      sprintf(temp1, "%i", (*pointenc).outputformat);
       lav2yuv_command[n] = "-s"; n++;
       lav2yuv_command[n] = temp1; n++;
      }
-   if (encoding.droplsb > 0) 
+   if ((*pointenc).droplsb > 0) 
      {
-      sprintf(temp2, "%i", encoding.droplsb);
+      sprintf(temp2, "%i", (*pointenc).droplsb);
       lav2yuv_command[n] = "-d"; n++;
       lav2yuv_command[n] = temp2; n++;
      }
-   if (encoding.noisefilter > 0) 
+   if ((*pointenc).noisefilter > 0) 
      {
-      sprintf(temp3, "%i", encoding.noisefilter);
+      sprintf(temp3, "%i", (*pointenc).noisefilter);
       lav2yuv_command[n] = "-n"; n++;
       lav2yuv_command[n] = temp3; n++;
      }
@@ -671,8 +652,8 @@ void mplex_convert()
 
    n = 0;
    mplex_command[n] = MPLEX_LOCATION; n++;
-   if (encoding.muxformat != 0) {
-      sprintf(temp1, "%i", encoding.muxformat);
+   if ((*pointenc).muxformat != 0) {
+      sprintf(temp1, "%i", (*pointenc).muxformat);
       mplex_command[n] = "-f"; n++;
       mplex_command[n] = temp1; n++;
    }
@@ -688,33 +669,6 @@ void mplex_convert()
    if (verbose)
      printf("\nExecuting : %s\n", command);
    show_executing(command);
-}
-
-/* set the VCD options */ 
-void do_vcd(GtkWidget *widget, gpointer data)
-{
-//  gtk_entry_set_text(GTK_ENTRY(combo_entry_audiobitrate),"224");
-//  gtk_entry_set_text(GTK_ENTRY(combo_entry_samplebitrate),"44100");
-//  gtk_entry_set_text(GTK_ENTRY(combo_entry_outputformat), "as is");
-/* *** Removed because if noting to scale yuvscaler prevents encoding *** */
-/*  gtk_entry_set_text(GTK_ENTRY(combo_entry_scaleroutput), "VCD");  */
-//  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_force_vcd),TRUE );
-//  gtk_entry_set_text(GTK_ENTRY(combo_entry_videobitrate),"1152");
-//  gtk_entry_set_text(GTK_ENTRY(combo_entry_searchradius),"16");
-//  gtk_entry_set_text(GTK_ENTRY(combo_entry_muxfmt),"standard VCD");
-}
-
-/* set the SVCD options */
-void do_svcd(GtkWidget *widget, gpointer data)
-{
-//  gtk_entry_set_text(GTK_ENTRY(combo_entry_audiobitrate),"224");
-//  gtk_entry_set_text(GTK_ENTRY(combo_entry_samplebitrate),"44100");
-//  gtk_entry_set_text(GTK_ENTRY(combo_entry_outputformat), "as is");
-//  gtk_entry_set_text(GTK_ENTRY(combo_entry_scaleroutput), "SVCD");
-//  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_force_vcd),TRUE );
-//  gtk_entry_set_text(GTK_ENTRY(combo_entry_videobitrate),"2500");
-//  gtk_entry_set_text(GTK_ENTRY(combo_entry_searchradius),"16");
-//  gtk_entry_set_text(GTK_ENTRY(combo_entry_muxfmt),"SVCD");
 }
 
 /* set the default options */
@@ -886,33 +840,6 @@ GtkWidget *input_select, *output_select;
 
 }
 
-/* Set the mpeg option */
-void mpeg_option (GtkWidget *widget, gpointer data)
-{
-char temp[3];
-int i;
-
-for (i = 0; i < 3; i++)
-  temp[i]='\0';
-
-  if (strcmp((char*)data,"-m 1") ==0 )
-    encoding.mpeglevel = 1;
-  else if (strcmp((char*)data,"-m 2") ==0 ) 
-    encoding.mpeglevel = 2;
-
-  sprintf(temp,"%c",enc_videofile[strlen(enc_videofile)-2]);
-
-  if ( (strcmp(temp , "1") == 0) || (strcmp(temp , "2") == 0) )
-    {
-      sprintf(temp,"%i",encoding.mpeglevel);
-      enc_videofile[strlen(enc_videofile)-2] = temp[0];
-      gtk_entry_set_text(GTK_ENTRY(video_entry), enc_videofile);
-    }
-
-  if (verbose)
-    printf("\n MPEG Level set to: %i \n",encoding.mpeglevel);
-}
-
 /* Ups, no comment, how could this happen, change me */
 void video_callback ( GtkWidget *widget, GtkWidget *video_entry )
 {
@@ -1027,7 +954,7 @@ void encode_all (GtkWidget *widget, gpointer data)
   audio_convert();   /* using go_all_the_way only one call is needed */
 }
 
-/* the start of the encoding and mplex */
+/* Create the irst line of the buttons shown */
 void create_buttons1 (GtkWidget *hbox1)
 {
   GtkWidget *mplex_only, *do_all;
@@ -1064,19 +991,22 @@ void create_buttons1 (GtkWidget *hbox1)
   gtk_widget_show(mplex_only);
 }
 
+/* the Second line with the Load an Save options */
 void create_buttons2 (GtkWidget *hbox1)
 {
   GtkWidget *create_vcd, *create_svcd, *set_defaults;
 
-  create_vcd = gtk_button_new_with_label ("Set Options for VCD");
-  gtk_signal_connect (GTK_OBJECT (create_vcd), "clicked",
-                      GTK_SIGNAL_FUNC (do_vcd), NULL);
+  create_vcd = gtk_button_new_with_label ("Out of order");
+/* This buttons will be reused *
+ * gtk_signal_connect (GTK_OBJECT (create_vcd), "clicked",
+ *                     GTK_SIGNAL_FUNC (do_vcd), NULL);  */
   gtk_box_pack_start (GTK_BOX (hbox1), create_vcd, TRUE, TRUE, 0);
   gtk_widget_show(create_vcd);
 
-  create_svcd = gtk_button_new_with_label ("Set Options for SVCD");
-  gtk_signal_connect (GTK_OBJECT (create_svcd), "clicked",
-                      GTK_SIGNAL_FUNC (do_svcd), NULL);
+  create_svcd = gtk_button_new_with_label ("Out of order");
+/* This buttons will be reused *
+ * gtk_signal_connect (GTK_OBJECT (create_svcd), "clicked",
+ *                     GTK_SIGNAL_FUNC (do_svcd), NULL);    */
   gtk_box_pack_start (GTK_BOX (hbox1), create_svcd, TRUE, TRUE, 0);
   gtk_widget_show(create_svcd);
 
@@ -1133,6 +1063,19 @@ GtkWidget *button_option;
 
 }
 
+void set_task(GtkWidget *widget, gpointer data)
+{
+
+  if (strcmp ((char*)data,"MPEG1") == 0)
+    pointenc = &encoding;
+  else if (strcmp ((char*)data,"MPEG2") == 0)
+    pointenc = &encoding2;
+
+  if (verbose)
+    printf(" Set encoding task to %s \n",(char*)data);
+    
+}
+
 /* Create the task layout, and the Option buttons */
 /* Also Work distribution */
 void create_task_layout(GtkWidget *table)
@@ -1146,45 +1089,43 @@ ency=2;
 
 
   button_mpeg1 = gtk_radio_button_new_with_label (NULL, "MPEG - 1");
-/* what I set here hast to bue used by the options screen to set the correct
- * struct. I will also need it for the encoding process.change:force_options*/
-//  gtk_signal_connect (GTK_OBJECT (button_mpeg1), "toggled",
-//                      GTK_SIGNAL_FUNC (force_options), (gpointer) "mpeg1");
+  gtk_signal_connect (GTK_OBJECT (button_mpeg1), "toggled",
+                      GTK_SIGNAL_FUNC (set_task), (gpointer) "MPEG1");
   gtk_table_attach_defaults (GTK_TABLE (table), button_mpeg1, 
                                     encx, encx+1, ency, ency+1);
   task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_mpeg1));
   gtk_widget_show (button_mpeg1);
-  create_option_button(task_group, table, "mpeg1", encx+1, ency);
+  create_option_button(task_group, table, "MPEG1", encx+1, ency);
   ency++;
 
   button_mpeg2 = gtk_radio_button_new_with_label(task_group, "MPEG - 2");
-//  gtk_signal_connect (GTK_OBJECT (button_mpeg2), "toggled",
-//                      GTK_SIGNAL_FUNC (force_options), (gpointer) "mpeg2");
+  gtk_signal_connect (GTK_OBJECT (button_mpeg2), "toggled",
+                      GTK_SIGNAL_FUNC (set_task), (gpointer) "MPEG2");
   gtk_table_attach_defaults (GTK_TABLE (table), button_mpeg2, 
                                     encx, encx+1, ency, ency+1);
   task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_mpeg2));
   gtk_widget_show (button_mpeg2);
-  create_option_button(task_group, table, "mpeg2", encx+1, ency);
+  create_option_button(task_group, table, "MPEG2", encx+1, ency);
   ency++;
 
   button_vcd = gtk_radio_button_new_with_label(task_group, " VCD (MPEG-1) ");
 //  gtk_signal_connect (GTK_OBJECT (button_vcd), "toggled",
-//                      GTK_SIGNAL_FUNC (force_options), (gpointer) "vcd");
+//                      GTK_SIGNAL_FUNC (force_options), (gpointer) "VCD");
   gtk_table_attach_defaults (GTK_TABLE (table), button_vcd, 
                                     encx, encx+1, ency, ency+1);
   task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_vcd));
   gtk_widget_show (button_vcd);
-  create_option_button(task_group, table, "vcd", encx+1, ency);
+  create_option_button(task_group, table, "VCD", encx+1, ency);
   ency++;
  
   button_svcd = gtk_radio_button_new_with_label(task_group, "SVCD (MPEG-2) ");
 //  gtk_signal_connect (GTK_OBJECT (button_svcd), "toggled",
-//                      GTK_SIGNAL_FUNC (force_options), (gpointer) "svcd");
+//                      GTK_SIGNAL_FUNC (force_options), (gpointer) "SVCD");
   gtk_table_attach_defaults (GTK_TABLE (table), button_svcd, 
                                     encx, encx+1, ency, ency+1);
   task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_svcd));
   gtk_widget_show (button_svcd);
-  create_option_button(task_group, table, "svcd", encx+1, ency);
+  create_option_button(task_group, table, "SVCD", encx+1, ency);
   ency++;
 
 }
@@ -1198,6 +1139,8 @@ int enc_x,enc_y;
 
   enc_x=0;
   enc_y=0; 
+  pointenc = &encoding; /* Needed for startup if the task is not selected */
+
   /* main box (with borders) */
   hbox = gtk_hbox_new(FALSE,0);
   vbox_main = gtk_vbox_new(FALSE,0);
@@ -1205,12 +1148,13 @@ int enc_x,enc_y;
   vbox = gtk_vbox_new(FALSE,5);
   hbox1 = gtk_hbox_new(FALSE,2);
 
-  /* buttons */
+  /* 1st line with the layout of the encoding options */
   hbox1 = gtk_hbox_new (TRUE, 20);
   create_buttons1 (hbox1);
   gtk_box_pack_start (GTK_BOX (vbox), hbox1, TRUE, TRUE, 0);
   gtk_widget_show (hbox1);
 
+  /* 2nd Line with the load and Save layout */
   hbox1 = gtk_hbox_new (TRUE, 20);
   create_buttons2 (hbox1);
   gtk_box_pack_start (GTK_BOX (vbox), hbox1, TRUE, TRUE, 0);
@@ -1229,27 +1173,24 @@ int enc_x,enc_y;
   hbox1 = gtk_hbox_new (FALSE, 0);
   create_in_out (hbox1,vbox);
 
+  /* and now the creation of the task layout */
   separator = gtk_hseparator_new ();
   gtk_box_pack_start (GTK_BOX (vbox), separator, FALSE, TRUE, 5);
   gtk_widget_show (separator);
-/* Till here most of the things could be reused */
 
-  /* the table containing sound/mplex layout */
   hbox1 = gtk_hbox_new (FALSE, 0);
   vbox1 = gtk_vbox_new (FALSE, 0);
 
-  /* the table containing the video layout */
+  /* the table containing the layout */
   table = gtk_table_new (Encselect_x, Encselect_y, FALSE);
 
-  /* video layout */
+  /* task layout */
   label = gtk_label_new ("Select the task:");
   gtk_misc_set_alignment (GTK_MISC (label), 0, 0);
   gtk_table_attach_defaults (GTK_TABLE (table), 
                               label, enc_x, enc_x+2, enc_y, enc_y+2);
   gtk_widget_show (label);
  
-/* Old remove when the other version works  
- * create_video (table);                   */
   create_task_layout(table);
   gtk_box_pack_start (GTK_BOX (hbox1), table, FALSE, FALSE, 0);
   gtk_widget_show(table);
