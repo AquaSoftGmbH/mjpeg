@@ -45,6 +45,7 @@ static int got_sigint = 0;
 static void usage (void) {
   fprintf(stdout, "Usage: lavpipe/lav2yuv... | yuvplay [options]\n"
 	  "  -s : display size, width x height\n"
+	  "  -t : set window title\n"
 	  "  -f : frame rate (overrides rate in stream header)\n"
           "  -c : don't sync on frames - plays at stream speed\n"
 	  "  -v : verbosity {0, 1, 2} [default: 1]\n"
@@ -88,8 +89,9 @@ int main(int argc, char *argv[])
    int frame_width;
    int frame_height;
    int wait_for_sync = 1;
+   char *window_title = NULL;
 
-   while ((n = getopt(argc, argv, "hs:f:cv:")) != EOF) {
+   while ((n = getopt(argc, argv, "hs:t:f:cv:")) != EOF) {
       switch (n) {
          case 'c':
             wait_for_sync = 0;
@@ -100,7 +102,9 @@ int main(int argc, char *argv[])
                exit(1);
             }
             break;
-
+	  case 't':
+	    window_title = optarg;
+	    break;
 	  case 'f':
 		  frame_rate = atof(optarg);
 		  if( frame_rate <= 0.0 || frame_rate > 200.0 )
@@ -166,6 +170,9 @@ int main(int argc, char *argv[])
       mjpeg_error("Couldn't initialize SDL: %s", SDL_GetError());
       exit(1);
    }
+
+   /* set window title */
+   SDL_WM_SetCaption(window_title, NULL);
 
    /* yuv params */
    yuv[0] = malloc(frame_width * frame_height * sizeof(unsigned char));
