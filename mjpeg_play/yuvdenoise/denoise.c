@@ -284,6 +284,20 @@ move_block (int x, int y)
  * either...                                                                 *
  *****************************************************************************/
 
+static void average_frame_helper(uint8_t *dst, uint8_t *src, int wh,int delay)
+{
+    int c, tY=delay, tY1=delay+1;
+    const unsigned fmax=65536;
+    int m1=tY*fmax/tY1, m2=fmax/tY1;
+
+    for (c = 0; c < wh; c++)
+    {
+        *dst = ((unsigned)( *dst*m1 + *src*m2 + fmax/2 ))/fmax;
+        dst++;
+        src++;
+    }
+}
+
 void
 average_frame (void)
 {
@@ -294,12 +308,8 @@ average_frame (void)
   register uint8_t * dst_Cr;
   register uint8_t * dst_Cb;
   int tY =denoiser.delayY;
-  int tY1=denoiser.delayY+1;
   int tCr =denoiser.delayCr;
-  int tCr1=denoiser.delayCr+1;
   int tCb =denoiser.delayCb;
-  int tCb1=denoiser.delayCb+1;
-  int c;
   
   src_Yy=denoiser.frame.ref[Yy]+BUF_OFF*W;
   src_Cr=denoiser.frame.ref[Cr]+BUF_OFF/SS_V*W2;
@@ -309,29 +319,10 @@ average_frame (void)
   dst_Cr=denoiser.frame.tmp[Cr]+BUF_OFF/SS_V*W2;
   dst_Cb=denoiser.frame.tmp[Cb]+BUF_OFF/SS_V*W2;
 
-  for (c = 0; c < (W*H); c++)
-  {
-    /* *(dst_Yy) = ( *(dst_Yy) * tY + *(src_Yy))/(tY1); */
-    *(dst_Yy) = ( *(dst_Yy) * tY + *(src_Yy) + tY1/2)/(tY1);
-    dst_Yy++;
-    src_Yy++;
-  }      
-  
-  for (c = 0; c < (W2*H2); c++)
-  {
-    /* *(dst_Cr) = ( *(dst_Cr) * tCr + *(src_Cr) )/(tCr1); */
-    *(dst_Cr) = ( *(dst_Cr) * tCr + *(src_Cr) + tCr1/2)/(tCr1);
-    dst_Cr++;
-    src_Cr++;
-  }
-  
-  for (c = 0; c < (W2*H2); c++)
-  {
-    /* *(dst_Cb) = ( *(dst_Cb) * tCb + *(src_Cb) )/(tCb1); */
-    *(dst_Cb) = ( *(dst_Cb) * tCb + *(src_Cb) + tCb1/2)/(tCb1);
-    dst_Cb++;
-    src_Cb++;
-  }
+
+  average_frame_helper(dst_Yy, src_Yy, W*H, tY);
+  average_frame_helper(dst_Cr, src_Cr, W2*H2, tCr);
+  average_frame_helper(dst_Cb, src_Cb, W2*H2, tCb);
 }
 
 
@@ -396,17 +387,80 @@ difference_frame (void)
     }
 }
 
+static void make_fval(int fmax,int *fval,int dred,int ddiv)
+{
+    int i, f;
+
+    for( i=0; i<256; i++ ) {
+        f = (fmax*(i-dred))/ddiv;
+        f = (f>fmax)? fmax:f;
+        f = (f<0   )?    0:f;
+
+        fval[i]=f;
+    }
+}
+
+static void correct_frame2_helper(uint8_t *dst, uint8_t *src, int wh, int dval)
+{
+    int c, fval[256];
+    const unsigned fmax=65536;
+    
+    make_fval(fmax,fval,dval,dval);
+
+    for (c = 0; c <wh; c++)
+    {
+        int q, f1, f2;
+
+        q = abs(*src-*dst);
+
+        if (q>dval)
+        {
+            f1 = fval[q];
+            f2 = fmax-f1;
+        
+            *(dst)=((unsigned)(*(src)*f1 + *(dst)*f2 + (fmax+1)/2))/fmax;
+        }
+        
+        dst++;
+        src++;
+    }
+}
+
+static void correct_frame2_chroma_helper(uint8_t *dst, uint8_t *src, int wh, int w2, int dval)
+{
+    int c, fval[256];
+    const unsigned fmax=65536, rfmax=fmax*3;
+    
+    make_fval(fmax,fval,dval,dval);
+
+    for (c = 0; c <wh; c++)
+    {
+        int q, f1, f2;
+
+        q = abs(*src-*dst);
+
+        if (q>dval)
+        {
+            unsigned int v;
+
+            f1 = fval[q];
+            f2 = fmax-f1;
+            
+            v=(*(src) + *(src+w2) + *(src-w2))*f1 +  
+                (*(dst) + *(dst+w2) + *(dst-w2))*f2 + rfmax/2;
+            *(dst)=v/rfmax;
+        }
+        
+        dst++;
+        src++;
+    }
+}
+
 void
 correct_frame2 (void)
 {
   uint8_t * src;
   uint8_t * dst;
-  uint8_t * dif;
-  int q;
-  int c;
-  //register int m;
-  int f1=0;
-  int f2=0;
   
   /* Only correct Y portion... Cr and Cb remain uncorrected and have to
    * fade to the right value in about 2..3 frames
@@ -416,34 +470,14 @@ correct_frame2 (void)
   
   src=denoiser.frame.ref[Yy]+W*BUF_OFF;
   dst=denoiser.frame.tmp[Yy]+W*BUF_OFF;
-  dif=denoiser.frame.dif2[Yy]+W*BUF_OFF;
 
   if (denoiser.thresholdY>0)
     {
-      for (c = 0; c < (W*H); c++)
-	{
-	  q = abs(*(src)-*(dst));
-	  
-	  f1 = (255*(q-denoiser.thresholdY))/denoiser.thresholdY;
-	  f1 = (f1>255)? 255:f1;
-	  f1 = (f1<0)?     0:f1;
-	  f2 = 255-f1;
-	  
-	  if (q>denoiser.thresholdY)
-	    {
-	      *(dst)=(*(dst)*f2 + *(src)*f1 + 127)/255;
-	    }
-	  
-	  dst++;
-	  src++;
-	}
+        correct_frame2_helper(dst, src, W*H, denoiser.thresholdY);
     }
   else
     {
-      for (c = 0; c < (W*H); c++)
-	{
-	  *(dst++)=*(src++);
-	}
+        memcpy(dst, src, W*H);
     }
 
   src=denoiser.frame.ref[Cr]+W2*BUF_OFF/SS_V;
@@ -451,78 +485,57 @@ correct_frame2 (void)
 
   if (denoiser.thresholdCr>0)
     {
-      for (c = 0; c < (W2*H2); c++)
-	{
-	  q = abs(*(src) - *(dst));
-	  
-	  f1 = (255*(q-denoiser.thresholdCr))/denoiser.thresholdCr;
-	  f1 = (f1>255)? 255:f1;
-	  f1 = (f1<0)?     0:f1;
-	  f2 = 255-f1;
-	  
-	  if (q>denoiser.thresholdCr)
-	    {
-	      if(c>W2 && c<(W2*H2-W2) && denoiser.chroma_flicker==1)
-		{
-		  *(dst)=( (*(src) + *(src+W2) + *(src-W2))*f1/3 +  
-			   (*(dst) + *(dst+W2) + *(dst-W2))*f2/3 + 127 )/255;
-		}
-	      else
-		{
-		  *(dst)=(*(dst)*f2 + *(src)*f1 + 127)/255;
-		}
-	    }
-	  
-	  dst++;
-	  src++;
-	}
+        if( denoiser.chroma_flicker==1 ) {
+            correct_frame2_helper(dst, src, W2, denoiser.thresholdCr);
+            correct_frame2_chroma_helper(dst+W2, src+W2, W2*(H2-2), W2, denoiser.thresholdCr);
+            correct_frame2_helper(dst+W2*(H2-1), src+W2*(H2-1), W2, denoiser.thresholdCr);
+        } else {
+            correct_frame2_helper(dst, src, W2*H2, denoiser.thresholdCr);
+        }
     }
   else
     {
-      for (c = 0; c < (W2*H2); c++)
-	{
-	  *(dst++)=*(src++);
-	}
+        memcpy(dst, src, W2*H2);
     }
-
 
   src=denoiser.frame.ref[Cb]+W2*BUF_OFF/SS_V;
   dst=denoiser.frame.tmp[Cb]+W2*BUF_OFF/SS_V;
 
   if (denoiser.thresholdCb>0)
     {
-      for (c = 0; c < (W2*H2); c++)
-	{
-	  q = abs(*(src) - *(dst));
-	  
-	  f1 = (255*(q-denoiser.thresholdCb))/denoiser.thresholdCb;
-	  f1 = (f1>255)? 255:f1;
-	  f1 = (f1<0)?     0:f1;
-	  f2 = 255-f1;
-	  
-	  if (q>denoiser.thresholdCb)
-	    {
-	      if(c>W2 && c<(W2*H2-W2) && denoiser.chroma_flicker==1)
-		{
-		  *(dst)=( (*(src) + *(src+W2) + *(src-W2))*f1/3 +  
-			   (*(dst) + *(dst+W2) + *(dst-W2))*f2/3 + 127 )/255;
-		}
-	      else
-		{
-		  *(dst)=(*(dst)*f2 + *(src)*f1 + 127)/255;
-		}
-	    }
-	  
-	  dst++;
-	  src++;
-	}
+        if( denoiser.chroma_flicker==1 ) {
+            correct_frame2_helper(dst, src, W2, denoiser.thresholdCb);
+            correct_frame2_chroma_helper(dst+W2, src+W2, W2*(H2-2), W2, denoiser.thresholdCb);
+            correct_frame2_helper(dst+W2*(H2-1), src+W2*(H2-1), W2, denoiser.thresholdCb);
+        } else {
+            correct_frame2_helper(dst, src, W2*H2, denoiser.thresholdCb);
+        }
     }
   else
     {
-      for (c = 0; c < (W2*H2); c++)
-	{
-	  *(dst++)=*(src++);
-	}
+        memcpy(dst, src, W2*H2);
+    }
+}
+
+static void denoise_frame_pass2_helper(uint8_t *dst,uint8_t *src,int wh,int dred,int ddiv)
+{
+    int i, fval[256];
+    const unsigned fmax=65536;
+
+    make_fval(fmax,fval,dred,ddiv);
+
+    for( i=0; i<wh; i++ ) {
+        int d, f1, f2;
+
+        *dst = ( *dst * 2 + *src + 1)/3;
+        d = abs(*dst-*src);
+        
+        f1 = fval[d];
+        f2 = fmax-f1;
+        *dst =((unsigned)( *src*f1 +*dst*f2 + fmax/2 ))/fmax;
+        
+        dst++;
+        src++;
     }
 }
 
@@ -531,10 +544,6 @@ denoise_frame_pass2 (void)
 {
   uint8_t * src[3];
   uint8_t * dst[3];
-  register int d;
-  register int c;
-  int f1=0;
-  int f2=0;
 
   src[Yy]=denoiser.frame.tmp[Yy]+BUF_OFF*W;
   src[Cr]=denoiser.frame.tmp[Cr]+BUF_OFF/SS_V*W2;
@@ -549,63 +558,18 @@ denoise_frame_pass2 (void)
   if (denoiser.pp_threshold>0)
     {
       /* Y */
-      for (c = 0; c < (W*H); c++)
-	{
-	  *(dst[Yy]) = ( *(dst[Yy]) * 2 + *(src[Yy]) + 1 )/3;
-	  
-	  d = abs(*(dst[Yy])-*(src[Yy]));
-	  
-	  /* f1 = (255*(d-denoiser.pp_threshold))/denoiser.pp_threshold; */
-	  f1 = (255*d)/denoiser.pp_threshold;
-	  f1 = (f1>255)? 255:f1;
-	  f1 = (f1<0)?     0:f1;
-	  f2 = 255-f1;
-	  
-	  *(dst[Yy]) =( *(src[Yy])*f1 +*(dst[Yy])*f2 + 127 )/255;
-	  
-	  dst[Yy]++;
-	  src[Yy]++;
-	}
+
+        denoise_frame_pass2_helper( dst[Yy], src[Yy], W*H, 0, denoiser.pp_threshold );
       
       /* Cr and Cb */
-      for (c = 0; c < (W2*H2); c++)
-	{
-	  *(dst[Cr]) = ( *(dst[Cr]) * 2 + *(src[Cr]) + 1)/3;      
-	  d = abs(*(dst[Cr])-*(src[Cr]));
-    
-	  f1 = (255*(d-denoiser.pp_threshold))/denoiser.pp_threshold;
-	  f1 = (f1>255)? 255:f1;
-	  f1 = (f1<0)?     0:f1;
-	  f2 = 255-f1;
-	  *(dst[Cr]) =( *(src[Cr])*f1 +*(dst[Cr])*f2 + 127 )/255;
-	  
-	  
-	  *(dst[Cb]) = ( *(dst[Cb]) * 2 + *(src[Cb]) + 1)/3;      
-	  d = abs(*(dst[Cb])-*(src[Cb]));
-	  
-	  f1 = (255*(d-denoiser.pp_threshold))/denoiser.pp_threshold;
-	  f1 = (f1>255)? 255:f1;
-	  f1 = (f1<0)?     0:f1;
-	  f2 = 255-f1;
-	  *(dst[Cb]) =( *(src[Cb])*f1 +*(dst[Cb])*f2 + 127 )/255;
-	  
-	  dst[Cr]++;
-	  src[Cr]++;
-	  dst[Cb]++;
-	  src[Cb]++;
-	}
+        denoise_frame_pass2_helper( dst[Cr], src[Cr], W2*H2, denoiser.pp_threshold, denoiser.pp_threshold );
+        denoise_frame_pass2_helper( dst[Cb], src[Cb], W2*H2, denoiser.pp_threshold, denoiser.pp_threshold );
     }
   else
     {
-      for (c = 0; c < (W*H); c++)
-	{
-	  *(dst[Yy]++) = *(src[Yy]++);
-	}
-      for (c = 0; c < (W2*H2); c++)
-	{
-	  *(dst[Cr]++) = *(src[Cr]++);
-	  *(dst[Cb]++) = *(src[Cb]++);
-	}
+        memcpy( dst[Yy], src[Yy], W*H );
+        memcpy( dst[Cr], src[Cr], W2*H2 );
+        memcpy( dst[Cb], src[Cb], W2*H2 );
     }
 }
 
