@@ -88,7 +88,7 @@ static void usage(char *prog)
 	  "usage: %s [ options ]\n"
 	  "\n"
 	  "where options are ([] shows the defaults):\n"
-	  "  -l num        loop 1=forever, n >= 2 n-times        \n"
+	  "  -l num        loop -1=forever, n >= 1 n-times       \n"
 	  "  -v num        verbosity (0,1,2)                  [1]\n"
 	  "  -b framenum   starting frame number              [0]\n"
 	  "  -f framerate  framerate for output stream (fps)     \n"
@@ -142,7 +142,7 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
   param->interlace = Y4M_UNKNOWN;
   param->interleave = -1;
   param->verbose = 1;
-  param->loop = 0;
+  param->loop = 1;
   param->rescale_YUV = 1;
 
   /* parse options */
@@ -195,8 +195,8 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
       break;     
     case 'l':
       param->loop = atoi(optarg);
-      if  (param->loop == 0) 
-	mjpeg_error_exit1( "-l option requires a number greater than 0");    
+      if  (param->loop == 0 || param->loop < -1 ) 
+	mjpeg_error_exit1( "-l option requires a number greater than 0 or -1 to loop forever ");    
       break;     
     case 'h':
     default:
@@ -459,10 +459,10 @@ static int generate_YUV4MPEG(parameters_t *param)
    
        y4m_write_frame(STDOUT_FILENO, &streaminfo, &frameinfo, yuv);
      }
-     if (param->loop != 1)
+     if (param->loop != -1)
        loops--;
  
-  } while(loops >=1 );
+  } while( loops >=1 || loops == -1 );
   
   y4m_fini_stream_info(&streaminfo);
   y4m_fini_frame_info(&frameinfo);
