@@ -516,7 +516,6 @@ docs/Makefile
 lavtools/Makefile
 yuvdenoise/Makefile
 yuvfilters/Makefile
-mjpeg/Makefile
 mpeg2enc/Makefile
 aenc/Makefile
 mplex/Makefile
