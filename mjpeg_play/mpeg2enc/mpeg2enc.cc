@@ -581,6 +581,8 @@ void MPEG2EncCmdLineOptions::Usage()
 "    coefficients are included.  Reasonable values -40 to 40\n"
 "--b-per-refframe| -R 0|1|2\n"
 "    The number of B frames to generate between each I/P frame\n"
+"--cbr|-u\n"
+"    For MPEG-2 force the use of (suboptimal) ConstantBitRate (CBR) encoding\n"
 "--help|-?\n"
 "    Print this lot out!\n"
 	);
@@ -633,7 +635,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
     int nerr = 0;
 
     static const char	short_options[]=
-        "m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:X:D:g:G:v:V:F:N:tpdsZHOcCPK:E:R:";
+        "m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:X:D:g:G:v:V:F:N:tupdsZHOcCPK:E:R:";
 
 #ifdef HAVE_GETOPT_LONG
     static struct option long_options[]={
@@ -675,6 +677,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
         { "custom-quant-matrices", 1, 0, 'K'},
         { "unit-coeff-elim",   1, 0, 'E'},
         { "b-per-refframe",           1, 0, 'R' },
+	{ "cbr",               1, 0, 'u'},
         { "help",              0, 0, '?' },
         { 0,                   0, 0, 0 }
     };
@@ -894,6 +897,11 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 		case 'K':
 			ParseCustomOption(optarg);
 			break;
+
+	case 'u':
+		force_cbr = 1;
+		break;
+
         case 'E':
             unit_coeff_elim = atoi(optarg);
             if (unit_coeff_elim < -40 || unit_coeff_elim > 40)

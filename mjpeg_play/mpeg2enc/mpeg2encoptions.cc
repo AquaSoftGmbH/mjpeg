@@ -67,7 +67,8 @@ MPEG2EncOptions::MPEG2EncOptions()
     mpeg2_dc_prec = 1;
     ignore_constraints = 0;
     unit_coeff_elim = 0;
-	verbose = 1;
+    force_cbr = 0;
+    verbose = 1;
     hack_svcd_hds_bug = 1;
     hack_altscan_bug = 0;
 /* dual prime Disabled by default. --dualprime-mpeg2 to enable (set to 0) */

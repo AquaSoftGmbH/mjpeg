@@ -67,6 +67,7 @@ mpeg2enc \- MPEG-1/2 encoder
 .RB [ --no-altscan-mpeg2 ]
 .RB [ --no-dualprime-mpeg2 ]
 .RB [ --dualprime-mpeg2 ]
+.RB [ -u | --cbr ]
 .RB [ -? | --help ]
 .B -o|--output
 .I filename
@@ -596,7 +597,11 @@ This flag allows this rate to be specified in K bits/sec.
 
 A good rule of thumb is to use the total rate of all the other streams
 plus 1% of the total rate including video.
-
+.PP
+.Br -u|--cbr
+.PP
+Force the use of Constant Bit Rate encoding.  Less than optimal of course
+but some folks insist on it.
 .SH "SSE, 3D-Now!, MMX"
 mpeg2enc makes extensive use of these SIMD instruction set extension
 on x86 family CPU's.  The routines used are determined dynamically at
