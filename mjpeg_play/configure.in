@@ -69,7 +69,7 @@ dnl CCAS=nasm
 dnl CCASFLAGS=
 AM_PROG_AS
 
-AC_CHECK_HEADERS(fenv.h stdint.h inttypes.h sys/types.h getopt.h alloca.h sys/soundcard.h)
+AC_CHECK_HEADERS(fenv.h stdint.h inttypes.h sys/types.h getopt.h alloca.h sys/soundcard.h malloc.h)
 
 dnl sizeof PRId64 etc...
 AC_CHECK_SIZEOF(int)
