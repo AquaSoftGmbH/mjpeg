@@ -1,3 +1,13 @@
+Updates from 0.1.5 to current
+-----------------------------
+
+* Changed the saving of the encoding options. 
+* Updated som options in the encoding part because they were chnaged in the 
+  mjpeg tools, some shown options do not work in every version !!!
+* Added the yuv2lav encoding part (a better name would be fine too
+* Added the aviable interlacing correction options to the input field
+* A proper error handling for missing/not aviable apllications was added
+
 Updates from 0.1.4 to 0.1.5
 ---------------------------
 * The encoding section has changed a lot, added the support for the 1.5.x 

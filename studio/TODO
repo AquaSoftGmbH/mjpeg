@@ -1,8 +1,5 @@
 Reported bugs:
 ==============
-* Encoding syntax style (and probably other encoding options) are
-    not saved on exit? This should probably be changed to behave
-    just like the rest (save-on-exit).
 
 Short term:
 ===========
@@ -33,16 +30,15 @@ Bernhards Problems:
 ===================
 * never ending: add more options
 * split it to more files ??
-* add support for yuvdenoise, and mybe yuvmedianfilter
-* make the imput fields more secure
+* add support for yuvmedianfilter
+* make the input fields more secure
 * make test for the input and output files
 * remove beginning mistakes
 * make some kind of batch productions 
 * write a description for the thing. 
 * Long term: make it look better
 * Long term: make the task labes editable
-* Long term: add the divx output
-* Long term: add lavtrans 
+* Long term: add lavtrans (works for video already with yuv2lav)
 * Long term: support for MPEG audio Layer3 
 * Long term: add jpeg2yuv as source
-* Very long therm: add the transcoding stuff (maybe)
+* Very long term: add the transcoding stuff (maybe)
