@@ -716,7 +716,7 @@ void do_audio()
 
    tmp = audio_rate;
    ret = ioctl(fd, SNDCTL_DSP_SPEED, &tmp);
-   if(ret<0 || tmp!=audio_rate) system_error("setting sound rate",0);
+   if(ret<0 || abs(tmp-audio_rate) > 5) system_error("setting sound rate",0);
 
 /* Calculate number of bytes corresponding to TIME_STAMP_TOL */
 
