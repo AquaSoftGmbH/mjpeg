@@ -105,8 +105,7 @@ struct encodingoptions tempenco;
 struct encodingoptions *point;    /* points to the encoding struct to change */
 int changed_streamdatarate;  /* shows if the rate was updated into the Glist */
 
-GtkWidget *combo_entry_active, *combo_entry_scaleroutput;
-GtkWidget *combo_entry_scalermode;
+GtkWidget *combo_entry_scaleroutput, *combo_entry_scalermode;
 GtkWidget *combo_entry_samples, *combo_entry_audiobitrate;
 GtkWidget *combo_entry_samplebitrate, *button_force_stereo, *button_force_mono;
 GtkWidget *button_force_vcd, *combo_entry_searchradius, *combo_entry_muxfmt;
@@ -1262,11 +1261,10 @@ void input_select (GtkWidget *widget, gpointer data)
 for (i= 1; i < 200; i++)
    command[i]='\0'; 
 
-if (strcmp((char*)data,"inputwindow") == 0)
+if (strcmp((char*)data,"activewindow") == 0)
   {
    if ((fp = fopen(enc_inputfile, "r")) == NULL)
      {
-        fclose(fp);
         gtk_show_text_window(STUDIO_ERROR,"The editlistfile you specified does not exist. Choose a valid file in the Input file selection");
         if (verbose)
           printf("\n File does not exist \n");
@@ -1411,6 +1409,7 @@ void create_video_options_layout (GtkWidget *table, int *tx, int *ty)
 {
 GtkWidget *label1, *combo_active, *combo_interlacecorr;
 GList *input_active_size = NULL;
+GtkWidget *button_input;
 
    input_active_size = g_list_append (input_active_size, "as is");
    input_active_size = g_list_append (input_active_size, "348x278+2+2");
@@ -1429,10 +1428,12 @@ if (!interlace_correct)
    interlace_correct = g_list_append (interlace_correct, "not interlaced");
   }
 
-  label1 = gtk_label_new ("  Set active window: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
-  gtk_widget_show (label1);
+//  label1 = gtk_label_new ("  Set active window: ");
+  button_input = gtk_button_new_with_label(" Set active window: ");
+  gtk_signal_connect(GTK_OBJECT(button_input), "clicked",
+                     GTK_SIGNAL_FUNC(input_select), "activewindow");
+  gtk_table_attach_defaults (GTK_TABLE(table),button_input,*tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (button_input);
 
   combo_active = gtk_combo_new();
   gtk_combo_set_popdown_strings (GTK_COMBO (combo_active), input_active_size);
@@ -1470,7 +1471,6 @@ if (!interlace_correct)
 void create_yuvscaler_layout (GtkWidget *table, int *tx, int *ty)
 {
 GtkWidget *label1, *combo_scaler_input,*combo_scaler_output, *combo_scaler_mode;
-GtkWidget *button_input;
 GList *input_window = NULL;
 GList *yuvscalermode = NULL;
 GList *output_window = NULL;
@@ -1493,12 +1493,14 @@ GList *output_window = NULL;
   output_window = g_list_append (output_window, "SVCD");
   output_window = g_list_append (output_window, "352x240");
 
-  button_input = gtk_button_new_with_label(" Input window: ");
-  gtk_signal_connect(GTK_OBJECT(button_input), "clicked",
-                     GTK_SIGNAL_FUNC(input_select), "inputwindow");
+  label1 = gtk_label_new("  Input window: ");
+// This is the next step setting the input window size 
+//  button_input = gtk_button_new_with_label(" Input window: ");
+//  gtk_signal_connect(GTK_OBJECT(button_input), "clicked",
+//                     GTK_SIGNAL_FUNC(input_select), "inputwindow");
   gtk_table_attach_defaults (GTK_TABLE (table),
-                             button_input, *tx,*tx+1,*ty,*ty+1);
-  gtk_widget_show (button_input);
+                             label1, *tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (label1);
 
 
   combo_scaler_input = gtk_combo_new();

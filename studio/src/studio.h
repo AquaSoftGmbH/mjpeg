@@ -186,6 +186,7 @@ GtkWidget *create_lavencode_layout(void);
 
 /* lavencode_mpeg.c */
 void open_mpeg_window(GtkWidget *widget, gpointer data);
+GtkWidget *combo_entry_active;
 GtkWidget *combo_entry_scalerinput;
 
 /* lavencode_distributed.c */
