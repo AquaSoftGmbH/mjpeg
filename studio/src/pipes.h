@@ -21,6 +21,11 @@
 #define NUM 17          /* total number of pipes */
 #define LAV2YUV_DATA 18 /* a special case for lav2yuv-data-processing */
 
+/* Here we define some nice names for the encoding */ 
+#define STUDIO_ENC_FORMAT_MPEG 1 /* use mpeg2enc */
+#define STUDIO_ENC_FORMAT_DIVX  2 /* use yuv2divx */
+#define STUDIO_ENC_FORMAT_MJPEG 3 /* for yuv2lav  */
+
 /* Shared functions for pipes.c */
 void start_pipe_command(char *command[], int number);
 void close_pipe(int number);
