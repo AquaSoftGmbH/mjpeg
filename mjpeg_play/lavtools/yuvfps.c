@@ -151,7 +151,7 @@ int main (int argc, char *argv[])
   y4m_stream_info_t in_streaminfo, out_streaminfo ;
   y4m_ratio_t frame_rate, src_frame_rate ;
 
-  const static char *legal_flags = "r:s:c:v:h";
+  const static char *legal_flags = "r:s:cv:h";
   int c ;
 
   while ((c = getopt (argc, argv, legal_flags)) != -1) {
