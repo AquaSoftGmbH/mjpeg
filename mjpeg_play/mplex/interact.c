@@ -24,7 +24,7 @@ static void Usage(char *str)
 	fprintf( stderr, " -a num  Specify an audio timestamp offset in mSec \n" );
 	fprintf( stderr, " -s num  Specify sector size in bytes (default: 2324) [256..16384]\n");
 	fprintf( stderr, " -f fmt  Set pre-defined mux format.\n");
-	fprintf( stderr, "         [1 = Auto MPEG1, 2 = VCD, 3 = Auto MPEG2, 4 = SVCD, 5 = DVD]\n");
+	fprintf( stderr, "         [0 = Auto MPEG1, 1 = VCD, 2 = Auto MPEG2, 3 = SVCD, 4 = DVD]\n");
 	fprintf( stderr, "         (N.b only 1 and 2 currently implemented!*)\n" ); 
 	exit (1);
 }
