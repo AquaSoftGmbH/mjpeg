@@ -69,15 +69,15 @@ int main (int argc, char* argv[])
 
 		if (video_file) {
 			videoStrm.Init( video_file);
-			videoStrm.SetMuxParams( video_buffer_size );
 		}
     
 		if (audio_file) {
 			audioStrm.Init (audio_file);
-			audioStrm.SetMuxParams( audio_buffer_size );
 		}
 
-		ostrm.OutputMultiplex(videoStrm,  audioStrm, multi_file);
+		ostrm.OutputMultiplex( video_file ? &videoStrm : NULL, 
+							   audio_file ? &audioStrm : NULL, 
+							   multi_file);
 		videoStrm.Close();
 		audioStrm.Close();
 	}

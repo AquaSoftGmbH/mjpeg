@@ -9,26 +9,24 @@
 #include "inputstrm.hh"
 #include "outputstream.hh"
 
-
-void 
-MuxStream::SetMuxParams( unsigned int buf_size )
+MuxStream::MuxStream( const int strm_id, 
+					  const unsigned int _buf_scale,
+					  const unsigned int buf_size,
+					  const unsigned int _zero_stuffing ) : 
+	stream_id(strm_id), 
+	nsec(0),
+	zero_stuffing( _zero_stuffing ),
+	buffer_scale( _buf_scale ),
+	buffer_size( buf_size )
 {
 	bufmodel.init( buf_size );
-	buffer_size = buf_size;
-	init = true;
 }
 
 
-void 
-MuxStream::SetSyncOffset( clockticks sync_offset )
-{
-	timestamp_delay = sync_offset;
-}
 
 unsigned int 
 MuxStream::BufferSizeCode()
 {
-	assert(init);
 	if( buffer_scale == 1 )
 		return buffer_size / 1024;
 	else if( buffer_scale == 0 )
@@ -41,12 +39,17 @@ MuxStream::BufferSizeCode()
 
 ElementaryStream::ElementaryStream( OutputStream &into, const int stream_id,
 									const unsigned int zero_stuffing,
-									const int buf_scale,
-									bool bufs_in_first, bool always_bufs ) : 
-	MuxStream( stream_id, buf_scale, zero_stuffing ),
+									const unsigned int buf_scale,
+									const unsigned int buf_size,
+									bool bufs_in_first, bool always_bufs,
+									stream_kind _kind) : 
+	MuxStream( stream_id,  buf_scale, buf_size, zero_stuffing ),
 	muxinto( into ),
 	buffers_in_header( bufs_in_first ),
-	always_buffers_in_header( always_bufs )
+	always_buffers_in_header( always_bufs ),
+	kind(_kind),
+	new_au_next_sec(true)
+
 {
 }
 
@@ -69,10 +72,9 @@ ElementaryStream::NextAU()
 
 
 Aunit *
-ElementaryStream::Lookahead( unsigned int i )
+ElementaryStream::Lookahead( )
 {
-	assert( i < FRAME_CHUNK-1 );
-	return aunits.lookahead(i);
+	return aunits.lookahead();
 }
 
 unsigned int 
@@ -94,12 +96,14 @@ ElementaryStream::ReadStrm(uint8_t *dst, unsigned int to_read)
 
 bool ElementaryStream::MuxPossible()
 {
-	return (au_unsent > 0 && bufmodel.space() > max_packet_data);
+	return (!RunOutComplete() &&
+			bufmodel.space() > max_packet_data);
 }
+
 
 clockticks ElementaryStream::RequiredDTS()
 {
-	return au->PTS+timestamp_delay;
+	return au->DTS+timestamp_delay;
 }
 
 void ElementaryStream::AllDemuxed()
@@ -122,6 +126,12 @@ void ElementaryStream::SetTSOffset( clockticks baseTS )
 	SetSyncOffset( baseTS - au->PTS );
 }
 
+void 
+ElementaryStream::SetSyncOffset( clockticks sync_offset )
+{
+	timestamp_delay = sync_offset;
+}
+
 Aunit *ElementaryStream::next()
 {
 	if( !eoscan && aunits.current()+FRAME_CHUNK > last_buffered_AU  )
@@ -137,10 +147,12 @@ Aunit *ElementaryStream::next()
 VideoStream::VideoStream(OutputStream &into, const int stream_num)
 	:
 	ElementaryStream(into, VIDEO_STR_0+stream_num,
-					 0,
-					 1,
+					 0,  // Zero stuffing
+					 1,  // Buffer scale
+					 into.video_buffer_size,
 					 into.buffers_in_video,
-					 into.always_buffers_in_video
+					 into.always_buffers_in_video,
+					 ElementaryStream::video
 					 ),
 	num_sequence(0),
 	num_seq_end(0),
@@ -148,6 +160,8 @@ VideoStream::VideoStream(OutputStream &into, const int stream_num)
 	num_groups(0),
 	dtspts_for_all_au( into.dtspts_for_all_vau )
 {
+	mjpeg_debug( "SETTING video buffer to %d\n", into.video_buffer_size );
+
 	prev_offset=0;
     decoding_order=0;
 	fields_presented=0;
@@ -167,7 +181,6 @@ VideoStream::VideoStream(OutputStream &into, const int stream_num)
 void VideoStream::InitAUbuffer()
 {
 	int i;
-	mjpeg_info( "aunits.cur_wr = %d\n", aunits.cur_wr );
 	for( i = 0; i < aunits.BUF_SIZE; ++i )
 		aunits.init( new VAunit );
 }
@@ -175,13 +188,16 @@ void VideoStream::InitAUbuffer()
 AudioStream::AudioStream(OutputStream &into, const int stream_num) : 
 	ElementaryStream( into, AUDIO_STR_0 + stream_num, 
 					  into.vcd_zero_stuffing,
-					  0,
+					  0,  // Buffer scale
+					  into.audio_buffer_size,
 					  into.buffers_in_audio,
-					  into.always_buffers_in_audio
+					  into.always_buffers_in_audio,
+					  ElementaryStream::audio
 		),
 	num_syncword(0)
 {
-	mjpeg_info( "SETTING zero stuff to %d\n", into.vcd_zero_stuffing );
+	mjpeg_debug( "SETTING zero stuff to %d\n", into.vcd_zero_stuffing );
+	mjpeg_debug( "SETTING audio buffer to %d\n", into.audio_buffer_size );
 
 	for( int i = 0; i <2 ; ++i )
 		num_frames[i] = size_frames[i] = 0;

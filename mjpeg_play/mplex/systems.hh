@@ -74,10 +74,7 @@ public:
 							int	     CSPS,
 							bool	 audio_lock,
 							bool	 video_lock,
-							int video_bound,
-							int audio_bound,
-							MuxStream      &strm1,	// Usually 1 is audio
-							MuxStream      &strm2	// Usually 2 is video
+							vector<ElementaryStream *> &streams
 		);
 
 	void Close() { fclose(strm); }

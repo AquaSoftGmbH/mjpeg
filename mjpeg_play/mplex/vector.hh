@@ -41,14 +41,9 @@ public:
 		}
 	}
 
-	inline Aunit *lookahead( int lookahead )
+	inline Aunit *lookahead( )
 	{
-		if( lookahead >= size )
-		{
-			return 0;
-		}
-		else
-			return buf[(cur_rd+lookahead)%BUF_SIZE];
+		return size == 0 ? 0 : buf[cur_rd];
     }
 
 	static const int BUF_SIZE = 128;

@@ -13,8 +13,13 @@
 class OutputStream
 {
 public:
-	void OutputMultiplex ( VideoStream &vstrm,
-						   AudioStream &astrm,
+	OutputStream()
+		{
+			underrun_ignore = 0;
+			underruns = 0;
+		}
+	void OutputMultiplex ( VideoStream *vstrm,
+						   AudioStream *astrm,
 						   char *multi_file);
 
 
@@ -30,7 +35,9 @@ public:
 							  uint8_t 	 timestamps
 		);
 
-	/* Syntax control parameters */
+	/* Syntax control parameters, public becaus they're partly referenced
+	   by the input stream objects.
+	 */
 
 	bool always_sys_header_in_pack;
 	bool dtspts_for_all_vau;
@@ -40,7 +47,13 @@ public:
 	bool buffers_in_audio;
 	bool always_buffers_in_audio;
 	bool sector_align_iframeAUs;
-	bool segment_runout;
+	bool running_out;
+	clockticks runout_PTS;
+
+	unsigned int audio_buffer_size;
+	unsigned int video_buffer_size;
+
+
 /* In some situations the system/PES packets are embedded with
    external transport data which has to be taken into account for SCR
    calculations to be correct.  E.g. VCD streams. Where each 2324 byte
@@ -52,11 +65,12 @@ public:
 	unsigned int    transport_prefix_sectors; 
 	unsigned int 	sector_size;
 	unsigned int	vcd_zero_stuffing;	/* VCD audio sectors have 20 0 bytes :-( */
-	
+
 	int 		dmux_rate;	/* Actual data mux-rate for calculations always a multiple of 50  */
-	int 		mux_rate;	/* TODO: remove MPEG mux rate (50 byte/sec units      */
+	int 		mux_rate;	/* MPEG mux rate (50 byte/sec units      */
 	unsigned int packets_per_pack;
 	
+private:	
 	
     /* Stream packet component buffers */
 	
@@ -65,44 +79,40 @@ public:
 	Pack_struc *pack_header_ptr;
 	Sys_header_struc *sys_header_ptr;
 
-	/* Output stream... */
+	/* Under-run error messages */
+	unsigned int underruns;
+	unsigned int underrun_ignore;
+
+	/* Output data stream... */
+	PS_Stream *psstrm;
 	bitcount_t bytes_output;
 	clockticks current_SCR;
 	clockticks audio_delay;
 	clockticks video_delay;
-	PS_Stream *psstrm;
 
+	/* Source data streams */
+	/* Note: 1st video stream is regarded as the "master" stream for
+	   the purpose of splitting sequences etc...
+	*/
+	vector<ElementaryStream *> estreams; // Complete set
+	vector<ElementaryStream *> vstreams; // Video streams in estreams
+	vector<ElementaryStream *> astreams; // Audio streams in estreams
+	
+	PaddingStream pstrm;
+	EndMarkerStream estrm;
+	VCDAPadStream vcdapstrm;
 
 private:
-	void Init( VideoStream 	&vstrm,
-			   AudioStream 	&astrm,
-			   char *multi_file );
+	void Init( char *multi_file );
 	
 	void ByteposTimecode( bitcount_t bytepos, clockticks &ts );
 
 	void NextPosAndSCR();
 	void SetPosAndSCR( bitcount_t bytepos );
 
-	void OutputPrefix( VideoStream &vstrm,
-						AudioStream &astrm);
+	void OutputPrefix( );
 
 	void OutputSuffix();
-
-
-	void OutputVideo ( VideoStream &vstrm,
-					   bool marker_pack,
-					   bool include_sys_header
-		);
-	void NextAudioAU( unsigned int bytes_muxed,
-					  AudioStream &astrm
-		);
-	
-	void OutputAudio ( AudioStream &astrm,
-					   bool marker_pack,
-					   bool include_sys_header,
-					   bool end_of_segment);
-	
-
 	void OutputPadding ( clockticks SCR,
 						 bool start_of_new_pack,
 						 bool include_sys_header,
@@ -110,10 +120,9 @@ private:
 						 bool vcd_audio_pad
 		);
 
+	void MuxStatus( log_level_t level );
 	
 };
 
-	void NextVideoAU( unsigned int bytes_muxed,
-					  VideoStream  &vstrm );
 
 #endif //__OUTPUTSTREAM_H__

@@ -160,6 +160,7 @@ extern int opt_packets_per_pack;
 extern clockticks opt_max_PTS;
 extern int opt_emul_vcdmplex;
 extern bool opt_stills;
+extern bool opt_ignore_underrun;
 extern int verbose;
 
 extern unsigned int audio_buffer_size;

@@ -56,6 +56,7 @@ int opt_max_timeouts = 10;
 bitcount_t opt_max_PTS = 0;
 int opt_emul_vcdmplex = 0;
 bool opt_stills = false;
+bool opt_ignore_underrun = false;
 
 /* Should fit nicely on an ordinary CD ... */
 off_t opt_max_segment_size =  2000*1024*1024;

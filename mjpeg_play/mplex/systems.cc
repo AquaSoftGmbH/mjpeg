@@ -228,7 +228,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 	int packet_data_to_read;
 	int bytes_short;
 	uint8_t 	 type = strm.stream_id;
-	uint8_t 	 buffer_scale = strm.buffer_scale;
+	uint8_t 	 buffer_scale = strm.BufferScale();
 	unsigned int buffer_size = strm.BufferSizeCode();
 	bool zero_stuff = false;
 	index = sector_buf;
@@ -555,10 +555,13 @@ PS_Stream::CreateSysHeader (	Sys_header_struc *sys_header,
 								int	     CSPS,
 								bool	 audio_lock,
 								bool	 video_lock,
+								vector<ElementaryStream *> &streams
+								/*
 								int video_bound,
 								int audio_bound,
 								MuxStream      &strm1,	// Usually 1 is audio
 								MuxStream      &strm2	// Usually 2 is video
+								*/
 	)
 
 {
@@ -566,10 +569,29 @@ PS_Stream::CreateSysHeader (	Sys_header_struc *sys_header,
 	uint8_t *len_index;
 	int system_header_size;
     index = sys_header->buf;
+	int video_bound = 0;
+	int audio_bound = 0;
+		/* ORIGINAL_CODE
 	unsigned int 	 buffer1_scale = strm1.buffer_scale;
 	unsigned int 	 buffer1_size = strm1.BufferSizeCode();
 	unsigned int 	 buffer2_scale = strm2.buffer_scale;
 	unsigned int 	 buffer2_size = strm2.BufferSizeCode();
+		*/
+	vector<ElementaryStream *>::iterator str;
+	for( str = streams.begin(); str < streams.end(); ++str )
+	{
+		switch( (*str)->Kind() )
+		{
+		case ElementaryStream::video :
+			++video_bound;
+			break;
+		case ElementaryStream::audio :
+			++audio_bound;
+			break;
+		default :
+			break;
+		}
+	}
 
     /* if we are not using both streams, we should clear some
        options here */
@@ -590,7 +612,7 @@ PS_Stream::CreateSysHeader (	Sys_header_struc *sys_header,
 								 (video_lock << 6)|0x20|video_bound);
 
     *(index++) = static_cast<uint8_t>(RESERVED_BYTE);
-
+#ifdef ORIGINAL_CODE
     if (strm1.init) {
 		*(index++) = strm1.stream_id;
 		*(index++) = static_cast<uint8_t> (0xc0 |
@@ -604,6 +626,25 @@ PS_Stream::CreateSysHeader (	Sys_header_struc *sys_header,
 									  (buffer2_scale << 5) | (buffer2_size >> 8));
 		*(index++) = static_cast<uint8_t> (buffer2_size & 0xff);
     }
+#else
+	for( str = streams.begin(); str < streams.end(); ++str )
+	{
+		switch( (*str)->Kind() )
+		{
+		case ElementaryStream::video :
+		case ElementaryStream::audio :
+			*(index++) = (*str)->stream_id;
+			*(index++) = static_cast<uint8_t> 
+				(0xc0 |
+				 ((*str)->BufferScale() << 5) | ((*str)->BufferSizeCode() >> 8));
+			*(index++) = static_cast<uint8_t>((*str)->BufferSizeCode() & 0xff);
+			
+			break;
+		default :
+			break;
+		}
+	}
+#endif
 
 	system_header_size = (index - sys_header->buf);
 	len_index[0] = static_cast<uint8_t>((system_header_size-6) >> 8);

@@ -1,8 +1,10 @@
 TODO
 
-- Try to burn a proper SVCD with the new align access sector logic
-and see what vcdimager makes of it.
+- See if audio and video OutputSector routines can be telescoped.
 
+- Update VCD to VCD2.0 (SVCD style access sectors).
+
+- Replace despatch loop.
 
 - Add basic DVD support ( needs predecessor really).
 

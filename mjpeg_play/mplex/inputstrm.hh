@@ -85,23 +85,25 @@ class OutputStream;
 class MuxStream
 {
 public:
-	MuxStream( const int strm_id, const int buf_scale,
-		       const unsigned int _zero_stuffing ) : 
-		stream_id(strm_id), 
-		new_au_next_sec(true),
-		buffer_scale( buf_scale ),
-		init(false),
-		nsec(0),
-		zero_stuffing( _zero_stuffing )
-		{
-			mjpeg_info( "MUX STREAM %02x set to %d\n", strm_id, zero_stuffing);
-		}
+	MuxStream( const int strm_id, 
+			   const unsigned int _buf_scale,
+			   const unsigned int buf_size,
+		       const unsigned int _zero_stuffing );
 
-	// TODO This functionality really belongs to Elementary stream
-	void SetMuxParams( unsigned int buf_size );
-	void SetSyncOffset( clockticks timestamp_delay );
 	unsigned int BufferSizeCode();
-	// END TODO
+	inline unsigned int BufferScale() { return buffer_scale; }
+	
+	inline void SetMaxPacketData( unsigned int max )
+		{
+			max_packet_data = max;
+		}
+	inline void SetMinPacketData( unsigned int min )
+		{
+			min_packet_data = min;
+		}
+	inline unsigned int MaxPacketData() { return max_packet_data; }
+	inline unsigned int MinPacketData() { return min_packet_data; }
+
 	virtual unsigned int ReadStrm(uint8_t *dst, unsigned int to_read) = 0;
 
 public:  // TODO should go protected once encapsulation complete
@@ -109,15 +111,14 @@ public:  // TODO should go protected once encapsulation complete
 
 	BufferModel bufmodel;
 	int        stream_id;
-	bool new_au_next_sec;
-	int        buffer_scale;
-	unsigned int 	buffer_size;
 	unsigned int 	max_packet_data;
 	unsigned int	min_packet_data;
 	unsigned int    zero_stuffing;
-	clockticks timestamp_delay;
-	bool       init;
-	unsigned int nsec;
+	unsigned int    nsec;
+	unsigned int    buffer_scale;
+	unsigned int 	buffer_size;
+
+
 };
 
 
@@ -131,13 +132,17 @@ protected:
 	AUStream aunits;
     static const int FRAME_CHUNK = 4;
 public:
+	enum stream_kind { audio, video };
+
 	ElementaryStream( OutputStream &into, const int stream_id,
 					  const unsigned int _zero_stuff,
-					  const int buf_scale,
-					  bool bufs_in_first, bool bufs_always
+					  const unsigned int buf_scale,
+					  const unsigned int buf_size,
+					  bool bufs_in_first, bool bufs_always,
+					  stream_kind kind
 					  );
 	bool NextAU();
-	Aunit *Lookahead( unsigned int i );
+	Aunit *Lookahead();
 	unsigned int BytesToMuxAUEnd(unsigned int sector_transport_size);
 	bool MuxCompleted();
 	bool MuxPossible();
@@ -146,7 +151,15 @@ public:
 	clockticks RequiredDTS();
 	void SetTSOffset( clockticks baseTS );
 	void AllDemuxed();
+	inline stream_kind Kind() { return kind; }
 
+	void SetSyncOffset( clockticks timestamp_delay );
+
+ 
+	inline bool BuffersInHeader() { return buffers_in_header; }
+	virtual unsigned int NominalBitRate() = 0;
+	virtual bool RunOutComplete() = 0;
+	virtual void OutputSector() = 0;
 	//
 	//  Read the (parsed and spliced) stream data from the stream
 	//  buffer.
@@ -159,13 +172,15 @@ public:  // TODO should go protected once encapsulation complete
 	     // stream.
 	     // au itself should simply disappear
 	Aunit *au;
-	unsigned int au_unsent;
+	clockticks timestamp_delay;
 protected:
+	unsigned int au_unsent;
 	Aunit *next();
 	OutputStream &muxinto;
+	stream_kind kind;
 	bool buffers_in_header;
 	bool always_buffers_in_header;
-
+	bool new_au_next_sec;
 };
 
 
@@ -188,7 +203,7 @@ public:
 
 	inline int NextAUType()
 		{
-			VAunit *p_au = Lookahead(1);
+			VAunit *p_au = Lookahead();
 			if( p_au != NULL )
 				return p_au->type;
 			else
@@ -197,12 +212,13 @@ public:
 
 	inline bool SeqHdrNext()
 		{
-			VAunit *p_au = Lookahead(1);
-			return p_au != NULL && p_au->seq_header;
+			VAunit *p_au = Lookahead();
+			return  p_au != NULL && p_au->seq_header;
 		}
 
 
-	inline unsigned int NominalBitRate() { return bit_rate * 50; }
+	unsigned int NominalBitRate() { return bit_rate * 50; }
+	bool RunOutComplete();
 
 	void OutputSector();
 private:
@@ -265,6 +281,7 @@ public:
 	void Close();
 
 	unsigned int NominalBitRate();
+	bool RunOutComplete();
 
     unsigned int num_syncword	;
     unsigned int num_frames [2]	;
@@ -297,9 +314,8 @@ class PaddingStream : public MuxStream
 {
 public:
 	PaddingStream() :
-		MuxStream( PADDING_STR, 0, 0 )
+		MuxStream( PADDING_STR, 0, 0,  0 )
 		{
-			init = true;
 		}
 
 	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
@@ -309,9 +325,8 @@ class VCDAPadStream : public MuxStream
 {
 public:
 	VCDAPadStream() :
-		MuxStream( PADDING_STR, 0, 20 )
+		MuxStream( PADDING_STR, 0, 0, 20 )
 		{
-			init = true;
 		}
 
 	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
@@ -321,9 +336,8 @@ class EndMarkerStream : public MuxStream
 {
 public:
 	EndMarkerStream() :
-		MuxStream( PADDING_STR, 0, 0 )
+		MuxStream( PADDING_STR, 0, 0, 0 )
 		{
-			init = true;
 		}
 
 	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);

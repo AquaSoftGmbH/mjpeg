@@ -268,6 +268,7 @@ void VideoStream::Init (const char *video_file )
 	(void)NextAU();
 }
 
+
 void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 {
 	last_buffered_AU += frames_to_buffer;
@@ -468,7 +469,7 @@ void VideoStream::Close()
 	
 	/* Peak bit rate in 50B/sec units... */
 	peak_bit_rate = ((max_bits_persec / 8) / 50);
-
+	mjpeg_info ("\nVIDEO_STATISTICS: %02x\n", stream_id); 
     mjpeg_info ("Video Stream length: %11llu\n",stream_length);
     mjpeg_info ("Sequence headers: %8u\n",num_sequence);
     mjpeg_info ("Sequence ends   : %8u\n",num_seq_end);
@@ -498,7 +499,7 @@ void VideoStream::Close()
 void VideoStream::OutputSeqhdrInfo ()
 {
 	char *str;
-	mjpeg_info("VIDEO STREAM:\n");
+	mjpeg_info("VIDEO STREAM: %02x\n", stream_id);
 
     mjpeg_info ("Frame width    : %8u\n",horizontal_size);
     mjpeg_info ("Frame height   : %8u\n",vertical_size);
@@ -714,7 +715,7 @@ void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
 void AudioStream::Close()
 {
     stream_length = AU_start >> 3;
-
+	mjpeg_info ("\nAUDIO_STATISTICS: %02x\n", stream_id); 
     mjpeg_info ("Audio stream length %lld.\n",AU_start);
     mjpeg_info   ("Syncwords      : %8u\n",num_syncword);
     mjpeg_info   ("Frames         : %8u padded\n",  num_frames[0]);
