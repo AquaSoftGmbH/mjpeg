@@ -146,7 +146,7 @@ void Usage(char *str)
    fprintf(stderr, "-I            Ignore unsupported bitrates/bits per sample\n");
    fprintf(stderr, "-r sr,bs,ch   If the file does not contain any sound generate silence\n");
    fprintf(stderr, "              sr samplerate 32000,44100,48000 bs bytesize 8,16, ch channes 1/2\n");
-   fprintf(stderr, "              if no option is added 44100, 16, 2 is used\n");
+   fprintf(stderr, "-R            The same a -R but now a silence with 44100, 16, 2 is created\n");
  
    exit(0);
 }
@@ -159,12 +159,12 @@ int i;
 
 i = (sscanf (optarg, "%i,%i,%i", &u1, &u2, &u3));
 
-if ( (i != 0) && (i != 3) )
+if (i != 3) 
   {
     mjpeg_error("Wrong number of arguments given to the -r option");
     exit(1);
   }
-else if (i == 3) /*Setting user chosen values */
+else /*Setting user chosen values */
   {
     if ( (u1 == 32000) || (u1 == 44100) || (u1 == 48000) )
       silence_sr = u1;
@@ -184,12 +184,6 @@ else if (i == 3) /*Setting user chosen values */
       mjpeg_error("Wrong number of chanels use 1 or 2, exiting");
       exit(1); }
   }
-else if (i == 0)  /* Setting the default */
-  {
-     silence_sr=44100;
-     silence_bs=16;
-     silence_ch=2;
-  }  
 
 mjpeg_info("Setting silence to %i sampelrate, %i bitsize, %i chanels",
      silence_sr, silence_bs, silence_ch);
@@ -213,7 +207,7 @@ char    **argv;
 silence_sr=0; /* silence_sr is use for detecting if the -r option is used */
 silence_bs=0; silence_ch=0; 
 
-    while( (n=getopt(argc,argv,"v:s:r:c:o:f:I")) != EOF)
+    while( (n=getopt(argc,argv,"v:s:r:Rc:o:f:I")) != EOF)
     {
         switch(n) {
 
@@ -229,6 +223,12 @@ silence_bs=0; silence_ch=0;
 	   case 'r':
                 set_silence(optarg);
                 break;
+	   case 'R':
+		{
+		  silence_sr=44100;
+		  silence_bs=16;
+		  silence_ch=2;
+		}
            case 'f':
 	   case 'c':
 		num_frames = atoi(optarg);
@@ -242,8 +242,6 @@ silence_bs=0; silence_ch=0;
     }
 
     /* Open editlist */
-
-
 	if( argc-optind < 1)
 		Usage(argv[0]);
 

@@ -12,6 +12,11 @@ lav2wav \- Extract the audio out of MJPEG container files to stdout
 .RB [ \-v
 .IR num ]
 .RB [ \-I ]
+.RB [ \-R ]
+.RB [ \-r 
+.IR samplerate,
+.IR bitesize,
+.IR channels ]
 .I lavfile1 \fP[\fIlavfile2 \fP...\fI lavfileN\fP]
 
 .SH "DESCRIPTION"
@@ -41,11 +46,13 @@ Verbosity level (0, 1 or 2)
 .BI \-I 
 Ignore unsupported bitrates/bits per sample
 .TP 5
+.BI \-R
+If the file does not contain any sound. lav2wav will create silence with
+44100kHz Sampelrate, 16 Bit audio bitsize and 2 Chanels
+.TP 5
 .BI \-r " sr,bs,ch"
-If the file does not contain any sound. lav2wav will generate silence. If you
-add the samplerate (sr), audio-bitsize (bs) and channel (ch). It will create 
-a audio output with that carateristics. If you don't provide any option the
-default options sr 44100, bs 16, ch 2 will be used.  
+If the file does not contain any sound. lav2wav will generate silence with the
+values you supply the samplerate (sr), audio-bitsize (bs) and channel (ch). 
 
 .SH BUGS
 The "WAV" file format (technically: RIFF) is really very much less
