@@ -372,8 +372,9 @@ void Multiplexor::InitInputStreamsForVideo(MultiplexJob & job )
             //
             // The first DVD video stream is made the master stream...
             //
-            if( i == 0 && ( job.mux_format ==  MPEG_FORMAT_DVD_NAV 
-                            || job.mux_format ==  MPEG_FORMAT_DVD ) )
+            if( video_track == 0 
+                && ( job.mux_format ==  MPEG_FORMAT_DVD_NAV 
+                     || job.mux_format ==  MPEG_FORMAT_DVD ) )
                 videoStrm = new DVDVideoStream( *(*i)->bs, 
                                                 *vidparm,
                                                 *this);
