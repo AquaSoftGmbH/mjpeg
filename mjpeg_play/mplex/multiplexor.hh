@@ -66,7 +66,7 @@ public:
 	int data_rate;
 	int mux_format;
 	off_t max_segment_size;
-	bool multifile_segment;
+
 
 
 /* In some situations the system/PES packets are embedded with

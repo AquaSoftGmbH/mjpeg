@@ -168,7 +168,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
     // will be lost!!!!
 	while(!bs.eos() 
           && decoding_order < last_buffered_AU  
-          && (!max_PTS || access_unit.PTS < max_PTS)
+          && !muxinto.AfterMaxPTS(access_unit.PTS)
 		  && bs.SeekSync( SYNCWORD_START, 24, 2*1024*1024)
 		)
 	{
@@ -219,12 +219,12 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 					AU_start = stream_length;
 					syncword  = AU_hdr = SEQUENCE_HEADER;
 					AU_pict_data = 0;
-					if( muxinto.multifile_segment )
+					if( !muxinto.split_at_seq_end )
 						mjpeg_warn("Sequence end marker found in video stream but single-segment splitting specified!" );
 				}
 				else
 				{
-					if( !bs.eos() && ! muxinto.multifile_segment )
+					if( !bs.eos() && muxinto.split_at_seq_end )
 						mjpeg_warn("No seq. header starting new sequence after seq. end!");
 				}
 					

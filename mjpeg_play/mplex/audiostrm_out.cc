@@ -88,18 +88,18 @@ void AudioStream::OutputSector ( )
 	PTS = RequiredDTS();
 	old_au_then_new_payload = 
 		muxinto.PacketPayload( *this, buffers_in_header, false, false );
-
+    bool last_packet = Lookahead() == 0;
     // Ensure we have access units data buffered to allow a sector to be
     // written.
 	max_packet_data = 0;
-	if( muxinto.running_out && 
-        NextRequiredPTS() > muxinto.runout_PTS )
+	if( (muxinto.running_out && NextRequiredPTS() > muxinto.runout_PTS)
+        || last_packet)
 	{
 		/* We're now in the last AU of a segment.  So we don't want to
 		   go beyond it's end when writing sectors. Hence we limit
 		   packet payload size to (remaining) AU length.
 		*/
-		max_packet_data = au_unsent;
+		max_packet_data = au_unsent+StreamHeaderSize();
 	}
   
 	/* CASE: packet starts with new access unit			*/
@@ -133,7 +133,7 @@ void AudioStream::OutputSector ( )
 	else /* !(new_au_next_sec) &&  (au_unsent < old_au_then_new_payload)) */
     {
 		/* is there another access unit anyway ? */
-		if( Lookahead() != 0 )
+		if( !last_packet )
 		{
 			PTS = NextRequiredDTS();
 			actual_payload = 
@@ -145,7 +145,7 @@ void AudioStream::OutputSector ( )
 		} 
 		else
 		{
-			actual_payload = muxinto.WritePacket ( 0,
+			actual_payload = muxinto.WritePacket ( max_packet_data,
                                                    *this,
                                                    buffers_in_header, 0, 0,
                                                    TIMESTAMPBITS_NO );

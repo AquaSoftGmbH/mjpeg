@@ -1057,20 +1057,10 @@ void Multiplexor::Multiplex()
 				static_cast<VideoStream*>(vstreams[0]) : 0 ;
 			if( psstrm->FileLimReached() )
 			{
-				if( multifile_segment || master == 0 )
-					psstrm->NextFile();
-				else 
-				{
-					if( master->NextAUType() == IFRAME)
-					{
-						seg_state = runout_segment;
-						runout_PTS = master->NextRequiredPTS();
-						mjpeg_debug("Running out to (raw) PTS %lld SCR=%lld", 
-								   runout_PTS/300, current_SCR/300 );
-						running_out = true;
-						seg_state = runout_segment;
-					}
-				}
+				if( split_at_seq_end )
+                    mjpeg_warn( "File size exceeded before split-point in video stream" );
+                mjpeg_info( "Starting new output file...");
+                psstrm->NextFile();
 			}
 			else if( master != 0 && master->EndSeq() )
 			{
@@ -1083,7 +1073,8 @@ void Multiplexor::Multiplex()
 					}
 						
 					runout_PTS = master->NextRequiredPTS();
-                    mjpeg_debug("Running out to %lld SCR=%lld", 
+                    mjpeg_info( "Running out...");
+                    mjpeg_debug("Run out PTS limit to %lld SCR=%lld", 
                                 runout_PTS/300, 
                                 current_SCR/300 );
                     MuxStatus( LOG_INFO );
@@ -1218,7 +1209,7 @@ void Multiplexor::Multiplex()
 		{
 			if( !(*pcomp) && (*str)->MuxCompleted() )
 			{
-				mjpeg_info( "STREAM %02x completed @ %d.", (*str)->stream_id, (*str)->au->dorder );
+				mjpeg_info( "STREAM %02x completed @ frame %d.", (*str)->stream_id, (*str)->au->dorder );
 				MuxStatus( LOG_DEBUG );
 				(*pcomp) = true;
 			}

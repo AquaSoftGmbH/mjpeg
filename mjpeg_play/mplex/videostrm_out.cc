@@ -159,9 +159,9 @@ void VideoStream::OutputSector ( )
 		ACCESS-POINT AU's in (S)VCD's etc are sector-aligned.
 	*/
 	int nextAU = NextAUType();
-	if( (muxinto.running_out && nextAU == IFRAME && 
-		 NextRequiredPTS() > muxinto.runout_PTS) ||
-		(muxinto.sector_align_iframeAUs && nextAU == IFRAME )
+	if( ( muxinto.running_out && nextAU == IFRAME 
+          && NextRequiredPTS() > muxinto.runout_PTS) 
+        || (muxinto.sector_align_iframeAUs && nextAU == IFRAME )
 		) 
 	{
 		max_packet_payload = au_unsent;
@@ -243,7 +243,7 @@ void VideoStream::OutputSector ( )
 		} 
 		else
 		{
-			actual_payload = muxinto.WritePacket ( 0,
+			actual_payload = muxinto.WritePacket ( au_unsent,
 										 *this,
 										 false, 0, 0,
 										 TIMESTAMPBITS_NO);

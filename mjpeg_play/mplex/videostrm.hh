@@ -121,7 +121,6 @@ protected:
 	unsigned int max_bits_persec;
 	int AU_pict_data;
 	int AU_hdr;
-	clockticks max_PTS;
     clockticks max_STD_buffer_delay;
     VideoParams *parms;
 }; 	

@@ -163,7 +163,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
     bool cleanexit = false;
 	while( !bs.eos() 
            && decoding_order < last_buffered_AU 
-           && !muxinto.AfterMaxPTS(access_unit.PTS) )
+        )
 	{
 		skip=access_unit.length-header_skip; 
         bs.SeekFwdBits(skip);
@@ -177,6 +177,9 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
             --decoding_order;
             break;
         }
+
+        if( muxinto.AfterMaxPTS(access_unit.PTS) )
+            break;
 
 		/* Check we have reached the end of have  another catenated 
 		   stream to process before finishing ... */
@@ -248,7 +251,8 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
     }
 	last_buffered_AU = decoding_order;
 	eoscan = bs.eos() || muxinto.AfterMaxPTS(access_unit.PTS);
-
+    if( eoscan )                // DEBUG
+        mjpeg_info( "End of AC3 found\n");
 }
 
 
@@ -299,9 +303,9 @@ AC3Stream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
     static unsigned int aus = 0;
     static unsigned int rd = 0; 
     bitcount_t read_start = bs.GetBytePos();
+    // Remember to change StreamHeaderLen if you write a different
+    // length re-using this code...
     unsigned int bytes_read = bs.GetBytes( dst+4, to_read-4 );
-    if( to_read < 5 )
-        mjpeg_warn( "Oooops whacky shit !\n" );
     assert( bytes_read > 0 );   // Should never try to read nothing
     bs.Flush( read_start );
     rd += bytes_read;
