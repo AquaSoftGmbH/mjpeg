@@ -334,7 +334,8 @@ static int build_sub44_mests( me_result_set *sub44set,
 				threshold = intmin(s1<<2,threshold);
 				sub44_mests[sub44_num_mests].x = i;
 				sub44_mests[sub44_num_mests].y = j;
-				sub44_mests[sub44_num_mests].weight = s1 + ((intabs(i-i0)+intabs(j-j0))>>3);
+				sub44_mests[sub44_num_mests].weight = s1 + 
+					(intmax(intabs(i-i0),intabs(j-j0))<<1);
 				++sub44_num_mests;
 			}
 			s44orgblk += 1;
@@ -438,7 +439,8 @@ static int build_sub22_mests( me_result_set *sub44set,
 		{
 			if( x <= ilim && y <= jlim )
 			{	
-				s = (*psad_sub22)( s22orgblk,s22blk,frowstride,fh);
+				s = (*psad_sub22)( s22orgblk,s22blk,frowstride,fh)+
+					(intmax(intabs(x),intabs(y))<<3);
 				if( s < threshold )
 				{
 					me_result_s *mc = &sub22set->mests[sub22set->len];
@@ -510,7 +512,7 @@ static int build_sub22_mests_mmxe( me_result_set *sub44set,
 		{
 			if( x <= ilim && y <= jlim )
 			{	
-				s =resvec[i];
+				s =resvec[i]+(intmax(intabs(x),intabs(y))<<3);
 				if( s < threshold )
 				{
 					me_result_s *mc = &sub22set->mests[sub22set->len];
@@ -573,7 +575,7 @@ static void find_best_one_pel( me_result_set *sub22set,
 
 		matchrec = sub22set->mests[k];
 		orgblk = org + (i0+matchrec.x)+rowstride*(j0+matchrec.y);
-		penalty = abs(matchrec.x)+abs(matchrec.y);
+		penalty = intmax(intabs(matchrec.x),intabs(matchrec.y))<<5;
 
 		for( i = 0; i < 4; ++i )
 		{
@@ -630,7 +632,7 @@ static void find_best_one_pel_mmxe( me_result_set *sub22set,
 	{	
 		matchrec = sub22set->mests[k];
 		orgblk = org + (i0+matchrec.x)+rowstride*(j0+matchrec.y);
-		penalty = abs(matchrec.x)+abs(matchrec.y);
+		penalty = intmax(abs(matchrec.x),abs(matchrec.y))<<5;
 		
 		/* Get SAD for macroblocks: 	orgblk,orgblk(+1,0),
 		   orgblk(0,+1), and orgblk(+1,+1)

@@ -98,6 +98,7 @@ static int param_video_buffer_size = 0;
 static int param_seq_length_limit = 2000;
 static int param_min_GOP_size = 12;
 static int param_max_GOP_size = 12;
+static bool param_preserve_B = false;
 static int param_Bgrp_size = 3;
 static int param_num_cpus = 1;
 static int param_32_pulldown = 0;
@@ -127,14 +128,14 @@ static void DisplayAspectRatios()
 {
  	int i;
 	printf("MPEG1 pixel aspect ratio codes:\n");
-	for( i = 0; i < mpeg_num_aspect_ratios[0]; ++i )
+	for( i = 1; i <= mpeg_num_aspect_ratios[0]; ++i )
 	{
-		printf( "%2d - %s\n", i+1, mpeg_aspect_code_definition(0,i));
+		printf( "%2d - %s\n", i, mpeg_aspect_code_definition(1,i));
 	}
 	printf("\nMPEG2 display aspect ratio codes:\n");
-	for( i = 0; i < mpeg_num_aspect_ratios[1]; ++i )
+	for( i = 1; i <= mpeg_num_aspect_ratios[1]; ++i )
 	{
-		printf( "%2d - %s\n", i+1, mpeg_aspect_code_definition(1,i));
+		printf( "%2d - %s\n", i, mpeg_aspect_code_definition(2,i));
 	}
 	exit(0);
 }
@@ -170,6 +171,7 @@ static void Usage(char *str)
 	fprintf(stderr,"   			  Population halving passes 2*2-pel subsampled motion compensation\n" );
 	fprintf(stderr,"   -g num     Minimum GOP size (default 12)\n" );
 	fprintf(stderr,"   -G num     Maximum GOP size (default 12)\n" );
+	fprintf(stderr,"   -P         Preserve 2 B frames between I/P even when adjusting GOP size\n");
 	fprintf(stderr,"   -M num     Optimise threading for num CPU's (default: 1)\n");
 	fprintf(stderr,"   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 .. 10] (default: 2.5)\n");
 	fprintf(stderr,"   -V num     Target video buffer size in KB (default 46)\n");
@@ -456,7 +458,7 @@ int main(argc,argv)
 	/* Set up error logging.  The initial handling level is LOG_INFO
 	 */
 	
-	while( (n=getopt(argc,argv,"m:a:f:n:b:T:B:q:o:S:I:r:M:4:2:Q:g:G:v:V:F:tpNhO?")) != EOF)
+	while( (n=getopt(argc,argv,"m:a:f:n:b:T:B:q:o:S:I:r:M:4:2:Q:g:G:v:V:F:tpNhOP?")) != EOF)
 	{
 		switch(n) {
 
@@ -619,6 +621,9 @@ int main(argc,argv)
 			break;
 		case 'G' :
 			param_max_GOP_size = atoi(optarg);
+			break;
+		case 'P' :
+			param_preserve_B = true;
 			break;
 		case 'N':
 			param_hfnoise_quant = 1;
@@ -909,8 +914,9 @@ static void init_mpeg_parms(void)
 
 	ctl_N_min = param_min_GOP_size;      /* I frame distance */
 	ctl_N_max = param_max_GOP_size;
-	mjpeg_info( "GOP SIZE %d %d\n", ctl_N_min, ctl_N_max );
+	mjpeg_info( "GOP SIZE RANGE %d TO %d\n", ctl_N_min, ctl_N_max );
 	ctl_M = param_Bgrp_size;             /* I or P frame distance */
+	ctl_M_min = param_preserve_B ? ctl_M : 1;
 	if( ctl_M >= ctl_N_min )
 		ctl_M = ctl_N_min-1;
 	opt_mpeg1           = (param_mpeg == 1);

@@ -61,13 +61,13 @@ int SIMD_SUFFIX(mblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
 	uint8_t *curblk;
 	me_result_s *cres = resvec;
 	int      gridrowstride = (rowstride);
+	int weight;
 
 	for( y=jlow; y <= jhigh ; y+=4)
 	{
 		curblk = currowblk;
 		for( x = ilow; x <= ihigh; x += 4)
 		{
-			int weight;
 			if( (x & 15) == (ilow & 15) )
 			{
 				load_blk( curblk, rowstride, h );
@@ -81,7 +81,7 @@ int SIMD_SUFFIX(mblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
 				   as otherwise the sub-mean filtering won't work on very
 				   uniform images.
 				 */
-				cres->weight = (uint16_t)weight+(intabs(x)+intabs(y));
+				cres->weight = (uint16_t)(weight+(intmax(intabs(x),intabs(y))<<2));
 				cres->x = (uint8_t)x;
 				cres->y = (uint8_t)y;
 				++cres;

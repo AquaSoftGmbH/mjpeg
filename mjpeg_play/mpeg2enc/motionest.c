@@ -509,8 +509,8 @@ static void frame_ME(pict_data_s *picture,
 
 	/* Zero motion vector - useful for some optimisations
 	 */
-	zeromot_mc.pos.x = i;
-	zeromot_mc.pos.y = j;
+	zeromot_mc.pos.x = (i<<1);	/* Damn but its messy carrying doubled */
+	zeromot_mc.pos.y = (j<<1);	/* absolute Co-ordinates for M/C */
 	zeromot_mc.fieldsel = 0;
 	zeromot_mc.fieldoff = 0;
 	zeromot_mc.blk = oldrefimg[0]+mb_row_start+i;
@@ -626,6 +626,7 @@ static void frame_ME(pict_data_s *picture,
 
 			zeromot_mc.var = unidir_pred_var(&zeromot_mc, ssmb.mb, width, 16 );
 			v0 = unidir_var_sum(&zeromot_mc, oldrefimg, &ssmb, width, 16 );
+
 			if (4*v0>5*vmc )
 			{
 				/* use MC */
@@ -2095,6 +2096,7 @@ static void mb_me_search(
 				else
 					d = (*psad_00)(orgblk,ssblk->mb,lx,h,res->sad);
 			}
+			d += (intabs(i-(i0<<1)) + intabs(j-(j0<<1)))<<3;
 			if (d<res->sad)
 			{
 				res->sad = d;

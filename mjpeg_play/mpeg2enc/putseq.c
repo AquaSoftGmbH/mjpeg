@@ -228,10 +228,10 @@ static void set_2nd_field_params(pict_data_s *picture)
 
 static int find_gop_length( int gop_start_frame, 
 							int I_frame_temp_ref,
-							int gop_min_len, int gop_max_len )
+							int gop_min_len, int gop_max_len,
+							int min_b_grp)
 {
 	int i,j;
-
 	int cur_lum_mean = 
 		frame_lum_mean( gop_start_frame+gop_max_len+I_frame_temp_ref );
 	int pred_lum_mean;
@@ -239,9 +239,9 @@ static int find_gop_length( int gop_start_frame,
 	/* Search backwards from max gop length for I-frame candidate
 	   adjusting for I-frame temporal reference
 	 */
-	for( i = gop_max_len; i >= gop_min_len; --i )
+	for( i = gop_max_len; i >= gop_min_len; i -= min_b_grp )
 	{
-		pred_lum_mean =  frame_lum_mean( gop_start_frame+i+I_frame_temp_ref-1 );
+		pred_lum_mean = frame_lum_mean( gop_start_frame+i+I_frame_temp_ref-min_b_grp );
 		if( abs(cur_lum_mean-pred_lum_mean ) >= SCENE_CHANGE_THRESHOLD )
 			break;
 		cur_lum_mean = pred_lum_mean;
@@ -257,7 +257,7 @@ static int find_gop_length( int gop_start_frame,
 		*/
 		pred_lum_mean = 
 			frame_lum_mean( gop_start_frame+gop_max_len+I_frame_temp_ref );
-		for( j = gop_max_len+1; j < gop_max_len+gop_min_len; ++j )
+		for( j = gop_max_len+min_b_grp; j < gop_max_len+gop_min_len; j += min_b_grp )
 		{
 			cur_lum_mean = frame_lum_mean( gop_start_frame+j+I_frame_temp_ref );
 			if(  abs(cur_lum_mean-pred_lum_mean ) >= SCENE_CHANGE_THRESHOLD )
@@ -272,14 +272,27 @@ static int find_gop_length( int gop_start_frame,
 		   otherwise simply set the GOP to maximum length
 		*/
 
-		if( j < gop_max_len+gop_min_len && j >= gop_min_len+gop_min_len )
+		if( j < gop_max_len+gop_min_len )
 		{
-			i = j/2;
-			if( i < gop_min_len )
+			if( j < 2*gop_min_len )
 			{
-				mjpeg_debug("GOP min length too small to permit scene-change on GOP boundary %d\n", j);
+				mjpeg_info("GOP min length too small to permit scene-change on GOP boundary %d\n", j);
+				/* Its better to put the missed transition at the end
+				of a GOP so any eventual artefacting is soon washed
+				out by an I-frame*/
 				i = gop_min_len;
 			}
+			else
+			{
+				/* If we can make the two GOPs near the transition
+				   similarly sized */
+				i = j /2;
+				if( i%min_b_grp != 0 )
+					i+=(min_b_grp-i%min_b_grp);
+				if( j-i < gop_min_len || j > gop_max_len )
+					i = gop_min_len;
+			}
+				
 		}
 		else
 			i = gop_max_len;
@@ -402,11 +415,13 @@ static void gop_start( stream_state_s *ss )
 		if( ss->i == 0 )
 			ss->gop_length =  
 				find_gop_length( ss->gop_start_frame, 0, 
-								 ctl_N_min-(ctl_M-1), ctl_N_max-(ctl_M-1));
+								 ctl_N_min-(ctl_M-1), ctl_N_max-(ctl_M-1),
+								 ctl_M_min);
 		else
 			ss->gop_length = 
 				find_gop_length( ss->gop_start_frame, ctl_M-1, 
-								 ctl_N_min, ctl_N_max);
+								 ctl_N_min, ctl_N_max,
+								 ctl_M_min);
 	}
 	else
 		ss->gop_length = ctl_N_min;

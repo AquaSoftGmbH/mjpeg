@@ -441,6 +441,8 @@ EXTERN int ctl_N_max;				/* number of frames in Group of Pictures (max) */
 EXTERN int ctl_N_min;				/* number of frames in Group of Pictures (min) */
 EXTERN int ctl_M;					/* distance between I/P frames */
 
+EXTERN int ctl_M_min;			    /* Minimum distance between I/P frames */
+
 EXTERN bool ctl_refine_from_rec;	/* Is final refinement of motion
 								   compensation computed from
 								   reconstructed reference frame image
