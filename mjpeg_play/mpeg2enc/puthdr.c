@@ -42,32 +42,38 @@ static int frametotc (int frame);
  */
 void putseqhdr()
 {
-  int i;
+	int i;
 
-  alignbits();
-  putbits(SEQ_START_CODE,32); /* sequence_header_code */
-  putbits(horizontal_size,12); /* horizontal_size_value */
-  putbits(vertical_size,12); /* vertical_size_value */
-  putbits(aspectratio,4); /* aspect_ratio_information */
-  putbits(frame_rate_code,4); /* frame_rate_code */
-  if(quant_floor != 0) {
-    putbits(-1,18);
-  } else {
-    putbits((int)ceil(bit_rate/400.0),18); /* bit_rate_value */
-  }
-  putbits(1,1); /* marker_bit */
-  putbits(vbv_buffer_code,10); /* vbv_buffer_size_value */
-  putbits(constrparms,1); /* constrained_parameters_flag */
+	alignbits();
+	putbits(SEQ_START_CODE,32); /* sequence_header_code */
+	putbits(horizontal_size,12); /* horizontal_size_value */
+	putbits(vertical_size,12); /* vertical_size_value */
+	putbits(aspectratio,4); /* aspect_ratio_information */
+	putbits(frame_rate_code,4); /* frame_rate_code */
+	if(quant_floor != 0) {
+		putbits(-1,18);
+	} else {
+		putbits((int)ceil(bit_rate/400.0),18); /* bit_rate_value */
+	}
+	putbits(1,1); /* marker_bit */
+	putbits(vbv_buffer_code,10); /* vbv_buffer_size_value */
+	putbits(constrparms,1); /* constrained_parameters_flag */
 
-  putbits(load_iquant,1); /* load_intra_quantizer_matrix */
-  if (load_iquant)
-    for (i=0; i<64; i++)  /* matrices are always downloaded in zig-zag order */
-      putbits(intra_q[zig_zag_scan[i]],8); /* intra_quantizer_matrix */
+	putbits(load_iquant,1); /* load_intra_quantizer_matrix */
+	if (load_iquant)
+		for (i=0; i<64; i++)  /* matrices are always downloaded in zig-zag order */
+			putbits(intra_q[zig_zag_scan[i]],8); /* intra_quantizer_matrix */
 
-  putbits(load_niquant,1); /* load_non_intra_quantizer_matrix */
-  if (load_niquant)
-    for (i=0; i<64; i++)
-      putbits(inter_q[zig_zag_scan[i]],8); /* non_intra_quantizer_matrix */
+	putbits(load_niquant,1); /* load_non_intra_quantizer_matrix */
+	if (load_niquant)
+		for (i=0; i<64; i++)
+			putbits(inter_q[zig_zag_scan[i]],8); /* non_intra_quantizer_matrix */
+	if (!mpeg1)
+	{
+		putseqext();
+		putseqdispext();
+	}
+
 }
 
 /* generate sequence extension (6.2.2.3, 6.3.5) header (MPEG-2 only) */
@@ -139,7 +145,9 @@ int frame,closed_gop;
    */
   alignbits();
   if( seq_header_every_gop )
+  {
 	  putseqhdr();
+  }
   alignbits();
   putbits(GOP_START_CODE,32); /* group_start_code */
   tc = frametotc(tc0+frame);

@@ -46,12 +46,14 @@ void putseq()
 
 	rc_init_seq(); /* initialize rate control */
 
-  /* sequence header, sequence extension and sequence display extension */
-	putseqhdr();
-	if (!mpeg1)
+	/* If we're not doing sequence header, sequence extension and
+	   sequence display extension every GOP at least has to be one at the
+	   start of the sequence.
+	*/
+	
+	if( ! seq_header_every_gop )
 	{
-		putseqext();
-		putseqdispext();
+		putseqhdr();
 	}
 
 	/* optionally output some text data (description, copyright or whatever) */
