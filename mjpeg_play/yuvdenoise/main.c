@@ -334,8 +334,7 @@ display_greeting (void)
 void
 process_commandline(int argc, char *argv[])
 {
-  char c;
-  int i1,i2,i3,i4;
+  int c, i1,i2,i3,i4;
 
   while ((c = getopt (argc, argv, "h?t:u:v:b:r:l:m:n:c:S:s:L:C:p:Ff")) != -1)
   {
