@@ -405,17 +405,22 @@ static void set_format_presets(void)
 			(opt_vertical_size == 480 || opt_vertical_size == 576 ) )
 		{
 			mjpeg_info( "SVCD normal-resolution stills selected." );
+			if( param_still_size == 0 )
+				param_still_size = 90*1024;
 		}
 		else if( opt_horizontal_size == 704 &&
 				 (opt_vertical_size == 480 || opt_vertical_size == 576) )
 		{
 			mjpeg_info( "SVCD high-resolution stills selected." );
+			if( param_still_size == 0 )
+				param_still_size = 125*1024;
 		}
 		else
 		{
 			mjpeg_error("SVCD normal resolution stills must be 480x576 (PAL) or 480x480 (NTSC)");
 			mjpeg_error_exit1( "SVCD high resolution stills must be 704x576 (PAL) or 704x480 (NTSC)");
 		}
+
 		if( param_still_size < 30*1024 || param_still_size > 200*1024 )
 		{
 			mjpeg_error_exit1( "SVCD resolution stills must be >= 30KB and <= 200KB each");
@@ -658,7 +663,7 @@ static struct option long_options[]={
      { "intra_dc_prec",     1, 0, 'D' },
      { "quantisation",      1, 0, 'q' },
      { "output",            1, 0, 'o' },
-     { "vcd-still-size",    1, 0, 'T' },
+     { "target-still-size", 1, 0, 'T' },
      { "interlace-mode",    1, 0, 'I' },
      { "motion-search-radius", 1, 0, 'r'},
      { "reduction-4x4",  1, 0, '4'},

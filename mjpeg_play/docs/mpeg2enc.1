@@ -14,6 +14,8 @@ mpeg2enc \- MPEG 1/2 encoder
 .IR bitrate_kbps ]
 .RB [ -V | --video-buffer
 .IR video_buf_size_kB ]
+.RB [ -T | --target-still-size
+.IR still_size_kB ] 
 .RB [ -q | --quantisation
 .IR quantization ]
 .RB [ -r | --motion-search-radius
@@ -142,16 +144,14 @@ used for still images on VCDs.  To use this profile you must
 set the target size you wish to compress the images to using the
 -T flag.   Reasonable values are around 35KB for standard resolution
 stills (352 wide) and 120KB for high resolution stills (704 wide).
-.TP
-.BI -T \ num
-Set the target size for VCD still images in KB.
 .PP
 .BR -f|--format \ 7
 	-	SVCD Stills sequence.
 .PP
 Encodes the special style of MPEG stream
 used for still images on SVCDs.  Both standard (480 wide) and high
-resolution (704 wide) images are supported.
+resolution (704 wide) images are supported. As with VCD stills you
+select how big each compressed still should be using the -T flag.
 .PP
 .BR -f|--format \ 8
 	-	DVD MPEG-2. 
@@ -196,8 +196,9 @@ KBytes.  The default is 46KB the (tiny) size specified for VCD.  The
 size to use for SVCD is the (more reasonable) 230KB.  If you are
 encoding for a half-decent software decoder it makes sense to push
 this up to 500K or more.
-
-
+.PP
+.BR -T|--target-still-size \ num
+Set the target size for (S)VCD still images in KB.
 .PP
 .BR -s|--sequence-header-every-gop
 .PP
