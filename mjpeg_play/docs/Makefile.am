@@ -50,7 +50,7 @@ install-info-am: $(info_INFO)
 	  done; \
 	done
 	@$(POST_INSTALL)
-	@if test -f $(INSTALL_INFO); then \
+	@if test x$(INSTALL_INFO) != x && test -f $(INSTALL_INFO); then \
 	  list='$(info_INFO)'; \
 	  for file in $$list; do \
 ## Run `:' after install-info in case install-info fails.  We really
@@ -74,21 +74,18 @@ uninstall-info-am:
 	$(PRE_UNINSTALL)
 ## Run two loops here so that we can handle PRE_UNINSTALL and
 ## NORMAL_UNINSTALL correctly.
-	@if $(SHELL) -c '$(INSTALL_INFO) --version | sed 1q | fgrep -s -v -i debian' >/dev/null 2>&1; then \
-	  ii=yes; \
-	else ii=; fi; \
-	list='$(info_INFO)'; \
-	for file in $$list; do \
-	  if test -z "$$ii"; then \
-	    if test -f $(INSTALL_INFO); then \
+	if test x$(INSTALL_INFO) != x && test -f $(INSTALL_INFO); then \
+	  list='$(info_INFO)'; \
+	  for file in $$list; do \
+	    if $(SHELL) -c '$(INSTALL_INFO) --version | sed 1q | fgrep -s -v -i debian' >/dev/null 2>&1; then \
+## GNU case
+	      $(INSTALL_INFO) --info-dir=$(DESTDIR)$(infodir) --remove $$file; \
+	    else \
 ## Debian case
 	      $(INSTALL_INFO) --infodir=$(DESTDIR)$(infodir) --delete $$file; \
 	    fi; \
-	  else \
-## GNU case
-	    $(INSTALL_INFO) --info-dir=$(DESTDIR)$(infodir) --remove $$file; \
-	  fi; \
-	done
+	  done; \
+	fi
 	@$(NORMAL_UNINSTALL)
 	list='$(info_INFO)'; \
 	for file in $$list; do \

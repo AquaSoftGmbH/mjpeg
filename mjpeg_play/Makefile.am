@@ -30,6 +30,7 @@ EXTRA_DIST = \
 	CHANGES \
 	PLANS \
 	mjpeg_howto.txt \
+	mjpegtools.spec \
 	mjpegtools.spec.in \
 	mjpegtools.pc.in \
 	autogen.sh
@@ -61,7 +62,7 @@ MAINTAINERCLEANFILES = \
 ## make rpms
 rpm: Makefile
 	$(MAKE) dist
-	rpm -ta --clean $(PACKAGE)-$(VERSION).tar.gz
+	rpmbuild -ta --clean $(PACKAGE)-$(VERSION).tar.gz
 
 ## make debs
 deb: 
