@@ -1169,6 +1169,35 @@ int main(int argc, char ** argv)
 
 				break;
 
+			case 'o':
+
+				/* Open a new file - caution!!! There is no checking
+				   for sound, equivalent properties or anything!!! */
+
+				if(input_buffer[1]=='m')
+				{
+					/* Movie, 'om file beginframe endframe',
+					   beginframe=-1 means whole file */
+					char movie[256];
+					char *arguments[1];
+					int nc1, nc2;
+
+					play_speed = 0;
+					nframe = 0;
+					sscanf(input_buffer+2, "%s %d %d", movie, &nc1, &nc2);
+					arguments[0] = movie;
+					printf("Opening %s", movie);
+					if (nc1!=-1) printf(" (frames %d-%d)", nc1, nc2);
+					printf("\n");
+					read_video_files(arguments, 1, &el);
+					if (nc2>=el.video_frames || nc1 == -1) nc2=el.video_frames-1;
+					if (nc1<0) nc1=0;
+					for(i=0;i<nc1;i++) el.frame_list[i] = el.frame_list[i+nc1];
+					el.video_frames = nc2-nc1+1;
+				}
+
+				break;
+
 			case 'w':
 
 				/* Write edit list */
