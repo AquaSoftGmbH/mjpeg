@@ -91,6 +91,9 @@ typedef struct {
    pthread_cond_t buffer_filled[MJPEG_MAX_BUF];
    pthread_cond_t buffer_done[MJPEG_MAX_BUF];
    pthread_mutex_t syncinfo_mutex;
+#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
+   int data_format[MJPEG_MAX_BUF];
+#endif
 
    struct mjpeg_sync syncinfo[MJPEG_MAX_BUF]; /* synchronization info */
 
@@ -308,7 +311,11 @@ static int lavplay_get_audio(lavplay_t *info, char *buff, long frame_num, int mu
  * return value: 1 on succes, 0 on error
  ******************************************************/
 
-static int lavplay_queue_next_frame(lavplay_t *info, char *vbuff, int skip_video, int skip_audio, int skip_incr)
+static int lavplay_queue_next_frame(lavplay_t *info, char *vbuff,
+#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
+				    int data_format,
+#endif
+				    int skip_video, int skip_audio, int skip_incr)
 {
    int res, mute, i, jpeg_len1, jpeg_len2, new_buff_no;
    char hlp[16];
@@ -318,7 +325,11 @@ static int lavplay_queue_next_frame(lavplay_t *info, char *vbuff, int skip_video
    /* Read next frame */
    if (!skip_video)
    {
-      if (info->flicker_reduction && editlist->video_inter && settings->current_playback_speed <= 0)
+      if (info->flicker_reduction && editlist->video_inter &&
+#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
+	  data_format == DATAFORMAT_MJPG &&
+#endif	  
+	  settings->current_playback_speed <= 0)
       {
          if (settings->current_playback_speed == 0)
          {
@@ -470,7 +481,11 @@ static int lavplay_SDL_unlock(lavplay_t *info)
  * return value: 1 on success, 0 on error
  ******************************************************/
 
-static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer, int buf_len)
+static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
+#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
+			      int data_format,
+#endif
+			      int buf_len)
 {
    video_playback_setup *settings = (video_playback_setup *)info->settings;
    EditList *editlist = info->editlist;
@@ -478,11 +493,38 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer, int buf_len
    if (!lavplay_SDL_lock(info)) return 0;
 
    /* decode frame to yuv */
+#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
+   switch (data_format) {
+   case DATAFORMAT_MJPG:
+#endif
    decode_jpeg_raw (jpeg_buffer, buf_len, editlist->video_inter, CHROMA420,
       editlist->video_width, editlist->video_height, 
       settings->yuv_overlay->pixels[0], 
       settings->yuv_overlay->pixels[1],
       settings->yuv_overlay->pixels[2]);
+#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
+      break;
+# ifdef SUPPORT_READ_YUV420
+   case DATAFORMAT_YUV420:
+      memcpy(settings->yuv_overlay->pixels[0],
+	     jpeg_buffer,
+	     editlist->video_width * editlist->video_height);
+      memcpy(settings->yuv_overlay->pixels[1],
+	     jpeg_buffer + (editlist->video_width * editlist->video_height),
+	     (editlist->video_width * editlist->video_height / 4));
+      memcpy(settings->yuv_overlay->pixels[2],
+	     jpeg_buffer + (editlist->video_width * editlist->video_height * 5 / 4),
+	     (editlist->video_width * editlist->video_height / 4));
+      break;
+# endif
+# ifdef SUPPORT_READ_DV2
+   case DATAFORMAT_DV2:
+     /* FIXME: not implemented, do default: */
+# endif
+   default:
+     return 0;
+   }
+#endif
 
    if (!lavplay_SDL_unlock(info)) return 0;
    SDL_DisplayYUVOverlay(settings->yuv_overlay, &(settings->jpegdims));
@@ -669,6 +711,9 @@ static void *lavplay_mjpeg_playback_thread(void * arg)
 
       /* There is one buffer to play - get ready to rock ! */
       if (!lavplay_SDL_update(info, settings->buff+settings->currently_processed_frame*settings->br.size,
+#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
+         settings->data_format[settings->currently_processed_frame],
+#endif
          settings->br.size))
       {
          /* something went wrong - give a warning (don't exit yet) */
@@ -1194,7 +1239,12 @@ static int lavplay_init(lavplay_t *info)
    /* Fill all buffers first */
    for(nqueue=0;nqueue<settings->br.count;nqueue++)
    {
-      if (!lavplay_queue_next_frame(info, settings->buff+nqueue* settings->br.size,0,0,0)) break;
+      if (!lavplay_queue_next_frame(info, settings->buff+nqueue* settings->br.size,
+#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
+				    (settings->data_format[nqueue] =
+				     el_video_frame_data_format(settings->current_frame_num, editlist)),
+#endif
+				    0,0,0)) break;
    }
 
    /* Choose the correct parameters for playback */
@@ -1462,7 +1512,12 @@ static void lavplay_playback_cycle(lavplay_t *info)
          /* Read one frame, break if EOF is reached */
          frame = n % settings->br.count;
          frame_number[frame] = settings->current_frame_num;
-         if (!lavplay_queue_next_frame(info, settings->buff+frame*settings->br.size,skipv,skipa,skipi))
+         if (!lavplay_queue_next_frame(info, settings->buff+frame*settings->br.size,
+#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
+				       (settings->data_format[frame] =
+					el_video_frame_data_format(settings->current_frame_num, editlist)),
+#endif
+				       skipv,skipa,skipi))
          {
             lavplay_change_state(info, LAVPLAY_STATE_STOP);
             goto FINISH;
@@ -1771,10 +1826,10 @@ int lavplay_edit_delete(lavplay_t *info, long start, long end)
    /* Update min and max frame_num's to reflect the removed section */
    if (start - 1 < settings->min_frame_num)
    {
-      if (end <= settings->min_frame_num)
+      if (end < settings->min_frame_num)
          settings->min_frame_num -= (end - start + 1);
       else
-         settings->min_frame_num = start - 1;
+         settings->min_frame_num = start;
    }
    if (start - 1 < settings->max_frame_num)
    {
@@ -1782,6 +1837,13 @@ int lavplay_edit_delete(lavplay_t *info, long start, long end)
          settings->max_frame_num -= (end - start + 1);
       else
          settings->max_frame_num = start - 1;
+   }
+   if (start <= settings->current_frame_num) {
+      if (settings->current_frame_num <= end) {
+         settings->current_frame_num = start;
+      } else {
+         settings->current_frame_num -= (end - start + 1);
+      }
    }
 
    editlist->video_frames -= (end - start + 1);

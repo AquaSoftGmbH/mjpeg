@@ -129,6 +129,8 @@
 #include <getopt.h>
 #include <fcntl.h>
 
+#define LAVPLAY_VSTR "lavplay" LAVPLAY_VERSION  /* Expected version info */
+
 static lavplay_t *info;
 static int verbose = 0;
 static int skip_seconds = 0;
@@ -293,7 +295,8 @@ static void process_input(char *buffer)
          switch (buffer[1])
          {
             case 'a':
-               lavplay_save_all(info, buffer+3);
+               sscanf(buffer+3, "%s", arg);
+               lavplay_save_all(info, arg);
                break;
             case 's':
                sscanf(buffer+3, "%d %d %s", &arg1, &arg2, arg);
@@ -444,6 +447,12 @@ int main(int argc, char **argv)
 {
    char buffer[256];
 
+   /* Output Version information - Used by xlav to check for
+    * consistency. 
+    */
+   printf( LAVPLAY_VSTR "\n" );
+   fflush(stdout);
+   printf( "lavtools version " VERSION "\n" );
    fcntl(0, F_SETFL, O_NONBLOCK);
    signal(SIGINT,SigHandler);
    info = lavplay_malloc();
