@@ -30,7 +30,7 @@ void find_best_one_pel_mmxe( me_result_set *sub22set,
                 int x;
 		matchrec = sub22set->mests[k];
 		orgblk = org + (i0+matchrec.x)+rowstride*(j0+matchrec.y);
-		penalty = intmax(abs(matchrec.x),abs(matchrec.y))<<5;
+		penalty = (abs(matchrec.x) + abs(matchrec.y))<<3;
 		
 		/* Get SAD for macroblocks: 	orgblk,orgblk(+1,0),
 		   orgblk(0,+1), and orgblk(+1,+1)
