@@ -57,6 +57,8 @@
 
 #include "vector.h"
 
+#include "mjpeg_logging.h"
+
 typedef uint64_t clockticks;
 
 /*************************************************************************
@@ -261,15 +263,22 @@ typedef struct buffer_struc	/* Simuliert STD Decoder Buffer		*/
     Funktionsprototypen, keine Argumente, K&R Style
 *************************************************************************/
 
-int intro_and_options( int, char **);	/* Anzeigen des Introbildschirmes und	*/
-										/* Ueberpruefen der Argumente			*/
+int intro_and_options( int, char **, char**);
+/* Anzeigen des Introbildschirmes und	*/
+/* Ueberpruefen der Argumente			*/
+
 void init_stream_syntax_parameters(Video_struc 	*video_info,
 							    	Audio_struc 	*audio_info );	
 										/* Initialisation of syntax paramters 	*/
 										/* based on (checked) options 			*/
 										
-void check_files          ();	/* Kontrolliert ob Files vorhanden und	*/
-				/* weist sie Audio/Video Pointern zu	*/
+void check_files (int argc,
+				  char* argv[],
+				  char** audio_file,
+				  char** video_file,
+				  unsigned int *audio_bytes,
+				  unsigned int *video_bytes
+	);
 int  open_file            ();	/* File vorhanden?			*/
 void get_info_video (char *video_file,	
 					Video_struc *video_info,
@@ -282,10 +291,6 @@ void get_info_audio (char *audio_file,
 					  unsigned int length,
 					  Vector *audio_info_vec
 					  );
-
-void output_info_video    ();	/* Ausgabe Information Access Units	*/
-void output_info_audio    ();	/* Ausgabe Information Access Units	*/
-void marker_bit           ();	/* Checks for marker bit		*/
 void empty_video_struc    ();	/* Initialisiert Struktur fuer SUN cc	*/
 void empty_audio_struc    ();	/* Initialisiert Struktur fuer SUN cc	*/
 void empty_vaunit_struc   ();	/* Initialisiert Struktur fuer SUN cc	*/
@@ -404,12 +409,13 @@ void status_info (	unsigned int nsectors_a,
 					unsigned long long nbytes,
 					unsigned int buf_v,
 					unsigned int buf_a,
-					int verbose
+					log_level_t level
 				 );	/* Status line update	*/
 
-void status_header	  (void);	/* Titelzeilen Statusblock		*/
-void status_message	  (int what, int decode_number);	/* Event (end, time_out) mitteilen	*/
-void status_footer	  (void);	/* Endzeile				*/
+void status_header (log_level_t level);
+void status_footer (log_level_t level);
+void status_message	  (int what, int decode_number);
+void timeout_error	  (int what, int decode_number);
 
 
 
@@ -448,7 +454,7 @@ extern int opt_packets_per_pack;
 extern clockticks opt_max_PTS;
 extern int opt_emul_vcdmplex;
 
-extern int verbose;
+extern log_level_t verbose;
 extern unsigned int which_streams;
 
 extern int packet_overhead;

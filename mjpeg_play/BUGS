@@ -9,17 +9,16 @@
 	its window inconsistently with what it claims it is going to do.
 	Playback speed
 
-3.  There are probably some minor issues relating to capture sizing when
-	capturing using the Matrox hardware.
 
-4.	The VBVbuffer delay code is hopeless broken.  It is currently turned off
+3.	The VBVbuffer delay code in the MPEG encoder is hopeless broken.  
+	It is currently turned off
 	and needs re-implementing from scratch.  Not urgent though since
 	no decoder ever seems to take any notice of it.  Certainly I never
 	figured out the the damn thing would be useful for once your
 	mux-er has	checked for /ensured video buffer size bounding.
 
 
-5.	mpeg2enc is currently broken for 422 and 444 video.   The problem is that
+4.	mpeg2enc is currently broken for 422 and 444 video.   The problem is that
 	the calculations for checking chrominance in the the motion compensation
 	search assume 2-pel sub-sampled U and V in X and Y.
 

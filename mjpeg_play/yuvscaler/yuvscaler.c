@@ -146,8 +146,8 @@ int main(int argc,char *argv[])
    const unsigned char key[]="FRAME\n";   
    unsigned int * height_coeff,* width_coeff;
    unsigned char * input,* output;
-   unsigned char * black_y,* black_uv;
-//   unsigned char * skip;
+   unsigned char * black_y = NULL;
+   unsigned char * black_uv = NULL;
    unsigned char * u_c_p; //u_c_p = unsigned char pointer
    unsigned long int black_pixels;
    unsigned int divider;
@@ -379,7 +379,7 @@ int average_coeff(unsigned int input_length,unsigned int output_length,unsigned 
    // themselvesc, and that, output_length time
    int last_coeff=0,remaining_coeff,still_to_go=0,in,out,non_zero=0,nb;
    int i,j;
-   unsigned int *non_zero_p;
+   unsigned int *non_zero_p = NULL;
    unsigned int *pointer;
    
    if ((output_length>input_length) || (input_length<=0) || (output_length<=0)

@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-int open_file(char *name, unsigned int *bytes);
 
 /*************************************************************************
     Startbildschirm und Anzahl der Argumente
@@ -13,7 +12,7 @@ int open_file(char *name, unsigned int *bytes);
 static void Usage(char *str)
 {
 	fprintf( stderr, "mjpegtools mplex version " VERSION "\n" );
-	fprintf( stderr, "Usage: %s [params] [<input file1> [<input file2>] <output file>\n\n", str);
+	fprintf( stderr, "Usage: %s [params] -o <output file> [<input file1> [<input file2>] \n\n", str);
 	fprintf( stderr, "  where possible params are:\n" );
 	fprintf( stderr, " -q      Quiet mode for unattended batch usage\n" );
 	fprintf( stderr, " -n      Noisy (verbose) mode for debugging streams\n" );
@@ -38,7 +37,7 @@ static void Usage(char *str)
 	exit (1);
 }
 
-int verbose = 1;
+log_level_t verbose = LOG_INFO;
 int opt_buffer_size = 46;
 int opt_data_rate = 0;  /* 3486 = 174300B/sec would be right for VCD */
 int opt_video_offset = 0;
@@ -50,21 +49,24 @@ int opt_mux_format = 0;			/* Generic MPEG-1 stream as default */
 int opt_multifile_segment = 0;
 int opt_always_system_headers = 0;
 int opt_packets_per_pack = 20;
+int opt_max_timeouts = 10;
 clockticks opt_max_PTS = 0LL;
 int opt_emul_vcdmplex = 0;
 
 /* Should fit nicely on an ordinary CD ... */
 intmax_t max_system_segment_size =  680*1024*1024;
 
-int intro_and_options(int argc, char *argv[])
+int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 {
     int n;
-	printf( "mplex version %s (%s)\n",MPLEX_VER,MPLEX_DATE );
-	while( (n=getopt(argc,argv,"b:r:v:a:m:f:l:s:S:qiVnMe")) != EOF)
+	char *outfile = NULL;
+	while( (n=getopt(argc,argv,"o:b:r:v:a:m:f:l:s:S:qiVnMe")) != EOF)
 	{
 		switch(n)
 		{
-	  
+		case 'o' :
+			outfile = optarg;
+			break;
 		case 'm' :
 			opt_mpeg = atoi(optarg);
 			if( opt_mpeg < 1 || opt_mpeg > 2 )
@@ -72,11 +74,11 @@ int intro_and_options(int argc, char *argv[])
   	
 			break;
 		case 'q' :
-			verbose = 0;
+			verbose = LOG_WARN;
 			break;
 	
 		case 'n' :
-			verbose = 2;
+			verbose = LOG_DEBUG;
 			break;
 	
 		case 'V' :
@@ -148,15 +150,18 @@ int intro_and_options(int argc, char *argv[])
 		case 'e' :
 			opt_emul_vcdmplex = 1;
 			break;
+		case '?' :
 		default :
 			Usage(argv[0]);
 			break;
 		}
 	}
-	if (argc - optind < 2)
+	if (argc - optind < 1 || outfile == NULL)
     {	
 		Usage(argv[0]);
     }
+	mjpeg_info( "mplex version %s (%s)\n",MPLEX_VER,MPLEX_DATE );
+	*multplex_outfile = outfile;
 	return optind-1;
 }
 
@@ -184,7 +189,6 @@ int open_file(char *name, unsigned int *bytes)
 }
 
 
-
 /******************************************************************
 	Status_Info
 	druckt eine Statuszeile waehrend des Multiplexens aus.
@@ -198,55 +202,45 @@ void status_info (	unsigned int nsectors_a,
 					unsigned long long nbytes,
 					unsigned int buf_v,
 					unsigned int buf_a,
-					int verbose
+					log_level_t level
 				 )
 {
-
-	if( verbose > 0 )
-	{
-	  printf ("| %7d | %7d |",nsectors_a,nsectors_v);
-	  if( opt_VBR )
-		  printf( "   VBR   |");
-	  else
-		  printf (" %7d |",nsectors_p);
-	  printf ("%11lld  |",nbytes);
-	  printf (" %6d | %6d |",buf_a,buf_v);
-	  printf ((verbose > 1?"\n":"\r"));
-	  fflush (stdout);
-	}
+	mjpeg_log( level, "A secs=%6d V secs=%7d P secs=%7d\n" ,nsectors_a,nsectors_v,nsectors_p);
+	mjpeg_log( LOG_DEBUG,"l=%11lld abuf=%6d vbuf=%6d\n",nbytes,buf_a,buf_v);
 }
 
-void status_header (void)
-{
-    status_footer();
-    printf("|  Audio  |  Video  | Padding | Bytes  MPEG | Audio  | Video  |\n");
-    printf("| Sectors | Sectors | Sectors | System File | Buffer | Buffer |\n");
-    status_footer();
-}
+
 
 
 void status_message (int what, int decode_number)
 
 {
-  if( verbose == 1 )
-	printf( "\n" );
   switch (what)
   {
   case STATUS_AUDIO_END:
-  printf("|file  end|         |         |             |        |        |\n");
-  break;
-  case STATUS_AUDIO_TIME_OUT:
-  printf("|TO%07d   |         |         |             |        |        |\n", decode_number);
+	  mjpeg_info("Audio stream end at sector %07d\n", decode_number);
   break;
   case STATUS_VIDEO_END:
-  printf("|         |file  end|         |             |        |        |\n");
+	  mjpeg_info("Video stream end at sector %07d\n", decode_number);
   break;
-  case STATUS_VIDEO_TIME_OUT:
-  printf("|         |TO%07d|         |             |        |        |\n", decode_number);
   }
+
 }
 
-void status_footer (void)
+void timeout_error(int what, int decode_number)
 {
-  printf("+---------+---------+---------+-------------+--------+--------+\n");
+	static int timeouts = 0;
+	switch (what)
+		{
+		case STATUS_AUDIO_TIME_OUT:
+			mjpeg_error("Timeout in audio at sector %07d",decode_number);
+			break;
+		case STATUS_VIDEO_TIME_OUT:
+			mjpeg_error("Timeout in video at sector %07d",decode_number);
+			break;
+		}
+	if( ++timeouts > opt_max_timeouts )
+		exit(1);
+  
 }
+

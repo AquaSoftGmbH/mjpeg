@@ -1,0 +1,8 @@
+# Process this file with Automake to produce Makefile.in
+
+INCLUDES = -I$(top_srcdir)
+
+noinst_LIBRARIES = libutils.a
+
+libutils_a_SOURCES = mjpeg_logging.c
+

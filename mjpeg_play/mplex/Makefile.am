@@ -3,7 +3,7 @@
 EXTRA_DIST = \
 	README  	INSTRUCT	TODO
 
-INCLUDES = -I $(top_srcdir)
+INCLUDES = -I $(top_srcdir) -I $(top_srcdir)/utils
 
 bin_PROGRAMS = mplex
 
@@ -18,5 +18,6 @@ mplex_SOURCES = \
 	systems.c 		\
 	vector.c 	vector.h
 
-#mplex_LDADD = -lm
+mplex_LDADD = -L $(top_srcdir)/utils -lutils -lm 
+
 

@@ -207,7 +207,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	
 
   audio_buffer_size = 4 * 1024;
-  printf("\n+------------------ MPEG/SYSTEMS INFORMATION -----------------+\n");
+  mjpeg_info("SYSTEMS/PROGRAM stream:\n");
     
  
 
@@ -258,10 +258,10 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 			video_rate = video_info->peak_bit_rate *50;
 			if( video_buffer_size < video_rate / 2 )
 			{
-				fprintf( stderr, "WARNING: VBR specified with implausibly small buffer\nLess than to 1/2 sec at peak rate!\n" );
+				mjpeg_warn( "VBR specified with implausibly small buffer\nLess than to 1/2 sec at peak rate!\n" );
 			}
-			printf( "VBR set - pseudo bit rate = %dKbps vbuffer = %dKB\n",
-					video_rate*8, video_buffer_size/1024 );
+			mjpeg_info( "VBR set - pseudo bit rate = %dKbps vbuffer = %dKB\n",
+						video_rate*8, video_buffer_size/1024 );
 		}
 		else
 		{
@@ -285,24 +285,23 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 			    )
 			     / ((double)packets_per_pack);
 	dmux_rate = (dmux_rate/50 + 25)*50;
-
-		printf ("\nbest-guess multiplexed stream data rate    : %07d\n",dmux_rate * 8);
-		if( opt_data_rate != 0 )
-
-						printf ("\ntarget data-rate specified               : %7d\n", opt_data_rate*8 );
-		if( opt_data_rate == 0 )
-		{
-			printf( "Setting best-guess data rate.\n");
-		}
-		else if ( opt_data_rate >= dmux_rate)
-		{
-			printf( "Setting specified specified data rate: %7d\n", opt_data_rate*8 );
-			dmux_rate = opt_data_rate;
-		}
-		else if ( opt_data_rate < dmux_rate )
-		{
-			printf( "Warning: Target data rate lower than computed requirement!\n");
-			printf( "N.b. a 20%% or so discrepancy in variable bit-rate\nstreams is common and harmless provided no time-outs will occur\n"); 
+	
+	mjpeg_info ("best-guess multiplexed stream data rate    : %07d\n",dmux_rate * 8);
+	if( opt_data_rate != 0 )
+		mjpeg_info ("target data-rate specified               : %7d\n", opt_data_rate*8 );
+	if( opt_data_rate == 0 )
+	{
+		mjpeg_info( "Setting best-guess data rate.\n");
+	}
+	else if ( opt_data_rate >= dmux_rate)
+	{
+		mjpeg_info( "Setting specified specified data rate: %7d\n", opt_data_rate*8 );
+		dmux_rate = opt_data_rate;
+	}
+	else if ( opt_data_rate < dmux_rate )
+	{
+			mjpeg_warn( "Target data rate lower than computed requirement!\n");
+			mjpeg_warn( "N.b. a 20%% or so discrepancy in variable bit-rate\nstreams is common and harmless provided no time-outs will occur\n"); 
 			dmux_rate = opt_data_rate;
 		}
 
@@ -551,11 +550,6 @@ void outputstream ( char 		*video_file,
 	init_buffer_struc (&video_buffer,video_buffer_size);
 	init_buffer_struc (&audio_buffer,audio_buffer_size);
 	
-	printf("\nMerging elementary streams to MPEG/SYSTEMS multiplexed stream.\n");
-
-
- 
-
 
     /* To avoid Buffer underflow, the DTS of the first video and audio AU's
     	must be offset sufficiently	forward of the SCR to allow the buffer 
@@ -633,12 +627,17 @@ void outputstream ( char 		*video_file,
 			*/
 
 			case start_segment :
+				mjpeg_info( "New sequence commences...\n" );
+				status_info (nsec_a, nsec_v, nsec_p, bytes_output,
+							 buffer_space(&video_buffer),
+							 buffer_space(&audio_buffer),
+							 LOG_INFO);
+
 				bytes_output = 0;
 				bytepos_timecode ( bytes_output, &current_SCR);	
 				
 				buffer_flush (&video_buffer);
 				buffer_flush (&audio_buffer);
-				status_header ();
 				outputstreamprefix( &current_SCR );
 
 				/* The starting PTS/DTS of AU's may of course be
@@ -763,7 +762,7 @@ void outputstream ( char 		*video_file,
 			/* Calculate actual time current AU is likely to arrive. */
 			bytepos_timecode (bytes_output+audio_bytes, &audio_next_SCR);
 			if( audio_next_SCR >= audio_au.PTS+SCR_audio_delay )
-				status_message (STATUS_AUDIO_TIME_OUT,audio_au.dorder);
+				timeout_error (STATUS_AUDIO_TIME_OUT,audio_au.dorder);
 
 			output_audio (current_SCR, SCR_audio_delay, 
 						  istream_a, ostream, 
@@ -787,7 +786,7 @@ void outputstream ( char 		*video_file,
 			/* Calculate actual time current AU is likely to arrive. */
 			bytepos_timecode (bytes_output+video_bytes, &video_next_SCR);
 			if( video_next_SCR >= video_au.DTS+SCR_video_delay )
-				status_message (STATUS_VIDEO_TIME_OUT,video_au.dorder);
+				timeout_error (STATUS_VIDEO_TIME_OUT,video_au.dorder);
 			output_video ( current_SCR, SCR_video_delay, 
 						  istream_v, ostream, 
 						  &video_buffer, &video_au, 
@@ -827,7 +826,8 @@ void outputstream ( char 		*video_file,
 #endif 
 			status_info (nsec_a, nsec_v, nsec_p, bytes_output,
 						 buffer_space(&video_buffer),
-						 buffer_space(&audio_buffer),verbose);
+						 buffer_space(&audio_buffer),
+						 LOG_DEBUG);
 
 #ifdef TIMER
 			gettimeofday (&tp_end,NULL);
@@ -847,8 +847,8 @@ void outputstream ( char 		*video_file,
 	/* status info*/
 	status_info (nsec_a, nsec_v, nsec_p, bytes_output, 
 				 buffer_space(&video_buffer),
-				 buffer_space(&audio_buffer),2); 
-	status_footer ();
+				 buffer_space(&audio_buffer),
+				 LOG_INFO); 
 #ifdef TIMER
 	gettimeofday (&tp_end,NULL);
 	total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
@@ -924,7 +924,7 @@ void next_video_access_unit (Buffer_struc *buffer,
 	  else
 	    {
 		  empty_vaunit_struc (video_au);
-		  status_message(STATUS_VIDEO_END, 0);
+		  status_message(STATUS_VIDEO_END,0);
 		  return;
 	    }
 	  *AU_starting_next_sec = video_au->type;

@@ -67,17 +67,9 @@ static unsigned int slots [4] = {12, 144, 144, 0};
 static unsigned int samples [4] = {384, 1152, 1152, 0};
 
 
-void marker_bit (Bit_stream_struc *bs, unsigned int what);
-void check_files (int argc,
-				  char* argv[],
-				  char** audio_file,
-				  char** video_file,
-				  char** multi_file,
-				  unsigned int *audio_bytes,
-				  unsigned int *video_bytes
-	);
-void output_info_video (Video_struc *video_info);
-void output_info_audio (Audio_struc *audio_info);
+
+static void output_info_video (Video_struc *video_info);
+static void output_info_audio (Audio_struc *audio_info);
 
 
 /*************************************************************************
@@ -90,7 +82,7 @@ void marker_bit (Bit_stream_struc *bs, unsigned int what)
 {
     if (what != get1bit(bs))
     {
-        printf ("\nError in MPEG stream at offset (bits) %lld: supposed marker bit not found.\n",bitcount(bs));
+        mjpeg_error ("Illegal MPEG stream at offset (bits) %lld: supposed marker bit not found.\n",bitcount(bs));
         exit (1);
     }
 }
@@ -107,7 +99,6 @@ void check_files (int argc,
 				  char* argv[],
 				  char** audio_file,
 				  char** video_file,
-				  char** multi_file,
 				  unsigned int *audio_bytes,
 				  unsigned int *video_bytes
 	)
@@ -117,16 +108,16 @@ void check_files (int argc,
 	
 	/* As yet no streams determined... */
 	which_streams = 0;
-    if (argc == 3) {
+    if (argc == 2) {
 		if (open_file(argv[1],&bytes_1))
 			exit (1); }
-    else if (argc == 4) {
+    else if (argc == 3) {
 		if (open_file(argv[1],&bytes_1) || open_file(argv[2],&bytes_2))
 			exit (1); }
 	    
     init_getbits (&bs1, argv[1]);
  
-    if (argc == 4)
+    if (argc == 3)
 		init_getbits (&bs2, argv[2]);
 
 	/* Das Bitstreampaket kuemmert sich bei einem look_ahead nicht
@@ -141,19 +132,19 @@ void check_files (int argc,
     {
 		*audio_file = argv[1];
 		*audio_bytes= bytes_1;
-		printf ("File %s is a 11172-3 Audio stream.\n",argv[1]);
+		mjpeg_info ("File %s is a 11172-3 Audio stream.\n",argv[1]);
 		which_streams |= STREAMS_AUDIO;
-		if (argc == 4 ) {
+		if (argc == 3 ) {
 			if (  getbits(&bs2, 32) != 0x1b3)
 			{
-				printf ("File %s is not a MPEG-1/2 Video stream.\n",argv[2]);
+				mjpeg_info ("File %s is not a MPEG-1/2 Video stream.\n",argv[2]);
 				finish_getbits (&bs1);
 				finish_getbits (&bs2);
 				exit (1);
 			} 
 			else
 			{
-				printf ("File %s is a MPEG-1/2 Video stream.\n",argv[2]);
+				mjpeg_info ("File %s is a MPEG-1/2 Video stream.\n",argv[2]);
 				which_streams |= STREAMS_VIDEO;
 				*video_file = argv[2];
 				*video_bytes= bytes_2;
@@ -168,19 +159,19 @@ void check_files (int argc,
 		{
 			*video_file = argv[1];
 			*video_bytes= bytes_1;
-			printf ("File %s is a 11172-2 Video stream.\n",argv[1]);
+			mjpeg_info ("File %s is a 11172-2 Video stream.\n",argv[1]);
 			which_streams |= STREAMS_VIDEO;
-			if (argc == 4 ) {
+			if (argc == 3 ) {
 				if ( getbits( &bs2, 12 ) != 0xfff)
 				{
-					printf ("File %s is not a 11172-3 Audio stream.\n",argv[2]);
+					mjpeg_info ("File %s is not a 11172-3 Audio stream.\n",argv[2]);
 					finish_getbits (&bs1);
 					finish_getbits (&bs2);
 					exit (1);
 				} 
 				else
 				{
-					printf ("File %s is a 11172-3 Audio stream.\n",argv[2]);
+					mjpeg_info ("File %s is a 11172-3 Audio stream.\n",argv[2]);
 					which_streams |= STREAMS_AUDIO;
 					*audio_file = argv[2];
 					*audio_bytes= bytes_2;
@@ -189,15 +180,15 @@ void check_files (int argc,
 		}
 		else 
 		{
-			if (argc == 4) {
-				printf ("Files %s and %s are not valid MPEG streams.\n",
+			if (argc == 3) {
+				mjpeg_error ("Files %s and %s are not valid MPEG streams.\n",
 						argv[1],argv[2]);
 				finish_getbits (&bs1);
 				finish_getbits (&bs2);
 				exit (1);
 			}
 			else {
-				printf ("File %s is not a valid MPEG stream.\n", argv[1]);
+				mjpeg_error ("File %s is not a valid MPEG stream.\n", argv[1]);
 				finish_getbits (&bs1);
 				exit (1);
 			}
@@ -205,13 +196,8 @@ void check_files (int argc,
 	}
 
 	finish_getbits (&bs1);
-    if (argc == 4)
+    if (argc == 3)
 		finish_getbits (&bs2);
-    if (argc == 4 )
-		*multi_file = argv[3];
-    else
-		*multi_file = argv[2];
-		
 
 }
 
@@ -259,7 +245,7 @@ void get_info_video (char *video_file,
 	int AU_hdr = SEQUENCE_HEADER;  /* GOP or SEQ Header starting AU? */
 	
   
-    printf ("\nScanning Video stream for access units information.\n");
+    mjpeg_info ("Scanning Video stream for access units information.\n");
     init_getbits (&video_bs, video_file);
 
     if (getbits (&video_bs, 32)==SEQUENCE_HEADER)
@@ -277,7 +263,7 @@ void get_info_video (char *video_file,
 
     } else
     {
-		printf ("Invalid MPEG Video stream header.\n");
+		mjpeg_error ("Invalid MPEG Video stream header.\n");
 		exit (1);
     }
 
@@ -345,12 +331,12 @@ void get_info_video (char *video_file,
 					AU_hdr = SEQUENCE_HEADER;
 					AU_pict_data = 0;
 					if( opt_multifile_segment )
-						fprintf( stderr, "+++ WARNING: Sequence end marker found in video stream but single-segment splitting specified!\n" );
+						mjpeg_warn("Sequence end marker found in video stream but single-segment splitting specified!\n" );
 				}
 				else
 				{
-					if( ! opt_multifile_segment )
-						fprintf (stderr,"+++ WARNING: No seq. header starting new sequence after seq. end!\n");
+					if( !end_bs(&video_bs) && ! opt_multifile_segment )
+						mjpeg_warn("No seq. header starting new sequence after seq. end!\n");
 				}
 					
 				video_info->num_seq_end++;
@@ -458,9 +444,8 @@ void get_info_video (char *video_file,
 			prozent =(int) (((float)bitcount(&video_bs)/8/(float)length)*100);
 			if ( prozent > old_prozent && verbose > 0 )
 			{
-				printf ("Got %d picture headers. %2d%%%c",
-						decoding_order, prozent, verbose > 1 ? '\n' : '\r');
-				fflush (stdout);
+				mjpeg_debug("Got %d picture headers. %2d%%\n",
+						decoding_order, prozent);
 				old_prozent = prozent;
 			}
 			
@@ -500,61 +485,64 @@ void get_info_video (char *video_file,
 	Prints information on video access units
 *************************************************************************/
 
-void output_info_video (Video_struc *video_info)
+static void output_info_video (Video_struc *video_info)
 {
-	printf("\n+------------------ VIDEO STREAM INFORMATION -----------------+\n");
+	char *str;
+	mjpeg_info("VIDEO STREAM:\n");
 
-    printf ("\nStream length  : %11llu\n",video_info->stream_length);
-    printf   ("Sequence start : %8u\n",video_info->num_sequence);
-    printf   ("Sequence end   : %8u\n",video_info->num_seq_end);
-    printf   ("No. Pictures   : %8u\n",video_info->num_pictures);
-    printf   ("No. Groups     : %8u\n",video_info->num_groups);
-    printf   ("No. I Frames   : %8u avg. size%6u bytes\n",
+    mjpeg_info ("nStream length  : %11llu\n",video_info->stream_length);
+    mjpeg_info ("Sequence start : %8u\n",video_info->num_sequence);
+    mjpeg_info ("Sequence end   : %8u\n",video_info->num_seq_end);
+    mjpeg_info ("No. Pictures   : %8u\n",video_info->num_pictures);
+    mjpeg_info ("No. Groups     : %8u\n",video_info->num_groups);
+    mjpeg_info ("No. I Frames   : %8u avg. size%6u bytes\n",
 			  video_info->num_frames[0],video_info->avg_frames[0]);
-    printf   ("No. P Frames   : %8u avg. size%6u bytes\n",
+    mjpeg_info ("No. P Frames   : %8u avg. size%6u bytes\n",
 			  video_info->num_frames[1],video_info->avg_frames[1]);
-    printf   ("No. B Frames   : %8u avg. size%6u bytes\n",
+    mjpeg_info ("No. B Frames   : %8u avg. size%6u bytes\n",
 			  video_info->num_frames[2],video_info->avg_frames[2]);
-    printf   ("No. D Frames   : %8u avg. size%6u bytes\n",
+    mjpeg_info ("No. D Frames   : %8u avg. size%6u bytes\n",
 			  video_info->num_frames[3],video_info->avg_frames[3]);
 
-    printf   ("Horizontal size: %8u\n",video_info->horizontal_size);
-    printf   ("Vertical size  : %8u\n",video_info->vertical_size);
-    printf   ("Aspect ratio   :   %1.4f ",ratio[video_info->aspect_ratio]);
+    mjpeg_info ("Horizontal size: %8u\n",video_info->horizontal_size);
+    mjpeg_info ("Vertical size  : %8u\n",video_info->vertical_size);
 
     switch (video_info->aspect_ratio)
     {
-	case  0: printf ("forbidden\n"); break;
-	case  1: printf ("VGA etc\n"); break;
-	case  3: printf ("16:9, 625 line\n"); break;
-	case  6: printf ("16:9, 525 line\n"); break;
-	case  8: printf ("CCIR601, 625 line\n"); break;
-	case 12: printf ("CCIR601, 525 line\n"); break;
-	case 15: printf ("reserved\n"); break;
-	default: printf ("\n");
+	case  0: str = "forbidden\n"; break;
+	case  1: str = "VGA etc\n"; break;
+	case  3: str = "16:9, 625 line\n"; break;
+	case  6: str = "16:9, 525 line\n"; break;
+	case  8: str = "CCIR601, 625 line\n"; break;
+	case 12: str = "CCIR601, 525 line\n"; break;
+	case 15: str = "reserved\n"; break;
+	default: str = "\n";
     }
+    mjpeg_info   ("Aspect ratio   :   %1.4f %s",ratio[video_info->aspect_ratio], str);
 
     if (video_info->picture_rate == 0)
-		printf("Picture rate   : forbidden\n");
+		mjpeg_info( "Picture rate   : forbidden\n");
     else if (video_info->picture_rate <9)
-		printf("Picture rate   :   %2.3f frames/sec\n",
-			   picture_rates[video_info->picture_rate]);
+		mjpeg_info( "Picture rate   :   %2.3f frames/sec\n",
+					picture_rates[video_info->picture_rate]);
     else
-		printf("Picture rate   : %x reserved\n",video_info->picture_rate);
+		mjpeg_info( "Picture rate   : %x reserved\n",video_info->picture_rate);
 
-    if (video_info->bit_rate == 0x3ffff) {
-		video_info->bit_rate = 0;
-		printf("Bit rate       : variable\n"); }
+    if (video_info->bit_rate == 0x3ffff)
+		{
+			video_info->bit_rate = 0;
+			mjpeg_info( "Bit rate       : variable\n"); 
+		}
     else if (video_info->bit_rate == 0)
-		printf("Bit rate      : forbidden\n");
+		mjpeg_info( "Bit rate      : forbidden\n");
     else
-		printf("Bit rate       : %7u bits/sec\n",
-			   video_info->bit_rate*400);
+		mjpeg_info( "Bit rate       : %7u bits/sec\n",
+					video_info->bit_rate*400);
 
-    printf   ("Computed rate  : %8u bits/sec\n",video_info->comp_bit_rate*400);
-    printf   ("Peak     rate  : %8u  bits/sec\n",video_info->peak_bit_rate*400);
-    printf   ("Vbv buffer size: %8u bytes\n",video_info->vbv_buffer_size*2048);
-    printf   ("CSPF           : %8u\n",video_info->CSPF);
+    mjpeg_info("Computed rate  : %8u bits/sec\n",video_info->comp_bit_rate*400);
+    mjpeg_info("Peak     rate  : %8u  bits/sec\n",video_info->peak_bit_rate*400);
+    mjpeg_info("Vbv buffer size: %8u bytes\n",video_info->vbv_buffer_size*2048);
+    mjpeg_info("CSPF           : %8u\n",video_info->CSPF);
 }
 
 /*************************************************************************
@@ -564,7 +552,7 @@ void output_info_video (Video_struc *video_info)
 	Prints information on audio access units
 *************************************************************************/
 
-void output_info_audio (Audio_struc *audio_info)
+static void output_info_audio (Audio_struc *audio_info)
 {
     unsigned int layer;
     unsigned int bitrate;
@@ -573,41 +561,41 @@ void output_info_audio (Audio_struc *audio_info)
     bitrate = bitrate_index[audio_info->version_id][layer][audio_info->bit_rate];
 
 
-	printf("\n+------------------ AUDIO STREAM INFORMATION -----------------+\n");
-	printf ("Audio version  : %s\n", audio_version[audio_info->version_id]);
-    printf (" Stream length  : %11llu\n",audio_info->stream_length);
-    printf   ("Syncwords      : %8u\n",audio_info->num_syncword);
-    printf   ("Frames         : %8u size %6u bytes\n",
+	mjpeg_info("AUDIO STREAM:\n");
+	mjpeg_info ("Audio version  : %s\n", audio_version[audio_info->version_id]);
+    mjpeg_info (" Stream length  : %11llu\n",audio_info->stream_length);
+    mjpeg_info   ("Syncwords      : %8u\n",audio_info->num_syncword);
+    mjpeg_info   ("Frames         : %8u size %6u bytes\n",
 			  audio_info->num_frames[0],audio_info->size_frames[0]);
-    printf   ("Frames         : %8u size %6u bytes\n",
+    mjpeg_info   ("Frames         : %8u size %6u bytes\n",
 			  audio_info->num_frames[1],audio_info->size_frames[1]);
-    printf   ("Layer          : %8u\n",1+layer);
+    mjpeg_info   ("Layer          : %8u\n",1+layer);
 
-    if (audio_info->protection == 0) printf ("CRC checksums  :      yes\n");
-    else  printf ("CRC checksums  :       no\n");
+    if (audio_info->protection == 0) mjpeg_info ("CRC checksums  :      yes\n");
+    else  mjpeg_info ("CRC checksums  :       no\n");
 
     if (audio_info->bit_rate == 0)
-		printf ("Bit rate       :     free\n");
+		mjpeg_info ("Bit rate       :     free\n");
     else if (audio_info->bit_rate == 0xf)
-		printf ("Bit rate       : reserved\n");
+		mjpeg_info ("Bit rate       : reserved\n");
     else
-		printf ("Bit rate       : %8u bytes/sec (%3u kbit/sec)\n",
+		mjpeg_info ("Bit rate       : %8u bytes/sec (%3u kbit/sec)\n",
 				bitrate*128, bitrate);
 
     if (audio_info->frequency == 3)
-		printf ("Frequency      : reserved\n");
+		mjpeg_info ("Frequency      : reserved\n");
     else
-		printf ("Frequency      :     %d Hz\n",
+		mjpeg_info ("Frequency      :     %d Hz\n",
 				frequency[audio_info->version_id][audio_info->frequency]);
 
-    printf   ("Mode           : %8u %s\n",
+    mjpeg_info   ("Mode           : %8u %s\n",
 			  audio_info->mode,mode[audio_info->mode]);
-    printf   ("Mode extension : %8u\n",audio_info->mode_extension);
-    printf   ("Copyright bit  : %8u %s\n",
+    mjpeg_info   ("Mode extension : %8u\n",audio_info->mode_extension);
+    mjpeg_info   ("Copyright bit  : %8u %s\n",
 			  audio_info->copyright,copyright[audio_info->copyright]);
-    printf   ("Original/Copy  : %8u %s\n",
+    mjpeg_info   ("Original/Copy  : %8u %s\n",
 			  audio_info->original_copy,original[audio_info->original_copy]);
-    printf   ("Emphasis       : %8u %s\n",
+    mjpeg_info   ("Emphasis       : %8u %s\n",
 			  audio_info->emphasis,emphasis[audio_info->emphasis]);
 }
 
@@ -642,7 +630,7 @@ void get_info_audio (
     unsigned int old_prozent=0;
     Vector aaunits = NewVector(sizeof(Aaunit_struc));
    
-    printf ("\nScanning Audio stream for access units information. \n");
+    mjpeg_info ("Scanning Audio stream for access units information. \n");
     init_getbits (&audio_bs, audio_file);
     empty_aaunit_struc (&access_unit);
 
@@ -688,7 +676,7 @@ void get_info_audio (
 
     } else
     {
-		fprintf ( stderr,"Invalid MPEG Audio stream header.\n");
+		mjpeg_error ( "Invalid MPEG Audio stream header.\n");
 		exit (1);
     }
 
@@ -719,17 +707,14 @@ void get_info_audio (
 			{
 				/* There appears to be another catenated stream... */
 				int next;
-				printf( "\nEnd of component bit-stream ... seeking next\n" );
+				mjpeg_warn( "End of component bit-stream ... seeking next\n" );
 				/* Catenated stream must start on byte boundary */
 				syncword = (syncword<<(8-AU_start % 8));
 				next = getbits( &audio_bs,8-(AU_start % 8) );
 				syncword = syncword | next;
-				/*
-				  printf( "syncword offset = %d syncword = %03x, next = %08x\n",
-				  AU_start % 8, syncword, next ); */
 				if( syncword != AUDIO_SYNCWORD )
 				{
-					printf( "Warning: Failed to find start of next stream at %lld prev %lld !\n", AU_start/8, prev_offset/8 );
+					mjpeg_warn("Failed to find start of next stream at %lld prev %lld !\n", AU_start/8, prev_offset/8 );
 					break;
 				}
 			}
@@ -745,9 +730,8 @@ void get_info_audio (
 		if ((prozent > old_prozent && verbose > 0))
 		{
 
-			printf ("Got %d frame headers. %2d%%%c",
-					audio_info->num_syncword,prozent, verbose > 1? '\n' : '\r');
-			fflush (stdout);
+			mjpeg_debug ("Got %d frame headers. %2d%%\n",
+						 audio_info->num_syncword,prozent);
 			old_prozent=prozent;
 		
 		}
@@ -767,7 +751,7 @@ void get_info_audio (
     } while (!end_bs(&audio_bs) && 
     		(!opt_max_PTS || access_unit.PTS < opt_max_PTS));
 
-    printf ("\nDone, stream bit offset %lld.\n",AU_start);
+    mjpeg_info ("\nDone, stream bit offset %lld.\n",AU_start);
 
     audio_info->stream_length = AU_start >> 3;
     finish_getbits (&audio_bs);

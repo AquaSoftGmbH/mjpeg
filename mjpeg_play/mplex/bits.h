@@ -22,9 +22,9 @@ typedef struct _bitstream bitstream;
 typedef struct _bitstream Bit_stream_struc;
 
 /* bits */
-int init_putbits(bitstream *bs, char *bs_filename);
+void init_putbits(bitstream *bs, char *bs_filename);
 void finish_putbits(bitstream *bs);
-int init_getbits(bitstream *bs, char *bs_filename);
+void init_getbits(bitstream *bs, char *bs_filename);
 void finish_getbits(bitstream *bs);
 unsigned int get1bit(bitstream *bs);
 unsigned int getbits(bitstream *bs, int N);

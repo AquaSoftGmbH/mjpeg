@@ -66,7 +66,13 @@ if test x$with_jpeg_mmx = xyes ; then
   AC_MSG_ERROR([
 *** A directory must be specified for --with-jpeg-mmx option.])
 fi
-if test x$with_jpeg_mmx != x ; then
+if test x$with_jpeg_mmx = x ; then
+  with_jpeg_mmx=/usr/local/src/jpeg-mmx
+fi
+dnl
+dnl Look for the installed / specified copy
+dnl
+
   OLD_CFLAGS="$CFLAGS"
   OLD_LIBS="$LIBS"
   LIBS="$LIBS -L$with_jpeg_mmx"
@@ -77,15 +83,7 @@ if test x$with_jpeg_mmx != x ; then
        have_jpeg=true ],,)
   LIBS="$OLD_LIBS"
   CFLAGS="$OLD_CFLAGS"
-else
-dnl
-dnl Look for the installed copy
-dnl
-  AC_CHECK_LIB(jpeg-mmx, jpeg_start_compress,
-    [ JPEG_LIBS="-ljpeg-mmx"
-      JPEG_CFLAGS=""
-      have_jpeg=true ],,)
-fi
+
 dnl 
 dnl Look for _a_ jpeg lib that will work.
 dnl
@@ -113,7 +111,7 @@ if test x$with_quicktime = xyes ; then
   AC_MSG_ERROR([
 *** A directory must be specified for the --with-quicktime option.])
 else if test x$with_quicktime = x ; then
-  with_quicktime=/usr/local/src/quicktime
+  with_quicktime=/usr/local/src/quicktime4linux-1.3
 fi
 fi
 have_quicktime=false
@@ -358,13 +356,16 @@ dnl Output a Makefile or two
 dnl
 AC_OUTPUT([
 Makefile
+utils/Makefile
 docs/Makefile
 lavtools/Makefile
+yuvscaler/Makefile
 mjpeg/Makefile
 mpeg2enc/Makefile
 aenc/Makefile
 mplex/Makefile
-scripts/Makefile])
+scripts/Makefile
+])
 
 AC_DEFINE(VERSION, ${VERSION})
 

@@ -36,26 +36,26 @@
 static int ubuffer[BUFFER_SIZE];
 
 /* initialize buffer, call once before first putbits or alignbits */
-int init_putbits(bitstream *bs, char *bs_filename)
+void init_putbits(bitstream *bs, char *bs_filename)
 {
   if ((bs->bitfile = fopen(bs_filename, "wb")) == NULL)
   {
-    fprintf(stderr, "Unable to open file %s for writing.\n", bs_filename);
-    return FALSE;
+	  mjpeg_error( "Unable to open file %s for writing.\n", bs_filename);
+	  exit(1);
   }
   bs->bfr = (unsigned char*)malloc(BUFFER_SIZE);
   if (!bs->bfr)
   {
-    fclose(bs->bitfile);
-   fprintf(stderr, "Unable to allocate memory for bitstream file %s.", bs_filename);
-    return FALSE;
+	  fclose(bs->bitfile);
+	  mjpeg_error( "Unable to allocate memory for bitstream file %s.", bs_filename);
+	  exit(1);
   }
   bs->bitidx = 8;
   bs->byteidx = 0;
   bs->totbits = 0.0;
   bs->outbyte = 0;
   bs->fileOutError = FALSE;
-  return TRUE;
+
 }
 
 void finish_putbits(bitstream *bs)
@@ -165,21 +165,21 @@ static int refill_buffer(bitstream *bs)
 }
 
 /* open the device to read the bit stream from it */
-int init_getbits(bitstream *bs, char *bs_filename)
+void init_getbits(bitstream *bs, char *bs_filename)
 {
 
   if ((bs->bitfile = fopen(bs_filename, "rb")) == NULL)
   {
-    fprintf(stderr, "Unable to open file %s for reading.\n", bs_filename);
-    return FALSE;
+	  mjpeg_error( "Unable to open file %s for reading.\n", bs_filename);
+	  exit(1);
   }
   bs->bfr = (unsigned char*)malloc(BUFFER_SIZE);
   if (!bs->bfr)
   {
-    fclose(bs->bitfile);
-    fprintf(stderr, "Unable to allocate memory for bitstream file %s.\n", bs_filename);
-    return FALSE;
-  }
+	  fclose(bs->bitfile);
+	  mjpeg_error( "Unable to allocate memory for bitstream file %s.\n", bs_filename);
+	  exit(1);
+}
   bs->byteidx = 0;
   bs->bitidx = 8;
   bs->totbits = 0.0;
@@ -189,11 +189,10 @@ int init_getbits(bitstream *bs, char *bs_filename)
   {
     if (bs->eobs)
     {
-      fprintf(stderr, "Unable to read from file %s.\n", bs_filename);
-      return FALSE;
+		mjpeg_error( "Unable to read from file %s.\n", bs_filename);
+		exit(1);
     }
   }
-  return TRUE;
 }
 
 /*close the device containing the bit stream after a read process*/
