@@ -68,7 +68,8 @@ void enable_altivec_quantization(struct QuantizerCalls *calls, int opt_mpeg1);
 #endif
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
 void init_x86_quantization( struct QuantizerCalls *calls,
-                                                        int mpeg1 );
+                            struct QuantizerWorkSpace *wsp,
+                            int mpeg1 );
 #endif
 
 #define fabsshift ((8*sizeof(unsigned int))-1)
@@ -504,6 +505,13 @@ void init_quantizer( struct QuantizerCalls *calls,
         {
             wsp->intra_q_tbl[q][i] = intra_q[i] * q;
             wsp->inter_q_tbl[q][i] = inter_q[i] * q;
+
+            if( wsp->intra_q_tbl[q][i] < 3 )
+                mjpeg_warn("Intra table falls below 3: q=%d, i=%d, v=%d",q,i,wsp->intra_q_tbl[q][i]);
+
+            if( wsp->inter_q_tbl[q][i] < 3 )
+                mjpeg_warn("Inter table falls below 3: q=%d, i=%d, v=%d",q,i,wsp->inter_q_tbl[q][i]);
+
             wsp->intra_q_tblf[q][i] = (float)wsp->intra_q_tbl[q][i];
             wsp->inter_q_tblf[q][i] = (float)wsp->inter_q_tbl[q][i];
             wsp->i_intra_q_tblf[q][i] = (float)(1.0 / (wsp->intra_q_tblf[q][i]));
@@ -532,7 +540,7 @@ void init_quantizer( struct QuantizerCalls *calls,
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
     if( cpu_accel() )
     {
-        init_x86_quantization( calls, mpeg1 );
+        init_x86_quantization( calls, wsp, mpeg1 );
     }
 #endif
 #ifdef HAVE_ALTIVEC
