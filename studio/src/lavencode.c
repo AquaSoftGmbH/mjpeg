@@ -42,6 +42,7 @@
 
 /* Some variables defined here */
 GtkWidget *input_entry, *output_entry, *sound_entry, *video_entry;
+GtkWidget *video_select, *sound_select;
 GtkWidget *execute_status; 
    /* Used Buttons  but they need to be deactivated from everywhere */
 GtkWidget *create_sound, *do_video, *mplex_only;
@@ -1111,7 +1112,7 @@ GtkWidget *filew;
 /* creating the layout for temp files */
 void create_temp_files (GtkWidget *hbox1, GtkWidget *vbox)
 {
-GtkWidget *label1, *video_select, *sound_select;
+GtkWidget *label1;
 
   hbox1 = gtk_hbox_new (FALSE, 0);
 
@@ -1293,9 +1294,14 @@ void check_mpegname(gpointer data)
 char temp[3];
 int i;
 
-gtk_widget_show(create_sound); 
-gtk_widget_show(do_video); 
-gtk_widget_show(mplex_only); 
+gtk_widget_set_sensitive(create_sound, TRUE); 
+gtk_widget_set_sensitive(do_video, TRUE); 
+gtk_widget_set_sensitive(mplex_only, TRUE); 
+gtk_widget_set_sensitive(sound_entry, TRUE);
+gtk_widget_set_sensitive(sound_select, TRUE);
+gtk_widget_set_sensitive(video_entry, TRUE);
+gtk_widget_set_sensitive(video_select, TRUE);
+gtk_widget_set_sensitive(remove_files_after_completion, TRUE);
 
 for (i = 0; i < 3; i++)
   temp[i]='\0';
@@ -1356,9 +1362,14 @@ for (i = 0; i < 3; i++)
   else if (strcmp ((char*)data,"DIVx")  == 0)
    {
       pointenc = &encoding_svcd;
-      gtk_widget_hide(create_sound); 
-      gtk_widget_hide(do_video); 
-      gtk_widget_hide(mplex_only); 
+      gtk_widget_set_sensitive(create_sound, FALSE); 
+      gtk_widget_set_sensitive(do_video, FALSE); 
+      gtk_widget_set_sensitive(mplex_only, FALSE);
+      gtk_widget_set_sensitive(sound_entry, FALSE);
+      gtk_widget_set_sensitive(sound_select, FALSE);
+      gtk_widget_set_sensitive(video_entry, FALSE);
+      gtk_widget_set_sensitive(video_select, FALSE);
+      gtk_widget_set_sensitive(remove_files_after_completion, FALSE);
 
       sprintf(temp,"%c%c%c",enc_outputfile[strlen(enc_outputfile)-3],
                             enc_outputfile[strlen(enc_outputfile)-2], 
@@ -1530,4 +1541,3 @@ int enc_x,enc_y;
 
   return (vbox_main);
 }
-
