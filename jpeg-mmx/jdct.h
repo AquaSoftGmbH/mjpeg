@@ -27,14 +27,14 @@
  */
 
 #if BITS_IN_JSAMPLE == 8
-typedef int DCTELEM;		/* 16 or 32 bits is fine */
+typedef INT16 DCTELEM;		/* 16 or 32 bits is fine */
 #else
 typedef INT32 DCTELEM;		/* must have 32 bits */
 #endif
 
 typedef JMETHOD(void, forward_DCT_method_ptr, (DCTELEM * data));
 typedef JMETHOD(void, float_DCT_method_ptr, (FAST_FLOAT * data));
-
+typedef JMETHOD(void, simd_quant_method_ptr, ( DCTELEM *workspace, INT16 *output_ptr,  float *divisors ));
 
 /*
  * An inverse DCT routine is given a pointer to the input JBLOCK and a pointer
@@ -97,6 +97,12 @@ typedef FAST_FLOAT FLOAT_MULT_TYPE; /* preferred floating type */
 EXTERN(void) jpeg_fdct_islow JPP((DCTELEM * data));
 EXTERN(void) jpeg_fdct_ifast JPP((DCTELEM * data));
 EXTERN(void) jpeg_fdct_float JPP((FAST_FLOAT * data));
+
+/* TODO: This should be conditional on compilation on an x86 platform */
+
+EXTERN(void) jpeg_fdct_ifast_mmx JPP((INT16 * data));
+EXTERN(void) jcquant_3dnow( INT16 *psrc, INT16 *pdst, float *piqf );
+EXTERN(void) jcquant_sse( INT16 *psrc, INT16 *pdst, float *piqf );
 
 EXTERN(void) jpeg_idct_islow
     JPP((j_decompress_ptr cinfo, jpeg_component_info * compptr,

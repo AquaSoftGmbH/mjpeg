@@ -22,7 +22,6 @@
 
 #define BITS_IN_JSAMPLE  8	/* use 8 or 12 */
 
-
 /*
  * Maximum number of components (color channels) allowed in JPEG image.
  * To meet the letter of the JPEG spec, set this to 255.  However, darn

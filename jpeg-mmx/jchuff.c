@@ -96,6 +96,16 @@ METHODDEF(void) finish_pass_gather JPP((j_compress_ptr cinfo));
 #endif
 
 
+#ifndef SLOW_BITS
+static unsigned char lookup_bits_needed[1<<17];
+static int bits_needed_init = 0;
+
+inline unsigned char bits_needed( int val )
+{
+	return lookup_bits_needed[val];
+}
+#endif
+
 /*
  * Initialize for a Huffman-compressed scan.
  * If gather_statistics is TRUE, we do not output anything during the scan,
@@ -109,6 +119,25 @@ start_pass_huff (j_compress_ptr cinfo, boolean gather_statistics)
   int ci, dctbl, actbl;
   jpeg_component_info * compptr;
 
+#ifndef SLOW_BITS
+  if( !bits_needed_init )
+  {
+	  int i;
+	  int temp;
+	  unsigned int nbits;
+	  for(i = 0; i < (1<<17); ++i )
+	  {
+		  
+		  nbits = 1;
+		  temp = i;
+		  while ((temp >>= 1))
+			  ++nbits;
+
+		  lookup_bits_needed[i] = (unsigned char)nbits;
+	  }
+	  bits_needed_init = 1;
+  }
+#endif
   if (gather_statistics) {
 #ifdef ENTROPY_OPT_SUPPORTED
     entropy->pub.encode_mcu = encode_mcu_gather;
@@ -265,7 +294,6 @@ jpeg_make_c_derived_tbl (j_compress_ptr cinfo, boolean isDC, int tblno,
 
 
 /* Outputting bytes to the file */
-
 /* Emit a byte, taking 'action' if must suspend. */
 #define emit_byte(state,val,action)  \
 	{ *(state)->next_output_byte++ = (JOCTET) (val);  \
@@ -305,11 +333,12 @@ emit_bits (working_state * state, unsigned int code, int size)
   /* This routine is heavily used, so it's worth coding tightly. */
   register INT32 put_buffer = (INT32) code;
   register int put_bits = state->cur.put_bits;
-
+  
   /* if size is 0, caller used an invalid Huffman table entry */
+#ifdef SLOW_BITS
   if (size == 0)
     ERREXIT(state->cinfo, JERR_HUFF_MISSING_CODE);
-
+#endif
   put_buffer &= (((INT32) 1)<<size) - 1; /* mask off any extra bits in code */
   
   put_bits += size;		/* new number of bits in buffer */
@@ -353,93 +382,121 @@ LOCAL(boolean)
 encode_one_block (working_state * state, JCOEFPTR block, int last_dc_val,
 		  c_derived_tbl *dctbl, c_derived_tbl *actbl)
 {
-  register int temp, temp2;
-  register int nbits;
-  register int k, r, i;
-  
-  /* Encode the DC coefficient difference per section F.1.2.1 */
-  
-  temp = temp2 = block[0] - last_dc_val;
+	int temp, temp2;
+	int nbits;
+	int k, r, i;
+	int index;
 
-  if (temp < 0) {
-    temp = -temp;		/* temp is abs value of input */
-    /* For a negative input, want temp2 = bitwise complement of abs(input) */
-    /* This code assumes we are on a two's complement machine */
-    temp2--;
-  }
+	/* Encode the DC coefficient difference per section F.1.2.1 */
   
-  /* Find the number of bits needed for the magnitude of the coefficient */
-  nbits = 0;
-  while (temp) {
-    nbits++;
-    temp >>= 1;
-  }
-  /* Check for out-of-range coefficient values.
-   * Since we're encoding a difference, the range limit is twice as much.
-   */
-  if (nbits > MAX_COEF_BITS+1)
-    ERREXIT(state->cinfo, JERR_BAD_DCT_COEF);
-  
-  /* Emit the Huffman-coded symbol for the number of bits */
-  if (! emit_bits(state, dctbl->ehufco[nbits], dctbl->ehufsi[nbits]))
-    return FALSE;
+	temp = temp2 = block[0] - last_dc_val;
 
-  /* Emit that number of bits of the value, if positive, */
-  /* or the complement of its magnitude, if negative. */
-  if (nbits)			/* emit_bits rejects calls with size 0 */
-    if (! emit_bits(state, (unsigned int) temp2, nbits))
-      return FALSE;
-
-  /* Encode the AC coefficients per section F.1.2.2 */
+	if (temp < 0) {
+		temp = -temp;		/* temp is abs value of input */
+		/* For a negative input, want temp2 = bitwise complement of abs(input) */
+		/* This code assumes we are on a two's complement machine */
+		temp2--;
+	}
   
-  r = 0;			/* r = run length of zeros */
-  
-  for (k = 1; k < DCTSIZE2; k++) {
-    if ((temp = block[jpeg_natural_order[k]]) == 0) {
-      r++;
-    } else {
-      /* if run length > 15, must emit special run-length-16 codes (0xF0) */
-      while (r > 15) {
-	if (! emit_bits(state, actbl->ehufco[0xF0], actbl->ehufsi[0xF0]))
-	  return FALSE;
-	r -= 16;
-      }
+	/* Find the number of bits needed for the magnitude of the coefficient */
+#ifndef SLOW_BITS
+	nbits = bits_needed(temp);
+	nbits = !temp ? 0 : nbits;
+#else
+	nbits = 0;
+	while (temp) {
+		nbits++;
+		temp >>= 1;
+	}
+#endif
 
-      temp2 = temp;
-      if (temp < 0) {
-	temp = -temp;		/* temp is abs value of input */
-	/* This code assumes we are on a two's complement machine */
-	temp2--;
-      }
+	/* Check for out-of-range coefficient values.
+	 * Since we're encoding a difference, the range limit is twice as much.
+	 */
+	if (nbits > MAX_COEF_BITS+1)
+		ERREXIT(state->cinfo, JERR_BAD_DCT_COEF);
+  
+	/* Emit the Huffman-coded symbol for the number of bits */
+	if (! emit_bits(state, dctbl->ehufco[nbits], dctbl->ehufsi[nbits]))
+		return FALSE;
+
+	/* Emit that number of bits of the value, if positive, */
+	/* or the complement of its magnitude, if negative. */
+	if (nbits)			/* emit_bits rejects calls with size 0 */
+	{
+		if (! emit_bits(state, (unsigned int) temp2, nbits))
+			return FALSE;
+	}
+	/* Encode the AC coefficients per section F.1.2.2 */
+  
+	r = 0;			/* r = run length of zeros */
+	
+	k = 1;
+	index =jpeg_natural_order[1];
+	while( k < DCTSIZE2 )
+	{
+		temp = block[index];
+		++k;
+		if ( temp == 0) 
+		{
+			++r;
+		} 
+		else 
+		{
+			/* if run length > 15, must emit special run-length-16 codes (0xF0) */
+			while (r > 15) {
+				if (! emit_bits(state, actbl->ehufco[0xF0], actbl->ehufsi[0xF0]))
+					return FALSE;
+				r -= 16;
+			}
+#ifndef SLOW_BITS
+			temp2 = (temp < 0) ? temp-1 : temp;
+			temp  = (temp < 0) ? -temp : temp;
+#else			
+			temp2 = temp;
+			if (temp < 0) 
+			{
+				temp = -temp;		/* temp is abs value of input */
+				/* This code assumes we are on a two's complement machine */
+				temp2--;
+			}
+#endif      
+			/* Find the number of bits needed for the magnitude of the coefficient */
+#ifndef SLOW_BITS
+			nbits = bits_needed(temp);
+#else
+			nbits = 1;		/* there must be at least one 1 bit */
+			while ((temp >>= 1))
+				nbits++;
+#endif
+
+			/* Check for out-of-range coefficient values */
+#ifdef SLOW_BITS
+			if (nbits > MAX_COEF_BITS)
+				ERREXIT(state->cinfo, JERR_BAD_DCT_COEF);
+#endif      
+			/* Emit Huffman symbol for run length / number of bits */
+			i = (r << 4) + nbits;
+			if (! emit_bits(state, actbl->ehufco[i], actbl->ehufsi[i]))
+				return FALSE;
+
+			/* Emit that number of bits of the value, if positive, */
+			/* or the complement of its magnitude, if negative. */
+			if (! emit_bits(state, (unsigned int) temp2, nbits))
+				return FALSE;
       
-      /* Find the number of bits needed for the magnitude of the coefficient */
-      nbits = 1;		/* there must be at least one 1 bit */
-      while ((temp >>= 1))
-	nbits++;
-      /* Check for out-of-range coefficient values */
-      if (nbits > MAX_COEF_BITS)
-	ERREXIT(state->cinfo, JERR_BAD_DCT_COEF);
-      
-      /* Emit Huffman symbol for run length / number of bits */
-      i = (r << 4) + nbits;
-      if (! emit_bits(state, actbl->ehufco[i], actbl->ehufsi[i]))
-	return FALSE;
+			r = 0;
+		}
+		index = jpeg_natural_order[k];
+	}
 
-      /* Emit that number of bits of the value, if positive, */
-      /* or the complement of its magnitude, if negative. */
-      if (! emit_bits(state, (unsigned int) temp2, nbits))
-	return FALSE;
-      
-      r = 0;
-    }
-  }
-
-  /* If the last coef(s) were zero, emit an end-of-block code */
-  if (r > 0)
-    if (! emit_bits(state, actbl->ehufco[0], actbl->ehufsi[0]))
-      return FALSE;
-
-  return TRUE;
+	/* If the last coef(s) were zero, emit an end-of-block code */
+	if (r > 0)
+	{
+		if (! emit_bits(state, actbl->ehufco[0], actbl->ehufsi[0]))
+			return FALSE;
+	}
+	return TRUE;
 }
 
 
