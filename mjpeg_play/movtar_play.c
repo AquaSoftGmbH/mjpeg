@@ -239,6 +239,27 @@ static int64 rb16mask = 0x00f800f800f800f8; // just red and blue remain
 static int64 rb16mult = 0x2000000820000008; // mult/Add factor (see intel appnote 553)
 static int64 g16mask = 0x0000f8000000f800; // just green remains
 static int64 rgb16offset = 6; // shift right after the whole stuff
+static const int64 shiftmask = 0xffff; // shift right after the whole stuff
+
+void calc_rgb16_params(struct SDL_PixelFormat *format)
+{
+  rb16mask = ((0xff >> format->Rloss) << (16 + format->Rloss)) 
+            | (0xff >> format->Bloss) << format->Bloss;
+  rb16mask = rb16mask | (rb16mask << 32); // two pixels at once (see default long above)
+  
+  g16mask = (0xff >> format->Gloss) << (8 + format->Gloss);
+  g16mask = g16mask | (g16mask << 32);
+  
+  rgb16offset = 8 + format->Gloss - format->Gshift; // shift right after the whole stuff
+  rb16mult = (1 << (rgb16offset + format->Bshift - format->Bloss)) | 
+             (1 << (16 + rgb16offset + format->Rshift - format->Rloss));
+  rb16mult = rb16mult | (rb16mult << 32);
+
+  printf("rb16mask = 0x%llx\n", rb16mask);
+  printf("rb16offset = 0x%llx\n", rgb16offset);
+  printf("g16mask = 0x%llx\n", g16mask);
+  printf("rb16mult = 0x%llx\n", rb16mult);
+}
 
 /* RGB, 15/16 bits, 5-6bits each: (Junk), R, G, B */ 
 METHODDEF(void)
@@ -386,9 +407,19 @@ ycc_rgb16_convert_mmx (j_decompress_ptr cinfo,
 	  //      Step 8:         When two pairs of pixels are converted, pack the 
 	  //                              results into one register and then store them into
 	  //                              the q Matrix.
-          "packssdw %%mm3, %%mm5\n"
-          "movq %%mm5, %0\n"
-#endif
+          //"packssdw %%mm3, %%mm5\n" // this is the magic command for ONLY 15bit color !!
+	  // and would replace all the workaround code below !!!! Reason: There is no packusdw !! 
+          "movq %%mm5, %%mm6\n" // copy mm5
+	  "psrlq $16, %%mm6\n" // shift out pixel 1, keep pixel 0
+	  "pand shiftmask, %%mm5\n" // and out pixel 0
+	  "por %%mm6, %%mm5\n" // or pix 0 and pix 1 together
+	  "movd %%mm5, %0\n" // write pix 0 and 1 out
+
+          "movq %%mm3, %%mm0\n" // copy mm3
+	  "psrlq $16, %%mm0\n" // shift out pixel 3, keep pixel 2
+	  "pand shiftmask, %%mm3\n" // and out pixel 2
+	  "por %%mm0, %%mm3\n" // or pix 3 and pix 2 together
+	  "movd %%mm3, 4%0\n" // write pix 2 and 3
 
 	  :"=m"(outptr[0])
 	  :"m"(inptr0[0]),"m"(inptr1[0]),"m"(inptr2[0]) //y cb cr
@@ -589,6 +620,8 @@ int main(int argc,char** argv)
   SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
 
   dump_pixel_format(screen->format);
+
+  calc_rgb16_params(screen->format);
 
   if ( screen == NULL )  
     ComplainAndExit(); 
