@@ -202,7 +202,6 @@ char    **argv;
 	int num_frames = -1;
         int ignore_bitrate = 0;
 	int fragments;
-	char zeros[8];
    
 silence_sr=0; /* silence_sr is use for detecting if the -r option is used */
 silence_bs=0; silence_ch=0; 

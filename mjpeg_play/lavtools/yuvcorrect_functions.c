@@ -742,7 +742,7 @@ yuvcorrect_luminance_treatment (frame_t * frame,
   u_c_p = frame->y;
   // Luminance (Y component)
   for (i = 0; i < frame->nb_y; i++)
-    *(u_c_p++) = yuv_correct->luminance[*(u_c_p)];
+    *(u_c_p+i) = yuv_correct->luminance[*(u_c_p+i)];
 
   return (0);
 }

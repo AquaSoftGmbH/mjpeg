@@ -105,7 +105,7 @@ void contrast_frame (void)
     {
       for(c=0;c<(W*H);c++)
 	{
-	  *(p++)=luma_contrast_vector[*(p)];
+	  *(p+c)=luma_contrast_vector[*(p+c)];
 	}
     }
 
