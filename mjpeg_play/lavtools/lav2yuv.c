@@ -171,7 +171,7 @@ char *argv[];
 
 	memset(&bounds, 0, sizeof(LavBounds));
 
-   while ((n = getopt(argc, argv, "mYvx:a:s:d:n:S:T:D:o:f:I:i:j:")) != EOF) {
+   while ((n = getopt(argc, argv, "mYv:a:s:d:n:S:T:D:o:f:I:i:j:x")) != EOF) {
       switch (n) {
 
       case 'a':
