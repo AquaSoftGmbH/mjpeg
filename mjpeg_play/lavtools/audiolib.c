@@ -64,7 +64,7 @@ static int shm_seg;
 #else
 static pthread_t capture_thread;
 #endif
-#define TIME_STAMP_TOL 1000  /* tolerance for timestamps in us */
+#define TIME_STAMP_TOL 100000  /* tolerance for timestamps in us */
 
 #define N_SHM_BUFFS 256 /* Number of buffers, must be a power of 2 */
 #define SHM_BUFF_MASK (N_SHM_BUFFS-1)
@@ -96,6 +96,7 @@ static int audio_capt;           /* Flag for capture/playback */
 static int stereo;               /* 0: capture mono, 1: capture stereo */
 static int audio_size;           /* size of an audio sample: 8 or 16 bits */
 static int audio_rate;           /* sampling rate for audio */
+static int audio_byte_rate;           /* sampling rate for audio Bps*/
 
 /* Buffer counter */
 
@@ -220,17 +221,17 @@ int audio_init(int a_read, int a_stereo, int a_size, int a_rate)
     * Calculate bytes/second of the audio stream
     */
 
-   tmp = audio_rate;
-   if (stereo)         tmp *= 2;
-   if (audio_size==16) tmp *= 2;
+   audio_byte_rate = audio_rate;
+   if (stereo)         audio_byte_rate *= 2;
+   if (audio_size==16) audio_byte_rate *= 2;
 
    /* Set audio buffer size */
 
    audio_buffer_size = BUFFSIZE;
    /* A.Stevens Jul 2000 modified to allow cards with max frag size of
 	  4096.... if(tmp<88200) audio_buffer_size = 4096; */
-   if(tmp<44100) audio_buffer_size = BUFFSIZE/2;
-   if(tmp<22050) audio_buffer_size = BUFFSIZE/4;
+   if(audio_byte_rate<44100) audio_buffer_size = BUFFSIZE/2;
+   if(audio_byte_rate<22050) audio_buffer_size = BUFFSIZE/4;
 
    /* Do not change the following calculations,
       they are this way to avoid overflows ! */
@@ -719,10 +720,7 @@ void do_audio()
 
 /* Calculate number of bytes corresponding to TIME_STAMP_TOL */
 
-   tmp = audio_rate;
-   if(stereo) tmp *= 2;
-   if(audio_size==16) tmp *= 2;
-   maxdiff = TIME_STAMP_TOL*tmp/1000000;
+   maxdiff = TIME_STAMP_TOL*audio_byte_rate/1000000;
 
 /*
  * Check that the device has capability to do mmap and trigger
@@ -905,8 +903,22 @@ void do_audio()
 
 	  /* Uncomment this and run testrec if you're getting audio problems...
 	   */
-	  printf( "CB = %d ND=%d MD=%d\n", count.bytes, ndiff,maxdiff );
-      if(ndiff>maxdiff) tv.tv_sec = tv.tv_usec = 0;
+	  /*printf( "CB = %d ND=%d MD=%d\n", count.bytes, ndiff,maxdiff );*/
+      if(ndiff>maxdiff)
+	  {
+		  tv.tv_sec = tv.tv_usec = 0;
+	  }
+	  else
+	  {
+		  /* Adjust timestamp to take into account delay between sync
+			 and now indicated by ndiff */
+		  tv.tv_usec -= ndiff * 1000000 / audio_byte_rate;
+		  if( tv.tv_usec < 0 )
+		  {
+			  tv.tv_usec += 1000000;
+			  tv.tv_sec -= 1;
+		  }
+	  }
       if(audio_capt)
       {
          /* if exit_flag is set, exit immediatly */
