@@ -32,7 +32,7 @@ static void malloc_error(void)
    exit(1);
 }
 
-static int open_video_file(char *filename, EditList *el)
+int open_video_file(char *filename, EditList *el)
 {
    int i, n, nerr;
    char realname[PATH_MAX];
