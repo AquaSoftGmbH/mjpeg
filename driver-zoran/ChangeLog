@@ -29,6 +29,7 @@ Version 0.9.4 -> 0.9.5
     <rddunlap@osdl.org>)
 * fixes for big-endian machines (patch by Ben Capper
     <benandeve@optusnet.com.au>)
+* invalid memory access in bt819 driver
 
 Version 0.9.3 -> 0.9.4
 ----------------------
