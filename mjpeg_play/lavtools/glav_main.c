@@ -575,19 +575,11 @@ void selection_cb(GtkWidget *ob, long data)
       case 7: /* Save All */
          savetype=SAVE_ALL;
          create_file_selection();
-         name = selected_filename;
-         if(name==0) return;
-         sprintf(str,"wa %s\n",name);
-         write(out_pipe,str,strlen(str));
          break;
       case 8: /* Save  */
          if(check_selection()) return;
          savetype=SAVE_SEL;
          create_file_selection();
-         name = selected_filename;
-         if(name==0) return;
-         sprintf(str,"ws %d %d %s\n",selection_start,selection_end,name);
-         write(out_pipe,str,strlen(str));
          break;
       case 11:
          if(selection_start >= 0)
