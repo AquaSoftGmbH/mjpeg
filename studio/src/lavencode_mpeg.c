@@ -20,7 +20,7 @@
 /*
  * Here is the layout for the mpeg encoding options is created.
  * It is-will be reused tor all mpeg versions. 
- * also mpeg1, mpeg2, vcd, svcd, DVD 
+ * also mpeg1, mpeg2, vcd, svcd, in the future maybe: DVD 
  */
 
 #ifdef HAVE_CONFIG_H
@@ -68,13 +68,16 @@ void set_minGop (GtkWidget *widget, gpointer data);
 void set_maxGop (GtkWidget *widget, gpointer data);
 void set_sequencesize (GtkWidget *widget, gpointer data);
 void set_nonvideorate (GtkWidget *widget, gpointer data);
+void update_vbr(void);
 
 /* Some variables */
 GList *samples = NULL; 
 GList *muxformat = NULL;
+GList *streamdata = NULL;
 GList *outputformat = NULL;
 struct encodingoptions tempenco;
 struct encodingoptions *point;    /* points to the encoding struct to change */
+int changed_streamdatarate;  /* shows if the rate was updated into the Glist */
 
 GtkWidget *combo_entry_active, *combo_entry_scalerinput, *combo_entry_scaleroutput;
 GtkWidget *combo_entry_scalermode, *combo_entry_outputformat;
@@ -84,6 +87,7 @@ GtkWidget *button_force_vcd, *combo_entry_searchradius, *combo_entry_muxfmt;
 GtkWidget *combo_entry_videobitrate, *combo_entry_decoderbuffer, *switch_vbr; 
 GtkWidget *combo_entry_streamrate, *combo_entry_qualityfa, *combo_entry_minGop;
 GtkWidget *combo_entry_maxGop, *combo_entry_sequencemb, *combo_entry_nonvideo;
+GtkWidget *combo_streamrate;
 /* =============================================================== */
 /* Start of the code */
 
@@ -206,11 +210,24 @@ char val[LONGOPT];
   sprintf(val,"%i",tempenco.decoderbuffer);
   gtk_entry_set_text(GTK_ENTRY(combo_entry_decoderbuffer), val);
 
+if (tempenco.sequencesize != 0)
+  {
+    sprintf(val,"%i",tempenco.sequencesize);
+    gtk_entry_set_text(GTK_ENTRY(combo_entry_sequencemb), val);
+  }
+
+if (tempenco.nonvideorate != 0)
+  {
+    sprintf(val,"%i",tempenco.nonvideorate);
+    gtk_entry_set_text(GTK_ENTRY(combo_entry_nonvideo), val);
+  }
+
   if ( tempenco.streamdatarate == 0)
-    sprintf(val,"auto");
+    sprintf(val,"from streams");
   else
     sprintf(val,"%i",tempenco.streamdatarate);
   gtk_entry_set_text(GTK_ENTRY(combo_entry_streamrate), val);
+
 }
 
 /* set the noisfilter for lav2yuv */
@@ -314,13 +331,64 @@ int i;
     printf(" Set decoder buffer to : %i kB\n", tempenco.decoderbuffer);
 }
 
+/* And now we check vor a usefull value in Datarate of streams */
+/* if non checked we calcualte one out of video and audio and  */
+/* insert it into the list */
+void update_vbr()
+{
+int audio_rate, video_rate, mplex_rate, temprate;
+char val[LONGOPT];
+audio_rate=0;
+video_rate=0;
+mplex_rate=0;
+
+temprate = tempenco.streamdatarate; /* here we save the old .streamdatarate */
+     /* because the value gets lost when updating the combo_popdown_strings */
+
+if (strcmp(tempenco.forcevcd,"-V") == 0 )
+  audio_rate=224;
+else
+  audio_rate=tempenco.audiobitrate;
+
+if (tempenco.bitrate == 0)
+  video_rate=2500;
+else
+  video_rate=tempenco.bitrate;
+
+mplex_rate=(video_rate+audio_rate)*1.017;
+sprintf(val,"%i",mplex_rate);
+
+if (strcmp(tempenco.muxvbr,"-V") == 0 )
+  {
+    if (changed_streamdatarate)
+      streamdata = g_list_remove(streamdata,(g_list_last(streamdata))->data);
+    else
+      changed_streamdatarate=1;
+    
+    streamdata = g_list_append (streamdata, val);
+    streamdata = g_list_first (streamdata);
+    gtk_combo_set_popdown_strings( GTK_COMBO(combo_streamrate), streamdata);
+
+    streamdata = g_list_first (streamdata);
+
+    if ( temprate == 0)
+      sprintf(val,"from streams");
+    else
+      sprintf(val,"%i",temprate);
+    gtk_entry_set_text(GTK_ENTRY(combo_entry_streamrate), val);
+  }
+}
+
 /* set the vbr flag for the multiplexer */
 void set_vbr(GtkWidget *widget, gpointer data)
 {
 int i;
 
   if (GTK_TOGGLE_BUTTON (widget)->active)
-    sprintf(tempenco.muxvbr,"-V");
+    {
+       sprintf(tempenco.muxvbr,"-V");
+       update_vbr();
+    }
   else
     for (i = 0; i < SHORTOPT; i++)
       tempenco.muxvbr[i]='\0'; 
@@ -339,7 +407,7 @@ int i;
 
   test = gtk_entry_get_text(GTK_ENTRY(widget));
 
-  if(strcmp(test,"auto") != 0)
+  if(strcmp(test,"from streams") != 0)
   {
     i = atoi ( test );
     tempenco.streamdatarate = i;
@@ -486,6 +554,8 @@ i=0;
   else
     tempenco.bitrate = atoi ( test );
 
+  update_vbr();
+
   if (verbose)
     printf(" selected video bitrate: %i \n", tempenco.bitrate);
 }
@@ -574,9 +644,9 @@ char *test;
 /* creating the options for mplex */
 void create_mplex_encoding (GtkWidget *table, int *tx, int *ty)
 {
-GtkWidget *label1, *combo_muxfmt, *combo_decoderbuffer, *combo_streamrate;
+GtkWidget *label1, *combo_muxfmt, *combo_decoderbuffer; 
+/* , *combo_streamrate; */
 GtkWidget *combo_sequencemb, *combo_nonvideo;
-GList *streamdata = NULL;
 GList *decoderbuffer = NULL;
 GList *sequence_mb = NULL;
 GList *nonvideorate = NULL;
@@ -587,12 +657,6 @@ GList *nonvideorate = NULL;
   decoderbuffer = g_list_append (decoderbuffer, "200");
   decoderbuffer = g_list_append (decoderbuffer, "1000");
 
-  streamdata = g_list_append (streamdata, "auto");
-  streamdata = g_list_append (streamdata, "1412");
-  streamdata = g_list_append (streamdata, "1770");
-  streamdata = g_list_append (streamdata, "2280");
-  streamdata = g_list_append (streamdata, "2780");
-
   sequence_mb = g_list_append (sequence_mb, "disabled");
   sequence_mb = g_list_append (sequence_mb, "640");
   sequence_mb = g_list_append (sequence_mb, "700");
@@ -602,7 +666,7 @@ GList *nonvideorate = NULL;
   nonvideorate = g_list_append (nonvideorate, "170");
   nonvideorate = g_list_append (nonvideorate, "238");
 
-  label1 = gtk_label_new ("  Mux format: ");
+  label1 = gtk_label_new ("  Video / Mux format: ");
   gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
   gtk_table_attach_defaults (GTK_TABLE (table), label1, *tx, *tx+1, *ty, *ty+1);
   gtk_widget_show (label1);
@@ -681,8 +745,8 @@ GList *nonvideorate = NULL;
   combo_nonvideo = gtk_combo_new();
   gtk_combo_set_popdown_strings (GTK_COMBO (combo_nonvideo), nonvideorate);
   combo_entry_nonvideo = GTK_COMBO (combo_nonvideo)->entry;
-//  gtk_signal_connect(GTK_OBJECT(combo_entry_nonvideo), "changed",
-//                      GTK_SIGNAL_FUNC (set_datarate), NULL);
+  gtk_signal_connect(GTK_OBJECT(combo_entry_nonvideo), "changed",
+                      GTK_SIGNAL_FUNC (set_nonvideorate), NULL);
   gtk_widget_set_usize (combo_nonvideo, 60, -2);
   gtk_table_attach_defaults (GTK_TABLE(table), 
                              combo_nonvideo, *tx+1,*tx+2,*ty,*ty+1);
@@ -700,6 +764,8 @@ char *test;
   if ( (tempenco.audiobitrate < 32) || (tempenco.audiobitrate > 320))
     tempenco.audiobitrate = 224;
 
+  update_vbr();
+
   if (verbose)
     printf(" selected audio bitrate: %i \n", tempenco.audiobitrate);
 }
@@ -716,7 +782,6 @@ int i;
 
   samples = g_list_last (samples);
 
-  printf("Anzahl :%i, test : %s \n",g_list_length (g_list_first(samples)),test);
 
   for (i = (g_list_length (g_list_first(samples))) ; i > 0 ; i--)
     {
@@ -738,7 +803,10 @@ int i;
 void force_options (GtkWidget *widget, gpointer data)
 {
   if ( (strcmp((char*)data,"-V") ==0) && tempenco.forcevcd[0] == ' ' )
-    sprintf(tempenco.forcevcd, "%s", (char*)data);
+    {
+      sprintf(tempenco.forcevcd, "%s", (char*)data);
+      update_vbr();         /* here the streamdarate can also be changed */
+    }
   else
     sprintf(tempenco.forcevcd, " ");
 
@@ -763,7 +831,6 @@ void create_sound_encoding (GtkWidget *table,int *tx,int *ty)
 GtkWidget *label1, *combo_audiobit, *combo_samplerate, *button_force_no; 
 GSList *group_force;
 GList *abitrate = NULL;
-//GList *samples = NULL;
 
    abitrate = g_list_append (abitrate, "224");
    abitrate = g_list_append (abitrate, "160");
@@ -1175,7 +1242,7 @@ ty = 10;
   
   create_sound_encoding (table, &tx, &ty);
 
-  label = gtk_label_new (" Mplex option: ");
+  label = gtk_label_new (" Mplex / Video option: ");
   gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+1, ty, ty+1);
   gtk_widget_show(label);
   ty++;
@@ -1261,10 +1328,20 @@ if (g_list_length (muxformat) == 0)
     muxformat = g_list_append (muxformat, "DVD");
   } 
 
-  printf("\n laenge %i \n", g_list_length (g_list_first(muxformat)));
-  printf("\n laenge samples %i \n", g_list_length (g_list_first(samples)));
-//  printf("\n laenge outputformat %i \n", g_list_length (g_list_first(outputformat)));
- 
+if (g_list_length (streamdata) == 0)
+  {
+    streamdata = g_list_append (streamdata, "from streams");
+    streamdata = g_list_append (streamdata, "1412");
+    streamdata = g_list_append (streamdata, "1770");
+    streamdata = g_list_append (streamdata, "2280");
+    streamdata = g_list_append (streamdata, "2780");
+  }
+
+if (g_list_length(streamdata) == 5)
+  changed_streamdatarate=0;
+else
+  changed_streamdatarate=1;
+
 
  init_tempenco(data);
 
