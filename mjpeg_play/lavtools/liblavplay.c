@@ -1340,9 +1340,9 @@ static int lavplay_init(lavplay_t *info)
    /* if zoom_to_fit is set, HorDcm is independent of interlacing */
    if (info->zoom_to_fit)
    {
-      if (editlist->video_width < vc.maxwidth/4 )
+      if (editlist->video_width <= vc.maxwidth/4 )
          bp.HorDcm = 4;
-      else if (editlist->video_width < vc.maxwidth/2)
+      else if (editlist->video_width <= vc.maxwidth/2)
          bp.HorDcm = 2;
       else
          bp.HorDcm = 1;

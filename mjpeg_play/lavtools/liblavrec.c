@@ -121,7 +121,6 @@ typedef struct {
    pthread_mutex_t valid_mutex;               /* for software encoding recording */
    int buffer_valid[MJPEG_MAX_BUF];           /* Non-zero if buffer has been filled */
    pthread_cond_t buffer_filled[MJPEG_MAX_BUF];
-   int currently_encoded_frame;
 
    int    output_status;
    int    state;                              /* recording, paused or stoppped */
@@ -800,14 +799,14 @@ static int audio_captured(lavrec_t *info, char *buff, long samps)
  *   The software encoding thread
  ******************************************************/
 #if 0
+static int lavrec_queue_buffer(lavrec_t *info, int *num);
 static void *lavrec_encoding_thread(void* arg)
 {
    lavrec_t *info = (lavrec_t *) info;
    video_capture_setup *settings = (video_capture_setup *)info->settings;
    int jpegsize;
-   unsigned char *bwbuff;
-   char *y_buff;
-   int n;
+   unsigned char *yuv_endbuff[3], *YUV;
+   int x,y;
 
    lavrec_msg(LAVREC_MSG_DEBUG, info,
       "Starting software encoding thread");
@@ -816,22 +815,26 @@ static void *lavrec_encoding_thread(void* arg)
    pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, NULL );
    pthread_setcanceltype( PTHREAD_CANCEL_ASYNCHRONOUS, NULL );
 
-   settings->currently_encoded_frame = 0;
+   yuv_endbuff[0] = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h);
+   yuv_endbuff[1] = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h/4);
+   yuv_endbuff[2] = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h/4);
 
-   bwbuff = (unsigned char*)malloc(settings->width*settings->height/4);
-   for (n=0;n<settings->width*settings->height/4;n++)
-      bwbuff[n] = 128;
-   y_buff = (char *) malloc(sizeof(char)*settings->width*settings->height);
+   if (!yuv_endbuff[0] || !yuv_endbuff[1] || !yuv_endbuff[2])
+   {
+      lavrec_msg (LAVREC_MSG_ERROR, info,
+         "Malloc error, you\'re probably out of memory");
+      lavrec_change_state(info, LAVREC_STATE_STOP);
+   }
 
    while (settings->state != LAVREC_STATE_STOP)
    {
       pthread_mutex_lock(&(settings->valid_mutex));
-      while (settings->buffer_valid[settings->currently_encoded_frame] == 0)
+      while (settings->buffer_valid[settings->mm.frame] == 0)
       {
          lavrec_msg(LAVREC_MSG_DEBUG, info,
             "Encoding thread: sleeping for new frames (waiting for frame %d)", 
-            settings->currently_encoded_frame);
-         pthread_cond_wait(&(settings->buffer_filled[settings->currently_encoded_frame]),
+            settings->mm.frame);
+         pthread_cond_wait(&(settings->buffer_filled[settings->mm.frame]),
             &(settings->valid_mutex));
          if (settings->state == LAVREC_STATE_STOP)
          {
@@ -843,43 +846,63 @@ static void *lavrec_encoding_thread(void* arg)
       }
       pthread_mutex_unlock(&(settings->valid_mutex));
 
-      /* TEST: move Y-pixels over */
-      for (n=0;n<settings->width*settings->height;n++)
+      if (settings->buffer_valid[settings->mm.frame] > 0)
       {
-         y_buff[n] = settings->YUV_buff[n*2];
-      }
+         /* move Y-pixels over, not a good method but good enough (seems to be UYVY???) */
+         YUV = settings->YUV_buff + (settings->softreq.offsets[settings->mm.frame]);
 
-      /* encode frame to JPEG and write it out */
-      jpegsize = encode_jpeg_raw((unsigned char*)(settings->MJPG_buff+
-         (settings->breq.size*settings->currently_encoded_frame)),
-         settings->breq.size, info->quality, settings->interlaced,
-         CHROMA420, settings->width, settings->height,
-         /*settings->YUV_buff+settings->softreq.offsets[settings->mm.frame]*/ (unsigned char*) y_buff,
-         /*settings->YUV_buff+settings->softreq.offsets[settings->mm.frame]+
-         settings->width*settings->height*/ bwbuff,
-         /*settings->YUV_buff+settings->softreq.offsets[settings->mm.frame]+
-         settings->width*settings->height*5/4*/ bwbuff);
-      if (jpegsize<0)
-      {
-         lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error encoding frame to JPEG");
-         lavrec_change_state(info, LAVREC_STATE_STOP);
-      }
+         /* sit down for this - it's really easy except if you try to understand it :-) */
+         for (x=0;x<settings->width;x++)
+            if (x>=info->geometry->x && x<(info->geometry->x+info->geometry->w))
+               for (y=0;y<settings->height;y++)
+                  if (y>=info->geometry->y && y<(info->geometry->y+info->geometry->h))
+                     yuv_endbuff[0][(y-info->geometry->y)*info->geometry->w + (x-info->geometry->x)] =
+                        YUV[(y*settings->width+x)*2 + 1];
 
-      if (!video_captured(info,
-         settings->MJPG_buff+(settings->breq.size*settings->currently_encoded_frame), jpegsize,
-         settings->buffer_valid[settings->currently_encoded_frame]))
-      {
-         lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error writing the frame");
-         lavrec_change_state(info, LAVREC_STATE_STOP);
+         for (x=0;x<settings->width/2;x++)
+            if (x>=info->geometry->x/2 && x<(info->geometry->x+info->geometry->w)/2)
+               for (y=0;y<settings->height/2;y++)
+                  if (y>=(info->geometry->y/2) && y<((info->geometry->y+info->geometry->h)/2))
+                  {
+                     yuv_endbuff[1][(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
+                        YUV[(y*settings->width+x)*4];
+                     yuv_endbuff[2][(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
+                        YUV[(y*settings->width+x)*4 + 2];
+                  }
+
+         jpegsize = encode_jpeg_raw(settings->MJPG_buff+settings->mm.frame*settings->breq.size,
+            settings->breq.size, info->quality, settings->interlaced,
+            CHROMA420, info->geometry->w, info->geometry->h,
+            yuv_endbuff[0], yuv_endbuff[1], yuv_endbuff[2]);
+         if (jpegsize<0)
+         {
+            lavrec_msg(LAVREC_MSG_ERROR, info,
+               "Error encoding frame to JPEG");
+            lavrec_change_state(info, LAVREC_STATE_STOP);
+         }
+
+         if (!video_captured(info,
+            settings->MJPG_buff+(settings->breq.size*settings->mm.frame), jpegsize,
+            settings->buffer_valid[settings->mm.frame]))
+         {
+            lavrec_msg(LAVREC_MSG_ERROR, info,
+               "Error writing the frame");
+            lavrec_change_state(info, LAVREC_STATE_STOP);
+         }
       }
 
       pthread_mutex_lock(&(settings->valid_mutex));
-      settings->buffer_valid[settings->currently_encoded_frame] = 0;
+      settings->buffer_valid[settings->mm.frame] = 0;
       pthread_mutex_unlock(&(settings->valid_mutex));
 
-      settings->currently_encoded_frame = (settings->currently_encoded_frame + 1) % settings->breq.count;
+      if (!lavrec_queue_buffer(info, &(settings->mm.frame)))
+      {
+         if (info->files)
+            lavrec_close_files_on_error(info);
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Error re-queuing buffer: %s", (char *)sys_errlist[errno]);
+         lavrec_change_state(info, LAVREC_STATE_STOP);
+      }
    }
 
    pthread_exit(NULL);
@@ -896,7 +919,7 @@ static void *lavrec_encoding_thread(void* arg)
 static int lavrec_software_init(lavrec_t *info)
 {
    struct video_capability vc;
-   //int i;
+   int i;
 
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
@@ -1010,9 +1033,8 @@ static int lavrec_software_init(lavrec_t *info)
    lavrec_msg(LAVREC_MSG_INFO, info,
       "Created %ld MJPEG-buffers of size %ld KB",
       settings->breq.count, settings->breq.size/1024);
-
-   /* set up thread */
 #if 0
+   /* set up thread */
    pthread_mutex_init(&(settings->valid_mutex), NULL);
    for (i=0;i<MJPEG_MAX_BUF;i++)
    {
@@ -1027,7 +1049,6 @@ static int lavrec_software_init(lavrec_t *info)
       return 0;
    }
 #endif
-
    return 1;
 }
 
@@ -1519,7 +1540,8 @@ static void lavrec_record(lavrec_t *info)
    struct mjpeg_sync bsync;
    struct timeval audio_tmstmp;
 
-   unsigned char *y_buff = NULL, *u_buff = NULL, *v_buff = NULL;
+   /* until the threads work - we need this */
+   unsigned char *yuv_endbuff[3];
    unsigned char *YUV;
 
    video_capture_setup *settings = (video_capture_setup *)info->settings;
@@ -1539,12 +1561,12 @@ static void lavrec_record(lavrec_t *info)
       settings->mm.width = settings->width;
       settings->mm.height = settings->height;
       settings->mm.format = VIDEO_PALETTE_YUV422; /* UYVY, only format supported by the zoran-driver */
+      /* until the threads work, we need this */
+      yuv_endbuff[0] = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h);
+      yuv_endbuff[1] = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h/4);
+      yuv_endbuff[2] = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h/4);
 
-      y_buff = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h);
-      u_buff = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h/4);
-      v_buff = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h/4);
-
-      if (!y_buff || !u_buff || !v_buff)
+      if (!yuv_endbuff[0] || !yuv_endbuff[1] || !yuv_endbuff[2])
       {
          lavrec_msg (LAVREC_MSG_ERROR, info,
             "Malloc error, you\'re probably out of memory");
@@ -1671,10 +1693,11 @@ static void lavrec_record(lavrec_t *info)
          {
 #if 0
             pthread_mutex_lock(&(settings->valid_mutex));
-            settings->buffer_valid[settings->currently_encoded_frame] = nfout;
-            pthread_cond_broadcast(&(settings->buffer_filled[settings->currently_encoded_frame]));
+            settings->buffer_valid[settings->mm.frame] = nfout;
+            pthread_cond_broadcast(&(settings->buffer_filled[settings->mm.frame]));
             pthread_mutex_unlock(&(settings->valid_mutex));
 #endif
+            /* until the threads work, we need this */
             /* move Y-pixels over, not a good method but good enough (seems to be UYVY???) */
             YUV = settings->YUV_buff + (settings->softreq.offsets[bsync.frame]);
 
@@ -1683,7 +1706,7 @@ static void lavrec_record(lavrec_t *info)
                if (x>=info->geometry->x && x<(info->geometry->x+info->geometry->w))
                   for (y=0;y<settings->height;y++)
                      if (y>=info->geometry->y && y<(info->geometry->y+info->geometry->h))
-                        y_buff[(y-info->geometry->y)*info->geometry->w + (x-info->geometry->x)] =
+                        yuv_endbuff[0][(y-info->geometry->y)*info->geometry->w + (x-info->geometry->x)] =
                            YUV[(y*settings->width+x)*2 + 1];
 
             for (x=0;x<settings->width/2;x++)
@@ -1691,16 +1714,16 @@ static void lavrec_record(lavrec_t *info)
                   for (y=0;y<settings->height/2;y++)
                      if (y>=(info->geometry->y/2) && y<((info->geometry->y+info->geometry->h)/2))
                      {
-                        u_buff[(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
+                        yuv_endbuff[1][(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
                            YUV[(y*settings->width+x)*4];
-                        v_buff[(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
+                        yuv_endbuff[2][(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
                            YUV[(y*settings->width+x)*4 + 2];
                      }
 
             jpegsize = encode_jpeg_raw(settings->MJPG_buff+bsync.frame*settings->breq.size,
                settings->breq.size, info->quality, settings->interlaced,
                CHROMA420, info->geometry->w, info->geometry->h,
-               y_buff,u_buff, v_buff);
+               yuv_endbuff[0], yuv_endbuff[1], yuv_endbuff[2]);
             if (jpegsize<0)
             {
                lavrec_msg(LAVREC_MSG_ERROR, info,
@@ -1708,13 +1731,16 @@ static void lavrec_record(lavrec_t *info)
                lavrec_change_state(info, LAVREC_STATE_STOP);
             }
          }
-
-         if (video_captured(info, settings->MJPG_buff+bsync.frame*settings->breq.size,
-            info->software_encoding?jpegsize:bsync.length, nfout) != 1)
-            nerr++; /* Done or error occured */
+         //else
+         //{
+            if (video_captured(info, settings->MJPG_buff+bsync.frame*settings->breq.size,
+               info->software_encoding?jpegsize:bsync.length, nfout) != 1)
+               nerr++; /* Done or error occured */
+         //}
       }
 
       /* Re-queue the buffer */
+      //if (!info->software_encoding)
       if (!lavrec_queue_buffer(info, &(bsync.frame)))
       {
          if (info->files)
