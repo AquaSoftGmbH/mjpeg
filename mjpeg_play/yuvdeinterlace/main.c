@@ -377,7 +377,7 @@ search_forward_vector( int x, int y , struct vector topleft , struct vector top,
 	int vx,vy;
 	int r=search_radius;
 	uint32_t min,mmin;
-	uint32_t SAD;
+	uint32_t SAD,SAD2;
 
 
 	if(!initialized)
@@ -495,12 +495,19 @@ search_forward_vector( int x, int y , struct vector topleft , struct vector top,
 			SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+vx)+(y+vy)*width, width, 16, 0 );
 			SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+vx)/2+(y+vy)*width/4, width/2, 8 );
 			SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+vx)/2+(y+vy)*width/4, width/2, 8 );
-			if((SAD*3)<(min*2))
+			if( SAD<min )
 			{
-				min   = SAD;
-				v.x   = vx;
-				v.y   = vy;
+				/* this check avoids trouble with repeating patterns ... */
+				SAD2  = psad_00( frame20[0]+x+y*width, frame21[0]+(x+vx/2)+(y+vy/2)*width, width, 16, 0 );
+				SAD2 += psad_sub22( frame20[1]+x/2+y*width/4, frame21[1]+(x+vx/2)/2+(y+vy/2)*width/4, width/2, 8 );
+				SAD2 += psad_sub22( frame20[2]+x/2+y*width/4, frame21[2]+(x+vx/2)/2+(y+vy/2)*width/4, width/2, 8 );
 
+				if(SAD2<min)
+				{
+					min   = SAD;
+					v.x   = vx;
+					v.y   = vy;
+				}
 			}
 			/* abort the search as soon, as we get below the threshold */
 			if(min<(BLKthreshold)) break;
