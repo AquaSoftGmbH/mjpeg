@@ -790,14 +790,14 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 		for( str = estreams->begin(); str < estreams->end(); ++str )
 		{
 
-
+/* DEBUG
 			fprintf( stderr,"STREAM %02x: SCR=%lld mux=%d reqDTS=%lld\n", 
 					 (*str)->stream_id,
 					 current_SCR /300,
 					 (*str)->MuxPossible(),
 					 (*str)->RequiredDTS()/300
 				);
-
+*/
 			if( (*str)->MuxPossible() && 
 				( !video_first || (*str)->Kind() == ElementaryStream::video )
 				 )
@@ -886,10 +886,13 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 	for( str = estreams->begin(); str < estreams->end(); ++str )
 	{
 		(*str)->Close();
-        mjpeg_info( "BUFFERING min %d Buf max %d\n",
-                    (*str)->BufferMin(),
-                    (*str)->BufferMax() 
-            );
+        if( (*str)->nsec <= 50 )
+            mjpeg_info( "BUFFERING stream too short for useful statistics\n");
+        else
+            mjpeg_info( "BUFFERING min %d Buf max %d\n",
+                        (*str)->BufferMin(),
+                        (*str)->BufferMax() 
+                );
 	}
 
     if( underruns> 0 )

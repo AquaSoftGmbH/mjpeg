@@ -47,7 +47,7 @@ frame_rate_definitions[MPEG_NUM_RATES] =
 };
 
 
-static char *mpeg1_aspect_ratio_definitions[] =
+static const char *mpeg1_aspect_ratio_definitions[] =
 {
 	"1:1 (square pixels)",
 	"1:0.6735",
@@ -65,7 +65,7 @@ static char *mpeg1_aspect_ratio_definitions[] =
 	"1:1.2015"
 };
 
-static double mpeg1_aspect_ratios[] =
+static const double mpeg1_aspect_ratios[] =
 {
 	1.0,
 	0.6735,
@@ -84,7 +84,7 @@ static double mpeg1_aspect_ratios[] =
 };
 
 
-static char *mpeg2_aspect_ratio_definitions[] = 
+static const char *mpeg2_aspect_ratio_definitions[] = 
 {
 	"1:1 display",
 	"4:3 display",
@@ -93,7 +93,7 @@ static char *mpeg2_aspect_ratio_definitions[] =
 };
 
 
-static double mpeg2_aspect_ratios[] =
+static const double mpeg2_aspect_ratios[] =
 {
 	1.0,
 	4.0/3.0,
@@ -101,13 +101,13 @@ static double mpeg2_aspect_ratios[] =
 	2.21/1.0
 };
 
-static char **aspect_ratio_definitions[2] = 
+static const char **aspect_ratio_definitions[2] = 
 {
 	mpeg1_aspect_ratio_definitions,
 	mpeg2_aspect_ratio_definitions
 };
 
-static double *mpeg_aspect_ratios[2] = 
+static const double *mpeg_aspect_ratios[2] = 
 {
 	mpeg1_aspect_ratios,
 	mpeg2_aspect_ratios
@@ -115,8 +115,8 @@ static double *mpeg_aspect_ratios[2] =
 
 const mpeg_aspect_code_t mpeg_num_aspect_ratios[2] = 
 {
-	sizeof(mpeg1_aspect_ratio_definitions)/sizeof(char *),
-    sizeof(mpeg2_aspect_ratio_definitions)/sizeof(char *)
+	sizeof(mpeg1_aspect_ratios)/sizeof(double),
+    sizeof(mpeg2_aspect_ratios)/sizeof(double)
 };
 
 /*

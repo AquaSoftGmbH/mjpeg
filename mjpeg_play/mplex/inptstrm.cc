@@ -379,19 +379,19 @@ void VideoStream::OutputSeqhdrInfo ()
 	const char *str;
 	mjpeg_info("VIDEO STREAM: %02x\n", stream_id);
 
-    mjpeg_info ("Frame width    : %8u\n",horizontal_size);
-    mjpeg_info ("Frame height   : %8u\n",vertical_size);
-	if( aspect_ratio >= mpeg_num_aspect_ratios[opt_mpeg-1] )
+    mjpeg_info ("Frame width     : %u\n",horizontal_size);
+    mjpeg_info ("Frame height    : %u\n",vertical_size);
+	if( aspect_ratio <= mpeg_num_aspect_ratios[opt_mpeg-1] )
 		str =  mpeg_aspect_code_definition(opt_mpeg,aspect_ratio);
 	else
 		str = "forbidden";
-    mjpeg_info   ("Aspect ratio    :   %s\n", str );
+    mjpeg_info ("Aspect ratio    : %s\n", str );
 				
 
     if (picture_rate == 0)
 		mjpeg_info( "Picture rate    : forbidden\n");
     else if (picture_rate <=mpeg_num_frame_rates)
-		mjpeg_info( "Picture rate    :   %2.3f frames/sec\n",
+		mjpeg_info( "Picture rate    : %2.3f frames/sec\n",
 					mpeg_frame_rate(picture_rate) );
     else
 		mjpeg_info( "Picture rate    : %x reserved\n",picture_rate);
@@ -404,11 +404,11 @@ void VideoStream::OutputSeqhdrInfo ()
     else if (bit_rate == 0)
 		mjpeg_info( "Bit rate       : forbidden\n");
     else
-		mjpeg_info( "Bit rate        : %7u bits/sec\n",
+		mjpeg_info( "Bit rate        : %u bits/sec\n",
 					bit_rate*400);
 
-    mjpeg_info("Vbv buffer size : %8u bytes\n",vbv_buffer_size*2048);
-    mjpeg_info("CSPF            : %8u\n",CSPF);
+    mjpeg_info("Vbv buffer size : %u bytes\n",vbv_buffer_size*2048);
+    mjpeg_info("CSPF            : %u\n",CSPF);
 }
 
 //
