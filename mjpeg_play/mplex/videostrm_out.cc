@@ -60,7 +60,7 @@ VideoStream::VideoStream(IBitStream &ibs, VideoParams *parms,
 
 bool VideoStream::Probe(IBitStream &bs )
 {
-    return bs.getbits( 32)  == 0x1b3;
+    return bs.GetBits( 32)  == 0x1b3;
 }
 
 void VideoStream::InitAUbuffer()

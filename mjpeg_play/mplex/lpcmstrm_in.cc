@@ -41,7 +41,7 @@ LPCMStream::LPCMStream(IBitStream &ibs, LpcmParams *parms, Multiplexor &into) :
 
 bool LPCMStream::Probe(IBitStream &bs )
 {
-    char *last_dot = rindex( bs.filename, '.' );
+    char *last_dot = rindex( bs.StreamName(), '.' );
     return 
         last_dot != NULL 
         && strcmp( last_dot+1, "lpcm") == 0;
@@ -71,7 +71,7 @@ void LPCMStream::Init ( const int stream_num)
 		);
     mjpeg_info ("Scanning for header info: LPCM Audio stream %02x (%s)",
                 stream_num,
-                bs.filename
+                bs.StreamName()
                 );
 
 	InitAUbuffer();
@@ -125,16 +125,7 @@ void LPCMStream::FillAUbuffer(unsigned int frames_to_buffer )
             && !muxinto.AfterMaxPTS(access_unit.PTS) )
 	{
 		skip=access_unit.length-header_skip; 
-        mjpeg_debug( "Buffering frame %d (%d bytes)\n", decoding_order-1, skip );
-		if (skip & 0x1) bs.getbits( 8);
-		if (skip & 0x2) bs.getbits( 16);
-		skip=skip>>2;
-
-		for (int i=0;i<skip;i++)
-		{
-			bs.getbits( 32);
-		}
-
+        bs.SeekFwdBits( skip );
 		prev_offset = AU_start;
 		AU_start = bs.bitcount();
         if( AU_start - prev_offset != access_unit.length*8 )
@@ -183,7 +174,7 @@ void LPCMStream::Close()
 	mjpeg_info ("AUDIO_STATISTICS: %02x", stream_id); 
     mjpeg_info ("Audio stream length %lld bytes.", stream_length);
     mjpeg_info   ("Frames         : %8u ",  num_frames[0]);
-    bs.close();
+    bs.Close();
 }
 
 /*************************************************************************
@@ -210,8 +201,11 @@ unsigned int
 LPCMStream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 {
     unsigned int header_size = LPCMStream::StreamHeaderSize();
-    unsigned int bytes_read = bs.read_buffered_bytes( dst+header_size, 
-                                                      to_read-header_size );
+    bitcount_t read_start = bs.GetBytePos();
+    unsigned int bytes_read = bs.GetBytes( dst+header_size, 
+                                           to_read-header_size );
+    bs.Flush( read_start );
+    
 	clockticks   decode_time;
 	VAunit *vau;
     bool starting_frame_found = false;

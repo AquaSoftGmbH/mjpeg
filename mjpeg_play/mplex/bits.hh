@@ -3,41 +3,77 @@
 
 #include <config.h>
 #include <stdio.h>
+#include <assert.h>
 
 typedef uint64_t bitcount_t;
 
-class BitStreamUndo
-{
-//protected:
-public:
-	uint8_t outbyte;
-	unsigned int byteidx;
-	int bitidx;
-	unsigned int bufcount;
-	fpos_t actpos;
-	bitcount_t totbits;
-	bitcount_t buffer_start;
-	bitcount_t readpos;
-	uint8_t *bfr;
-	unsigned int bfr_size;
-public:
-	bool eobs;
 
-};
-
-class BitStream : public BitStreamUndo
+class BitStreamBuffering
 {
 public:
-	FILE *fileh;
+	BitStreamBuffering();
+	void Release();
+	void Empty();
+	void SetBufSize( unsigned int buf_size);
+	uint8_t *StartAppendPoint(unsigned int additional);
+	inline void Appended(unsigned int additional)
+		{
+			buffered += additional;
+			assert( buffered <= bfr_size );
+		}
+private:
+	inline uint8_t *BufferEnd() { return bfr+buffered; }
+protected:
+	//
+	// TODO: really we should set these based on system parameters etc.
+	//
 	static const unsigned int BUFFER_SIZE = 512 * 1024;
-	const char *filename;
-public:
-	BitStream();
-	~BitStream();
-	inline bitcount_t bitcount() { return totbits; }
-	inline bool eos() { return eobs; }
+	static const unsigned int BUFFER_CEILING = 32 * 1024 * 1024;
+	uint8_t *bfr;				// The read/write buffer tiself
+	unsigned int bfr_size;		// The physical size of the buffer =
+								// maximum buffered data-bytes possible
+	unsigned int buffered;		// Number of data-bytes in buffer
 };
 
+
+
+/*******
+ *
+ * the input bit stream class provides a mechanism to restore the
+ * scanning state to a marked point, provided no flush has taken place.
+ *
+ * This base class contains the state information needed to mark/restore
+ * between flushes.
+ *
+ * N.b. not that we override the BitStreamBuffering destructor so
+ * we don't cheerfully deallocate the buffer when an undo
+ * goes out of scope!
+ *
+ ******/
+ 
+class IBitStreamUndo : public BitStreamBuffering
+{
+public:
+	inline bool eos() { return eobs; }
+	inline bitcount_t bitcount() { return bitreadpos; }
+
+protected:
+	bitcount_t bfr_start;	    // The position in the underlying
+								// data-stream of the first byte of
+								// the buffer.
+	unsigned int byteidx;		// Byte in buffer holding bit at current
+								// to current bit read position
+	int bitidx;					// Position in byteidx buffer byte of
+								// bit at current bit read position
+								// N.b. coded as bits-left-to-read count-down
+	
+	bitcount_t bitreadpos;			// Total bits read at current bit read position
+	bitcount_t bytereadpos;			// Bit position of the current *byte*
+								// read position
+	bool eobs;					// End-of-bitstream  flag: true iff
+								// Bit read position has reached the end
+								// of the underlying bitstream...
+};
 
 //
 // Input bit stream class.   Supports the "scanning" of a stream
@@ -46,39 +82,78 @@ public:
 // responsibility to flush manually...
 //
 
-class IBitStream : public BitStream {
+class IBitStream : public IBitStreamUndo {
 public:
-	void open( char *bs_filename, unsigned int buf_size = BUFFER_SIZE);
-	void SetBufSize( unsigned int buf_size);
-	void close();
-	uint32_t get1bit();
-	uint32_t getbits(int N);
-	void prepareundo(BitStreamUndo &undobuf);
-	void undochanges(BitStreamUndo &undobuf);
-	bool seek_sync( unsigned int sync, int N, int lim);
-	void skip_flush_bytes( unsigned int bytes_to_skip );
-	void flush( bitcount_t byte_position );
-	inline unsigned int buffered_bytes()
+	IBitStream() :
+		fileh(0)
 		{
-			return (buffer_start+bufcount-readpos);
+			bfr_start = 0LL;
+			bitreadpos = 0LL;
+			bytereadpos = 0LL;
+			bitidx = 8;
+			eobs = true;
 		}
-	unsigned int read_buffered_bytes( uint8_t *dst,
-									  unsigned int length_bytes);
+	~IBitStream() { Release(); }
+	void Open( char *bs_filename, unsigned int buf_size = BUFFER_SIZE);
+	void Close();
+	uint32_t Get1Bit();
+	uint32_t GetBits(int N);
+	void PrepareUndo(IBitStreamUndo &undobuf);
+	void UndoChanges(IBitStreamUndo &undobuf);
+	bool SeekSync( unsigned int sync, int N, int lim);
+	bool SeekFwdBits( unsigned int bytes_to_seek_fwd );
+	void BitsBytesSkipFlush( unsigned int bytes_to_skip );
+	inline bitcount_t GetBytePos() { return bytereadpos; }
+	void Flush( bitcount_t byte_position );
+	inline unsigned int BufferedBytes()
+		{
+			return (bfr_start+buffered-bytereadpos);
+		}
+	unsigned int GetBytes( uint8_t *dst,
+						   unsigned int length_bytes);
+	inline const char *StreamName() { return filename; }
 private:
-	bool refill_buffer();
-	static uint8_t masks[8];
+	FILE *fileh;
+	const char *filename;
+	bool ReadIntoBuffer();
 };
 
-class OBitStream : public BitStream {
+#ifdef REDUNDANT_CODE
+class OBitStreamUndo : public BitStreamBuffering
+{
+protected:
+	uint8_t outbyte;
+	unsigned int byteidx;
+	unsigned int bitidx;
+	unsigned int buffered;
+	bitcount_t bitwritepos;
+	uint8_t *bfr;
+	unsigned int bfr_size;
+
+};
+
+
+class BitStream : public OBitStreamUndo
+{
+};
+
+
+
+class OBitStream : public OBitStreamUndo {
 public:
+	inline bitcount_t bitcount() { return bitwritepos; }
 	void open( char *bs_filename, unsigned int buf_size = BUFFER_SIZE);
 	void close();
 	void putbits( int val, int n);
 	void put1bit( int val);
 	void alignbits();
 private:
+	FILE *fileh;
+	const char *filename;
 	void putbyte();
 };
+
+#endif
 
 #endif  // __BITS_H__
 

@@ -328,53 +328,53 @@ void MultiplexJob::SetFromCmdLine(int argc, char *argv[])
 void MultiplexJob::InputStreamsFromCmdLine (int argc, char* argv[] )
 {
     IBitStream *bs;
-    BitStreamUndo undo;
+    IBitStreamUndo undo;
     int i;
     bool bad_file = false;
     
 	for( i = 1; i < argc; ++i )
     {
         bs = new IBitStream;
-        bs->open( argv[i] );
+        bs->Open( argv[i] );
         // Remember the streams initial state...
-        bs->prepareundo( undo);
+        bs->PrepareUndo( undo);
         if( MPAStream::Probe( *bs ) )
         {
             mjpeg_info ("File %s looks like an MPEG Audio stream." ,argv[i]);
-            bs->undochanges( undo);
+            bs->UndoChanges( undo);
             mpa_files.push_back( bs );
             continue;
         }
 
-        bs->undochanges( undo);
+        bs->UndoChanges( undo);
         if( AC3Stream::Probe( *bs ) )
         {
             mjpeg_info ("File %s looks like an AC3 Audio stream.",
                         argv[i]);
-            bs->undochanges( undo);
+            bs->UndoChanges( undo);
             ac3_files.push_back( bs );
             continue;
         }
-        bs->undochanges( undo);
+        bs->UndoChanges( undo);
         if( VideoStream::Probe( *bs ) )
         {
             mjpeg_info ("File %s looks like an MPEG Video stream.",
                         argv[i]);
-            bs->undochanges( undo);
+            bs->UndoChanges( undo);
             video_files.push_back( bs );
             continue;
         }
-        bs->undochanges( undo);
+        bs->UndoChanges( undo);
         if( LPCMStream::Probe( *bs ) )
         {
             mjpeg_info ("File %s looks like an LPCM Audio stream.",
                         argv[i]);
-            bs->undochanges( undo);
+            bs->UndoChanges( undo);
             lpcm_files.push_back( bs );
             continue;
         }
         bad_file = true;
-        bs->close();
+        bs->Close();
         delete bs;
         mjpeg_error ("File %s unrecogniseable!", argv[i]);
     }

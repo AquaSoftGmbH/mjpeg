@@ -64,7 +64,7 @@ bool AudioStream::AUBufferNeedsRefill()
         !eoscan
         && ( aunits.current()+FRAME_CHUNK > last_buffered_AU
              || 
-             bs.buffered_bytes() < muxinto.sector_size
+             bs.BufferedBytes() < muxinto.sector_size
             );
 }
 

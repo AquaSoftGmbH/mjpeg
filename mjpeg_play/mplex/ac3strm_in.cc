@@ -69,7 +69,7 @@ AC3Stream::AC3Stream(IBitStream &ibs, Multiplexor &into) :
 
 bool AC3Stream::Probe(IBitStream &bs )
 {
-    return bs.getbits(16) == AC3_SYNCWORD;
+    return bs.GetBits(16) == AC3_SYNCWORD;
 }
 
 
@@ -95,17 +95,17 @@ void AC3Stream::Init ( const int stream_num)
 		);
     mjpeg_info ("Scanning for header info: AC3 Audio stream %02x (%s)",
                 stream_num,
-                bs.filename
+                bs.StreamName()
                 );
 
 	InitAUbuffer();
 	AU_start = bs.bitcount();
-    if (bs.getbits(16)==AC3_SYNCWORD)
+    if (bs.GetBits(16)==AC3_SYNCWORD)
     {
 		num_syncword++;
-        bs.getbits(16);         // CRC field
-        frequency = bs.getbits(2);  // Sample rate code
-        framesize_code = bs.getbits(6); // Frame size code
+        bs.GetBits(16);         // CRC field
+        frequency = bs.GetBits(2);  // Sample rate code
+        framesize_code = bs.GetBits(6); // Frame size code
         framesize = ac3_frame_size[frequency][framesize_code>>1];
         framesize = 
             (framesize_code&1) && frequency == 1 ?
@@ -157,7 +157,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 	mjpeg_debug( "Scanning %d MPEG audio frames to frame %d", 
 				 frames_to_buffer, last_buffered_AU );
 
-    BitStream undo;
+    IBitStream undo;
     static int header_skip = 5;        // Initially skipped past  5 bytes of header 
     int skip;
     bool bad_last_frame = false;
@@ -166,15 +166,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
            && !muxinto.AfterMaxPTS(access_unit.PTS) )
 	{
 		skip=access_unit.length-header_skip; 
-		if (skip & 0x1) bs.getbits( 8);
-		if (skip & 0x2) bs.getbits( 16);
-		skip=skip>>2;
-
-		for (int i=0;i<skip;i++)
-		{
-			bs.getbits( 32);
-		}
-
+        bs.SeekFwdBits(skip);
 		prev_offset = AU_start;
 		AU_start = bs.bitcount();
         if( AU_start - prev_offset != access_unit.length*8 )
@@ -185,7 +177,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 
 		/* Check we have reached the end of have  another catenated 
 		   stream to process before finishing ... */
-		if ( (syncword = bs.getbits(16))!=AC3_SYNCWORD )
+		if ( (syncword = bs.GetBits(16))!=AC3_SYNCWORD )
 		{
 			if( !bs.eos()   )
 			{
@@ -194,9 +186,9 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
             break;
 		}
 
-        bs.getbits(16);         // CRC field
-        bs.getbits(2);          // Sample rate code TOOD: check for change!
-        framesize_code = bs.getbits(6);
+        bs.GetBits(16);         // CRC field
+        bs.GetBits(2);          // Sample rate code TOOD: check for change!
+        framesize_code = bs.GetBits(6);
         framesize = ac3_frame_size[frequency][framesize_code>>1];
         framesize = 
             (framesize_code&1) && frequency == 1 ?
@@ -219,29 +211,29 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 
 #ifdef DEBUG_AC3_HEADERS
         /* Some stuff to generate frame-header information */
-        printf( "bsid       = %d\n", bs.getbits(5) );
-        printf( "bsmode     = 0x%1x\n", bs.getbits(3) ); 
-        int acmode = bs.getbits(3);
+        printf( "bsid       = %d\n", bs.GetBits(5) );
+        printf( "bsmode     = 0x%1x\n", bs.GetBits(3) ); 
+        int acmode = bs.GetBits(3);
         printf( "acmode     = 0x%1x\n", acmode ); 
         if( (acmode & 0x1) && (acmode != 1 ) )
-            printf( "cmixlev   = %d\n", bs.getbits(2) ); 
+            printf( "cmixlev   = %d\n", bs.GetBits(2) ); 
         if( (acmode & 0x4) )
-            printf( "smixlev   = %d\n", bs.getbits(2) ); 
+            printf( "smixlev   = %d\n", bs.GetBits(2) ); 
         if( acmode == 2 ) 
-            printf( "dsurr     = %d\n", bs.getbits(2) ); 
-        printf( "lfeon      = %d\n", bs.getbits(1) ); 
-        printf( "dialnorm   = %02d\n", bs.getbits(5) ); 
-        int compre = bs.getbits(1);
+            printf( "dsurr     = %d\n", bs.GetBits(2) ); 
+        printf( "lfeon      = %d\n", bs.GetBits(1) ); 
+        printf( "dialnorm   = %02d\n", bs.GetBits(5) ); 
+        int compre = bs.GetBits(1);
         printf( "compre     = %d\n", compre ); 
         if( compre )
-            printf( "compr    = %02d\n", bs.getbits(8) ); 
-        int langcode = bs.getbits(1);
+            printf( "compr    = %02d\n", bs.GetBits(8) ); 
+        int langcode = bs.GetBits(1);
         printf( "langcode     = %d\n", langcode ); 
         if( langcode )
-            printf( "langcod  = 0x%02x\n", bs.getbits(8) ); 
+            printf( "langcod  = 0x%02x\n", bs.GetBits(8) ); 
         
         while( bs.bitcount() % 8 != 0 )
-            bs.getbits(1);
+            bs.GetBits(1);
         header_skip = (bs.bitcount()-AU_start)/8;
 #endif
 		if (num_syncword >= old_frames+10 )
@@ -272,7 +264,7 @@ void AC3Stream::Close()
     mjpeg_info   ("Frames         : %8u padded",  num_frames[0]);
     mjpeg_info   ("Frames         : %8u unpadded", num_frames[1]);
 	
-    bs.close();
+    bs.Close();
 }
 
 /*************************************************************************
@@ -308,8 +300,10 @@ AC3Stream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 {
     static unsigned int aus = 0;
     static unsigned int rd = 0; 
+    bitcount_t read_start = bs.GetBytePos();
+    unsigned int bytes_read = bs.GetBytes( dst+4, to_read-4 );
+    bs.Flush( read_start );
 
-    unsigned int bytes_read = bs.read_buffered_bytes( dst+4, to_read-4 );
     rd += bytes_read;
 	clockticks   decode_time;
 	VAunit *vau;

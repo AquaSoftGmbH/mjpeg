@@ -133,7 +133,9 @@ ElementaryStream::BytesToMuxAUEnd(unsigned int sector_transport_size)
 unsigned int 
 ElementaryStream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 {
-    unsigned int actually_read = bs.read_buffered_bytes( dst, to_read );
+    bitcount_t read_start = bs.GetBytePos();
+    unsigned int actually_read = bs.GetBytes( dst, to_read );
+    bs.Flush( read_start );
     Muxed( actually_read );
 	return actually_read;
 }

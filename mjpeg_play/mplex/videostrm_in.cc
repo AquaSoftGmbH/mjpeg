@@ -31,7 +31,7 @@
 
 static void marker_bit (IBitStream &bs, unsigned int what)
 {
-    if (what != bs.get1bit())
+    if (what != bs.Get1Bit())
     {
         mjpeg_error ("Illegal MPEG stream at offset (bits) %lld: supposed marker bit not found.",bs.bitcount());
         exit (1);
@@ -41,18 +41,18 @@ static void marker_bit (IBitStream &bs, unsigned int what)
 
 void VideoStream::ScanFirstSeqHeader()
 {
-    if (bs.getbits( 32)==SEQUENCE_HEADER)
+    if (bs.GetBits( 32)==SEQUENCE_HEADER)
     {
 		num_sequence++;
-		horizontal_size	= bs.getbits( 12);
-		vertical_size	= bs.getbits( 12);
-		aspect_ratio	= bs.getbits(  4);
-		pict_rate 		= bs.getbits(  4);
+		horizontal_size	= bs.GetBits( 12);
+		vertical_size	= bs.GetBits( 12);
+		aspect_ratio	= bs.GetBits(  4);
+		pict_rate 		= bs.GetBits(  4);
 		picture_rate	= pict_rate;
-		bit_rate		= bs.getbits( 18);
+		bit_rate		= bs.GetBits( 18);
 		marker_bit( bs, 1);
-		vbv_buffer_size	= bs.getbits( 10);
-		CSPF		= bs.get1bit();
+		vbv_buffer_size	= bs.GetBits( 10);
+		CSPF		= bs.Get1Bit();
 
     } else
     {
@@ -85,7 +85,7 @@ void VideoStream::Init ( const int stream_num )
 					 muxinto.always_buffers_in_video);
     mjpeg_info( "Scanning for header info: Video stream %02x (%s) ",
                 VIDEO_STR_0+stream_num,
-                bs.filename
+                bs.StreamName()
                 );
 	InitAUbuffer();
 
@@ -142,7 +142,7 @@ bool VideoStream::AUBufferNeedsRefill()
         !eoscan
         && ( aunits.current()+FRAME_CHUNK > last_buffered_AU
              ||
-             bs.buffered_bytes() < muxinto.sector_size 
+             bs.BufferedBytes() < muxinto.sector_size 
             );
 }
 
@@ -165,12 +165,12 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
     // padded still frames may have a loooong gap before
     // a following sequence end marker.
 	while(!bs.eos() && 
-		  bs.seek_sync( SYNCWORD_START, 24, 2*1024*1024) &&
+		  bs.SeekSync( SYNCWORD_START, 24, 2*1024*1024) &&
 	      decoding_order < last_buffered_AU  &&
 		  (!max_PTS || access_unit.PTS < max_PTS ) 
 		)
 	{
-		syncword = (SYNCWORD_START<<8) + bs.getbits( 8);
+		syncword = (SYNCWORD_START<<8) + bs.GetBits( 8);
 		if( AU_pict_data )
 		{
 			
@@ -207,7 +207,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 
 				/* Do we have a sequence split in the video stream? */
 				if( !bs.eos() && 
-					bs.getbits( 32) ==SEQUENCE_HEADER )
+					bs.GetBits( 32) ==SEQUENCE_HEADER )
 				{
 					stream_length = bs.bitcount()-32LL;
 					AU_start = stream_length;
@@ -246,25 +246,25 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 			AU_pict_data = 1;
 			
             prev_temp_ref = temporal_reference;
-			temporal_reference = bs.getbits( 10);
-			access_unit.type   = bs.getbits( 3);
+			temporal_reference = bs.GetBits( 10);
+			access_unit.type   = bs.GetBits( 3);
 
 			/* Now scan forward a little for an MPEG-2 picture coding extension
 			   so we can get pulldown info (if present) */
-			if( bs.seek_sync(EXT_START_CODE, 32, 64) &&
-                bs.getbits(4) == CODING_EXT_ID)
+			if( bs.SeekSync(EXT_START_CODE, 32, 64) &&
+                bs.GetBits(4) == CODING_EXT_ID)
 			{
 				/* Skip: 4 F-codes (4)... */
-				(void)bs.getbits(16); 
+				(void)bs.GetBits(16); 
                 /* Skip: DC Precision(2) */
-                (void)bs.getbits(2);
-                pict_struct = bs.getbits(2);
+                (void)bs.GetBits(2);
+                pict_struct = bs.GetBits(2);
                 /* Skip: topfirst (1) frame pred dct (1),
                    concealment_mv(1), q_scale_type (1), */
-				(void)bs.getbits(4);	
+				(void)bs.GetBits(4);	
 				/* Skip: intra_vlc_format(1), alternate_scan (1) */
-				(void)bs.getbits(2);	
-				repeat_first_field = bs.getbits(1);
+				(void)bs.GetBits(2);	
+				repeat_first_field = bs.Get1Bit();
 				pulldown_32 |= repeat_first_field;
 
 			}
@@ -324,7 +324,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 void VideoStream::Close()
 {
 
-	bs.close();
+	bs.Close();
     stream_length = (unsigned int)(AU_start / 8);
     for (int i=0; i<4; i++)
 	{

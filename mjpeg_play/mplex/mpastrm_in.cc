@@ -94,7 +94,7 @@ MPAStream::MPAStream(IBitStream &ibs, Multiplexor &into) :
 
 bool MPAStream::Probe(IBitStream &bs )
 {
-    return bs.getbits(11) == AUDIO_SYNCWORD;
+    return bs.GetBits(11) == AUDIO_SYNCWORD;
 }
 
 
@@ -120,7 +120,7 @@ void MPAStream::Init ( const int stream_num )
 		);
     mjpeg_info ("Scanning for header info: Audio stream %02x (%s)",
                 AUDIO_STR_0 + stream_num,
-                bs.filename
+                bs.StreamName()
                 );
 
 	InitAUbuffer();
@@ -128,21 +128,21 @@ void MPAStream::Init ( const int stream_num )
 	/* A.Stevens 2000 - update to be compatible up to  MPEG2.5
 	 */
     AU_start = bs.bitcount();
-    if (bs.getbits(11)==AUDIO_SYNCWORD)
+    if (bs.GetBits(11)==AUDIO_SYNCWORD)
     {
 		num_syncword++;
-		version_id = bs.getbits( 2);
-		layer 		= 3-bs.getbits( 2); /* 0..2 not 1..3!! */
-		protection 		= bs.get1bit();
-		bit_rate_code	= bs.getbits( 4);
-		frequency 		= bs.getbits( 2);
-		padding_bit     = bs.get1bit();
-		bs.get1bit();
-		mode 		= bs.getbits( 2);
-		mode_extension 	= bs.getbits( 2);
-		copyright 		= bs.get1bit();
-		original_copy 	= bs.get1bit ();
-		emphasis		= bs.getbits( 2);
+		version_id = bs.GetBits( 2);
+		layer 		= 3-bs.GetBits( 2); /* 0..2 not 1..3!! */
+		protection 		= bs.Get1Bit();
+		bit_rate_code	= bs.GetBits( 4);
+		frequency 		= bs.GetBits( 2);
+		padding_bit     = bs.Get1Bit();
+		bs.Get1Bit();
+		mode 		= bs.GetBits( 2);
+		mode_extension 	= bs.GetBits( 2);
+		copyright 		= bs.Get1Bit();
+		original_copy 	= bs.Get1Bit ();
+		emphasis		= bs.GetBits( 2);
 
 		framesize =
 			mpa_bitrates_kbps[version_id][layer][bit_rate_code]  * 
@@ -204,29 +204,22 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 	{
 
 		skip=access_unit.length-4;
-		if (skip & 0x1) bs.getbits( 8);
-		if (skip & 0x2) bs.getbits( 16);
-		skip=skip>>2;
-
-		for (i=0;i<skip;i++)
-		{
-			bs.getbits( 32);
-		}
+        bs.SeekFwdBits( skip );
 		prev_offset = AU_start;
 		AU_start = bs.bitcount();
 
 		/* Check we have reached the end of have  another catenated 
 		   stream to process before finishing ... */
-		if ( (syncword = bs.getbits( 11))!=AUDIO_SYNCWORD )
+		if ( (syncword = bs.GetBits( 11))!=AUDIO_SYNCWORD )
 		{
-			if( !bs.eobs   )
+			if( !bs.eos()   )
 			{
 				/* There appears to be another catenated stream... */
 				int next;
 				mjpeg_warn( "End of component bit-stream ... seeking next" );
 				/* Catenated stream must start on byte boundary */
 				syncword = (syncword<<(8-AU_start % 8));
-				next = bs.getbits(8-(AU_start % 8) );
+				next = bs.GetBits(8-(AU_start % 8) );
 				AU_start = bs.bitcount()-11;
 				syncword = syncword | next;
 				if( syncword != AUDIO_SYNCWORD )
@@ -240,12 +233,12 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 				break;
 		}
 		// Skip version_id:2, layer:2, protection:1
-		(void) bs.getbits( 5);
-		int rate_code	= bs.getbits( 4);
+		(void) bs.GetBits( 5);
+		int rate_code	= bs.GetBits( 4);
 		// Skip frequency
-		(void) bs.getbits( 2);
+		(void) bs.GetBits( 2);
 
-		padding_bit=bs.get1bit();
+		padding_bit=bs.Get1Bit();
 		access_unit.start = AU_start;
 		access_unit.length = SizeFrame( rate_code, padding_bit );
 		access_unit.PTS = static_cast<clockticks>(decoding_order) * static_cast<clockticks>(mpa_samples[layer]) * static_cast<clockticks>(CLOCKS)
@@ -256,7 +249,7 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 		aunits.append( access_unit );
 		num_frames[padding_bit]++;
 
-		bs.getbits( 9);
+		bs.GetBits( 9);
 		
 		num_syncword++;
 
@@ -285,7 +278,7 @@ void MPAStream::Close()
     mjpeg_info   ("Frames         : %8u padded",  num_frames[0]);
     mjpeg_info   ("Frames         : %8u unpadded", num_frames[1]);
 	
-    bs.close();
+    bs.Close();
 }
 
 /*************************************************************************
