@@ -53,7 +53,8 @@
 #define ALTIVEC_TEST_subsample_image_WITH           subsample_image 
 #define ALTIVEC_TEST_variance_WITH                  variance 
 #define ALTIVEC_TEST_quant_non_intra_WITH           quant_non_intra 
-#define ALTIVEC_TEST_quant_weight_coeff_sum_WITH    quant_weight_coeff_sum 
+#define ALTIVEC_TEST_quant_weight_coeff_intra_WITH  quant_weight_coeff_intra 
+#define ALTIVEC_TEST_quant_weight_coeff_inter_WITH  quant_weight_coeff_inter 
 #define ALTIVEC_TEST_iquant_non_intra_m1_WITH       iquant_non_intra_m1
 #define ALTIVEC_TEST_add_pred_WITH                  add_pred 
 #define ALTIVEC_TEST_sub_pred_WITH                  sub_pred 
@@ -80,7 +81,8 @@
 #undef  ALTIVEC_TEST_sumsq_sub22_WITH               sumsq_sub22
 #undef  ALTIVEC_TEST_bsumsq_sub22_WITH              bsumsq_sub22 
 #undef  ALTIVEC_TEST_quant_non_intra_WITH           quant_non_intra 
-#undef  ALTIVEC_TEST_quant_weight_coeff_sum_WITH    quant_weight_coeff_sum 
+#undef  ALTIVEC_TEST_quant_weight_coeff_intra_WITH  quant_weight_coeff_intra 
+#undef  ALTIVEC_TEST_quant_weight_coeff_inter_WITH  quant_weight_coeff_inter 
 #undef  ALTIVEC_TEST_variance_WITH                  variance 
 #undef  ALTIVEC_TEST_sub_pred_WITH                  sub_pred 
 #undef  ALTIVEC_TEST_add_pred_WITH                  add_pred 
@@ -143,7 +145,8 @@
 #define ALTIVEC_TEST_sumsq_sub22_WITH            sumsq_sub22_altivec
 #define ALTIVEC_TEST_bsumsq_sub22_WITH           bsumsq_sub22_altivec
 #define ALTIVEC_TEST_quant_non_intra_WITH        quant_non_intra_altivec
-#define ALTIVEC_TEST_quant_weight_coeff_sum_WITH quant_weight_coeff_sum_altivec
+#define ALTIVEC_TEST_quant_weight_coeff_intra_WITH quant_weight_coeff_intra_altivec
+#define ALTIVEC_TEST_quant_weight_coeff_inter_WITH quant_weight_coeff_inter_altivec
 #define ALTIVEC_TEST_iquant_non_intra_m1_WITH    iquant_non_intra_m1_altivec
 #undef  ALTIVEC_TEST_sub_mean_reduction_WITH     sub_mean_reduction_altivec
 #define ALTIVEC_TEST_variance_WITH               variance_altivec
@@ -169,7 +172,8 @@
 #define ALTIVEC_TEST_sumsq_sub22_WITH            sumsq_sub22
 #define ALTIVEC_TEST_bsumsq_sub22_WITH           bsumsq_sub22 
 #define ALTIVEC_TEST_quant_non_intra_WITH        quant_non_intra 
-#define ALTIVEC_TEST_quant_weight_coeff_sum_WITH quant_weight_coeff_sum 
+#define ALTIVEC_TEST_quant_weight_coeff_intra_WITH quant_weight_coeff_intra
+#define ALTIVEC_TEST_quant_weight_coeff_inter_WITH quant_weight_coeff_inter
 #define ALTIVEC_TEST_iquant_non_intra_m1_WITH    iquant_non_intra_m1
 #undef  ALTIVEC_TEST_sub_mean_reduction_WITH     sub_mean_reduction 
 #define ALTIVEC_TEST_variance_WITH               variance 

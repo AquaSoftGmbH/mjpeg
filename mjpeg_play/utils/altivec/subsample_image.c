@@ -39,10 +39,6 @@
 #endif
 
 
-extern int opt_enc_width, opt_enc_height;
-extern int opt_phy_width, opt_phy_height;
-
-
 #define SUBSAMPLE_IMAGE_PDECL /* {{{ */                                      \
 	uint8_t *image, int rowstride,                                       \
 	uint8_t *sub22_image,                                                \
@@ -369,8 +365,8 @@ void subsample_image_altivec_verify(SUBSAMPLE_IMAGE_PDECL)
     unsigned long checksum22_1, checksum22_2;
     unsigned char *cpy22, *cpy44;
 
-    width = opt_phy_width;
-    height = opt_phy_height;
+    width = rowstride;
+    height = (unsigned long)(sub22_image - image) / rowstride;
 
     cpy22 = (unsigned char*)malloc((width/2) * (height/2));
     cpy44 = (unsigned char*)malloc((width/4) * (height/4));

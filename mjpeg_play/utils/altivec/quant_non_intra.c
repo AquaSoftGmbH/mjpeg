@@ -25,11 +25,13 @@
 
 #if defined(ALTIVEC_VERIFY) && ALTIVEC_TEST_FUNCTION(quant_non_intra)
 #include <stdlib.h>
+#include <string.h>
 #endif
 
 #include "vectorize.h"
 #include "../fastintfns.h"
 #include "../mjpeg_logging.h"
+#include "../../mpeg2enc/syntaxconsts.h"
 
 /* #define AMBER_ENABLE */
 #include "amber.h"
@@ -40,10 +42,8 @@
 #endif
 
 
-extern uint16_t *opt_inter_q;
-extern int opt_dctsatlim;
-extern int block_count;
-
+/* initialized in enable_altivec_quantization() */
+vector unsigned short *inter_q_altivec;
 
 /*
  * The original C version would start-over from the beginning each time
@@ -55,16 +55,16 @@ extern int block_count;
 
 #define QUANT_NON_INTRA_PDECL                                                \
     int16_t *src, int16_t *dst,                                              \
-    int q_scale_type, int *nonsat_mquant                         \
+    int q_scale_type, int dctsatlim, int *nonsat_mquant                      \
 
-#define  QUANT_NON_INTRA_ARGS src, dst, q_scale_type,  nonsat_mquant
+#define QUANT_NON_INTRA_ARGS src, dst, q_scale_type, dctsatlim, nonsat_mquant
 
 
 int quant_non_intra_altivec(QUANT_NON_INTRA_PDECL)
 {
     int mquant = *nonsat_mquant;
     int i, j, N, nzblockbits, last_block, recalc_blocks;
-    unsigned short *popt_inter_q, *pqm;
+    vector unsigned short *pqm;
     signed short *ps, *pd;
     vector unsigned short zero, four;
     vector float one;
@@ -97,10 +97,9 @@ int quant_non_intra_altivec(QUANT_NON_INTRA_PDECL)
 
 
 #ifdef ALTIVEC_VERIFY /* {{{ */
-    if (NOT_VECTOR_ALIGNED(opt_inter_q))
-	mjpeg_error_exit1("quant_non_intra: opt_inter_q %% 16 != 0, (%d)",
-	    opt_inter_q);
-
+    if (NOT_VECTOR_ALIGNED(inter_q_altivec))
+	mjpeg_error_exit1("quant_non_intra: inter_q_altivec %% 16 != 0, (%d)",
+	    inter_q_altivec);
     if (NOT_VECTOR_ALIGNED(src))
 	mjpeg_error_exit1("quant_non_intra: src %% 16 != 0, (%d)", src);
 
@@ -111,9 +110,9 @@ int quant_non_intra_altivec(QUANT_NON_INTRA_PDECL)
 
 #define QUANT_NON_INTRA_AB /* {{{ */                                         \
     qmA = vec_ld(0, pqm);                                                    \
-    pqm += 8;                                                                \
+    pqm++;                                                                   \
     qmB = vec_ld(0, pqm);                                                    \
-    pqm += 8;                                                                \
+    pqm++;                                                                   \
     srcA = vec_ld(0, ps);                                                    \
     ps += 8;                                                                 \
     srcB = vec_ld(0, ps);                                                    \
@@ -245,32 +244,31 @@ int quant_non_intra_altivec(QUANT_NON_INTRA_PDECL)
     AMBER_START;
 
 /* 0x01080010 = ((1<<24) & 0x1F000000)|((8<<16) & 0x00FF0000)|(16 & 0xFFFF) */
-    popt_inter_q = (unsigned short*)opt_inter_q;
     ps = src;
     pd = dst;
 
 #ifdef ALTIVEC_DST
-    vec_dst(popt_inter_q, 0x01080010, 0);
+    vec_dst(inter_q_altivec, 0x01080010, 0);
     vec_dst(ps, 0x01040010, 1);
     vec_dstst(pd, 0x01040010, 2);
 #endif
 
     vu.s.mquant = mquant;
-    vu.s.clipvalue = opt_dctsatlim;
+    vu.s.clipvalue = dctsatlim;
 
     zero = vec_splat_u16(0);
     vu32(one) = vec_splat_u32(1);
     one = vec_ctf(vu32(one), 0);
 
     nzblockbits = 0;
-    N = block_count;
+    N = BLOCK_COUNT;
     i = N;
     last_block = 0; /* counting down from i */
     recalc_blocks = 0;
 
     do {
 recalc:
-	pqm = popt_inter_q;
+	pqm = inter_q_altivec;
 	vu16(nz) = vec_splat_u16(0);
 	max = vec_splat_u16(0);
 	j = 4;
@@ -361,7 +359,7 @@ recalc:
 	pd = dst;
 
 	do {
-	    pqm = popt_inter_q;
+	    pqm = inter_q_altivec;
 	    vu16(nz) = vec_splat_u16(0);
 	    j = 4;
 	    do {
@@ -393,7 +391,7 @@ recalc:
 	recalc_blocks = 0; /* no more blocks after next loop */
 
 	do {
-	    pqm = popt_inter_q;
+	    pqm = inter_q_altivec;
 	    vu16(nz) = vec_splat_u16(0);
 	    j = 4;
 	    do {
@@ -434,17 +432,17 @@ done:
 
 #if ALTIVEC_TEST_FUNCTION(quant_non_intra) /* {{{ */
 #define QUANT_NON_INTRA_PFMT \
-  "src=0x%X, dst=0x%X, q_scale_type=%d, mquant=%d, nonsat_mquant=0x%X"
+    "src=0x%X, dst=0x%X, q_scale_type=%d, dctsatlim=%d, nonsat_mquant=0x%X"
 
 #  ifdef ALTIVEC_VERIFY
 int quant_non_intra_altivec_verify(QUANT_NON_INTRA_PDECL)
 {
-    int mquant = *nonsat_mquant;
     int i, len, nzb1, nzb2, nsmq, nsmq1, nsmq2;
     unsigned long checksum1, checksum2;
     int16_t *dstcpy;
+    uint16_t *inter_q = (uint16_t*)inter_q_altivec;
 
-    len = 64 * block_count;
+    len = 64 * BLOCK_COUNT;
 
     dstcpy = (int16_t*)malloc(len*sizeof(int16_t));
     if (dstcpy == NULL)
@@ -481,7 +479,7 @@ int quant_non_intra_altivec_verify(QUANT_NON_INTRA_PDECL)
 	if (dstcpy[i] != dst[i]) {
 	    mjpeg_debug("quant_non_intra: src[%d]=%d, qmat=%d, "
 			"dst %d != %d",
-			i, src[i], opt_inter_q[i&63], dstcpy[i], dst[i]);
+			i, src[i], inter_q[i&63], dstcpy[i], dst[i]);
 	}
     }
 

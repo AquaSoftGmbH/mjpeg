@@ -32,15 +32,19 @@
 /* include last to ensure AltiVec type semantics, especially for bool. */
 #include <altivec.h>
 #endif
+ 
+
+#define QUANT_WEIGHT_COEFF_INTRA_PDECL int16_t *blk
+#define QUANT_WEIGHT_COEFF_INTRA_ARGS blk
+#define QUANT_WEIGHT_COEFF_INTRA_PFMT "blk=0x%X"
+
+#define QUANT_WEIGHT_COEFF_INTER_PDECL int16_t *blk
+#define QUANT_WEIGHT_COEFF_INTER_ARGS blk
+#define QUANT_WEIGHT_COEFF_INTER_PFMT "blk=0x%X"
 
 
-#define QUANT_WEIGHT_COEFF_SUM_PDECL int16_t *blk, uint16_t *i_quant_mat
-#define QUANT_WEIGHT_COEFF_SUM_ARGS blk, i_quant_mat
-#define QUANT_WEIGHT_COEFF_SUM_PFMT "blk=0x%X, i_quant_mat=0x%X"
-
-int quant_weight_coeff_sum_altivec(QUANT_WEIGHT_COEFF_SUM_PDECL)
+static int quant_weight_coeff_sum_altivec(int16_t *blk, uint16_t *i_quant_mat)
 {
-    int i;
     int16_t *pb;
     uint16_t *pq;
     vector signed short zero;
@@ -109,6 +113,7 @@ int quant_weight_coeff_sum_altivec(QUANT_WEIGHT_COEFF_SUM_PDECL)
     PREPARE_ITERATION;       PERFORM_ITERATION(2);
     PREPARE_ITERATION;       PERFORM_ITERATION(3);
 #else
+    int i;
     for (i = 0; i < 64/8/2; i++) {
 	vA = vec_ld(0, pb); pb += 8;
 	vB = vec_ld(0, pb); pb += 8;
@@ -136,8 +141,31 @@ int quant_weight_coeff_sum_altivec(QUANT_WEIGHT_COEFF_SUM_PDECL)
     return vo.s.sum;
 }
 
-#if ALTIVEC_TEST_FUNCTION(quant_weight_coeff_sum)
-ALTIVEC_TEST(quant_weight_coeff_sum, int, (QUANT_WEIGHT_COEFF_SUM_PDECL),
-    QUANT_WEIGHT_COEFF_SUM_PFMT, QUANT_WEIGHT_COEFF_SUM_ARGS);
+
+extern uint16_t i_intra_q_mat[64];
+extern uint16_t i_inter_q_mat[64];
+
+
+int quant_weight_coeff_intra_altivec(QUANT_WEIGHT_COEFF_INTRA_PDECL)
+{
+    return quant_weight_coeff_sum_altivec(QUANT_WEIGHT_COEFF_INTRA_ARGS, i_intra_q_mat);
+}
+
+
+int quant_weight_coeff_inter_altivec(QUANT_WEIGHT_COEFF_INTER_PDECL)
+{
+    return quant_weight_coeff_sum_altivec(QUANT_WEIGHT_COEFF_INTER_ARGS, i_inter_q_mat);
+}
+
+
+#if ALTIVEC_TEST_FUNCTION(quant_weight_coeff_intra)
+ALTIVEC_TEST(quant_weight_coeff_intra, int, (QUANT_WEIGHT_COEFF_INTRA_PDECL),
+    QUANT_WEIGHT_COEFF_INTRA_PFMT, QUANT_WEIGHT_COEFF_INTRA_ARGS);
 #endif
+
+#if ALTIVEC_TEST_FUNCTION(quant_weight_coeff_inter)
+ALTIVEC_TEST(quant_weight_coeff_inter, int, (QUANT_WEIGHT_COEFF_INTER_PDECL),
+    QUANT_WEIGHT_COEFF_INTER_PFMT, QUANT_WEIGHT_COEFF_INTER_ARGS);
+#endif
+
 /* vim:set foldmethod=marker foldlevel=0: */

@@ -316,11 +316,11 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 	    vu32(xy) = vec_splat(vu32(xy), 0); /* splat vio.xy */
 
 	    /* add distance penalty {{{ */
-	    /* penalty = (max(abs(x),abs(y))<<5) */
+	    /* penalty = (abs(x) + abs(y)) << 3 */
 	    {
 		vector signed char  xyabs;
 		vector unsigned int xxxx, yyyy;
-		vector unsigned int xymax, penalty;
+		vector unsigned int penalty;
 
 		/* (abs(x),abs(y)) */
 		xyabs = vec_subs(vs8(zero), xy);
@@ -334,10 +334,10 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 		vs8(xxxx) = vec_perm(vs8(zero), xyabs, xint);
 		vs8(yyyy) = vec_perm(vs8(zero), xyabs, yint);
 
-		/* penalty = max(abs(x),abs(y)) << 5  */
-		xymax = vec_max(xxxx, yyyy);
-		penalty = vec_splat_u32(5);
-		penalty = vec_sl(xymax, penalty /* (5,...) */ );
+		/* penalty = (abs(x) + abs(y)) << 3 */
+		xxxx = vec_add(xxxx, yyyy);
+		penalty = vec_splat_u32(3);
+		penalty = vec_sl(xxxx, penalty /* (3,...) */ );
 
 		sads = vec_add(sads, penalty);
 	    } /* }}} */

@@ -24,15 +24,17 @@
 #include "altivec_quantize.h"
 #include "../mjpeg_logging.h"
 
-
+extern vector unsigned short *inter_q_altivec;
 extern int (*pquant_non_intra)(int16_t *src, int16_t *dst, int q_scale_type,
-							   int *nonsat_mquant);
-extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t *i_quant_mat);
-
+                               int dctsatlim, int *nonsat_mquant);
+extern int (*pquant_weight_coeff_intra)(int16_t *blk);
+extern int (*pquant_weight_coeff_inter)(int16_t *blk);
 extern void (*piquant_non_intra)(int16_t *src, int16_t *dst, int mquant);
 
 
-void enable_altivec_quantization(int opt_mpeg1)
+
+void enable_altivec_quantization(int opt_mpeg1, uint16_t *intra_q,
+                                 uint16_t *inter_q)
 {
 #if ALTIVEC_TEST_QUANTIZE
 #  if defined(ALTIVEC_BENCHMARK)
@@ -44,16 +46,24 @@ void enable_altivec_quantization(int opt_mpeg1)
     mjpeg_info("SETTING AltiVec for QUANTIZER!");
 #endif
 
+    inter_q_altivec = (vector unsigned short*)inter_q;
+
 #if ALTIVEC_TEST_FUNCTION(quant_non_intra)
     pquant_non_intra = ALTIVEC_TEST_SUFFIX(quant_non_intra);
 #else
     pquant_non_intra = ALTIVEC_SUFFIX(quant_non_intra);
 #endif
 
-#if ALTIVEC_TEST_FUNCTION(quant_weight_coeff_sum)
-    pquant_weight_coeff_sum = ALTIVEC_TEST_SUFFIX(quant_weight_coeff_sum);
+#if ALTIVEC_TEST_FUNCTION(quant_weight_coeff_intra)
+    pquant_weight_coeff_intra = ALTIVEC_TEST_SUFFIX(quant_weight_coeff_intra);
 #else
-    pquant_weight_coeff_sum = ALTIVEC_SUFFIX(quant_weight_coeff_sum);
+    pquant_weight_coeff_intra = ALTIVEC_SUFFIX(quant_weight_coeff_intra);
+#endif
+
+#if ALTIVEC_TEST_FUNCTION(quant_weight_coeff_inter)
+    pquant_weight_coeff_inter = ALTIVEC_TEST_SUFFIX(quant_weight_coeff_inter);
+#else
+    pquant_weight_coeff_inter = ALTIVEC_SUFFIX(quant_weight_coeff_inter);
 #endif
 
     if (opt_mpeg1) {
