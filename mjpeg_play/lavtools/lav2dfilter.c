@@ -1,5 +1,28 @@
+/*
+ *    Copyright (C) 2001 Mike Bernson <mike@mlb.org>
+ *
+ *    This program is free software; you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation; either version 2 of the License, or
+ *    (at your option) any later version.
+ *
+ *    This program is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with this program; if not, write to the Free Software
+ *    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ *    Filter Based on code from Jim Cassburi filter: 2dclean
+ *
+ *    This filter look around the current point for a radus and averages
+ *    this values that fall inside a threshold.
+ */
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define	CHROMA420 1
@@ -16,11 +39,11 @@ int	piperead(int fd, char *buf, int len);
 void	filter(int width, int height, int chroma, unsigned char *input[], unsigned char *output[]);
 void	filter_buffer(int width, int height, int radus, int threshold, unsigned char *input, unsigned char *output);
 
-int	threshold_luma = 16;
-int	threshold_chroma = 16;
+int	threshold_luma = 2;
+int	threshold_chroma = 2;
 
-int	radus_luma = 1;
-int	radus_chroma = 1;
+int	radus_luma = 2;
+int	radus_chroma = 2;
 
 int
 main(int argc, char *argv[])
@@ -31,12 +54,26 @@ main(int argc, char *argv[])
 	int	vert;
 	int	frame_rate;
 	int	eof;
+	int	c;
 	int	frame_count;
 	char	line[256];
 
 	input_fd = 0;
 	output_fd = 1;
 
+	while((c = getopt(argc, argv, "r:t:")) != EOF) {
+
+		switch(c) {
+			case 'r':
+				radus_luma = radus_chroma = atoi(optarg);
+				break;
+			case 't':
+				threshold_luma = threshold_chroma = atoi(optarg);
+				break;
+			default:
+				exit(0);
+		}
+	}
 	read_yuv(input_fd, &horz, &vert, &frame_rate);
 
 	fprintf(stderr, "width=%d height=%d rate=%d\n", horz, vert, frame_rate);
@@ -69,6 +106,7 @@ main(int argc, char *argv[])
 
 	exit(0);
 }
+
 
 void
 read_yuv(int fd, int *horizontal, int *vertical, int *frame_rate_code)
