@@ -42,7 +42,9 @@
 
 /* Some variables defined here */
 GtkWidget *input_entry, *output_entry, *sound_entry, *video_entry;
-GtkWidget *execute_status;
+GtkWidget *execute_status; 
+   /* Used Buttons  but they need to be deactivated from everywhere */
+GtkWidget *create_sound, *do_video, *mplex_only;
 GtkWidget *remove_files_after_completion;
 
 /* For progress-meter */
@@ -1146,15 +1148,14 @@ void encode_all (GtkWidget *widget, gpointer data)
 }
 
 /* Create the irst line of the buttons shown */
-void create_buttons1 (GtkWidget *hbox1)
+void create_buttons1 (GtkWidget *table1)
 {
-  GtkWidget *mplex_only, *do_all;
-  GtkWidget *create_sound, *do_video;
+  GtkWidget *do_all;
 
   do_all = gtk_button_new_with_label (" Full create ");
   gtk_signal_connect (GTK_OBJECT (do_all), "clicked",
                       GTK_SIGNAL_FUNC (encode_all), NULL);
-  gtk_box_pack_start (GTK_BOX (hbox1), do_all, TRUE, TRUE, 0);
+  gtk_table_attach_defaults( GTK_TABLE(table1), do_all, 0,1,0,1);
   gtk_widget_show(do_all);
 
   create_sound = gtk_button_new_with_label ("Audio Only");
@@ -1162,7 +1163,7 @@ void create_buttons1 (GtkWidget *hbox1)
                       GTK_SIGNAL_FUNC (status_progress_window), NULL);
   gtk_signal_connect (GTK_OBJECT (create_sound), "clicked",
                       GTK_SIGNAL_FUNC (audio_convert), NULL);
-  gtk_box_pack_start (GTK_BOX (hbox1), create_sound, TRUE, TRUE, 0);
+  gtk_table_attach_defaults( GTK_TABLE(table1), create_sound, 1,2,0,1);
   gtk_widget_show(create_sound);
 
   do_video = gtk_button_new_with_label ("Video Only");
@@ -1170,7 +1171,7 @@ void create_buttons1 (GtkWidget *hbox1)
                       GTK_SIGNAL_FUNC (status_progress_window), NULL);
   gtk_signal_connect (GTK_OBJECT (do_video), "clicked",
                       GTK_SIGNAL_FUNC (video_convert), NULL);
-  gtk_box_pack_start (GTK_BOX (hbox1), do_video, TRUE, TRUE, 0);
+  gtk_table_attach_defaults( GTK_TABLE(table1), do_video, 2,3,0,1);
   gtk_widget_show(do_video);
 
   mplex_only = gtk_button_new_with_label ("Mplex Only");
@@ -1178,7 +1179,7 @@ void create_buttons1 (GtkWidget *hbox1)
                       GTK_SIGNAL_FUNC (status_progress_window), NULL);
   gtk_signal_connect (GTK_OBJECT (mplex_only), "clicked",
                       GTK_SIGNAL_FUNC (mplex_convert), NULL);
-  gtk_box_pack_start (GTK_BOX (hbox1), mplex_only, TRUE, TRUE, 0);
+  gtk_table_attach_defaults( GTK_TABLE(table1), mplex_only, 3,4,0,1);
   gtk_widget_show(mplex_only);
 }
 
@@ -1199,13 +1200,13 @@ void create_buttons2 (GtkWidget *hbox1)
   gtk_box_pack_start (GTK_BOX (hbox1), play_video, TRUE, TRUE, 0);
   gtk_widget_show(play_video);
 
-  set_defaults = gtk_button_new_with_label ("Load Default Options");
+  set_defaults = gtk_button_new_with_label ("Load Encoding Options");
   gtk_signal_connect (GTK_OBJECT (set_defaults), "clicked",
                       GTK_SIGNAL_FUNC (do_defaults), "load");
   gtk_box_pack_start (GTK_BOX (hbox1), set_defaults, TRUE, TRUE, 0);
   gtk_widget_show(set_defaults);
 
-  set_defaults = gtk_button_new_with_label ("Save Default Options");
+  set_defaults = gtk_button_new_with_label ("Save Encoding Options");
   gtk_signal_connect (GTK_OBJECT (set_defaults), "clicked",
                       GTK_SIGNAL_FUNC (do_defaults), "save");
   gtk_box_pack_start (GTK_BOX (hbox1), set_defaults, TRUE, TRUE, 0);
@@ -1264,11 +1265,21 @@ for (i = 0; i < 3; i++)
   if      (strcmp ((char*)data,"MPEG1") == 0)
     pointenc = &encoding;
   else if (strcmp ((char*)data,"MPEG2") == 0)
+   {
       pointenc = &encoding2;
+      gtk_widget_hide(create_sound); 
+      gtk_widget_show(mplex_only); 
+   }
   else if (strcmp ((char*)data,"VCD")   == 0)
-    pointenc = &encoding_vcd;
+   {
+      pointenc = &encoding_vcd;
+      gtk_widget_show(mplex_only); 
+   }
   else if (strcmp ((char*)data,"SVCD")  == 0)
-       pointenc = &encoding_svcd;
+   {
+      pointenc = &encoding_svcd;
+      gtk_widget_hide(mplex_only); 
+   }
 
   sprintf(temp,"%c",enc_videofile[strlen(enc_videofile)-2]);
 
@@ -1344,7 +1355,7 @@ ency=2;
 /* Here all the work is distributed, and some basic parts of the layout done */
 GtkWidget *create_lavencode_layout()
 {
-GtkWidget *vbox, *hbox1, *hbox, *vbox_main, *vbox1;
+GtkWidget *vbox, *hbox1, *hbox, *vbox_main, *vbox1, *table1;
 GtkWidget *separator, *label, *table; 
 int enc_x,enc_y; 
 
@@ -1360,10 +1371,11 @@ int enc_x,enc_y;
   hbox1 = gtk_hbox_new(FALSE,2);
 
   /* 1st line with the layout of the encoding options */
-  hbox1 = gtk_hbox_new (TRUE, 20);
-  create_buttons1 (hbox1);
-  gtk_box_pack_start (GTK_BOX (vbox), hbox1, TRUE, TRUE, 0);
-  gtk_widget_show (hbox1);
+  table1 = gtk_table_new(1,4,TRUE);
+  gtk_table_set_col_spacings(GTK_TABLE(table1), 20);
+  create_buttons1 (table1);
+  gtk_box_pack_start (GTK_BOX (vbox), table1, TRUE, TRUE, 0);
+  gtk_widget_show (table1);
 
   /* 2nd Line with the load and Save layout */
   hbox1 = gtk_hbox_new (TRUE, 20);
