@@ -421,22 +421,85 @@ static void init_mc( mb_motion_s *motion )
 }
 */
 
-/*
-  Compute the variance of chrominance information for a particular
-  motion compensation...
-  Note: results scaled to give chrominance equal weight to chrominance.
-  TODO: BUG: ONLY works for 420 video...
- */
-static int chrom_var_sum( mb_motion_s *lum_mc, 
-						  uint8_t *uref, uint8_t *vref, 
-						  subsampled_mb_s *ssblk,
-						  int fieldoff,
-						  int uvlx, int h )
+/* unidir_NI_var_sum
+   Compute the combined variance of luminance and chrominance information
+   for a particular non-intra macro block after unidirectional
+   motion compensation...  
+
+   Note: results are scaled to give chrominance equal weight to
+   chrominance.  The variance of the luminance portion is computed
+   at the time the motion compensation is computed.
+
+   TODO: Perhaps we should compute the whole thing in fullsearch not
+   seperate it.  However, that would involve a lot of fiddling with
+   field_* and until its thoroughly debugged and tested I think I'll
+   leave that alone. Furthermore, it is unclear if its really worth
+   doing these computations for B *and* P frames.
+
+   TODO: BUG: ONLY works for 420 video...
+
+*/
+
+static int unidir_chrom_var_sum( mb_motion_s *lum_mc, 
+							  uint8_t **ref, 
+							  subsampled_mb_s *ssblk,
+							  int lx, int h )
 {
-	int cblkoffset = fieldoff + (lum_mc->pos.x>>1) + (lum_mc->pos.y>>1)*uvlx;
+	int uvlx = (lx>>1);
+	int uvh = (h>>1);
+	/* N.b. MC co-ordinates are computed in half-pel units! */
+	int cblkoffset = (lum_mc->fieldoff>>1) +
+		(lum_mc->pos.x>>2) + (lum_mc->pos.y>>2)*uvlx;
 	
-	return (dist2_22_mmx( uref + cblkoffset, ssblk->umb, uvlx, h ) +
-			dist2_22_mmx( vref + cblkoffset, ssblk->vmb, uvlx, h )) * 2;
+	return 	(dist2_22_mmx( ref[1] + cblkoffset, ssblk->umb, uvlx, uvh) +
+			 dist2_22_mmx( ref[2] + cblkoffset, ssblk->vmb, uvlx, uvh))*2;
+}
+
+/*
+  bidir_NI_var_sum
+   Compute the combined variance of luminance and chrominance information
+   for a particular non-intra macro block after unidirectional
+   motion compensation...  
+
+   Note: results are scaled to give chrominance equal weight to
+   chrominance.  The variance of the luminance portion is computed
+   at the time the motion compensation is computed.
+
+   Note: results scaled to give chrominance equal weight to chrominance.
+  
+  TODO: BUG: ONLY works for 420 video...
+
+  NOTE: Currently unused but may be required if it turns out that taking
+  chrominance into account in B frames is needed.
+
+ */
+
+int bidir_chrom_var_sum( mb_motion_s *lum_mc_f, 
+					   mb_motion_s *lum_mc_b, 
+					   uint8_t **ref_f, 
+					   uint8_t **ref_b,
+					   subsampled_mb_s *ssblk,
+					   int lx, int h )
+{
+	int uvlx = (lx>>1);
+	int uvh = (h>>1);
+	/* N.b. MC co-ordinates are computed in half-pel units! */
+	int cblkoffset_f = (lum_mc_f->fieldoff>>1) + 
+		(lum_mc_f->pos.x>>2) + (lum_mc_f->pos.y>>2)*uvlx;
+	int cblkoffset_b = (lum_mc_b->fieldoff>>1) + 
+		(lum_mc_b->pos.x>>2) + (lum_mc_f->pos.y>>2)*uvlx;
+	
+	return 	(bdist2_22_mmx( ref_f[1] + cblkoffset_f, ref_b[1] + cblkoffset_b,
+					   ssblk->umb, uvlx, uvh ) +
+			 bdist2_22_mmx( ref_f[2] + cblkoffset_f, ref_b[2] + cblkoffset_b,
+							ssblk->vmb, uvlx, uvh ))*2
+		;
+}
+
+static int chrom_var_sum( subsampled_mb_s *ssblk, int h, int lx )
+{
+	return (variance(ssblk->umb,(h>>1),(lx>>1)) + 
+			variance(ssblk->vmb,(h>>1),(lx>>1))) * 2;
 }
 
 static void frame_ME(pict_data_s *picture,
@@ -477,9 +540,7 @@ static void frame_ME(pict_data_s *picture,
 	   for sub-sampling.  Silly MPEG forcing chrom/lum to have same
 	   quantisations...
 	 */
-	var = variance(ssmb.mb,16,width) +
-		( variance(ssmb.umb,8,(width>>1)) + variance(ssmb.vmb,8,(width>>1)))*2;
-
+	var = variance(ssmb.mb,16,width);
 
 	if (picture->pict_type==I_TYPE)
 	{
@@ -487,12 +548,18 @@ static void frame_ME(pict_data_s *picture,
 	}
 	else if (picture->pict_type==P_TYPE)
 	{
+		/* For P pictures we take into account chrominance. This
+		   provides much better performance at scene changes */
+		var += chrom_var_sum(&ssmb,16,width);
+
 		if (picture->frame_pred_dct)
 		{
 			fullsearch(mc->oldorg[0],mc->oldref[0],&ssmb,
 					   width,i,j,mc->sxf,mc->syf,16,width,height,
 					    &framef_mc);
-			vmc = framef_mc.var;
+			framef_mc.fieldoff = 0;
+			vmc = framef_mc.var +
+				unidir_chrom_var_sum( &framef_mc, mc->oldref, &ssmb, width, 16 );
 			mbi->motion_type = MC_FRAME;
 		}
 		else
@@ -503,8 +570,13 @@ static void frame_ME(pict_data_s *picture,
 						   &topfldf_mc,
 						   &botfldf_mc,
 						   imins,jmins);
-			vmcf = framef_mc.var;
-			vmcfieldf = topfldf_mc.var + botfldf_mc.var;
+			vmcf = framef_mc.var + 
+				unidir_chrom_var_sum( &framef_mc, mc->oldref, &ssmb, width, 16 );
+			vmcfieldf = 
+				topfldf_mc.var + 
+				unidir_chrom_var_sum( &topfldf_mc, mc->oldref, &ssmb, (width<<1), 8 ) +
+				botfldf_mc.var + 
+				unidir_chrom_var_sum( &botfldf_mc, mc->oldref, &ssmb, (width<<1), 8 );
 			/* DEBUG DP currently disabled... */
 			if ( M==1)
 			{
@@ -521,23 +593,18 @@ static void frame_ME(pict_data_s *picture,
 				mbi->motion_type = MC_DMV;
 				/* No chrominance squared difference  measure yet.
 				   Assume identical to luminance */
-				vmc = vmc_dp * vmc_dp;
+				vmc = vmc_dp + vmc_dp;
 			}
 			else if ( vmcf < vmcfieldf)
 			{
 				mbi->motion_type = MC_FRAME;
-				vmc = vmcf + 
-					chrom_var_sum( &framef_mc, mc->oldref[1],mc->oldref[2],
-								   &ssmb, 0, width>>1, 8 );
+				vmc = vmcf;
+					
 			}
 			else
 			{
 				mbi->motion_type = MC_FIELD;
-				vmc = vmcfieldf + 
-					chrom_var_sum( &topfldf_mc, mc->oldref[1], mc->oldref[2],
-								   &ssmb,(topfldf_mc.fieldoff>>1), width>>1, 4 ) +
-					chrom_var_sum( &botfldf_mc, mc->oldref[1], mc->oldref[2],
-								   &ssmb,(botfldf_mc.fieldoff>>1), width>>1, 4 );
+				vmc = vmcfieldf;
 			}
 		}
 
@@ -624,12 +691,14 @@ static void frame_ME(pict_data_s *picture,
 	{
 		if (picture->frame_pred_dct)
 		{
+			var = variance(ssmb.mb,16,width);
 			/* forward */
 			fullsearch(mc->oldorg[0],mc->oldref[0],&ssmb,
 					   width,i,j,mc->sxf,mc->syf,
 					   16,width,height,
 					   &framef_mc
 					   );
+			framef_mc.fieldoff = 0;
 			vmcf = framef_mc.var;
 
 			/* backward */
@@ -637,6 +706,7 @@ static void frame_ME(pict_data_s *picture,
 					   width,i,j,mc->sxb,mc->syb,
 					   16,width,height,
 					   &frameb_mc);
+			frameb_mc.fieldoff = 0;
 			vmcr = frameb_mc.var;
 
 			/* interpolated (bidirectional) */
@@ -668,7 +738,6 @@ static void frame_ME(pict_data_s *picture,
 		}
 		else
 		{
-
 			/* forward prediction */
 			frame_estimate(mc->oldorg[0],mc->oldref[0],&ssmb,
 						   i,j,mc->sxf,mc->syf,
@@ -796,10 +865,6 @@ static void frame_ME(pict_data_s *picture,
 			}
 		}
 	}
-
-	mbi->var = var;
-
-
 }
 
 /*
@@ -1112,7 +1177,7 @@ static void field_ME(
 			}
 		}
 	}
-	mbi->var = var;
+
 }
 
 /*
@@ -1153,6 +1218,8 @@ static void frame_estimate(
 	/* frame prediction */
 	fullsearch(org,ref,ssmb,width,i,j,sx,sy,16,width,height,
 						  bestfr );
+	bestfr->fieldsel = 0;
+	bestfr->fieldoff = 0;
 
 	/* predict top field from top field */
 	fullsearch(org,ref,ssmb,width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,

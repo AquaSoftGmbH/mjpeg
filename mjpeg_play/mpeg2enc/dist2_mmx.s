@@ -559,23 +559,23 @@ bdist2_22_mmx:
 
 	pxor	  mm7, mm7     ; get zeros i mm7
 
-	mov       eax, [ebp+8]		; blk1
-    mov       ebx, [ebp+12]		; blk2
-    mov       ecx, [ebp+12]		; blk2		
+	mov       eax, [ebp+8]		; blk1f
+    mov       ebx, [ebp+12]		; blk1b
+    mov       ecx, [ebp+16]		; blk2		
 	jmp 	 bd2top22
 
 align 32
 bd2top22:
         movq      mm0, [eax]
         movq      mm1, mm0
-		movq      mm4, [ecx]
+		movq      mm4, [ebx]
 		movq      mm6, mm4
         punpcklbw mm0, mm7
         punpckhbw mm1, mm7
 		punpcklbw mm4, mm7
 		punpckhbw mm6, mm7
 
-        movq      mm2, [ebx]
+        movq      mm2, [ecx]
         movq      mm3, mm2
         punpcklbw mm2, mm7
         punpckhbw mm3, mm7
@@ -591,10 +591,10 @@ bd2top22:
         paddd     mm5, mm0
 		paddd    mm5, mm1
 
-			add       eax, esi
-	add       ebx, esi
-	add		  ecx, esi
-	dec       edi
-	jg        bd2top22
-	jmp       d2exit
+		add       eax, esi
+		add       ebx, esi
+		add		  ecx, esi
+		dec       edi
+		jg        bd2top22
+		jmp       d2exit
 				

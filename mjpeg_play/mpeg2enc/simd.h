@@ -76,6 +76,9 @@ int dist2_mmx( uint8_t *blk1, uint8_t *blk2,
 			   int lx, int hx, int hy, int h);
 int dist2_22_mmx( uint8_t *blk1, uint8_t *blk2,
 				  int lx, int h);
+int bdist2_22_mmx( uint8_t *blk1f, uint8_t *blk1b, 
+				   uint8_t *blk2,
+				  int lx, int h);
 int bdist2_mmx (uint8_t *pf, uint8_t *pb,
 				uint8_t *p2, int lx,
 				int hxf, int hyf, int hxb, int hyb, int h);
