@@ -209,7 +209,7 @@ void rc_init_seq()
 
 	Ki = 1.2;  /* EXPERIMENT: ADJUST activities for I MB's */
 	Kb = 1.4;
-	Kp = 1.0;
+	Kp = 1.1;
 
 
 	/* remaining # of bits in GOP */
