@@ -47,12 +47,8 @@ You can do this by either defining their presence before including \
 mjpegtools' header files (e.g. "#define HAVE_STDINT_H"), or you can check \
 for their presence in a configure script. mjpegtools' configure \
 script is a good example of how to do this. You need to check for \
-PRId64, stdbool.h, inttypes.h, stdint.h and sys/types.h
+stdbool.h, inttypes.h, stdint.h and sys/types.h
 #endif /* HAVE_STDINT_H */
-
-#ifndef PRId64
-#define PRId64 PRID64_STRING_FORMAT
-#endif
 
 #if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4)
 #define GNUC_PRINTF( format_idx, arg_idx )    \
