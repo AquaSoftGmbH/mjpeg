@@ -43,8 +43,8 @@ global qdist1_SSE
 
 align 32
 qdist1_SSE:
-	push ebp		; save stack pointer
-	mov ebp, esp		; so that we can do this
+	push ebp
+	mov ebp, esp
 
 	push ebx
 	push ecx
@@ -65,7 +65,7 @@ nextrowqd:
 	movq mm4, [eax]				; load 8 bytes of p1 (two blocks!)
 	mov  ecx, [ebx]       ; load 4 bytes of p2
 	movq mm6, mm4				  ;
-  punpcklbw mm4, mm2			; mm4 = bytes 0..3 p1 (spaced out)
+    punpcklbw mm4, mm2			; mm4 = bytes 0..3 p1 (spaced out)
 	movd mm5, ecx
 	punpcklbw mm5, mm2      ; mm5 = bytes 0..3 p2  (spaced out)
 	add eax, edx		; update pointer to next row

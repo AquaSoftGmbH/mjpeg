@@ -78,6 +78,7 @@ static int param_drop_lsb   = 0;
 static int param_noise_filt = 0;
 static int param_fastmc     = 10;
 static int param_threshold  = 0;
+static int param_hfnoise_quant = 0;
 
 /* reserved: for later use */
 int param_422 = 0;
@@ -102,6 +103,7 @@ void Usage(char *str)
   printf("   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
   printf("   -f num     Fraction of fast motion estimates to consider in detail (1/num) [2..20] (default: 10)\n" );
   printf("   -t         Activate dynamic thresholding of motion compensation window size\n" );
+  printf("   -N         Noise filter via quantisation adjustment (experimental)\n" );
   exit(0);
 }
 
@@ -112,7 +114,7 @@ char *argv[];
   char *outfilename=0;
   int n, nerr = 0;
 
-  while( (n=getopt(argc,argv,"m:b:q:o:r:s:f:d:n:t")) != EOF)
+  while( (n=getopt(argc,argv,"m:b:q:o:r:s:f:d:n:tN")) != EOF)
   {
     switch(n) {
 
@@ -190,6 +192,10 @@ char *argv[];
 
 	case 't':
 	  param_threshold = 1;
+	  break;
+
+	case 'N':
+	  param_hfnoise_quant = 1;
 	  break;
 	default:
 	  nerr++;
@@ -279,6 +285,26 @@ char *argv[];
   return 0;
 }
 
+/*
+	Wrapper for malloc that allocates pbuffers aligned to the 
+	specified byte boundary and checks for failure.
+	N.b.  don't try to free the resulting pointers, eh...
+	BUG: 	Of course this won't work if a char * won't fit in an int....
+*/
+static unsigned char *bufalloc( size_t size )
+{
+	char *buf = malloc( size + BUFFER_ALIGN );
+	int adjust;
+	if( buf == NULL )
+	{
+	   error("malloc failed\n");
+	}
+	adjust = BUFFER_ALIGN-((int)buf)%BUFFER_ALIGN;
+	if( adjust == BUFFER_ALIGN )
+		adjust = 0;
+	return (unsigned char*)(buf+adjust);
+}
+
 static void init()
 {
   int i, size;
@@ -304,6 +330,13 @@ static void init()
   
   block_count = block_count_tab[chroma_format-1];
 
+  fsubsample_offset = (width)*(height) * sizeof(unsigned char);
+  qsubsample_offset =  fsubsample_offset + (width/2)*(height/2)*sizeof(mcompuint);
+#ifdef TEST_RCSEARCH
+  rowsums_offset = qsubsample_offset +  (width/4)*(height/4)*sizeof(mcompuint);
+  colsums_offset = rowsums_offset + (width+1)*(height+1);
+#endif
+
   /* clip table */
   if (!(clp = (unsigned char *)malloc(1024)))
     error("malloc failed\n");
@@ -323,39 +356,31 @@ static void init()
 	  size = (width*height) + 
 		sizeof(mcompuint) *(width/2)*(height/2) +
 		sizeof(mcompuint) *(width/4)*(height/4+1);
+#ifdef TEST_RCSEARCH
+		+ sizeof(unsigned short) * (width+1)*(height+1) * 2
+#endif		
 		
 	else
 	  size = chrom_width*chrom_height;
 
-    if (!(newrefframe[i] = (unsigned char *)malloc(size)))
-      error("malloc failed\n");
-    if (!(oldrefframe[i] = (unsigned char *)malloc(size)))
-      error("malloc failed\n");
-    if (!(auxframe[i] = (unsigned char *)malloc(size)))
-      error("malloc failed\n");
-    if (!(neworgframe[i] = (unsigned char *)malloc(size)))
-      error("malloc failed\n");
-    if (!(oldorgframe[i] = (unsigned char *)malloc(size)))
-      error("malloc failed\n");
-    if (!(auxorgframe[i] = (unsigned char *)malloc(size)))
-      error("malloc failed\n");
-    if (!(predframe[i] = (unsigned char *)malloc(size)))
-      error("malloc failed\n");
+    newrefframe[i] = bufalloc(size);
+    oldrefframe[i] = bufalloc(size);
+ 	auxframe[i]    = bufalloc(size);
+	neworgframe[i] = bufalloc(size);
+ 	oldorgframe[i] = bufalloc(size);
+ 	auxorgframe[i] = bufalloc(size);
+	predframe[i]   = bufalloc(size);
   }
 
-  if( !(filter_buf =  (unsigned char *)malloc( width*height )) )
-	error("malloc failed\n");
+  filter_buf =  bufalloc( width*height );
 
-  mbinfo = (struct mbinfo *)malloc(mb_width*mb_height2*sizeof(struct mbinfo));
-
-  if (!mbinfo)
-    error("malloc failed\n");
+  mbinfo = (struct mbinfo *)bufalloc(mb_width*mb_height2*sizeof(struct mbinfo));
 
   blocks =
-    (short (*)[64])malloc(mb_width*mb_height2*block_count*sizeof(short [64]));
-
-  if (!blocks)
-    error("malloc failed\n");
+    (short (*)[64])bufalloc(mb_width*mb_height2*block_count*sizeof(short [64]));
+  
+  qblocks =
+    (short (*)[64])bufalloc(mb_width*mb_height2*block_count*sizeof(short [64]));
 
   /* open statistics output file */
   if (statname[0]=='-')
@@ -392,7 +417,11 @@ static void readparmfile()
   strcpy(tplref,"-");
   strcpy(iqname,"-");
   strcpy(niqname,"-");
+#ifdef OUTPUT_STAT
+  strcpy(statname,"stats.log");
+#else
   strcpy(statname,"-");
+#endif
   inputtype = 0;  /* doesnt matter */
   nframes = el.video_frames; /* leave 2 away */
   frame0  = 0;
@@ -733,6 +762,33 @@ static void readparmfile()
 
 }
 
+/*
+  If the use has selected suppression of hf noise via
+  quantisation then we boost quantisation of hf components
+  EXPERIMENTAL: currently a linear ramp from 0 at 4pel to 
+  50% increased quantisation...
+*/
+
+static int quant_hfnoise_filt(int orgquant, int qmat_pos )
+{
+  int x = qmat_pos % 8;
+  int y = qmat_pos / 8;
+  int qboost = 1024;
+
+  if( ! param_hfnoise_quant )
+	{
+	  return orgquant;
+	}
+
+  /* Maximum 50% quantisation boost for HF components... */
+  if( x > 4 )
+	qboost += (256*(x-4)/3);
+  if( y > 4 )
+	qboost += (256*(y-4)/3);
+
+  return (orgquant * qboost + 512)/ 1024;
+}
+
 static void readquantmat()
 {
   int i,v;
@@ -741,9 +797,10 @@ static void readquantmat()
   if (iqname[0]=='-')
   {
     /* use default intra matrix */
-    load_iquant = 0;
+    load_iquant = param_hfnoise_quant;
     for (i=0; i<64; i++)
     {
+	  v = quant_hfnoise_filt( default_intra_quantizer_matrix[i], i);
       intra_q[i] = default_intra_quantizer_matrix[i];
      i_intra_q[i] = (int)(((double)(IQUANT_SCALE)) / 
      				(double)(default_intra_quantizer_matrix[i]));
@@ -762,8 +819,10 @@ static void readquantmat()
     for (i=0; i<64; i++)
     {
       fscanf(fd,"%d",&v);
+	  v = quant_hfnoise_filt(v,i);
       if (v<1 || v>255)
-        error("invalid value in quant matrix");
+        error("value in intra quant matrix invalid (after noise filt adjust)");
+
       intra_q[i] = v;
       i_intra_q[i] = (int)(((double)IQUANT_SCALE) / ((double)v));
     }
@@ -774,14 +833,17 @@ static void readquantmat()
 	/* TODO: Inv Quant matrix initialisation should check if the fraction fits in 16 bits! */
   if (niqname[0]=='-')
   {
-    /* use default non-intra matrix */
-    load_niquant = 0;
+    /* use default non-intra matrix - this would be all 16's we use something
+    more suitable for domestic sources... which is non-standard...*/
+    load_niquant = 1;
+    
     for (i=0; i<64; i++)
-    	{
-			/* TODO: A TEST THE SPECIFIED MATRIX WAS SUSPECT....*/
-      		inter_q[i] = default_nonintra_quantizer_matrix[i];
-			i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)inter_q[i]));
-		}
+	  {
+		/* TODO: A TEST THE SPECIFIED MATRIX WAS SUSPECT....*/
+		v = quant_hfnoise_filt(default_nonintra_quantizer_matrix[i],i);
+		inter_q[i] = v;
+		i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)inter_q[i]));
+	  }
   }
   else
   {
@@ -796,9 +858,10 @@ static void readquantmat()
     for (i=0; i<64; i++)
     {
       fscanf(fd,"%d",&v);
-      if (v<1 || v>255)
-        error("invalid value in quant matrix");
+	  v = quant_hfnoise_filt(v,i);
       inter_q[i] = v;
+      if (v<1 || v>255)
+        error("value in non-intra quant matrix invalid (after noise filt adjust)");
       i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)v)); 
      }
 

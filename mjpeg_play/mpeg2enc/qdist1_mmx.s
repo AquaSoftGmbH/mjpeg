@@ -72,49 +72,29 @@ nextrowqd:
 	punpcklbw mm4, mm2			
 	punpcklbw mm5, mm2
 	
-				
-	movq  mm7,mm4
-	pcmpgtw mm7,mm5				; mm7 := [i : W0..3,mm4>mm5]
-	movq  mm6,mm4				; mm6 := [i : W0..3, (mm4-mm5)*(mm4-mm5 > 0)]
- 	psubw mm6,mm5
-	pand  mm6, mm7
-
-	add eax, edx		; update a pointer to next row
-		
-	paddw mm0, mm6				; accumulate positive differences
-
-	movq  mm7,mm5				; mm7 := [i : W0..3,mm5>mm4]
-	pcmpgtw mm7,mm4	    
+	movq mm7, mm4
 	movq mm6, mm5
- 	psubw mm6,mm4				; mm6 := [i : B0..7, (mm5-mm4)*(mm5-mm4 > 0)]
-	pand  mm6, mm7		
-
+	psubusw mm7, mm5
+	psubusw mm6, mm4
+	
+	add eax, edx		        ; update a pointer to next row
 	punpckhbw mm3, mm2			; mm3 = 2nd 4 bytes of p1 in words
 
-	paddw mm0, mm6				; Add to accumulators again...
-	
-	movq  mm7,mm3
-	pcmpgtw mm7,mm5				; mm7 := [i : W0..3,mm4>mm5]
-	movq  mm6,mm3				; mm6 := [i : W0..3, (mm4-mm5)*(mm4-mm5 > 0)]
- 	psubw mm6,mm5
-	pand  mm6, mm7
-		;;  *
+	paddw   mm7, mm6
+	paddw mm0, mm7				; Add absolute differences to left block accumulators
 		
-	movq  mm7,mm5				; mm7 := [i : W0..3,mm5>mm4]
+	movq mm7,mm3
+	psubusw mm7, mm5
+	psubusw mm5, mm3
 
-	paddw mm1, mm6				; accumulate positive differences * above
-		
-	pcmpgtw mm7,mm3	    
- 	psubw mm5,mm3				; mm6 := [i : B0..7, (mm5-mm4)*(mm5-mm4 > 0)]
 	add ebx, edx		; update a pointer to next row
-
-	pand  mm5, mm7		
-
 	sub   esi, 1
 
-	paddw mm1, mm5				; Add to accumulators again...
+	paddw   mm7, mm5
+	paddw mm1, mm7				; Add absolute differences to right block accumulators
+	
+
 		
-	test esi, esi		; check rowsleft
 	jnz nextrowqd		
 
 		;;		Sum the accumulators

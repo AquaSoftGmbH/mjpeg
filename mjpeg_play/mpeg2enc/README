@@ -29,8 +29,15 @@ ported the fdct/idct MMX code to nasm.
 Andrew Stevens added some simple pre-processing filters to improve
 output quality when using noisy (e.g. broadcast) source video.
 
-Andrew Stevens modified the bit-allocation routines to use a slightly
+Andrew Stevens modified the bit-allocation routines to use a 
 more accurate method of estimating bits needed for good quality results.
+
+Andrew Stevens ported in and tidied up a number of
+MMX routines from the bbmpeg project for windows (see
+www.delphi.com/bbmpeg_ug) to accelerate a few "second line" but
+nonetheless significantly time-consuming functions.
+
+Andrew Stevens added a new much faster MMX based quantization routine.
 
 In case you're wondering: the upshot of this disclaimer is that the
 functionality is exactly as per the original but the software now runs
@@ -226,4 +233,23 @@ on noise I suspect....
 
 
 
+TODO
+
+The new quantizer is only used on the most crucial (non-intra frame) routine.
+It needs to be adopted for all of them.
+
+Handling of clipping/saturation in quantization should be improved in line
+with Juan Romero's suggestions to the bbmpeg prohect.
+
+THE BIGGY: Brent Byeler's hard work to support variable bit-rate SVCD
+and MPEG-2 properly in the mpeg2enc / aenc / mplex derived "bbmpeg"
+for windows should be merged in.  Its next on my list.
+
+The code is stil full of a lot of "scaffolding" to support the forthcoming
+addition of gradient-descent based motion compensation.
+
+MMX /SSE / 3DNow! ought to be auto-detected.
+
+Lots of "Code hygiene" improvements to be undertaken to modernise the code
+base and allow better compiler checking...
 

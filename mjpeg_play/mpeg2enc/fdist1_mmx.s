@@ -33,12 +33,12 @@ global fdist1_MMX
 ; edx = lx;
 
 ; mm0 = distance accumulators (4 words)
-; mm1 = temp (evtl. pos. differences *p1 - *p2)
+; mm1 = temp 
 ; mm2 = temp 
-; mm3 = [0..7|-128]
+; mm3 = temp
 ; mm4 = temp
-; mm5 = temp (evtl. pos. differences *p2 - *p1)
-; mm6 = temp
+; mm5 = temp 
+; mm6 = 0
 ; mm7 = temp
 
 
@@ -52,16 +52,11 @@ fdist1_MMX:
 	push edx		; 
 
 	pxor mm0, mm0				; zero acculumators
-
+	pxor mm6, mm6
 	mov eax, [ebp+8]			; get p1
 	mov ebx, [ebp+12]			; get p2
 	mov edx, [ebp+16]			; get lx
 
-	mov  ecx, 0x80808080		;  mm3 := [0..7,-0x80 (MINSIGNEDBYTE)]
-	movd mm3, ecx
-	movd mm4, ecx
-	punpcklwd mm3, mm4
-		
 	mov  ecx, [ebp+20]			; get rowsleft
 
 	jmp nextrow					; snap to it
@@ -70,53 +65,40 @@ nextrow:
 	movq mm4, [eax]		; load 8 bytes of p1 
 	movq mm5, [ebx]		; load 8 bytes of p2
 		
-	movq  mm6, mm4		; mm6 :	= [i : B0..7,mm4-0x80]B
-	paddb mm6, mm3
-
-    movq  mm7, mm5		;  mm7 :=  [i :	B0..7,mm5-0x80]B
-	paddb mm7, mm3
-
-	movq  mm2,mm6
-	pcmpgtb mm2,mm7		; mm2 := [i : B0..7,mm4>mm5]
-
-	movq  mm1,mm4		; mm1 := [i : B0..7, (mm4-mm5)*(mm4-mm5 > 0)]B <==
- 	psubb mm1,mm5
-	pand  mm1, mm2		
-
-	pcmpgtb mm7,mm6	    ; mm7 := [i : B0..7,mm4>mm5]B
- 	psubb mm5,mm4		; mm5 := [i : B0..7, (mm5-mm4)*(mm5-mm4 > 0)]B <==
-	pand  mm5, mm7		
-
-		;;  Add the mm1 bytes to the accumulatores
-	movq  mm7,mm1				; mm7 := [i :	B0..3, mm1]W
-	pxor  mm6,mm6
-	punpcklbw mm7,mm6
-		
-	paddw mm0, mm7
-
-	pxor  mm6,mm6               ; mm1 :	=  [i :	B4..7, mm1]W
-	punpckhbw mm1,mm6
-
-	paddw mm0, mm1
-
-		;;	Add the mm5 bytes to the accumulators
-	movq  mm7,mm5				; mm7 := [i :	B0..3, mm5]W
-	pxor  mm6,mm6
-	punpcklbw mm7,mm6
-		
-	paddw mm0, mm7
-
-	pxor  mm6,mm6               ; mm5 :	=  [i :	B4..7, mm5]W
-	punpckhbw mm5,mm6
-
-	paddw mm0, mm5
-		
+	movq mm7, mm4       ; mm5 = abs(*p1-*p2)
+	psubusb mm7, mm5
+	psubusb mm5, mm4
 	add eax, edx		; update pointer to next row
-	add ebx, edx		; ditto
+	paddb   mm5,mm7	
 
-	sub  ecx,1
-	test ecx, ecx		; check rowsleft
-	jnz nextrow		; rinse and repeat
+		;;  Add the mm5 bytes to the accumulatores
+	movq  mm7,mm5			
+	punpcklbw mm7,mm6
+	paddw mm0, mm7
+	punpckhbw mm5,mm6
+	add ebx, edx		; update pointer to next row
+	paddw mm0, mm5
+	
+	movq mm4, [eax]		; load 8 bytes of p1 (next row) 
+	movq mm5, [ebx]		; load 8 bytes of p2 (next row)
+		
+	movq mm7, mm4       ; mm5 = abs(*p1-*p2)
+	psubusb mm7, mm5
+	psubusb mm5, mm4
+	add eax, edx		; update pointer to next row
+	paddb   mm5,mm7	
+
+		;;  Add the mm5 bytes to the accumulatores
+	movq  mm7,mm5				
+	punpcklbw mm7,mm6
+	add ebx, edx		; update pointer to next row
+	paddw mm0, mm7              
+	punpckhbw mm5,mm6
+	sub  ecx,2
+	paddw mm0, mm5
+
+
+	jnz nextrow
 
 		;; Sum the Accumulators
 	movq  mm1, mm0

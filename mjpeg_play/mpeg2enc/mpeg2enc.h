@@ -102,6 +102,10 @@ struct mbinfo {
   double act; /* activity measure */
   int var; /* for debugging */
   short *dctblocks;
+#ifdef OUTPUT_STAT
+  double N_act;
+#endif
+
 };
 
 /* motion data */
@@ -118,4 +122,13 @@ struct motion_data {
 	value */
 #define IQUANT_SCALE_POW2 16
 #define IQUANT_SCALE (1<<IQUANT_SCALE_POW2)
+#define COEFFSUM_SCALE (1<<16)
+
+/* Byte alignment of buffers for picture data.  Very important for
+	performance with MMX etc 
+*/
+
+
+#define BUFFER_ALIGN 16
+
 

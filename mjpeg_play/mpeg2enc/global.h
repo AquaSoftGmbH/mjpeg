@@ -122,17 +122,15 @@ void iquant_non_intra _ANSI_ARGS_((short *src, short *dst,
   unsigned short *quant_mat,  int mquant));
 */
 
-int quant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
-  unsigned short *quant_mat,  unsigned short *iquant_mat, int mquant));
+void quant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
+  unsigned short *quant_mat,  unsigned short *iquant_mat, int mquant, int *nonsat_mquant));
 int quant_non_intra _ANSI_ARGS_((short *src, short *dst,
-  unsigned short *quant_mat,  unsigned short *iquant_mat, int mquant, int *mquant_ret));
+  unsigned short *quant_mat,  unsigned short *iquant_mat, int mquant, int *nonsat_mquant));
 void iquant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
   unsigned short *quant_mat,  unsigned short *i_quant_mat, int mquant));
 void iquant_non_intra _ANSI_ARGS_((short *src, short *dst,
   unsigned short *quant_mat, unsigned short *iquant_mat,  int mquant));
 
-
-#define COEFFSUM_SCALE (1<<16)
 
 #if defined(MMX) || defined(SSE)
 extern int quantize_ni_mmx(short *dst, short *src, short *quant_mat, short *i_quant_mat, 
@@ -292,8 +290,9 @@ EXTERN unsigned char *neworgframe[3], *oldorgframe[3], *auxorgframe[3];
 EXTERN unsigned char *predframe[3];
 /* Buffer for filter pre-processing */
 EXTERN unsigned char *filter_buf;
-/* 8*8 block data */
+/* 8*8 block data, raw (unquantised) and quantised */
 EXTERN short (*blocks)[64];
+EXTERN short (*qblocks)[64];
 /* intra / non_intra quantization matrices */
 EXTERN unsigned short intra_q[64], inter_q[64];
 EXTERN unsigned short i_intra_q[64], i_inter_q[64];
@@ -336,6 +335,11 @@ EXTERN int width, height; /* encoded frame size (pels) multiples of 16 or 32 */
 EXTERN int chrom_width,chrom_height,block_count;
 EXTERN int mb_width, mb_height; /* frame size (macroblocks) */
 EXTERN int width2, height2, mb_height2, chrom_width2; /* picture size */
+EXTERN int qsubsample_offset, 
+           fsubsample_offset,
+	       rowsums_offset,
+	       colsums_offset;   /* Offset from picture buffer start of sub-sampled data... */
+						      
 EXTERN int aspectratio; /* aspect ratio information (pel or display) */
 EXTERN int frame_rate_code; /* coded value of frame rate */
 EXTERN double frame_rate; /* frames per second */
@@ -403,3 +407,8 @@ typedef unsigned char mcompuint;
 EXTERN int fix_mquant;    		/* use fixed quant, range 1 ... 31 */
 EXTERN int constant_bitrate;  	/* Original CBR encoding strategy  */
 EXTERN int output_stats;	    /* Display debugging statistics during coding */
+
+/* Useful for triggering debug information */
+
+EXTERN int frame_num;			
+

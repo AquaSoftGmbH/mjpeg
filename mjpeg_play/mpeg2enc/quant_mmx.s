@@ -32,17 +32,17 @@ global quantize_ni_mmx
 ; ebx = pqm
 ; ecx = piqm  ; Matrix of quads first (2^16/quant) 
  			  ; then (2^16/quant)*(2^16%quant) the second part is for rounding
-; edx = satlim
+; edx = temp
 ; edi = psrc
 ; esi = pdst
 
 ; mm0 = [imquant|0..3]W
 ; mm1 = [sat_limit|0..3]W
 ; mm2 = *psrc -> src
-; mm3 = rounding corrections...
-; mm4 = flags...
-; mm5 = saturation accumulator...
-; mm6 = nzflag accumulator...
+; mm3 = rounding corrections... / temp
+; mm4 = sign
+; mm5 = nzflag accumulators
+; mm6 = saturation accumulator...
 ; mm7 = temp
 
 		;; 
@@ -56,6 +56,8 @@ satlim:
 			dw	1024-1
 			dw	1024-1
 			dw	1024-1
+			
+			;; BUFFER NO LONGER USED DUE TO IMPROVED MAIN ROUTINE...
 SECTION .bss
 align 32
 quant_buf:	resw 64
@@ -73,7 +75,7 @@ quantize_ni_mmx:
 	push esi     
 	push edi
 
-	mov edi, quant_buf  ; get temporary dst w
+	mov edi, [ebp+8]    ; get dst
 	mov esi, [ebp+12]	; get psrc
 	mov ebx, [ebp+16]	; get pqm
 	mov ecx,  [ebp+20]  ; get piqm
@@ -89,7 +91,7 @@ quantize_ni_mmx:
 	punpcklwd mm1, mm2   ; [sat_limit|0..3]W
 	punpcklwd mm1, mm1   ; mm1 = [sat_limit|0..3]W
 	
-	xor       edx, edx  ; Non-zero flag accumulator 
+	pxor      mm5, mm5  ; Non-zero flag accumulator 
 	mov eax,  16		; 16 quads to do 
 	jmp nextquadniq
 
@@ -99,18 +101,22 @@ nextquadniq:
 
 	pxor    mm4, mm4
 	pcmpgtw mm4, mm2       ; mm4 = *psrc < 0
-	pxor    mm7, mm7
-	psubw   mm7, mm2       ; mm7 = -*psrc
-	psllw   mm7, 1         ; mm7 = -2*(*psrc)
-	pand    mm7, mm4       ; mm7 = -2*(*psrc)*(*psrc < 0)
-	paddw   mm2, mm7       ; mm2 = abs(*psrc)
+	movq    mm7, mm2       ; mm7 = *psrc
+	psllw   mm7, 1         ; mm7 = 2*(*psrc)
+	pand    mm7, mm4       ; mm7 = 2*(*psrc)*(*psrc < 0)
+	psubw   mm2, mm7       ; mm2 = abs(*psrc)
 
 	;;
 	;;  Check whether we'll saturate intermediate results
+	;;  Eventually flag is low 8 bits of result
 	;;
 	
 	movq    mm7, mm2
 	pcmpgtw mm7, [satlim]    ; Tooo  big for 16 bit arithmetic :-( (should be *very* rare)
+	movq    mm3, mm7
+	psllw   mm3, 8
+	por     mm7, mm3
+	psrlw   mm7, 8
 	por     mm6, mm7
 
 	;;
@@ -118,7 +124,7 @@ nextquadniq:
 	psllw   mm2, 5         ; mm2 = 32*abs(*psrc)
 	movq    mm7, [ebx]     ; mm7 = *pqm>>1
 	psrlw   mm7, 1
-	paddw   mm2, mm7       ; mm2 = 32*abs(*psrc)+((*pqm)) = "p"
+	paddw   mm2, mm7       ; mm2 = 32*abs(*psrc)+((*pqm)/2) = "p"
 
 	
 	;;
@@ -134,10 +140,10 @@ nextquadniq:
 	
 	movq    mm3, mm2				
 	pmullw  mm3, [ecx]          
-	movq    mm5, mm2
-	psrlw   mm5, 1            ; Want to see if adding p would carry into upper 16 bits
+	movq    mm7, mm2
+	psrlw   mm7, 1            ; Want to see if adding p would carry into upper 16 bits
 	psrlw   mm3, 1
-	paddw   mm3, mm5
+	paddw   mm3, mm7
 	psrlw   mm3, 15           ; High bit in lsb rest 0's
 	pmulhw  mm2, [ecx]        ; mm2 = (p*iqm+p) >> IQUANT_SCALE_POW2 ~= p/*qm
 
@@ -157,10 +163,10 @@ nextquadniq:
 	;; Do the second multiplication, again we ned to make a rounding adjustment
 	movq    mm3, mm2				
 	pmullw  mm3, mm0          
-	movq    mm5, mm2
-	psrlw   mm5, 1            ; Want to see if adding p would carry into upper 16 bits
+	movq    mm7, mm2
+	psrlw   mm7, 1            ; Want to see if adding p would carry into upper 16 bits
 	psrlw   mm3, 1
-	paddw   mm3, mm5
+	paddw   mm3, mm7
 	psrlw   mm3, 15           ; High bit in lsb rest 0's
 
 	pmulhw  mm2, mm0     ; mm2 ~= (p/(qm*mquant)) 
@@ -176,22 +182,19 @@ nextquadniq:
 
 
 	;;
-	;; Check for saturation
+	;; Check for saturation eventual bits 8-15 of result...
 	;;
 	movq mm7, mm2
 	pcmpgtw mm7, mm1
-	por     mm6, mm7       ; Accumulate that bad things happened...
+	movq  mm3, mm7
+	psrlw mm3, 8
+	por   mm7, mm3
+	psllw mm7, 8
+	por   mm6, mm7       ; Accumulate that bad things happened...
 
 	;;
 	;;  Accumulate non-zero flags
-	movq   mm7, mm2
-	movq   mm5, mm2
-	psrlq   mm5, 32
-	por     mm5, mm7
-	movd    mm7, edx       	;; edx  |= mm2 != 0
-	por     mm7, mm5
-	movd    edx, mm7
-
+	por     mm5, mm2
 	
 	;;
 	;; Now correct the sign mm4 = *psrc < 0
@@ -212,9 +215,7 @@ nextquadniq:
 	
 	jnz near nextquadniq
 
-quit:
-
-	;; Return saturation in low word and nzflag in high word of reuslt dword 
+	;; Return saturation in low word and nzflag in high word of result dword 
 		
 	movq mm0, mm6
 	psrlq mm0, 32
@@ -223,24 +224,27 @@ quit:
 	mov   ebx, eax
 	shr   ebx, 16
 	or    eax, ebx
-	and   eax, 0xffff		;; low word eax is saturation
+	and   eax, 0xffff		;; low word eax is saturation / out-of-range
 	
-	test  eax, eax
-	jnz   skipupdate
-	
-	mov   ecx, 8           ;; 8 pairs of quads...
-	mov   edi, [ebp+8]     ;; destination
-	mov   esi, quant_buf
-update:
-	movq  mm0, [esi]
-	movq  mm1, [esi+8]
-	add   esi, 16
-	movq  [edi], mm0
-	movq  [edi+8], mm1
-	add   edi, 16
-	sub   ecx, 1	
-	jnz   update
-skipupdate:
+
+;	mov   ecx, 8           ;; 8 pairs of quads...
+;	mov   edi, [ebp+8]     ;; destination
+;	mov   esi, quant_buf
+;update:
+;	movq  mm0, [esi]
+;	movq  mm1, [esi+8]
+;	add   esi, 16
+;	movq  [edi], mm0
+;	movq  [edi+8], mm1
+;	add   edi, 16
+;	sub   ecx, 1	
+;	jnz   update
+;skipupdate:
+
+	movq  mm0, mm5
+	psrlq mm0, 32
+	por   mm5, mm0
+	movd  edx, mm5
 	mov   ebx, edx
 	shl   ebx, 16
 	or    edx, ebx

@@ -29,6 +29,7 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <limits.h>
 
 #include "config.h"
 #include "global.h"
@@ -36,9 +37,11 @@
 /* TODO:  Currently new algorithm is switched.  Once its right tune it properly
 	and make it fixed....
 	*/
-	
+
+
 #define NEW_RATE_CTL
 
+	
 /* private prototypes */
 static double calc_actj _ANSI_ARGS_((unsigned char *frame));
 static double var_sblk _ANSI_ARGS_((unsigned char *p, int lx));
@@ -82,6 +85,9 @@ static double Kb = 1.4;	    /* relative to others in bit-allocation   */
 static double Kp = 1.0;	    /* calculations.  We only need 2 but have all
 							3 for readability */
 
+
+static int min_d,max_d;
+static int min_q, max_q;
 void rc_init_seq()
 {
 
@@ -159,6 +165,8 @@ unsigned char *frame;
 	 weighted by global complexity estimates and B-frame scale factor
 	 T = (Nx * Xx/Kx) / Sigma_j (Nj * Xj / Kj)
   */
+  min_q = min_d = INT_MAX;
+  max_q = max_d = INT_MIN;
   switch (pict_type)
   {
   case I_TYPE:
@@ -214,9 +222,7 @@ unsigned char *frame;
 #endif
 }
 
-/*
-#define NEW_RATE_CTL
-*/
+
 
 static double calc_actj(frame)
 unsigned char *frame;
@@ -279,14 +285,14 @@ unsigned char *frame;
 		}
 
 	  actj  = (double)quant_weight_coeff_sum( &mbinfo[k].dctblocks[0], i_q_mat ) /
-	  	       (double) COEFFSUM_SCALE;
+	  	       (double) COEFFSUM_SCALE ;
 	  actj += (double)quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], i_q_mat ) / 
-	  		(double) COEFFSUM_SCALE 	;
+	  		(double) COEFFSUM_SCALE;
 	  actj += (double) quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], i_q_mat ) / 
-	  		(double) COEFFSUM_SCALE  ;
-	  actj += (double) quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], i_q_mat ) /
-	  		(double) COEFFSUM_SCALE  ;	  
+	  		(double) COEFFSUM_SCALE;
 
+	  actj += (double) quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], i_q_mat ) /
+	  		(double) COEFFSUM_SCALE;
 #endif
       mbinfo[k].act = actj;
 	  sum += actj;
@@ -298,11 +304,18 @@ unsigned char *frame;
 void rc_update_pict()
 {
   double X;
-
   S = bitcount() - S; /* total # of bits in picture */
   R-= S; /* remaining # of bits in GOP */
   X = (int) floor(S*((0.5*(double)Q)/(mb_width*mb_height2)) + 0.5);
   d+= S - T;
+
+  /* Bts that never got used in the past can't be resurrected now... 
+   */
+  /* TODO: The actual minimum D setting should be some number tuned
+	 to ensure sensible response once activity picks up...
+  */
+  if( d < 0 )
+	d = 0;
 
   switch (pict_type)
   {
@@ -336,12 +349,13 @@ void rc_update_pict()
     d0i, d0p, d0b);
   fprintf(statfile," remaining number of P pictures in GOP: Np=%d\n",Np);
   fprintf(statfile," remaining number of B pictures in GOP: Nb=%d\n",Nb);
-  fprintf(statfile," average activity: avg_act=%.1f\n", avg_act);
-#else
-  if( !quiet )
-  	fprintf( stderr, "avg_act=%.3f\n", avg_act );
+  fprintf(statfile," average activity: avg_act=%.1f \n", avg_act );
 #endif
-}
+  if( !quiet )
+  	fprintf( stderr, "avg_act=%.2f avg_Q = %.2f (dI=%d,dP=%d,dB=%d) \n", 
+		avg_act, ((double)Q) / (double) (mb_width*mb_height2),
+		d0i, d0p, d0b  );
+ }
 
 /* compute initial quantization stepsize (at the beginning of picture) */
 int rc_start_mb()
@@ -372,9 +386,11 @@ int rc_start_mb()
     if (mquant>62)
       mquant = 62;
 
-    prev_mquant = mquant;
+
     if(fix_mquant>0) mquant = 2*fix_mquant;
   }
+     
+  prev_mquant = mquant;
 
 /*
   fprintf(statfile,"rc_start_mb:\n");
@@ -388,13 +404,11 @@ int rc_start_mb()
 int rc_calc_mquant(j)
 int j;
 {
+  static int k = 0;
   int mquant;
   double dj, Qj, actj, N_actj; 
 
-#ifndef NEW_RATE_CTL
-  /* measure virtual buffer discrepancy from uniform distribution model */
-	dj = d + (bitcount()-S) - j*(T/(mb_width*mb_height2));
-#else
+#ifdef NEW_RATE_CTL
   /* A.Stevens Jul 2000 - This *has* to be dumb.  Essentially,
 	 it tries to give every block a similar share of the available bits.
 	 This will not properly exploit blocks which need few and save them
@@ -403,13 +417,20 @@ int j;
 	 My proposal: we measure how much *information* (total activity)
 	 has been covered and aim to release bits in proportion.  Indeed,
 	 complex blocks get an disproprortionate boost of allocated bits.
-	 
+
   */
 	
   dj = d + (bitcount()-S) - actcovered * T / actsum;
+
+
+#else
+  /* measure virtual buffer discrepancy from uniform distribution model */
+	dj = d + (bitcount()-S) - j*(T/(mb_width*mb_height2));
+
 #endif
 
-  /* scale against dynamic range of mquant and the bits/picture count */
+    
+    /* scale against dynamic range of mquant and the bits/picture count */
   Qj = dj*31.0/r;
 /*Qj = dj*(q_scale_type ? 56.0 : 31.0)/r;  */
 
@@ -424,19 +445,19 @@ int j;
 	  sizeable coefficients.  We assume we just get a mess if
 	  a complex texture's coefficients get chopped...
 
-	 Used to be the seemingly perverse:
-	 (2.0*actj+avg_act)/(actj+2.0*avg_act)
-	 which gently *increases* quantisation of very active blocks.
-	 
-	 Update - fails badly in active scenes... needs revision... probably
-	 a tweak for intra vs non-intra
   */
 
-  N_actj = (actj+3.0*avg_act)/(3.0*actj+avg_act);
+
+  N_actj =  actj < avg_act ? 1.0 : (2.0*actj + avg_act)/(actj +  2.0*avg_act);
+
 #else
 
   N_actj =  (2.0*actj+avg_act)/(actj+2.0*avg_act);
+
+  
+
 #endif
+
   if (q_scale_type)
   {
     /* modulate mquant with combined buffer and local activity measures */
@@ -470,14 +491,18 @@ int j;
     prev_mquant = mquant;
     if(fix_mquant>0) mquant = 2*fix_mquant;
   }
-
+	
   Q+= mquant; /* for calculation of average mquant */
 
+
+	 
+#ifdef OUTPUT_STAT
 /*
-  fprintf(statfile,"rc_calc_mquant(%d): ",j);
-  fprintf(statfile,"bitcount=%d, dj=%f, Qj=%f, actj=%f, N_actj=%f, mquant=%d\n",
-    bitcount(),dj,Qj,actj,N_actj,mquant);
+  fprintf(statfile,"MQ(%d): ",j);
+  fprintf(statfile,"dj=%.0f, Qj=%1.1f, actj=3.1%f, N_actj=1.1%f, mquant=%03d\n",
+   dj,Qj,actj,N_actj,mquant);
 */
+#endif
 
   return mquant;
 }

@@ -32,6 +32,7 @@
 #include "config.h"
 #include "global.h"
 
+
 /* private prototypes */
 static void calcSNR1 _ANSI_ARGS_((unsigned char *org, unsigned char *rec,
   int lx, int w, int h, double *pv, double *pe));
@@ -45,6 +46,7 @@ unsigned char *rec[3];
 #ifdef OUTPUT_STAT
   int w,h,offs;
   double v,e;
+  int d;
 
   w = horizontal_size;
   h = (pict_struct==FRAME_PICTURE) ? vertical_size : (vertical_size>>1);
@@ -53,7 +55,7 @@ unsigned char *rec[3];
   calcSNR1(org[0]+offs,rec[0]+offs,width2,w,h,&v,&e);
   fprintf(statfile,"Y: variance=%4.4g, MSE=%3.3g (%3.3g dB), SNR=%3.3g dB\n",
     v, e, 10.0*log10(255.0*255.0/e), 10.0*log10(v/e));
-
+    
   if (chroma_format!=CHROMA444)
   {
     w >>= 1;
@@ -70,6 +72,8 @@ unsigned char *rec[3];
   calcSNR1(org[2]+offs,rec[2]+offs,chrom_width2,w,h,&v,&e);
   fprintf(statfile,"V: variance=%4.4g, MSE=%3.3g (%3.3g dB), SNR=%3.3g dB\n",
     v, e, 10.0*log10(255.0*255.0/e), 10.0*log10(v/e));
+    
+  
 #endif
 }
 
@@ -117,6 +121,11 @@ void stats()
   int n_skipped, n_intra, n_ncoded, n_blocks, n_interp, n_forward, n_backward;
   struct mbinfo *mbi;
 
+	/* TODO: DELETE Restricted range for my own tests... */
+	if( frame_num < 30 || frame_num > 50 )
+		return;
+	if( pict_type != I_TYPE )
+	  return;
   nmb = mb_width*mb_height2;
 
   n_skipped=n_intra=n_ncoded=n_blocks=n_interp=n_forward=n_backward=0;
@@ -224,6 +233,7 @@ void stats()
   }
 
 #if 0
+
   fprintf(statfile,"\ncbp map:\n");
 
   k=0;
@@ -258,7 +268,7 @@ void stats()
     }
   }
 
-  if (pict_type!=I_TYPE)
+  if (pict_type!=I_TYPE && frame_num > 10 && frame_num < 13)
   {
     fprintf(statfile,"\nforward motion vectors (first vector, horizontal):\n");
 
@@ -334,7 +344,7 @@ void stats()
 
 
   }
-    
+   
   if (pict_type==B_TYPE)
   {
     fprintf(statfile,"\nbackward motion vectors (first vector, horizontal):\n");
@@ -411,16 +421,32 @@ void stats()
 
 
   }
+
 #endif
     
-#if 0
+
   /* useful for debugging */
   fprintf(statfile,"\nmacroblock info dump:\n");
 
   k=0;
-  for (j=0; j<mb_height2; j++)
+ for (j=0; j<mb_height2; j++)
   {
     for (i=0; i<mb_width; i++)
+    {
+      fprintf(statfile,"(%d,%d): %1.1f %d %3.1f %d %d\n",
+			  i,j,
+			  mbinfo[k].N_act,
+      mbinfo[k].mquant,
+	  mbinfo[k].act,
+      mbinfo[k].cbp,
+      mbinfo[k].skipped			  );
+	  ++k;
+	}
+  }
+#if 0
+  for (j=1; j<5; j++)
+  {
+    for (i=5; i<11_width; i++)
     {
       fprintf(statfile,"%d: %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
       k,
@@ -446,6 +472,8 @@ void stats()
       k++;
     }
   }
+
+
 #endif
 #endif
 }

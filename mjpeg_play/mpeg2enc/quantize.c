@@ -40,23 +40,54 @@
 #define signmask(x) (((int)x)>>fabsshift)
 #define samesign(x,y) (y+(signmask(x) & -(y<<1)))
 
-/* Test Model 5 quantization
+/*
+ *
+ * Computes the next quantisation up.  Used to avoid saturation
+ * in macroblock coefficients - common in MPEG-1 - which causes
+ * nasty artefacts.
+ *
+ * NOTE: Does no range checking...
+ *
+ */
+ 
+
+static int next_larger_quant( int quant )
+{
+	if( q_scale_type )
+		{
+			return non_linear_mquant_table[map_non_linear_mquant[quant]+1];
+		}
+	else 
+		{
+			return quant+2;
+		}
+	
+}
+
+/* 
+ * Quantisation for intra blocks using Test Model 5 quantization
  *
  * this quantizer has a bias of 1/8 stepsize towards zero
  * (except for the DC coefficient)
+ *
+	PRECONDITION: src dst point to *disinct* memory buffers...
+		          of block_count *adjact* short[64] arrays... 
+ *
  */
-int quant_intra(src,dst,dc_prec,quant_mat,i_quant_mat, mquant)
+
+void quant_intra(src,dst,dc_prec,quant_mat,i_quant_mat, mquant, nonsat_mquant)
 short *src, *dst;
 int dc_prec;
 unsigned short *quant_mat;
 unsigned short *i_quant_mat;
 int mquant;
+int *nonsat_mquant;
 {
-  int i;
+  short *psrc,*pbuf;
+  int i,comp;
   int x, y, d;
   int clipping;
-  short tmp[64];	/* We buffer result in case we need to adjust quantization
-					   to avoid clipping */
+  int clipvalue  = mpeg1 ? 255 : 2047;
 
 
   /* Inspired by suggestion by Juan.  Quantize a little harder if we clip...
@@ -65,46 +96,53 @@ int mquant;
   do
 	{
 	  clipping = 0;
-	  x = src[0];
-	  d = 8>>dc_prec; /* intra_dc_mult */
-	  tmp[0] = (x>=0) ? (x+(d>>1))/d : -((-x+(d>>1))/d); /* round(x/d) */
+	  pbuf = dst;
+	  psrc = src;
+	  for( comp = 0; comp<block_count && !clipping; ++comp )
+	  {
+		x = psrc[0];
+		d = 8>>dc_prec; /* intra_dc_mult */
+		pbuf[0] = (x>=0) ? (x+(d>>1))/d : -((-x+(d>>1))/d); /* round(x/d) */
 
 
-	  for (i=1; i<64; i++)
-		{
-		  x = src[i];
-		  d = quant_mat[i];
+		for (i=1; i<64 ; i++)
+		  {
+			x = psrc[i];
+			d = quant_mat[i];
 #ifdef ORIGINAL_CODE
-		  y = (32*(x >= 0 ? x : -x) + (d>>1))/d; /* round(32*x/quant_mat) */
-		  d = (3*mquant+2)>>2;
-		  y = (y+d)/(2*mquant); /* (y+0.75*mquant) / (2*mquant) */
+			y = (32*(x >= 0 ? x : -x) + (d>>1))/d; /* round(32*x/quant_mat) */
+			d = (3*mquant+2)>>2;
+			y = (y+d)/(2*mquant); /* (y+0.75*mquant) / (2*mquant) */
 
-		  /* clip to syntax limits */
-		  if (y > 255)
-			{
-			  if (mpeg1)
-				y = 255;
-			  else if (y > 2047)
-				y = 2047;
-			}
+			/* clip to syntax limits */
+			if (y > 255)
+			  {
+				if (mpeg1)
+				  y = 255;
+				else if (y > 2047)
+				  y = 2047;
+			  }
 #else
-		  /* RJ: save one divide operation */
-		  y = (32*fastabs(x) + (d>>1) + d*((3*mquant+2)>>2))/(quant_mat[i]*2*mquant);
-		  if ( (y > 255) && (mpeg1 || (y > 2047)) )
-			{
-			  clipping = 1;
-			  mquant += 2;
-			  break;
-			}
+			/* RJ: save one divide operation */
+			y = (32*fastabs(x) + (d>>1) + d*((3*mquant+2)>>2))/(quant_mat[i]*2*mquant);
+			if ( y > clipvalue )
+			  {
+				clipping = 1;
+				mquant = next_larger_quant( mquant );
+				if( ! quiet )
+					fprintf( stderr, "I" );
+				break;
+			  }
 #endif
 		  
-		  tmp[i] = samesign(x,y);
-
-		}
+		  	pbuf[i] = samesign(x,y);
+		  }
+		pbuf += 64;
+		psrc += 64;
+	  }
+			
 	} while( clipping );
-  
-  memcpy( dst, tmp, 64*sizeof(short) );
-  return mquant;
+  *nonsat_mquant = mquant;
 }
 
 #if !defined(SSE) && !defined(MMX)
@@ -132,20 +170,19 @@ int quant_weight_coeff_sum( short *blk, unsigned short * i_quant_mat )
 }
 #endif
 
-int quant_non_intra_inv(src,dst,quant_mat,i_quant_mat,imquant, mquant, pmquant)
+#ifdef DEBUG
+
+int quant_non_intra_inv(src,dst,quant_mat,i_quant_mat,imquant, mquant)
 short *src, *dst;
 unsigned short *quant_mat;
 short *i_quant_mat;  /* 2^16 / quant_mat */
 int imquant;      /* 2^16 / 2*mquant */
 int mquant;
-int *pmquant;
 {
   int i;
   int x, y;
   int nzflag;
   int clipping;
-  short tmp[64];	/* We buffer result in case we need to adjust quantization
-					   to avoid clipping */
 
 	  clipping = 0;
 
@@ -163,107 +200,117 @@ int *pmquant;
 
   return clipping;
 }
-								     
-static short quant_buf[64];
+#endif
+							     
+/* 
+ * Quantisation for non-intra blocks using Test Model 5 quantization
+ *
+ * this quantizer has a bias of 1/8 stepsize towards zero
+ * (except for the DC coefficient)
+ *
+	PRECONDITION: src dst point to *disinct* memory buffers...
+	              of block_count *adjact* short[64] arrays...
+ *
+ */
+
 																							     											     
-int quant_non_intra(src,dst,quant_mat, i_quant_mat, mquant, pmquant)
+int quant_non_intra(src,dst,quant_mat, i_quant_mat, mquant, nonsat_mquant)
 short *src, *dst;
 unsigned short *quant_mat;
 unsigned short *i_quant_mat;
 int mquant;
-int *pmquant;
+int *nonsat_mquant;
 {
-  int i;
+  unsigned short *psrc, *pdst;
+  int i,comp;
   int x, y, d;
   int nzflag;
-  int clipping = 0;
+  int coeff_count;
   int clipvalue  = mpeg1 ? 255 : 2047;
-  int imquant = (IQUANT_SCALE/mquant);
+  int imquant;
+  int flags;
 
-#ifdef TESTING_QUANT
-  int tstclip;
-  short tst[64];
+    	/* If available use the fast MMX quantiser.  It returns
+		flags to signal if coefficients are outside its limited range or
+		saturation would occur with the specified quantisation
+		factor
+		Top 16 bits - non zero quantised coefficient present
+		Bits 8-15   - Saturation occurred
+		Bits 0-7    - Coefficient out of range.
+		*/
 
- 	/* 
-  tstclip = quant_non_intra_inv( src,tst,quant_mat, i_quant_mat,imquant, mquant, pmquant);
-	*/
-   tstclip = quantize_ni_mmx( tst, src, quant_mat, i_quant_mat, 
-  						imquant, mquant, clipvalue );
-	if( tstclip & 0xffff0000 == 0 )
-	{
-		printf( "Zero block flag!");
-	}
-	if( tstclip & 0xffff != 0)
-   		printf( "S" ); 
-#endif
-  /* MMX Quantizer maintains its own local buffer... dst will be unchanged if
-  	it flags saturation...
-    */
 #if (defined(MMX) || defined(SSE))
-	  int  ret = quantize_ni_mmx( dst, src, quant_mat, i_quant_mat, 
-	  			                 imquant, mquant, clipvalue );
-	  nzflag = ret & 0xffff0000;
-	  
-			
-	/* The fast MMX routines have a limited dynamic range.  We simply fall back to
-		stanard routines in the (rather rare) cases when they detected out of
-		range values...
+
+  pdst = dst;
+  psrc = src;
+  comp = 0; 
+  do
+  {
+	imquant = (IQUANT_SCALE/mquant);
+	flags = quantize_ni_mmx( pdst, psrc, quant_mat, i_quant_mat, 
+							 imquant, mquant, clipvalue );
+	nzflag = flags & 0xffff0000;
+	
+	/* If we're saturating simply bump up quantization and start from scratch...
 	*/
 
-	  if( (ret & 0xffff) != 0)
+	if( (flags & 0xff00) != 0 )
+	{
+	  mquant = next_larger_quant( mquant );
+	  comp = 0; 
+	  pdst = dst;
+	  psrc = src;
+	}
+	else
+	{
+	  ++comp;
+	  pdst += 64;
+	  psrc +=64;
+	}
+	/* Fall back to 32-bit(or better - if some hero(ine) made this work on
+	  non 32-bit int machines ;-)) if out of dynamic range for MMX...
+	  */
+  }
+  while( comp < block_count && (flags& 0xff00) != 0 && (flags & 0xff) == 0 );
+  
+  if( (flags & 0xff) != 0)
+#endif  
+  {
+	coeff_count = 64*block_count;
+	fprintf( stderr, "O" );
+
+
+	nzflag = 0;
+	pdst = dst;
+	psrc = src;		
+	for (i=0; i<coeff_count; ++i)
+	{
+	  /* RJ: save one divide operation */
+
+	  x = abs(*psrc);
+	  d = quant_mat[(i&63)]; 
+	  y = (32*abs(x) + (d>>1))/(d*2*mquant);
+	  nzflag |= (*pdst=samesign(src[i],y));
+	  if (y > clipvalue)
 	  {
-	  	 fprintf( stderr, "S" );
-#endif
-
- 	 	do
-		{
-
-		  clipping = 0;
-		  nzflag = 0;
-		  for (i=0; i<64; i++)
-		  {
-			/* RJ: save one divide operation */
-			/* AS: Lets make this a little more accurate... */
-			x = abs(src[i]);
-			d = quant_mat[i]; 
-			/* N.b. accurate would be: y = (int)rint(32.0*((double)x)/((double)(d*2*mquant))); */
-			/* Code below does *not* compute this always! */
-			y = (32*abs(x) + (d>>1))/(d*2*mquant);
-			if (y > clipvalue)
-				y = clipvalue;
-			nzflag |= (dst[i] = samesign(src[i],y));
-			
-#ifdef TESTING_QUANT
-			if( quant_buf[i] != tst[i]  )
-			{
-		        int y1,y2, y3,rnd;
-				int p = x*32+d/2;
-				int id = i_quant_mat[i];
-				int iq = imquant;
-				y1 = ((p * id) + p )>>16;
-				rnd = y1;
-				y2 = (y1 * iq);
-				y3 = (y2 + rnd) / (2*IQUANT_SCALE);
-				printf( "mm2 = %d, [ecx] = %d, res = %d\n", tst[i],tst[i+4],tst[i+8]);
-				printf( "I=%d (%d/%d*2*%d) IQ=%d T=%d MMX=%d ID=%d %d %d %d\n", 
-				i, p, quant_mat[i], mquant, iq,
-				dst[i], tst[i], id,
-					y1, y2>>16, y3
-				  );
-				exit(0);
-			}
-#endif			
-		  }
-		
+		  fprintf( stderr, "C");
+		  mquant = next_larger_quant( mquant );
+		  i=0;
+		  pdst = dst;
+		  psrc = src;			
 	  }
-  	while( clipping );
+	  else
+	  {
+	  	++pdst; 
+		++psrc;
+	  }
+   }
+
 #if (defined(MMX) || defined(SSE))
   }
 #endif
-	/* TODO:  we ouught to add code to adjust mquant rather than simply saturate */
 
-  *pmquant = mquant;
-
+  *nonsat_mquant = mquant;
   return !!nzflag;
 }
 

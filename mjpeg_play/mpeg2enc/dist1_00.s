@@ -28,16 +28,17 @@
 global dist1_00_SSE
 
 ; int dist1_00(char *blk1,char *blk2,int lx,int h,int distlim);
-
+; distlim unused - costs more to check than the savings of
+; aborting the computation early from time to time...
 ; eax = p1
 ; ebx = p2
-; ecx = counter temp
+; ecx = rowsleft
 ; edx = lx;
 
 ; mm0 = distance accumulator
-; mm1 = distlim
-; mm2 = rowsleft
-; mm3 = 2 (rows per loop)
+; mm1 = temp
+; mm2 = temp
+; mm3 = temp
 ; mm4 = temp
 ; mm5 = temp
 ; mm6 = temp
@@ -58,10 +59,11 @@ dist1_00_SSE:
 	mov ebx, [ebp+12]	; get p2
 	mov edx, [ebp+16]	; get lx
 
-	movd mm2, [ebp+20]	; get rowsleft
-	movd mm1, [ebp+24]	; get distlim
-	mov ecx,2		; 1 loop does 2 rows
-	movd mm3, ecx		; MMX(TM) it!
+	;movd mm2, [ebp+20]	; get rowsleft
+	;mov ecx,2		; 1 loop does 2 rows
+	;movd mm3, ecx		; MMX(TM) it!
+	;movd mm1, [ebp+24]	; get distlim
+	mov ecx, [ebp+20]	; get rowsleft
 	jmp nextrow00		; snap to it
 align 32
 nextrow00:
@@ -84,25 +86,25 @@ nextrow00:
 	psadbw mm4, [ebx+8]	; compare to next 8 bytes of p2 (row 2)
 	paddd mm0, mm4		; accumulate difference
 
-	psubd mm2, mm3		; decrease rowsleft
-	movq mm5, mm1		; copy distlim
-	pcmpgtd mm5, mm0	; distlim > dist?
-	pand mm2, mm5		; mask rowsleft with answer
-	movd ecx, mm2		; move rowsleft to ecx
+	;psubd mm2, mm3		; decrease rowsleft
+	;movq mm5, mm1		; copy distlim
+	;pcmpgtd mm5, mm0	; distlim > dist?
+	;pand mm2, mm5		; mask rowsleft with answer
+	;movd ecx, mm2		; move rowsleft to ecx
 
 	add eax, edx		; update pointer to next row
 	add ebx, edx		; ditto
 	
-	test ecx, ecx		; check rowsleft
+	;test ecx, ecx		; check rowsleft
+	sub  ecx, 2
 	jnz nextrow00		; rinse and repeat
 
 	movd eax, mm0		; store return value
 	
-	pop edx			; pop pop
-	pop ecx			; fizz fizz
-	pop ebx			; ia86 needs a fizz instruction
+	pop edx	
+	pop ecx	
+	pop ebx	
 
-	pop ebp			; restore stack pointer
-
-	emms			; clear mmx registers
-	ret			; we now return you to your regular programming
+	pop ebp	
+	emms
+	ret	

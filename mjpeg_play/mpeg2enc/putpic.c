@@ -45,7 +45,7 @@ unsigned char *frame;
   int PMV[2][2][2];
   int prev_mquant;
   int cbp, MBAinc;
-
+  MBAinc = 0;          /* Annoying warning otherwise... */
   rc_init_pict(frame); /* set up rate control */
 
   /* picture header and picture coding extension */
@@ -103,11 +103,16 @@ unsigned char *frame;
       /* quantize macroblock */
       if (mb_type & MB_INTRA)
       {
-		/* Return value is mquant adjustment up if necc. to avoid clipping */
+		/* mquant adjustment up if necc. to avoid clipping, does block_count block's at once... */
+		/* TODO ORIGINAL, Eventually non_intra should be done the same, and we should *not* do
+		   a destructive update....
         for (comp=0; comp<block_count; comp++)
-          /* mbinfo[k].mquant = */
 			quant_intra( blocks[k*block_count+comp],blocks[k*block_count+comp],
-						 dc_prec, intra_q, i_intra_q, mbinfo[k].mquant);
+						 dc_prec, intra_q, i_intra_q, mbinfo[k].mquant, &mbinfo[k].mquant );
+		*/
+		quant_intra( blocks[k*block_count],qblocks[k*block_count],
+					 dc_prec, intra_q, i_intra_q, mbinfo[k].mquant, &mbinfo[k].mquant );
+		
         mbinfo[k].cbp = cbp = (1<<block_count) - 1;
       }
       else
@@ -115,7 +120,7 @@ unsigned char *frame;
         cbp = 0;
         for (comp=0;comp<block_count;comp++)
           cbp = (cbp<<1) | quant_non_intra(blocks[k*block_count+comp],
-                                           blocks[k*block_count+comp],
+                                           qblocks[k*block_count+comp],
                                            inter_q, i_inter_q,  mbinfo[k].mquant
 										   , &mbinfo[k].mquant );
 
@@ -264,10 +269,10 @@ unsigned char *frame;
           if (mb_type & MB_INTRA)
           {
             cc = (comp<4) ? 0 : (comp&1)+1;
-            putintrablk(blocks[k*block_count+comp],cc);
+            putintrablk(qblocks[k*block_count+comp],cc);
           }
           else
-            putnonintrablk(blocks[k*block_count+comp]);
+            putnonintrablk(qblocks[k*block_count+comp]);
         }
       }
 

@@ -26,7 +26,8 @@
 global dist1_00_MMX
 
 ; int dist1_MMX(unsigned char *blk1,unsigned char *blk2,int lx,int h, int distlim);
-
+; N.b. distlim is *ignored* as testing for it is more expensive than the
+; occasional saving by aborting the computionation early...
 ; esi = p1 (init:		blk1)
 ; edi = p2 (init:		blk2)
 ; ebx = distlim  
@@ -34,12 +35,12 @@ global dist1_00_MMX
 ; edx = lx;
 
 ; mm0 = distance accumulators (4 words)
-; mm1 = temp (evtl. pos. differences *p1 - *p2)
+; mm1 = temp 
 ; mm2 = temp 
-; mm3 = [0..7|-128]
+; mm3 = temp
 ; mm4 = temp
-; mm5 = temp (evtl. pos. differences *p2 - *p1)
-; mm6 = temp
+; mm5 = temp 
+; mm6 = 0
 ; mm7 = temp
 
 
@@ -55,132 +56,84 @@ dist1_00_MMX:
 	push edi
 		
 	pxor mm0, mm0				; zero acculumators
-
+	pxor mm6, mm6
 	mov esi, [ebp+8]			; get p1
 	mov edi, [ebp+12]			; get p2
 	mov edx, [ebp+16]			; get lx
 	mov  ecx, [ebp+20]			; get rowsleft
-	mov ebx, [ebp+24]	        ; distlim
-	mov  eax, 0x80808080		;  mm3 := [0..7,-0x80 (MINSIGNEDBYTE)]
-	movd mm3, eax
-	movd mm4, eax
-	punpcklwd mm3, mm4
+	;mov ebx, [ebp+24]	        ; distlim
 	jmp nextrowmm00					; snap to it
 align 32
 nextrowmm00:
 	movq mm4, [esi]		; load first 8 bytes of p1 row 
 	movq mm5, [edi]		; load first 8 bytes of p2 row
 		
-	movq  mm6, mm4		; mm6 :	= [i : B0..7,mm4-0x80]B
-	paddb mm6, mm3
+	movq mm7, mm4       ; mm5 = abs(mm4-mm5)
+	psubusb mm7, mm5
+	psubusb mm5, mm4
+	paddb   mm5, mm7
 
-    movq  mm7, mm5		;  mm7 :=  [i :	B0..7,mm5-0x80]B
-	paddb mm7, mm3
-
-	movq  mm2,mm6
-	pcmpgtb mm2,mm7		; mm2 := [i : B0..7,mm4>mm5]
-
-	movq  mm1,mm4		; mm1 := [i : B0..7, (mm4-mm5)*(mm4-mm5 > 0)]B <==
- 	psubb mm1,mm5
-	pand  mm1, mm2		
-
-	pcmpgtb mm7,mm6	    ; mm7 := [i : B0..7,mm4>mm5]B
- 	psubb mm5,mm4		; mm5 := [i : B0..7, (mm5-mm4)*(mm5-mm4 > 0)]B <==
-	pand  mm5, mm7		
-
-		
-		;;  Add the mm1 bytes to the accumulators
-	movq  mm7,mm1				; mm7 := [i :	B0..3, mm1]W
-	pxor  mm6,mm6
+	;;  Add the abs(mm4-mm5) bytes to the accumulators
+	movq  mm7,mm5				; mm7 := [i :	B0..3, mm1]W
 	punpcklbw mm7,mm6
-		
 	paddw mm0, mm7
-
-	pxor  mm6,mm6               ; mm1 :	=  [i :	B4..7, mm1]W
-	punpckhbw mm1,mm6
-
-	paddw mm0, mm1
-
-		;;	Add the mm5 bytes to the accumulators
-	movq  mm7,mm5				; mm7 := [i :	B0..3, mm5]W
-	pxor  mm6,mm6
-	punpcklbw mm7,mm6
-		
-	paddw mm0, mm7
-
-	pxor  mm6,mm6               ; mm5 :	=  [i :	B4..7, mm5]W
 	punpckhbw mm5,mm6
-
 	paddw mm0, mm5
+
 
 	movq mm4, [esi+8]		; load second 8 bytes of p1 row 
 	movq mm5, [edi+8]		; load second 8 bytes of p2 row
 		
-	movq  mm6, mm4		; mm6 :	= [i : B0..7,mm4-0x80]B
-	paddb mm6, mm3
+	movq mm7, mm4       ; mm5 = abs(mm4-mm5)
+	psubusb mm7, mm5
+	psubusb mm5, mm4
+	paddb   mm5, mm7
 
-    movq  mm7, mm5		;  mm7 :=  [i :	B0..7,mm5-0x80]B
-	paddb mm7, mm3
-
-	movq  mm2,mm6
-	pcmpgtb mm2,mm7		; mm2 := [i : B0..7,mm4>mm5]
-
-	movq  mm1,mm4		; mm1 := [i : B0..7, (mm4-mm5)*(mm4-mm5 > 0)]B <==
- 	psubb mm1,mm5
-	pand  mm1, mm2		
-
-	pcmpgtb mm7,mm6	    ; mm7 := [i : B0..7,mm4>mm5]B
- 	psubb mm5,mm4		; mm5 := [i : B0..7, (mm5-mm4)*(mm5-mm4 > 0)]B <==
-	pand  mm5, mm7		
-
-		;;  Add the mm1 bytes to the accumulators
-	movq  mm7,mm1				; mm7 := [i :	B0..3, mm1]W
-	pxor  mm6,mm6
+	;;  Add the abs(mm4-mm5) bytes to the accumulators
+	movq  mm7,mm5				; mm7 := [i :	B0..3, mm1]W
 	punpcklbw mm7,mm6
-		
-	paddw mm0, mm7
-
-	pxor  mm6,mm6               ; mm1 :	=  [i :	B4..7, mm1]W
-	punpckhbw mm1,mm6
-
-	paddw mm0, mm1
-
-		;;	Add the mm5 bytes to the accumulators
-	movq  mm7,mm5				; mm7 := [i :	B0..3, mm5]W
-	pxor  mm6,mm6
-	punpcklbw mm7,mm6
-		
-	paddw mm0, mm7
-
-	pxor  mm6,mm6               ; mm5 :	=  [i :	B4..7, mm5]W
 	punpckhbw mm5,mm6
+	paddw mm0, mm7
+	
+	add esi, edx		; update pointer to next row
+	add edi, edx		; ditto	
 
 	paddw mm0, mm5
 
-	add esi, edx		; update pointer to next row
-	add edi, edx		; ditto
+
 
 		;; Sum the Accumulators
-	movq  mm5, mm0				; mm5 := [W0+W2,W1+W3, mm0
-	psrlq mm5, 32
-	movq  mm6, mm0
-	paddw mm6, mm5
+		; No longer used...
+	;movq  mm5, mm0				; mm5 := [W0+W2,W1+W3, mm0
+	;psrlq mm5, 32
+	;movq  mm4, mm0
+	;paddw mm4, mm5
 
-	movq  mm7, mm6              ; mm6 := [W0+W2+W1+W3, mm0]
-	psrlq mm7, 16
-	paddw mm6, mm7
+	;movq  mm7, mm4              ; mm6 := [W0+W2+W1+W3, mm0]
+	;psrlq mm7, 16
+	;paddw mm4, mm7
 		
-	movd eax, mm6		; store return value
-	and  eax, 0xffff
-	cmp ebx, eax		;  Return early if distlim exceeded
-	jle  returnmm00
-			
+	;movd eax, mm4		; store return value
+	;and  eax, 0xffff
+	;cmp ebx, eax		;  Return early if distlim exceeded
+	;jle  returnmm00
+	;		
 	sub  ecx,1
-	test ecx, ecx		; check rowsleft
 	jnz near nextrowmm00
 		
 returnmm00:	
 
+		;; Sum the Accumulators
+	movq  mm5, mm0				; mm5 := [W0+W2,W1+W3, mm0
+	psrlq mm5, 32
+	movq  mm4, mm0
+	paddw mm4, mm5
+
+	movq  mm7, mm4              ; mm6 := [W0+W2+W1+W3, mm0]
+	psrlq mm7, 16
+	paddw mm4, mm7
+	movd eax, mm4		; store return value
+	and  eax, 0xffff
 
 	pop edi
 	pop esi	
