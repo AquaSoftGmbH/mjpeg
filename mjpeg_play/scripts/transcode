@@ -9,7 +9,7 @@ echo "s - sleep for specified number of minutes before starting work"
 echo "T - Use test encoder"
 echo "S - Transcode for SVCD or"
 echo "V - Transcode for VCD"
-echo "F - fhe frame rate must also be specified choose one: "
+echo "F - fhe frame rate can also be specified, choose one if needed: "
 mpeg2enc -F -h
 exit 0
 }
@@ -27,7 +27,6 @@ outfile=transcoded
 bitrate=""
 sleep=0
 decode="YUVh"
-framerate="-F 2"
 while getopts ":o:b:s:F:SVTXh" opt
 do
 case $opt in
