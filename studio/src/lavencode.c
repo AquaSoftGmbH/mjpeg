@@ -585,8 +585,6 @@ void video_convert()
       yuvplay_command[n] = "yuvplay"; n++;
       yuvplay_command[n] = "-s"; n++;
       yuvplay_command[n] = "240x180"; n++;
-      if (encoding_syntax_style == 150)
-      { yuvplay_command[n] = "-c"; n++; }
       yuvplay_command[n] = NULL;
       start_pipe_command(yuvplay_command, YUVPLAY); /* yuvplay */
    }
