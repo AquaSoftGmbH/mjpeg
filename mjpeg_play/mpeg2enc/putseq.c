@@ -236,79 +236,89 @@ static int find_gop_length( int gop_start_frame,
 							int min_b_grp)
 {
 	int i,j;
+    /*
+      Checking the luminance mean of the frame also updates
+      istrm_nframes if the number of frames in the stream if the end
+      of stream has is reached before this frame...
+    */
 	int cur_lum_mean = 
 		frame_lum_mean( gop_start_frame+gop_max_len+I_frame_temp_ref );
 	int pred_lum_mean;
 
 	/* Search backwards from max gop length for I-frame candidate
-	   adjusting for I-frame temporal reference
+	   adjusting for I-frame temporal reference.
+       If permissible GOP size range is 1 or empty simply set gop_max_len..
 	*/
-	for( i = gop_max_len; i >= gop_min_len; i -= min_b_grp )
-	{
-		pred_lum_mean = frame_lum_mean( gop_start_frame+i+I_frame_temp_ref-min_b_grp );
-		if( abs(cur_lum_mean-pred_lum_mean ) >= SCENE_CHANGE_THRESHOLD )
-			break;
-		cur_lum_mean = pred_lum_mean;
-	}
+    if( gop_min_len >= gop_max_len )
+        i = gop_max_len;
+    else
+    {
+        for( i = gop_max_len; i >= gop_min_len; i -= min_b_grp )
+        {
+            pred_lum_mean = frame_lum_mean( gop_start_frame+i+I_frame_temp_ref-min_b_grp );
+            if( abs(cur_lum_mean-pred_lum_mean ) >= SCENE_CHANGE_THRESHOLD )
+                break;
+            cur_lum_mean = pred_lum_mean;
+        }
 
-	if( i < gop_min_len )
-	{
+        if( i < gop_min_len )
+        {
 
-		/* No scene change detected within maximum GOP length.
-		   Now do a look-ahead check to see if running a maximum length
-		   GOP next would put scene change into the GOP after-next
-		   that would need a GOP smaller than minimum to handle...
-		*/
-		pred_lum_mean = 
-			frame_lum_mean( gop_start_frame+gop_max_len+I_frame_temp_ref );
-		for( j = gop_max_len+min_b_grp; j < gop_max_len+gop_min_len; j += min_b_grp )
-		{
-			cur_lum_mean = frame_lum_mean( gop_start_frame+j+I_frame_temp_ref );
-			if(  abs(cur_lum_mean-pred_lum_mean ) >= SCENE_CHANGE_THRESHOLD )
-				break;
-		}
+            /* No scene change detected within maximum GOP length.
+               Now do a look-ahead check to see if running a maximum length
+               GOP next would put scene change into the GOP after-next
+               that would need a GOP smaller than minimum to handle...
+            */
+            pred_lum_mean = 
+                frame_lum_mean( gop_start_frame+gop_max_len+I_frame_temp_ref );
+            for( j = gop_max_len+min_b_grp; j < gop_max_len+gop_min_len; j += min_b_grp )
+            {
+                cur_lum_mean = frame_lum_mean( gop_start_frame+j+I_frame_temp_ref );
+                if(  abs(cur_lum_mean-pred_lum_mean ) >= SCENE_CHANGE_THRESHOLD )
+                    break;
+            }
 		
-		/* If a max length GOP next would cause a scene change in a
-		   place where the GOP after-next would be under-size to handle it
-		   *and* making the current GOP minimum size would allow an acceptable
-		   GOP after-next size the next GOP to give it and after-next
-		   roughly equal sizes
-		   otherwise simply set the GOP to maximum length
-		*/
+            /* If a max length GOP next would cause a scene change in a
+               place where the GOP after-next would be under-size to handle it
+               *and* making the current GOP minimum size would allow an acceptable
+               GOP after-next size the next GOP to give it and after-next
+               roughly equal sizes
+               otherwise simply set the GOP to maximum length
+            */
 
-		if( j < gop_max_len+gop_min_len )
-		{
-			if( j < 2*gop_min_len )
-			{
-				mjpeg_info("GOP min length too small to permit scene-change on GOP boundary %d\n", j);
-				/* Its better to put the missed transition at the end
-				   of a GOP so any eventual artefacting is soon washed
-				   out by an I-frame*/
-				i = gop_min_len;
-			}
-			else
-			{
-				/* If we can make the two GOPs near the transition
-				   similarly sized */
-				i = j /2;
-				if( i%min_b_grp != 0 )
-					i+=(min_b_grp-i%min_b_grp);
-				if( j-i < gop_min_len || j > gop_max_len )
-					i = gop_min_len;
-			}
+            if( j < gop_max_len+gop_min_len )
+            {
+                if( j < 2*gop_min_len )
+                {
+                    mjpeg_info("GOP min length too small to permit scene-change on GOP boundary %d\n", j);
+                    /* Its better to put the missed transition at the end
+                       of a GOP so any eventual artefacting is soon washed
+                       out by an I-frame*/
+                    i = gop_min_len;
+                }
+                else
+                {
+                    /* If we can make the two GOPs near the transition
+                       similarly sized */
+                    i = j /2;
+                    if( i%min_b_grp != 0 )
+                        i+=(min_b_grp-i%min_b_grp);
+                    if( j-i < gop_min_len || j > gop_max_len )
+                        i = gop_min_len;
+                }
 				
-		}
-		else
-			i = gop_max_len;
-	}
-
+            }
+            else
+                i = gop_max_len;
+        }
+    }
 	if( i != gop_max_len )
 		mjpeg_debug( "GOP nonstandard size %d\n", i );
 
-	/* last GOP may contain less frames */
+	/* last GOP may contain less frames! */
 	if (i > istrm_nframes-gop_start_frame)
 		i = istrm_nframes-gop_start_frame;
-	mjpeg_info( "GOP_SIZE = %d\n", i );
+	mjpeg_info( "GOP_SIZE = %d\n", i);
 	return i;
 
 }
@@ -426,22 +436,11 @@ static void gop_start( stream_state_s *ss )
 	  In all other GOPs I-frame has a temp_ref of M-1
 	*/
 	
-	if( ctl_N_min != ctl_N_max )
-	{
-		if( ss->i == 0 )
-			ss->gop_length =  
-				find_gop_length( ss->gop_start_frame, 0, 
-								 ctl_N_min, ctl_N_max,
-								 ctl_M_min);
-		else
-			ss->gop_length = 
-				find_gop_length( ss->gop_start_frame, ctl_M-1, 
-								 ctl_N_min, ctl_N_max,
-								 ctl_M_min);
-	}
-	else
-		ss->gop_length = ctl_N_min;
-	
+    ss->gop_length =  
+        find_gop_length( ss->gop_start_frame, 
+                         (ss->i == 0 ? 0 : ctl_M-1), 
+                         ctl_N_min, ctl_N_max,
+                         ctl_M_min);
 			
 	/* First figure out how many B frames we're short from
 	   being able to achieve an even M-1 B's per I/P frame.
@@ -763,13 +762,20 @@ static void stencodeworker(pict_data_s *picture)
 			
 }
 
+/*
+  Ohh, lovely C type syntax... more or less have to introduce a named
+  typed here to bind the "volatile" correctly - to the pointer not the
+  data it points to. K&R: hang your heads in shame...
+*/
 
-static volatile pict_data_s *picture_to_encode;
+typedef pict_data_s * pict_data_ptr;
+
+volatile static pict_data_ptr picture_to_encode;
 
 
 static void *parencodeworker(void *start_arg)
 {
-	pict_data_s *picture;
+	pict_data_ptr picture;
 	mjpeg_debug( "Worker thread started\n" );
 
 	for(;;)
