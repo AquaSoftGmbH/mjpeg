@@ -122,6 +122,7 @@ bin_PROGRAMS = \
 	yuvfps \
 	y4mblack \
 	y4mtoyuv \
+	y4minterlace \
 	yuv4mpeg \
 	yuvinactive \
 	$(PNG_BIN)
@@ -236,6 +237,9 @@ y4mstabilizer_LDADD = $(LIBMJPEGUTILS)
 
 y4mblack_SOURCES = y4mblack.c
 y4mblack_LDADD = $(LIBMJPEGUTILS)
+
+y4minterlace_SOURCES = y4minterlace.c
+y4minterlace_LDADD = $(LIBMJPEGUTILS)
 
 y4mtoyuv_SOURCES = y4mtoyuv.c
 y4mtoyuv_LDADD = $(LIBMJPEGUTILS)
