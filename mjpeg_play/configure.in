@@ -124,6 +124,12 @@ else
     AC_MSG_RESULT([no])
 fi
 
+# FreeBSD has neither -lpthread nor integrated pthreads in libc, instead
+# -pthread is used to the compiler/linker to get pthreads working right.
+if test x$OS_ARCH = xFreeBSD; then
+   CFLAGS="$CFLAGS -pthread"
+   CXXFLAGS="$CXXFLAGS -pthread"
+fi
 
 dnl *********************************************************************
 dnl madmac/gernot: This activates architecture specific changes (e g no MMX)
