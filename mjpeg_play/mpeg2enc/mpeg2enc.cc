@@ -629,6 +629,9 @@ void MPEG2EncCmdLineOptions::StartupBanner()
 
 int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 {
+    int n;
+    int nerr = 0;
+
     static const char	short_options[]=
         "m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:X:D:g:G:v:V:F:N:tpdsZHOcCPK:E:R:";
 
@@ -676,9 +679,6 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
         { 0,                   0, 0, 0 }
     };
 
-
-    int n;
-    int nerr = 0;
     while( (n=getopt_long(argc,argv,short_options,long_options, NULL)) != -1 )
 #else
     while( (n=getopt(argc,argv,short_options)) != -1)
