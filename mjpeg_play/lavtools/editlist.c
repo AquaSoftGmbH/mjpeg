@@ -496,7 +496,7 @@ int el_get_audio_data(char *abuff, long nframe, EditList *el, int mute)
 int el_video_frame_data_format(long nframe, EditList *el)
 {
    int n;
-   char *comp;
+   const char *comp;
 
    if(el->video_frames<=0) return DATAFORMAT_MJPG; /* empty editlist, return default */
    if(nframe<0) nframe = 0;
