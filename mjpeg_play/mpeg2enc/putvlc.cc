@@ -37,6 +37,7 @@
 
 /* private prototypes */
 static void putDC (const sVLCtable *tab, int val);
+static int DC_bits(const sVLCtable *tab, int val);
 
 /* generate variable length code for luminance DC coefficient */
 void putDClum(int val)
@@ -44,10 +45,20 @@ void putDClum(int val)
   putDC(DClumtab,val);
 }
 
+int DClum_bits( int val )
+{
+  return DC_bits(DClumtab,val);
+}
+
 /* generate variable length code for chrominance DC coefficient */
 void putDCchrom(int val)
 {
   putDC(DCchromtab,val);
+}
+
+int DCchrom_bits(int val)
+{
+	return DC_bits(DClumtab,val);
 }
 
 /* generate variable length code for DC coefficient (7.2.1) */
@@ -85,6 +96,27 @@ static void putDC(const sVLCtable *tab, int val)
     putbits(absval,size);
   }
 }
+
+/* generate variable length code for DC coefficient (7.2.1) */
+static int DC_bits(const sVLCtable *tab, int val)
+{
+  int absval, size;
+
+  absval = abs(val);
+
+  /* compute dct_dc_size */
+  size = 0;
+
+  while (absval)
+  {
+    absval >>= 1;
+    size++;
+  }
+
+  /* generate VLC for dct_dc_size (Table B-12 or B-13) */
+  return tab[size].len+size;
+}
+
 
 /* generate variable length code for first coefficient
  * of a non-intra block (7.2.2.2) */
@@ -165,6 +197,40 @@ void putAC(int run, int signed_level, int vlcformat)
   }
 }
 
+/* generate variable length code for other DCT coefficients (7.2.2) */
+int AC_bits(int run, int signed_level, int vlcformat)
+{
+  int level;
+  const VLCtable *ptab;
+
+  level = abs(signed_level);
+
+  if (run<2 && level<41)
+  {
+    /* vlcformat selects either of Table B-14 / B-15 */
+    if (vlcformat)
+      ptab = &dct_code_tab1a[run][level-1];
+    else
+      ptab = &dct_code_tab1[run][level-1];
+
+    return ptab->len+1;
+  }
+  else if (run<32 && level<6)
+  {
+    /* vlcformat selects either of Table B-14 / B-15 */
+    if (vlcformat)
+      ptab = &dct_code_tab2a[run-2][level-1];
+    else
+      ptab = &dct_code_tab2[run-2][level-1];
+
+    return ptab->len+1;
+  }
+  else
+  {
+	  return 12+12;
+  }
+}
+
 /* generate variable length code for macroblock_address_increment (6.3.16) */
 void putaddrinc(int addrinc)
 {
@@ -177,6 +243,17 @@ void putaddrinc(int addrinc)
   putbits(addrinctab[addrinc-1].code,addrinctab[addrinc-1].len);
 }
 
+int addrinc_bits(int addrinc)
+{
+	int bits = 0;
+	while (addrinc>33)
+	{
+		bits += 11;
+		addrinc-= 33;
+	}
+	return bits + addrinctab[addrinc-1].len;
+}
+
 /* generate variable length code for macroblock_type (6.3.16.1) */
 void putmbtype(int pict_type, int mb_type)
 {
@@ -184,15 +261,26 @@ void putmbtype(int pict_type, int mb_type)
           mbtypetab[pict_type-1][mb_type].len);
 }
 
+int mbtype_bits( int pict_type, int mb_type)
+{
+	return mbtypetab[pict_type-1][mb_type].len;
+}
+
 /* generate variable length code for motion_code (6.3.16.3) */
 void putmotioncode(int motion_code)
 {
   int abscode;
 
-  abscode = (motion_code>=0) ? motion_code : -motion_code; /* abs(motion_code) */
+  abscode = abs( motion_code );
   putbits(motionvectab[abscode].code,motionvectab[abscode].len);
   if (motion_code!=0)
     putbits(motion_code<0,1); /* sign, 0=positive, 1=negative */
+}
+
+int motioncode_bits( int motion_code )
+{
+	int abscode = (motion_code>=0) ? motion_code : -motion_code; 
+	return 1+motionvectab[abscode].len;
 }
 
 /* generate variable length code for dmvector[t] (6.3.16.3), Table B-11 */
@@ -206,6 +294,11 @@ void putdmv(int dmv)
     putbits(3,2);
 }
 
+int dmv_bits(int dmv)
+{
+	return dmv == 0 ? 1 : 2;
+}
+
 /* generate variable length code for coded_block_pattern (6.3.16.4)
  *
  * 4:2:2, 4:4:4 not implemented
@@ -213,4 +306,9 @@ void putdmv(int dmv)
 void putcbp(int cbp)
 {
   putbits(cbptable[cbp].code,cbptable[cbp].len);
+}
+
+int cbp_bits(int cbp)
+{
+	return cbptable[cbp].len;
 }
