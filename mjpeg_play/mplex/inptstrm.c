@@ -403,7 +403,7 @@ void get_info_video (char *video_file,
 			{
 				unsigned int bits_persec = 
 					(unsigned int) ( ((double)(stream_length - prev_stream_length)) *
-									 frame_rate / ((double)(1+decoding_order - group_start_pic)));
+									 2*frame_rate / ((double)(2+fields_presented - group_start_field)));
 				
 				if( bits_persec > max_bits_persec )
 				{
@@ -440,6 +440,7 @@ void get_info_video (char *video_file,
 			{
 				access_unit.DTS =  (clockticks) (decoding_order * (double)CLOCKS / frame_rate);
 				access_unit.PTS =  (clockticks) ((temporal_reference + group_start_pic) * (double)CLOCKS / frame_rate);
+				fields_presented += 2;
 			}
 
 			access_unit.dorder = decoding_order;

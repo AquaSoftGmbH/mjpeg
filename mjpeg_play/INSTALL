@@ -8,8 +8,9 @@ details.
 Required Software
 -----------------
 
-
+***
 *** Software you *must* have installed
+***
 
 1) The GLib library - http://www.gtk.org
 (libglib .... is included in the standard distributions)
@@ -33,66 +34,37 @@ more recent ones use "forms.h".  If compilation stops with one of these
 files missing make sure you have forms installed.  The 0.88.1-1 rpm's
 for RedHat seem to work fine.
 
-
-4) Quicktime4Linux 1.2.0 - http://heroine.linuxave.net/quicktime.html
-
-The configure scripts look for this in same parent directory as the
-directory containing this file, /usr/local/src/quicktime or
-/usr/local/src/quicktime4linux-1.2 by default.  You can specify
-another directory using the --with-quicktime flag to the ./configure
-script.
-
-N.b. it would seem that quicktime-1.2 is a little picky about the
-compilers it is built under.  You may get complaints about missing
-functions.  If so you need to try a more up-to-date gcc or egcs or an
-older quicktime library that doesn't include the offending code
-(support for digital video that makes heavy use of inline's). If this
-is the case a hacked version of Q4L can be found where you found this.
-Furthermore, in its original form the Quicktime library includes a
-built-in jpeg library.  This prevents full use being made of the
-somewhat faster MMX version available (see 2. below).  It is easy to
-hack out the jpeg stuff but if you don't fancy that you can use a
-pre-hacked version downloadable from where you got this package.
-
-http://download.sourceforge.net/mjpeg/quicktime4linux-1.2njpg.tar.gz
+Hopefully in the next release xforms will be replaced by a more stable
+library like gtk+.
 
 
-./configure
-make
+4) The MMX enhanced jpeg library from the same place you got this package.
 
-No need (or sense) in "make install"-ing as: (a) Its a hacked version
-and you don't want to muddle it up with the original and then abuse
-the original author for deficiencies we introduced.  (b) The configure scripts for expect to look for the source anyway.
-
-5) The MMX enhanced jpeg library from the same place you got this package.
+http://download.sourceforge.net/mjpeg/jpeg-mmx-1.1.3.tar.gz
 
 The configure scripts look for this in same parent directory as the
 directory containing this file, /usr/local/src/jpeg-mmx by default.
 You can specify another directory using the --with-jpeg-mmx flag to
 the ./configure script.
 
-O.k. actually, you *don't* need this.libjpeg6 (libjpeg6a or 6b is
-included in the standard distributions) along with the corresponding
-"jpegint.h" header file from the source code wiil do. This header file
-is needed so that the colour-space conversion routines to be used by
-the jpeg library can be correctly set for the state of the X display.
+Experienced developers should note that you *need* this. libjpeg6
+(libjpeg6a or 6b is included in the standard distributions) along with
+the corresponding "jpegint.h" header file from the source code will
+do. This header file is needed so that the colour-space conversion
+routines to be used by the jpeg library can be correctly set for the
+state of the X display.
 
-However, by far the simplest solution is to the faster patched MMX
-version that can be found with where you obtained this software. 
-
-http://download.sourceforge.net/mjpeg/jpeg-mmx-1.1.3.tar.gz
 
 Compile: 
 
 ./configure
 make
 
-It is *strongly* recommended you use this version of jpeg lib.  Don't
-worry about it messing up your precious system jpeg libs - you *don't*
-install it. The compiled static library is expected by the configure
-scripts in the same parent directory as the mjpegtools source code or
-/usr/local/src.
+Note do *not* "make install".
 
+The configure script for mjpegtool looks for the library in 
+/usr/local/src/jpeg-mmx by default.  If you unpacked and compiled it 
+elsewhere use the --jpeg-mmx flag to tell it where.
 
 
 5) The libmovtar library for handling audio/video streams in "movtar" format.
@@ -111,14 +83,45 @@ You'll need to be able to write to /usr/local/lib and /usr/local/include
 for the install.
 
 
-6) If you wish to recompile the mpeg encoder you'll need a recent version
-of the "nasm" assembler.
+6) A recent version of the "nasm" assembler for compiling the pure
+assembly language routines in the MPEG encoder.
 
-
+***
+***
 *** Software you'll find useful
+***
+***
+
+1) Quicktime4Linux - http://heroine.linuxave.net/quicktime.html
+
+If you want to be able to read/write/edit video in Quicktime
+format you'll need Adam William's Quicktime librery.
+
+The configure scripts look for this /usr/local/src/quicktime.  You can
+specify another directory using the --with-quicktime flag to the
+./configure script.   
+
+IMPORTANT NOTE:  Although you can compile mjpegtools with the stock
+1.3 release this will prevent effective use of the MMX JPEG library
+for software playback.  This is because Quicktime4linux includes its
+own version of the JPEG library.   To make full use of the JPEG library
+you need to prevent Quicktime4linux linking in its own JPEG library.
+A (tiny) patch to the Quicktime4linux source that does this can be found
+
+http://download.sourceforge.net/mjpeg/quicktime4linux-1.3.patch
+
+If you want to make full use of the MMX JPEG lib apply this patch with 
+
+patch < quicktime4linux-1.3.patch
+
+before building quicktime4linux with
+
+./configure
+make
 
 
-1) The "toolame" MP2 encoder and the "sox" audio processing tool.
+
+2) The "toolame" MP2 encoder and the "sox" audio processing tool.
 
 A remark regarding RPM packages: If you want to install RPM packages
 instead, always keep in mind that you need to install the developer
@@ -127,7 +130,7 @@ versions.
 (www.freshmeat.net is also a good source for all kind of Linux soft !)
 
 
-2) If you want to transcode MPEG-2 video from DTV or DVD formats
+3) If you want to transcode MPEG-2 video from DTV or DVD formats
 you'll want to get the ac3dec and mpeg2dec decoder tools with the
 appropriate output plugin's for producing streamed wav and lavtools
 "yuv" format.  At the time of writing rapid change in both programs
@@ -138,9 +141,11 @@ area of mjpeg.sourceforge.net.
 
 ftp://mjpeg.sourceforge.net/pub/mjpeg
 
-
-
+***
+***
 *** How to build and install it...
+***
+***
 
 If you're building from cvs rather than the distribution tarball do :
 
@@ -154,7 +159,8 @@ Next configure
 ./configure
 
 (Obviously you may want to pass flags if you're installing in
-non-default places etc).
+non-default places etc).  Frequently used options are 
+--jpeg-mmx=<jpeg-mmx directory> and --with-quicktime=<quicktime directory>
 
 make
 

@@ -12,7 +12,7 @@ int open_file(char *name, unsigned int *bytes);
 
 static void Usage(char *str)
 {
-	fprintf( stderr, "lavtools mplex version " VERSION "\n" );
+	fprintf( stderr, "mjpegtools mplex version " VERSION "\n" );
 	fprintf( stderr, "Usage: %s [params] [<input file1> [<input file2>] <output file>\n\n", str);
 	fprintf( stderr, "  where possible params are:\n" );
 	fprintf( stderr, " -q      Quiet mode for unattended batch usage\n" );
@@ -60,7 +60,7 @@ int intro_and_options(int argc, char *argv[])
 {
     int n;
 	printf( "mplex version %s (%s)\n",MPLEX_VER,MPLEX_DATE );
-	while( (n=getopt(argc,argv,"b:r:v:a:m:f:l:S:qiVnMe")) != EOF)
+	while( (n=getopt(argc,argv,"b:r:v:a:m:f:l:s:S:qiVnMe")) != EOF)
 	{
 		switch(n)
 		{

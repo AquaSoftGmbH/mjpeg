@@ -15,8 +15,8 @@ AC_ARG_ENABLE(warnings_as_errors,
   [  --enable-warnings_as_errors,      Compiler warnings are errors.])
 AC_ARG_ENABLE(xfree-ext, 
   [  --enable-xfree-ext,               use XFree extensions (DGA)])
-AC_ARG_ENABLE(sse-extensions, 
-  [  --enable-sse-extensions,          use the SSE extensions.])
+AC_ARG_ENABLE(cmov-extension, 
+  [  --enable-cmov-extension,          use the cmov instruction.])
 AC_ARG_ENABLE(mmx-accel,
   [  --enable-mmx-accel,               use the mmx accelerated functions])
 AC_ARG_WITH(jpeg-mmx,
@@ -270,13 +270,13 @@ fi
 
 dnl ********************************************************************* 
 dnl This test only works on Linux machines with /proc filesystem support
-dnl enabled. We have to check this independantly as SSE is independant
+dnl enabled. We have to check this independantly as cmov is independant
 dnl of MMX and 3DNow stuff.
 dnl
 have_cmov=false
 if test x$have_x86cpu = xtrue ; then
- AC_MSG_CHECKING(for Intel SSE support)
- if test "$enable_sse_extensions" != "no" ; then
+ AC_MSG_CHECKING(for CMOV support)
+ if test "$enable_cmov_extension" != "no" ; then
 
   cpu_family=`grep "cpu family" /proc/cpuinfo | awk 'BEGIN { FS = ":"; } { printf "%d", $2 + 0;}'`
   if test "$cpu_family" -gt 5 ; then
@@ -285,6 +285,30 @@ if test x$have_x86cpu = xtrue ; then
   fi
  fi
  AC_MSG_RESULT($have_cmov);
+fi
+
+dnl *********************************************************************
+dnl For x86 machines only check which code model we should use
+dnl 
+if test x$have_x86cpu = xtrue ; then
+AC_MSG_CHECKING(x86 sub-architecture settings)
+
+  if test "$enable_cmov_extension" != "no" ; then
+    arch=`uname --machine`
+  else
+    arch=i586
+  fi
+  case `uname --machine` in
+  i786) ARCHFLAGS="-mcpu=i786 -march=$arch"
+  ;;
+  i686) ARCHFLAGS="-mcpu=i686 -march=$arch"
+  ;;
+  i586) ARCHFLAGS="-mcpu=i586 -march=$arch"
+  ;;
+  *) 
+  ;;
+  esac
+AC_MSG_RESULT($ARCHFLAGS)
 fi
 
 dnl **********************************************************************
@@ -302,6 +326,7 @@ dnl as needed. This only works for GCC.
 dnl We do this last as it can screw up library detection etc...
 dnl 
 
+CFLAGS="$ARCHFLAGS $CFLAGS"
 if test "x${GCC}" != "xyes" ; then
   enable_compile_warnings=no
 fi
@@ -350,8 +375,8 @@ echo ""
 echo " MJPEG tools ${VERSION} build configuration :"
 echo ""
 echo "    - MMX Optimizations enabled   : ${have_asm_mmx}"
-echo "    - SSE Support enabled         : ${have_sse}"
-if test "$have_sse" = "true" ; then
+echo "    - cmov support enabled         : ${have_cmov}"
+if test "$have_cmov" = "true" ; then
 echo "
 ****************************************************************************
 * NOTE:                                                                    *

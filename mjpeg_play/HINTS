@@ -1,3 +1,10 @@
+>>>>>>>>>
+>>>>>>>>> This HINTS file is now no longer maintained.  
+>>>>>>>>>  A much more useful and well maintained HOWTO can be found in:
+>>>>>>>>>
+
+
+
 (0)  Read the README's.  There's a lot of useful info buried in there...
 	There are specialist README's for mpeg2enc and mplex in the corresponding
 	sub-directories as well as the	general README in the top directory.
@@ -37,9 +44,9 @@
 	progressive material like PAL films) -m 2 -F 0.  -F 1 and -F 2
 	will work but are currently handicapped by rather dumb code to
 	choose the type of motion compensation.  I have some suspicions
-	that the rate control code needs adjusting for field sequences (-m
-	2 -F 1 and -F 2) also. To generate a legal SVCD program stream
-	with mplex use the "-f 3" flag.
+	that the rate control code and multiplexer needs adjusting for
+	field sequences (-m	2 -F 1 and -F 2) also. To generate a legal S
+	VCD program stream	with mplex use the "-f 3" flag.
 
 (2) For transcoding existing MPEG-2 streams from digital TV cards or
     DVD a still lower data-rate than for broadcast will give good

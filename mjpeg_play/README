@@ -3,14 +3,6 @@ Documentation Files
 
 INSTALL - How to install this package
 
-HINTS - How to use this package and avoid common pitfalls.  See the
-project homepage and the buz-linux homepage for the drivers and FAQ's
-on using and installing the hardware
-
-REMINDER: You are currently required to have Quicktime installed !
-See "INSTALL"...
-
-REMINDER: For info on how to compile and install see "INSTALL"...
 
 
 lavtools: Linux Audio and Video TOOLS for Motion JPEG and MPEG
@@ -69,6 +61,9 @@ streams will  work fine with this, ending cleanly when they reach the actual end
 corresponding singleAVI or Quicktime file.
 
 - "lavaddwav" Adds an audio stream to a Quicktime or AVI without one.
+
+- "lav2dfilter".  A median filter for noise reduction.  Useful when MPEG
+encoding TV material.
 
 - "v4l-conf" is used in X to set up your video framebuffer address
 

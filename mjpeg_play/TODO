@@ -2,8 +2,7 @@ Fix all the BUGS (see BUGS) of course!
 
 IMMEDIATE
 
-Finish tidying up mplex so it meshes correctly with the sequence splitting
-support in mpeg2enc.
+Add support for field pictures to mplex.
 
 TASKS OUTSTANDING
 
@@ -13,20 +12,9 @@ Minor
 	and lavrec and add proper error handling and break up those oversize
 	functions.
 
-- The filtering / decimation code in the lav* utilities should be seperated 
-	from the stream extraction.  An extractor is needed for the favoured
-	format of the mpeg2dec developer.
+- The filtering / decimation code in the lav* utilities is now redundant
+	with lavscale in place...
 
-- Mention transcoding in the Documentation.  Mention the stuff relating to
-  seq headers and similar VCD tricker too...
-
-- Change the build structure to seperate the MPEG from the lav tools.
-
-- Fix the overly pessimistic data-rate estimation in mplex.
-
-- Turn the crappy "HINTS" file into nice introductory documentation on
-  working with these programs to achieve the best results in typical
-  scenarios.
 
 Medium
 
@@ -47,13 +35,6 @@ Medium
 
 - Add support for encoding raw (YUV and RGB) AVI files.  	
 
-- Modify mplex to a decent job at mpeg stream splitting.  The solution
-	would be to get mpeg2enc to insert regular sequence headers at the
-	start of GOP's.  mplex could then simply split at these points.
-
-- Beef up xlav to make splitting an editted stream set into multiple
-  edit lists for parallel compression less tedious.
-
 - Add the code to do DVD multiplexing into mplex.  This is
 mainly the addition of facilities to mux in AC-3 as stream PRIVATE1.
 As ever Brent Byeler's "bbmpeg" is a good source here.
@@ -63,11 +44,7 @@ look-ahead reader instead.
 
 Major
 
-- Improve quality of mpeg2enc's output to the level of the best
-commercial encoders.  I.e. add scene change detection and dynamic GOP
-sizing plus some "intelligent" pre-filtering options to blur
-mosaics. Make it go *still faster* ;-)
-
-- <Gernot's wish-list for the lavtools here...>
+-  I.e. add a dynamic noise reduction filter and an "intelligent" 
+   blurring to suppress mosaics. Make it go *still faster* ;-)
 
 

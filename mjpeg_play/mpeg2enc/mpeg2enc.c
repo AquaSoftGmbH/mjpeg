@@ -82,7 +82,7 @@ static int param_mpeg       = 1;
 static int param_aspect_ratio = 0;
 static int param_frame_rate  = 0;
 static int param_fieldpic   = 0;  /* 0: progressive, 1: bottom first, 2: top first, 3 = progressive seq, interlace frames with field MC and DCT in picture */
-static int param_norm       = 'p';  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
+static int param_norm       = 0;  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
 static int param_44_red	= 2;
 static int param_22_red	= 3;	
 static int param_hfnoise_quant = 0;

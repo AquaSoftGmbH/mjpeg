@@ -1,8 +1,10 @@
 lavtools, xlav  : Rainer Johanni <rainer@johanni.de>
+				  Andrew Stevens, Xavier Biquard, Ronald Bultje and others!
 
 mpeg2enc, aenc  : Andrew Stevens <Andrew.Stevens@comlab.ox.ac.uk>
 
 libmjpeg:   Gernot Ziegler <gz@lysator.liu.se>
+
 
 (and everyone was cooperating to improve the code of the others, of course :-) )
 
