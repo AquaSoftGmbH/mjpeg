@@ -235,6 +235,9 @@ dnl appropriate headers to /usr/include/quicktime, uncomment the following case:
 dnl	else if test -d /usr/include/quicktime	; then
 dnl	  with_quicktime=/usr/include/quicktime
   fi	
+fi
+
+if test x$with_quicktime != x ; then
   have_quicktime=false
   AC_CHECK_LIB(png, png_read_info, [QUICKTIME_LIBS="-lpng" PNG="found"])
   if test "$PNG" = "found" ; then
