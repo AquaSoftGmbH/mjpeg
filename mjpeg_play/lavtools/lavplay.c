@@ -182,7 +182,7 @@ static void Usage(char *progname)
       "\n");
    fprintf(stderr, "  -a/--audio [01]            Enable audio playback\n");
    fprintf(stderr, "  -F/--flicker               Disable flicker reduction\n");
-   fprintf(stderr, "  --size NxN                 width X height for SDL (S) or video (H) window\n");
+   fprintf(stderr, "  -S/--size NxN              width X height for SDL (S) or video (H) window\n");
    fprintf(stderr, "  --s-x-offset num           Video Window X offset from topleft corner\n");
    fprintf(stderr, "  --s-y-offset num           Video Window Y offset from topleft corner\n");
    fprintf(stderr, "  --display :x.x             The X-display to use (default: \':0.0\')\n");
@@ -409,7 +409,7 @@ static int set_option(char *name, char *value)
             break;
       }
    }
-   else if (strcmp(name, "size")==0)
+   else if (strcmp(name, "size")==0 || strcmp(name, "S")==0)
    {
       if (sscanf(value, "%dx%d", &info->sdl_width, &info->sdl_height)!=2)
       {
@@ -460,7 +460,7 @@ static void check_command_line_options(int argc, char *argv[])
       {"playback"        ,1,0,0},   /* -p/--playback [SHC]  */
       {"audio"           ,1,0,0},   /* -a/--audio [01]      */
       {"gui-mode"        ,1,0,0},   /* -g/--gui-mode        */
-      {"size"            ,1,0,0},   /* --size               */
+      {"size"            ,1,0,0},   /* -S/--size            */
       {"flicker"         ,0,0,0},   /* -F/--flicker         */
       {"display"         ,1,0,0},   /* --display            */
       {"s-x-offset"      ,1,0,0},   /* --s-x-offset         */
@@ -474,10 +474,10 @@ static void check_command_line_options(int argc, char *argv[])
 /* Get options */
    nerr = 0;
 #ifdef HAVE_GETOPT_LONG
-   while( (n=getopt_long(argc,argv,"a:v:H:V:s:c:n:t:qZp:xrzgF",
+   while( (n=getopt_long(argc,argv,"S:a:v:H:V:s:c:n:t:qZp:xrzgF",
       long_options, &option_index)) != EOF)
 #else
-   while( (n=getopt(argc,argv,"a:v:H:V:s:c:n:t:qZp:xrzgF")) != EOF)
+   while( (n=getopt(argc,argv,"S:a:v:H:V:s:c:n:t:qZp:xrzgF")) != EOF)
 #endif
    {
       switch(n)
