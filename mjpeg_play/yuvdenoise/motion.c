@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <math.h>
 #include "mjpeg_types.h"
 #include "global.h"
 #include "motion.h"
@@ -112,20 +113,21 @@ subsample_frame (uint8_t * dst[3], uint8_t * src[3], int w, int h)
  *********************************************************************/
 
 uint32_t
-calc_SAD_noaccel (uint8_t * frm, uint8_t * ref)
+calc_SAD_noaccel (uint8_t *frm, uint8_t *ref)
 {
-  uint8_t dx = 0;
-  uint8_t dy = 0;
-  int32_t Y = 0;
-  uint32_t d = 0;
-  
-  for(dy=0;dy<8;dy++)
-    for(dx=0;dx<8;dx++)
-    {
-      Y=*(frm+dx+dy*denoiser.frame.w)-*(ref+dx+dy*denoiser.frame.w);
-      d+=(Y<0)? -Y:Y;
-    }
-  return d;
+uint32_t d = 0;
+uint32_t adj = denoiser.frame.w - 8;
+
+#define LINE \
+d += abs(*frm++ - *ref++); d += abs(*frm++ - *ref++); \
+d += abs(*frm++ - *ref++); d += abs(*frm++ - *ref++); \
+d += abs(*frm++ - *ref++); d += abs(*frm++ - *ref++); \
+d += abs(*frm++ - *ref++); d += abs(*frm++ - *ref++); \
+frm += adj; ref += adj
+LINE; LINE; LINE; LINE;
+LINE; LINE; LINE; LINE;
+#undef LINE
+return d;
 }
 
 /*********************************************************************
@@ -501,20 +503,25 @@ calc_SAD_uv411_mmxe (uint8_t * frm, uint8_t * ref)
  *********************************************************************/
 
 uint32_t
-calc_SAD_half_noaccel (uint8_t * ref, uint8_t * frm1, uint8_t * frm2)
+calc_SAD_half_noaccel(uint8_t*ref, uint8_t*frm1, uint8_t*frm2)
 {
-  uint8_t dx = 0;
-  uint8_t dy = 0;
-  int32_t Y = 0;
-  uint32_t d = 0;
-  
-  for(dy=0;dy<8;dy++)
-    for(dx=0;dx<8;dx++)
-    {
-      Y=((*(frm1+dx+dy*denoiser.frame.w)+*(frm2+dx+dy*denoiser.frame.w))>>1)-*(ref+dx+dy*denoiser.frame.w);
-      d+=(Y<0)? -Y:Y;
-    }
-  return d;
+uint32_t d = 0;
+uint32_t adj = denoiser.frame.w - 8;
+
+#define LINE \
+d += abs(((*frm1++ + *frm2++) >> 1) - *ref++); \
+d += abs(((*frm1++ + *frm2++) >> 1) - *ref++); \
+d += abs(((*frm1++ + *frm2++) >> 1) - *ref++); \
+d += abs(((*frm1++ + *frm2++) >> 1) - *ref++); \
+d += abs(((*frm1++ + *frm2++) >> 1) - *ref++); \
+d += abs(((*frm1++ + *frm2++) >> 1) - *ref++); \
+d += abs(((*frm1++ + *frm2++) >> 1) - *ref++); \
+d += abs(((*frm1++ + *frm2++) >> 1) - *ref++); \
+frm1 += adj; frm2 += adj; ref += adj
+LINE; LINE; LINE; LINE;
+LINE; LINE; LINE; LINE;
+#undef LINE
+return d;
 }
 
 /*********************************************************************

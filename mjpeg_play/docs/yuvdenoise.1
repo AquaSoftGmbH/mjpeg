@@ -17,6 +17,12 @@ needed to encode your captured movies for VCD and SVCD creation.
 \fByuvdenoise\fP accepts the following options:
 
 .TP 4
+.BI \-X " Disable SIMD optimisations"
+Disable the use of MMX/SSE enhancements if they would ordinarily be used.  This
+is useful for testing to compare the C code against the SIMD code for timing
+and accuracy. 
+
+.TP 4
 .BI \-t " [0..255] Denoiser threshold"
 Accept any image-error up to +/- threshold for a single
 pixel to be accepted as valid for the image. If the
@@ -66,7 +72,7 @@ Set luminance (Y Contrast) in percent. (default=100)  The default value of
 .TP 4
 .BI \-C " [0..255] chrominance contrast"
 Set chrominance (Cr/Cb Contrast) in percent. AKA "Saturation" (default=100)
-The default value of 100 skips performing chroninance contract adjustment
+The default value of 100 skips performing chrominance contract adjustment
 entirely.
 
 .TP 4

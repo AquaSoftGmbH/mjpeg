@@ -37,6 +37,7 @@ void display_help(void);
 
 
 struct DNSR_GLOBAL denoiser;
+int disable_accel = 0;
 int param_skip = 0;
 
 extern uint32_t (*calc_SAD)         (uint8_t * , uint8_t * );
@@ -336,7 +337,7 @@ process_commandline(int argc, char *argv[])
 {
   int c, i1,i2,i3,i4;
 
-  while ((c = getopt (argc, argv, "h?t:u:v:b:r:l:m:n:c:S:s:L:C:p:Ff")) != -1)
+  while ((c = getopt (argc, argv, "h?t:u:v:b:r:l:m:n:c:S:s:L:C:p:FfX")) != -1)
   {
     switch (c)
     {
@@ -352,6 +353,9 @@ process_commandline(int argc, char *argv[])
         exit (0);
         break;
       }
+      case 'X':
+         disable_accel = 1;
+	 break;
       case 'b':
       {
         sscanf( optarg, "%i,%i,%i,%i", 
@@ -501,9 +505,22 @@ void print_settings(void)
 
 void turn_on_accels(void)
 {
+/* Will detect Altivec (for future use) as well as MMX/SSE */
+  int CPU_CAP = cpu_accel(); 
+
+/* Set the defaults (no accelerations) */
+   calc_SAD    = &calc_SAD_noaccel;
+   calc_SAD_uv = &calc_SAD_uv_noaccel;
+   calc_SAD_half = &calc_SAD_half_noaccel;
+   deinterlace = &deinterlace_noaccel;
+
+  if (disable_accel)
+  {
+      mjpeg_log(LOG_INFO, "SIMD optimisations explicitly disabled");
+      return;
+  }
+
 #ifdef HAVE_ASM_MMX
-  int CPU_CAP=cpu_accel ();
-  
   if( (CPU_CAP & ACCEL_X86_MMXEXT)!=0 ||
       (CPU_CAP & ACCEL_X86_SSE   )!=0 
     ) /* MMX+SSE */
@@ -570,10 +587,6 @@ void turn_on_accels(void)
     else
 #endif
     {
-      calc_SAD    = &calc_SAD_noaccel;
-      calc_SAD_uv = &calc_SAD_uv_noaccel;
-      calc_SAD_half = &calc_SAD_half_noaccel;
-      deinterlace = &deinterlace_noaccel;
       mjpeg_log (LOG_INFO, "Sorry, no SIMD optimisations available.");
     }
 }
