@@ -25,7 +25,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "yuv4mpeg.h"
+#include "yuv4mpeg-1.4.h"
 
 const int num_mpeg2_framerates = 9;
 static double mpeg2_framerates[] = { 00.000, 23.976,
