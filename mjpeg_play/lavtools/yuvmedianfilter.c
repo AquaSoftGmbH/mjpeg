@@ -48,11 +48,13 @@ int	avg_replace[NUMAVG];
 static void Usage(char *name )
 {
 	fprintf(stderr,
-			"Usage: %s: [-h] [-r num] [-t num] [-v num]\n"
-                        "-h   - Print out this help\n"
-			"-r   - Radius for median (default: 2 pixels)\n"
-			"-t   - Trigger threshold (default: 2)\n"
-			"-v   - Verbosity [0..2]\n", name);
+		"Usage: %s: [-h] [-r num] [-R num] [-t num] [-T num] [-v num]\n"
+                "-h   - Print out this help\n"
+		"-r   - Radius for luma median (default: 2 pixels)\n"
+		"-R   - Radius for chroma median (default: 2 pixels)\n"
+		"-t   - Trigger luma threshold (default: 2 [0=disable])\n"
+		"-T   - Trigger chroma threshold (default: 2 [0=disable])\n"
+		"-v   - Verbosity [0..2]\n", name);
 }
 			
 int
@@ -70,20 +72,26 @@ main(int argc, char *argv[])
 	y4m_stream_info_t istream, ostream;
 	y4m_frame_info_t iframe;
 
-	while((c = getopt(argc, argv, "r:t:v:hI")) != EOF) {
+	while((c = getopt(argc, argv, "r:R:t:T:v:hI")) != EOF) {
 		switch(c) {
-			case 'r':
-				radius_luma = radius_chroma = atoi(optarg);
-				break;
-			case 't':
-				threshold_luma = threshold_chroma = atoi(optarg);
-				break;
+		case 'r':
+			radius_luma = atoi(optarg);
+			break;
+		case 'R':
+			radius_chroma = atoi(optarg);
+			break;
+		case 't':
+			threshold_luma = atoi(optarg);
+			break;
+		case 'T':
+			threshold_chroma = atoi(optarg);
+			break;
 		case 'I' :
 			interlace = 1;
 			break;
 		case 'v':
 			verbose = atoi (optarg);
-			if( verbose < 0 || verbose >2 )
+			if (verbose < 0 || verbose >2)
 			{
 				Usage (argv[0]);
 				exit (1);
@@ -97,6 +105,12 @@ main(int argc, char *argv[])
 		}
 	}
 
+	if (radius_luma <= 0 || radius_chroma <= 0)
+	   mjpeg_error_exit1("radius values must be > 0!");
+
+	if (threshold_luma < 0 || threshold_chroma < 0)
+	   mjpeg_error_exit1("threshold values must be >= 0!");
+
    (void)mjpeg_default_handler_verbosity(verbose);
 
 	y4m_init_stream_info(&istream);
@@ -108,12 +122,11 @@ main(int argc, char *argv[])
 		mjpeg_error_exit1("Input stream error: %s", y4m_strerr(i));
 
 	if( interlace && istream.height % 2 != 0 )
-	{
 		mjpeg_error_exit1("Input images have odd number of lines - can't treats as interlaced!" );
-	}
+
 	horz = istream.width;
 	vert = istream.height;
-	mjpeg_debug( "width=%d height=%d", horz, vert);
+	mjpeg_debug("width=%d height=%d luma_r=%d chroma_r=%d luma_t=%d chroma_t=%d", horz, vert, radius_luma, radius_chroma, threshold_luma, threshold_chroma);
 
 	y4m_copy_stream_info(&ostream, &istream);
 
@@ -210,6 +223,12 @@ filter_buffer(int width, int height, int row_stride,
 	radius_count = radius + radius + 1;
 	min_count = (radius_count * radius_count + 2)/3;
 	
+
+	if	(threshold == 0)
+		{
+		memcpy(output, input, width * height);
+		return;
+		}
 
 	for(y=0; y < radius; y++)
 		memcpy(&output[y * row_stride], &input[y * row_stride], width);

@@ -1,4 +1,4 @@
-.TH "yuvmedianfilter" "1" "11 February 2003" "MJPEG Linux Square" "MJPEG tools manual"
+.TH "yuvmedianfilter" "1" "24 February 2003" "MJPEG Linux Square" "MJPEG tools manual"
 
 .SH "NAME"
 yuvmedianfilter \- A filter for yuv images produced by the mjpeg tools
@@ -7,7 +7,11 @@ yuvmedianfilter \- A filter for yuv images produced by the mjpeg tools
 .B yuvmedianfilter
 .RB [ \-r
 .IR num ]
+.RB [ \-R
+.IR num ]
 .RB [ \-t
+.IR num ]
+.RB [ \-T
 .IR num ]
 .RB [ \-v
 .IR num ]
@@ -20,7 +24,7 @@ This filter looks around the current point for a radius and averages the values 
 So the image is softened and the edges become more sharp. If the input 
 material is noisy (it is always noisy but you do not always see it) the 
 output images are improved and
-the encoder spends less bandwidth encoding the noise in the source.
+the encoder spends less bandwidth encoding noise.
 The more sophisticated version of image filtering is yuvdenoise. But you can use both programs in the encoding procces.
 It cannot procces a recorded file and write the improved version to another file. 
 
@@ -29,10 +33,16 @@ It cannot procces a recorded file and write the improved version to another file
 
 .TP 5
 .BI \-r " num"
-Radius for median (default: 2 pixels)
+Radius for luma median (default: 2 pixels)
+.TP 5
+.BI \-R " num"
+Radius for chroma median (default: 2 pixels)
 .TP 5
 .BI \-t " num"
-Trigger threshold (default: 2)
+Trigger threshold for luma (default: 2 [0=disable])
+.TP 5
+.BI \-T " num"
+Trigger threshold for chroma (default: 2 [0=disable])
 .TP 5
 .BI \-v " num"
 Verbosity level (0, 1 or 2)
