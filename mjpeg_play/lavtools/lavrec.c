@@ -1273,8 +1273,8 @@ int main(int argc, char ** argv)
 	video_dev_name = getenv("LAV_VIDEO_DEV");
 	if(!video_dev_name) video_dev_name = "/dev/video";
 	video_dev = open(video_dev_name, O_RDONLY);
-	if (video_dev < 0) mjpeg_error("openingvideo_dev_name: %s\n",
-								   sys_errlist[errno]);
+	if (video_dev < 0) mjpeg_error_exit1("opening videodev : %s\n",
+										 sys_errlist[errno]);
 
 	/* Set input and norm according to input_source,
 	   do an auto detect if neccessary */
@@ -1298,7 +1298,7 @@ int main(int argc, char ** argv)
             mjpeg_info("Trying %s ...\n",(i==2) ? "TV tuner" : (i==0?"Composite":"S-Video"));
             bstat.input = i;
             res = ioctl(video_dev,MJPIOC_G_STATUS,&bstat);
-            if(res<0) mjpeg_error("Getting video input status:%s\n",sys_errlist[errno]);
+            if(res<0) mjpeg_error_exit1("Getting video input status:%s\n",sys_errlist[errno]);
             if(bstat.signal)
             {
                 mjpeg_info("input present: %s %s\n",
@@ -1357,14 +1357,16 @@ int main(int argc, char ** argv)
 	/* Determine device pixel width (DC10=768, BUZ=720 for PAL/SECAM, DC10=640, BUZ=720) */
    
 	res = ioctl(video_dev, VIDIOCGCAP,&vc);
-	if (res < 0) mjpeg_error("getting device capabilities: %s\n",sys_errlist[errno]);
+	if (res < 0) 
+		mjpeg_error_exit1("getting device capabilities: %s\n",sys_errlist[errno]);
 	device_width=vc.maxwidth;
 
 	/* Query and set params for capture */
 
 	res = ioctl(video_dev, MJPIOC_G_PARAMS, &bparm);
 
-	if(res<0) mjpeg_error("getting video parameters: %s\n",sys_errlist[errno]);
+	if(res<0) 
+		mjpeg_error_exit1("getting video parameters: %s\n",sys_errlist[errno]);
 	bparm.input = input;
 	bparm.norm = norm;
 	bparm.decimation = 0;
@@ -1442,7 +1444,8 @@ int main(int argc, char ** argv)
 	}
 
 	res = ioctl(video_dev, MJPIOC_S_PARAMS, &bparm);
-	if(res<0) mjpeg_error("setting video parameters:%s\n",sys_errlist[errno]);
+	if(res<0) 
+		mjpeg_error_exit1("setting video parameters:%s\n",sys_errlist[errno]);
 
 	width  = bparm.img_width/bparm.HorDcm;
 	height = bparm.img_height/bparm.VerDcm*bparm.field_per_buff;
@@ -1456,7 +1459,8 @@ int main(int argc, char ** argv)
 	breq.count = MJPG_nbufs;
 	breq.size  = MJPG_bufsize*1024;
 	res = ioctl(video_dev, MJPIOC_REQBUFS,&breq);
-	if(res<0) mjpeg_error("requesting video buffers:%s\n", sys_errlist[errno]);
+	if(res<0) 
+		mjpeg_error_exit1("requesting video buffers:%s\n", sys_errlist[errno]);
 
 	mjpeg_info("Got %ld buffers of size %ld KB",breq.count,breq.size/1024);
 
@@ -1538,7 +1542,8 @@ int main(int argc, char ** argv)
 	for(n=0;n<breq.count;n++)
 	{
 		res = ioctl(video_dev, MJPIOC_QBUF_CAPT, &n);
-		if (res<0) mjpeg_error("queuing buffers: %s\n", sys_errlist[errno]);
+		if (res<0) 
+			mjpeg_error_exit1("queuing buffers: %s\n", sys_errlist[errno]);
 	}
 
 	/* The video capture loop */

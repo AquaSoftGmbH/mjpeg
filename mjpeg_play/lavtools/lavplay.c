@@ -365,7 +365,7 @@ int queue_next_frame(char *vbuff, int skip_video, int skip_audio, int skip_incr)
       res = audio_write(abuff,res,0);
       if(res<0)
       {
-         mjpeg_error("{laying audio: %s\n",audio_strerror());
+         mjpeg_error("Playing audio: %s\n",audio_strerror());
          return -1;
       }
    }
@@ -879,7 +879,8 @@ int main(int argc, char ** argv)
 		/* set correct width of device for hardware
 		   DC10(+): 768 (PAL/SECAM) or 640 (NTSC), Buz/LML33: 720*/
 		res = ioctl(mjpeg->dev, VIDIOCGCAP,&vc);
-		if (res < 0) mjpeg_error("getting device capabilities: %s\n",sys_errlist[errno]);
+		if (res < 0) 
+			mjpeg_error_exit1("getting device capabilities: %s\n",sys_errlist[errno]);
 		playback_width = vc.maxwidth;
 
 		if( el.video_width > playback_width || el.video_height > hn )
@@ -935,9 +936,10 @@ int main(int argc, char ** argv)
 			( el.video_height > hn/2 || (!zoom_to_fit && el.video_width>playback_width/2) ))
 		{
 
-		mjpeg_error("Video dimensions (not interlaced) too large: %ld x %ld\n",
-					el.video_width,el.video_height);
-			if(el.video_width>playback_width/2) mjpeg_error("Try -z option !!!!\n");
+			mjpeg_error("Video dimensions (not interlaced) too large: %ld x %ld\n",
+						  el.video_width,el.video_height);
+			if(el.video_width>playback_width/2) 
+				mjpeg_error("Try -z option !!!!\n");
 			exit(1);
 		}
        
@@ -1028,6 +1030,7 @@ int main(int argc, char ** argv)
 				mjpeg_error("INTERNAL: Bad frame order on sync: frame = %d, nsync = %ld, mjpeg->br.count = %ld\n", 
 							frame, nsync, mjpeg->br.count);
 				x_shutdown(1);
+				exit(1);
 			}
 			nsync++;
 			/* Look on clock */
