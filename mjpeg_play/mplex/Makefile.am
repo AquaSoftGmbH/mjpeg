@@ -23,6 +23,6 @@ mplex_SOURCES = \
 	inputstrm.cc inputstrm.hh aunit.hh mpegconsts.hh \
 	stillsstream.cc stillsstream.hh
 
-mplex_LDADD = -L$(top_srcdir)/utils -lutils $(LIBM_LIBS) 
+mplex_LDADD = -L$(top_srcdir)/utils -lmjpegutils $(LIBM_LIBS) 
 
 

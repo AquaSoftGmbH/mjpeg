@@ -2,17 +2,21 @@
 
 INCLUDES = -I$(top_srcdir)
 
-noinst_LIBRARIES = libutils.a libmotion.a
+
+noinst_LIBRARIES = libmotion.a
+lib_LIBRARIES = libmjpegutils.a
 
 libmotion_MMXSSE =  mblock_sumsq_mmx.s mblock_bsumsq_mmx.s mblock_bsad_mmx.s \
                     mblock_sad_mmxe.s mblock_sad_mmx.s  \
 	                mblock_sub44_sads_x86.c attributes.h
 
-libutils_a_SOURCES = mjpeg_logging.c cpu_accel.c \
+libmjpegutils_a_SOURCES = mjpeg_logging.c cpu_accel.c \
 	                 mjpeg_logging.h mjpeg_types.h cpu_accel.h \
 					 yuv4mpeg.c yuv4mpeg.h yuv4mpeg_intern.h \
 					 mpegconsts.c mpegconsts.h \
 					 mpegtimecode.c mpegtimecode.h
+
+pkginclude_HEADERS = yuv4mpeg.h 
 
 if HAVE_X86CPU
 libmotion_SIMD = $(libmotion_MMXSSE)

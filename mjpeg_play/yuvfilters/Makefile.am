@@ -19,7 +19,7 @@ MAINS		= $(BINARIES:$X=_main$O)
 bin_SCRIPTS	= $(BINARIES)
 INCLUDES	= -I$(top_srcdir) -I$(top_srcdir)/utils
 DEPENDENCIES	= $(top_srcdir)/utils/libutils.a
-LDADD		= -L$(top_srcdir)/utils -lutils
+LDADD		= -L$(top_srcdir)/utils -lmjpegutils
 CLEANFILES	= $(BINARIES) $(MAINS) $L
 SOURCES		= main.c $(BINARIES:$X=.c) $(STDOBJS:$O=.c) yuvfilters.h
 EXTRA_DIST	= README.yuvkineco README.2-3pulldown .cvsignore
@@ -27,7 +27,8 @@ MAINTAINERCLEANFILES = Makefile.in
 
 %$X: %_main$O $L(%$O $(STDOBJS)) $(DEPENDENCIES)
 	$(CC) $(LDFLAGS) -o $@ $< $L $(LDADD)
-yuvkineco$X: $L(yuvycsnoise$O)
+yuvkineco$X: $L(yuvkineco$O)
+yuvycsnoise$X: $L(yuvycsnoise$O)
 
 $(MAINS): main.c yuvfilters.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<

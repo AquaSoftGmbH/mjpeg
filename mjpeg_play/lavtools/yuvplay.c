@@ -36,6 +36,7 @@ static int got_sigint = 0;
 static void usage () {
    fprintf (stdout, "Usage: lavpipe/lav2yuv... | yuvplay [options]\n"
                     "  -s : size (width x height)\n"
+			        "  -f : frame rate (overrides stream rate)\n"
       );
 }
 
@@ -65,7 +66,8 @@ char *print_status(int frame, double framerate) {
 
 int main(int argc, char *argv[])
 {
-   double time_between_frames;
+   double time_between_frames = 0.0;
+   double frame_rate;
    struct timeval time_now;
    int n, frame;
    unsigned char *yuv[3];
@@ -74,15 +76,21 @@ int main(int argc, char *argv[])
    y4m_frame_info_t *frameinfo = NULL;
    y4m_stream_info_t *streaminfo = NULL;
 
-   while ((n = getopt(argc, argv, "hs:")) != EOF) {
+   while ((n = getopt(argc, argv, "hs:f:")) != EOF) {
       switch (n) {
          case 's':
             if (sscanf(optarg, "%dx%d", &screenwidth, &screenheight) != 2) {
-               fprintf(stdout, "-s option needs two arguments: -s 10x10\n");
-               fflush(stdout);
+               mjpeg_error_exit1( "-s option needs two arguments: -s 10x10\n");
                exit(1);
             }
             break;
+
+	  case 'f':
+		  frame_rate = atof(optarg);
+		  if( frame_rate <= 0.0 || frame_rate > 200.0 )
+			  mjpeg_error_exit1( "-f option needs argument > 0.0 and < 200.0\n");
+		  time_between_frames = frame_rate / 200.0;
+		  break;
 	  case 'h':
 	  case '?':
             usage();
@@ -143,9 +151,17 @@ int main(int argc, char *argv[])
    signal (SIGINT, sigint_handler);
 
    frame = 0;
-   time_between_frames = 1.e6 / streaminfo->framerate;
+   frame_rate = streaminfo->framerate;
+   if( frame_rate == 0.0 )
+   {
+	   mjpeg_info( "Frame-rate undefined in stream... assuming 25Hz!\n" );
+	   frame_rate = 25.0;
+   }
+   if( time_between_frames == 0.0 )
+	   time_between_frames = 1.e6 / frame_rate;
 
    gettimeofday(&time_now,0);
+   mjpeg_info( "got here in stream... assuming 25Hz!\n" );
 
    while ((n = y4m_read_frame(in_fd, streaminfo, frameinfo, yuv))==Y4M_OK && (!got_sigint)) {
 
@@ -169,7 +185,7 @@ int main(int argc, char *argv[])
       SDL_UpdateRect(screen, 0, 0, streaminfo->width, streaminfo->height);
 
       fprintf(stdout, "Playing frame %4.4d - %s\r", frame,
-         print_status(frame, streaminfo->framerate));
+			  print_status(frame, frame_rate));
       fflush(stdout);
 
       while(get_time_diff(time_now) < time_between_frames) {

@@ -30,9 +30,9 @@ mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 	global.h mpeg2enc.h vlc.h \
 	simd.h synchrolib.h $(mpeg2enc_SIMD)
 
-mpeg2enc_DEPENDENCIES = $(top_srcdir)/utils/libutils.a $(top_srcdir)/utils/libmotion.a
+mpeg2enc_DEPENDENCIES = $(top_srcdir)/utils/libmjpegutils.a $(top_srcdir)/utils/libmotion.a
 
-mpeg2enc_LDADD=-L$(top_srcdir)/utils -lmotion -lutils @PTHREAD_LIBS@ $(LIBM_LIBS)
+mpeg2enc_LDADD=-L$(top_srcdir)/utils -lmotion -lmjpegutils @PTHREAD_LIBS@ $(LIBM_LIBS)
 
 .s.o:
 	$(NASM) $(NASMFLAGS) -o $@ $<
