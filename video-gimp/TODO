@@ -1,0 +1,17 @@
+.) Integrate libmpeg2 
+.) Integrate avifile (divx.euro.ru)
+.) Resurrect/create plugins for:
+   AVI MJPEG, movtar, (SMJPEG), FIASCO
+.) editlist plugin ? 
+.) MPEG1-plugin: change to mpeg2enc, establish MP2-audio encoding 
+	& multiplexing 
+.) Animated Preview/Source viewer (use XMMS/lavplay/xanim)
+.) UNDO functions (with single file layering)
+.) Integrate xanim:s object files for writing ? (Can they do that ?)
+.) Choose storage format: xjt, jpeg, (fiasco, xft (Fiasco with layering))
+
+Future plans:
+ xmrm (Morphing) -> writing ... 
+ 
+
+
