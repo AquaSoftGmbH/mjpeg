@@ -47,9 +47,9 @@ install: build
 	dh_installdirs
 
 	# Add here commands to install the package into debian/mjpegtools.
-	$(MAKE) install DESTDIR=$(CURDIR)/debian/mjpegtools
+	$(MAKE) install DESTDIR=$(CURDIR)/debian
 
-#	dh_movefiles
+	dh_movefiles --sourcedir=debian
 
 # Build architecture-independent files here.
 # Pass -i to all debhelper commands in this target to reduce clutter.

@@ -1,13 +1,13 @@
 Source: mjpegtools
 Section: contrib/video
 Priority: optional
-Maintainer: Andrew Stevens (GPG) <andrew.stevens@philips.com>
+Maintainer: Ronald Bultje <rbultje@ronald.bitfreak.net>
 Build-Depends: debhelper (>> 3.0.0)
 Standards-Version: 3.5.2
 
 Package: mjpegtools
 Architecture: any
-Depends: libc6 (>= 2.1),  libglib1.2 (>= 1.2), libsdl1.2 (>= 1.2), libpng2 (>= 1.0), libforms0.89 (>= 0.89)
+Depends: libc6 (>= 2.1),  libglib1.2 (>= 1.2), libsdl1.2debian (>= 1.2), libpng2 (>= 1.0), libgtk1.2 (>= 0.89)
 Description: MJPEG video capture/editting/playback MPEG encoding
   The mjpeg programs are a set of tools that can do recording of videos
   and playback, simple cut-and-paste editing and the MPEG compression of
@@ -33,3 +33,8 @@ Description: MJPEG video capture/editting/playback MPEG encoding
   The software playback of MPEG streams works with almost
   every player and every OS. SSE/MMX and 3D-Now!  are supported permitting
   a 700Mhz CPU to deliver arond 15-20 VCD frames/second.
+
+Package: mjpegtools-dev
+Architecture: any
+Depends: mjpegtools
+Description: Development headers and libraries for mjpegtools

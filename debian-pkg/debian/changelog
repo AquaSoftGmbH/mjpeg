@@ -1,8 +1,8 @@
-mjpegtools (1.4.0-1) unstable; urgency=low
+mjpegtools (1.6.0-rc2) unstable; urgency=low
 
   * Initial Release.
 
- -- Andrew Stevens (GPG) <andrew.stevens@philips.com>  Wed, 23 May 2001 21:19:56 +0200
+ -- Ronald Bultje <rbultje@ronald.bitfreak.net>  Wed, 25 April 2002 14:45:56 +0200
 
 Local variables:
 mode: debian-changelog
