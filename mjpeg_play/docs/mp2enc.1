@@ -84,7 +84,12 @@ handle mono MPEG-1 Layer 2 audio.
 Use CRC error protection.
 .TP
 .BI -V
-Force VCD compatible output. Same as -b 224 -r 44100 -s.
+Force VCD compatible output. The primary effect of this is to make certain that
+the sampling rate is set to 44100 (-r 44100).  The VCD2.0 specifications 
+permit mono audio at 64, 
+96 and 192 kbits/sec and stereo at 128, 192, 224, and 384 kbits/sec. Using 
+\fB-V\fP checks that the bitrate is valid for the number of channels.
+The defaults (unless -m or -b are used) are stereo at 224 kbits/sec.
 .TP
 .BI -o \ outputpathname
 The name of the output file to generate.  If '-' is given as the pathname output is written to standard output.
