@@ -33,7 +33,7 @@ int verbose = 1;
 uint8_t	*input_frame[3];
 uint8_t	*output_frame[3];
 
-void	filter(int width, int height, uint8_t *input[], uint8_t * const output[]);
+void	filter(int width, int height, uint8_t *const input[], uint8_t *output[]);
 void	filter_buffer(int width, int height, int stride, int radius, int threshold, uint8_t * const input, uint8_t * const output);
 
 int	threshold_luma = 2;
@@ -48,8 +48,9 @@ int	avg_replace[NUMAVG];
 static void Usage(char *name )
 {
 	fprintf(stderr,
-		"Usage: %s: [-h] [-r num] [-R num] [-t num] [-T num] [-v num]\n"
+		"Usage: %s: [-h] [-I] [-r num] [-R num] [-t num] [-T num] [-v num]\n"
                 "-h   - Print out this help\n"
+		"-I   - treat input as interlaced fields\n"
 		"-r   - Radius for luma median (default: 2 pixels)\n"
 		"-R   - Radius for chroma median (default: 2 pixels)\n"
 		"-t   - Trigger luma threshold (default: 2 [0=disable])\n"
@@ -165,7 +166,7 @@ main(int argc, char *argv[])
 }
 
 void
-filter(int width, int height, uint8_t *input[], uint8_t * const output[])
+filter(int width, int height, uint8_t * const input[], uint8_t *output[])
 {
 	if( interlace )
 	{
@@ -175,17 +176,19 @@ filter(int width, int height, uint8_t *input[], uint8_t * const output[])
 		filter_buffer(width, height/2, width*2, 
 					  radius_luma, threshold_luma, 
 					  input[0]+width, output[0]+width);
+
 		filter_buffer(width/2, height/4, width, 
 					  radius_chroma, threshold_chroma, 
 					  input[1], output[1]);
 		filter_buffer(width/2, height/4, width, 
 					  radius_chroma, threshold_chroma, 
 					  input[1]+width/2, output[1]+width/2);
-		filter_buffer(width/2, height/4, width, radius_chroma, 
-					  threshold_chroma, 
+
+		filter_buffer(width/2, height/4, width, 
+					  radius_chroma, threshold_chroma, 
 					  input[2], output[2]);
-		filter_buffer(width/2, height/4, width, radius_chroma, 
-					  threshold_chroma, 
+		filter_buffer(width/2, height/4, width,
+					  radius_chroma, threshold_chroma, 
 					  input[2]+width/2, output[2]+width/2);
 	}
 	else
@@ -224,11 +227,12 @@ filter_buffer(int width, int height, int row_stride,
 	min_count = (radius_count * radius_count + 2)/3;
 	
 
-	if	(threshold == 0)
-		{
-		memcpy(output, input, width * height);
-		return;
-		}
+	if (threshold == 0)
+	   {
+           for (y = 0; y < height; y++)
+	       memcpy(&output[y * row_stride], &input[y * row_stride], width);
+	   return;
+           }
 
 	for(y=0; y < radius; y++)
 		memcpy(&output[y * row_stride], &input[y * row_stride], width);
