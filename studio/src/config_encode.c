@@ -189,8 +189,6 @@ void set_distributed()
 {
 struct machine *point;
 
-  machine_names = g_list_append (machine_names, "localhost");
-
   point = &machine4mpeg1;
   set_machine_default(point);  /* set struct to the defaults */
   point = &machine4mpeg2;
@@ -338,12 +336,17 @@ j=0;
 
 
 }
+
 /* load the Machine names used for distributed encoding */
 void load_machine_names()
 {
 char *val;
 int i;
 char test[50];
+
+  g_list_free (machine_names);
+  machine_names = NULL;
+  machine_names = g_list_append (machine_names, "localhost");
 
   for ( i=1; i < 50 ; i++)
   {
@@ -912,15 +915,13 @@ char test[50];
 
   machine_names = g_list_first(machine_names);
   length = g_list_length(machine_names);
-  machine_names = g_list_next(machine_names); 
 
   if (length > 1) 
   { 
     for ( i=1; i < length ;i++)
       {
-       strcpy(test,machine_names->data);
+       strcpy(test,g_list_nth_data(machine_names,i));
        fprintf(fp,"Encode_Machine_%i = %s\n", i, test); 
-       machine_names = g_list_next (machine_names);
       }
   }
 
