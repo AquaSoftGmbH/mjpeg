@@ -100,11 +100,12 @@ typedef short JCOEF;
 /* Defines for MMX support. */
 /* This is for Intel compilers */
 #if defined(XP_WIN32) && defined(_M_IX86)
-#define HAVE_MMX_INTEL_MNEMONICS 
+#define HAVE_MMX_INTEL_MNEMONICS 7
 #endif
 /* And this for GNU compilers for x86 */
 #if defined(__GNUC__) && defined(__i386__)
 #define HAVE_MMX_ATT_MNEMONICS 
+#define SIMD_ALIGN 16
 #endif
 
 
@@ -167,8 +168,12 @@ typedef short INT16;
 /* INT32 must hold at least signed 32-bit values. */
 
 #ifndef XMD_H			/* X11/xmd.h correctly defines INT32 */
-typedef long INT32;
+typedef int INT32;
 #endif
+
+/* FLOAT32 is IEEE 32-bit f.p. value */
+#define FLOAT32 float
+
 
 /* Datatype used for image dimensions.  The JPEG standard only supports
  * images up to 64K*64K due to 16-bit fields in SOF markers.  Therefore

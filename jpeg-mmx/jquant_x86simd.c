@@ -38,7 +38,7 @@
  * We could easily.
  */
  
-void jcquant_3dnow( INT16 *psrc, INT16 *pdst, float *piqf )
+void jcquant_3dnow( INT16 *psrc, INT16 *pdst, FLOAT32 *piqf )
 
 {
 	int i;
@@ -85,8 +85,6 @@ void jcquant_3dnow( INT16 *psrc, INT16 *pdst, float *piqf )
 		psrc += 4;
 		movq_r2m( mm2, *(mmx_t*)pdst );
 		pdst += 4;
-
-			
 	}
 	femms();
 
@@ -100,25 +98,20 @@ void jcquant_3dnow( INT16 *psrc, INT16 *pdst, float *piqf )
 
 static int trunc_mxcsr = 0x1f80;
  
-void jcquant_sse(	 INT16 *psrc, INT16 *pdst, float *piqf )
+void jcquant_sse( INT16 *psrc, INT16 *pdst, FLOAT32 *piqf )
 {
 	int i;
 
 	/* Initialise zero block flags */
-	/* Load 1 into mm6 */
-	__asm__ ( "movl %0, %%eax\n" 
-			  "movd %%eax, %%mm6\n"
-			  : :"g" (1) : "eax" );
 	/* Set up SSE rounding mode */
 	__asm__ ( "ldmxcsr %0\n" : : "X" (trunc_mxcsr) );
 
 	for (i=0; i < 64 ; i+=4)
 	{
-
 		/* Load 4 words, unpack into mm2 and mm3 (with sign extension!)
 		 */
 
-		movq_m2r( *(mmx_t *)&psrc[0], mm2 );
+		movq_m2r( psrc[i], mm2 );
 		movq_r2r( mm2, mm7 );
 		psraw_i2r( 16, mm7 );	/* Replicate sign bits mm2 in mm7 */
 		movq_r2r( mm2, mm3 );
@@ -135,7 +128,7 @@ void jcquant_sse(	 INT16 *psrc, INT16 *pdst, float *piqf )
 
 		/* "Divide" by multiplying by inverse quantisation
 		 and convert back to integers*/
-		mulps_m2r( *(mmx_t*)&piqf[0], xmm2 );
+		mulps_m2r( piqf[i], xmm2 );
 		cvtps2pi_r2r( xmm2, mm2 );
 		shufps_r2ri( xmm2, xmm2, 2*1 + 3*4 + 0 * 16 + 1 * 64 );
 		cvtps2pi_r2r( xmm2, mm3 );
@@ -143,12 +136,12 @@ void jcquant_sse(	 INT16 *psrc, INT16 *pdst, float *piqf )
 		/* Convert the two pairs of double words into four words */
 		packssdw_r2r(  mm3, mm2);
 
-		piqf += 4;
-		psrc += 4;
+		/*piqf += 4;
+		  psrc += 4;*/
 
-		movq_r2m( mm2, *(mmx_t*)pdst );
+		movq_r2m( mm2, pdst[i] );
 
-		pdst += 4;
+		/*pdst += 4;*/
 			
 	}
 	emms();

@@ -39,7 +39,7 @@ typedef struct {
 	 */
 	DCTELEM * divisors[NUM_QUANT_TBLS];
 	INT16 *int16_divisors[NUM_QUANT_TBLS];
-	float *float32_divisors[NUM_QUANT_TBLS];
+	FLOAT32 *float32_divisors[NUM_QUANT_TBLS];
 #ifdef DCT_FLOAT_SUPPORTED
 	/* Same as above for the floating-point case. */
 	float_DCT_method_ptr do_float_dct;
@@ -50,6 +50,17 @@ typedef struct {
 typedef my_fdct_controller * my_fdct_ptr;
 
 
+METHODDEF(UINT8*)
+	simd_aligned_smallbuf( j_compress_ptr cinfo,
+						   size_t bufsize )
+{
+	UINT8 *rawbuf = (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, 
+												JPOOL_IMAGE,
+												bufsize	);
+	unsigned int odd_bytes = ((size_t)rawbuf)%SIMD_ALIGN;
+	return odd_bytes == 0 ? rawbuf : rawbuf + SIMD_ALIGN-odd_bytes;
+	
+}
 /*
  * Initialize for a processing pass.
  * Verify that all referenced Q-tables are present, and set up
@@ -132,8 +143,7 @@ start_pass_fdctmgr (j_compress_ptr cinfo)
 			case QUANT_INT16 :
 				if (fdct->int16_divisors[qtblno] == NULL) {
 					fdct->int16_divisors[qtblno] = (INT16 *)
-						(*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
-													DCTSIZE2 * SIZEOF(INT16));
+						simd_aligned_smallbuf( cinfo, DCTSIZE2 * SIZEOF(INT16));
 				}
 			case QUANT_INT :
 				if (fdct->divisors[qtblno] == NULL) {
@@ -144,9 +154,8 @@ start_pass_fdctmgr (j_compress_ptr cinfo)
 				break;
 			case QUANT_FLOAT32 :
 				if (fdct->float32_divisors[qtblno] == NULL) {
-					fdct->float32_divisors[qtblno] = (float *)
-						(*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
-													DCTSIZE2 * SIZEOF(float));
+					fdct->float32_divisors[qtblno] = (FLOAT32 *)
+						simd_aligned_smallbuf( cinfo, DCTSIZE2 * SIZEOF(FLOAT32) );
 				}
 				break;
 			}
@@ -169,7 +178,7 @@ start_pass_fdctmgr (j_compress_ptr cinfo)
 					dtbl[i] = qtbl->quantval[i];
 					break;
 				case QUANT_FLOAT32 :
-					fdtbl[i] = 1.0f/((float)(qtbl->quantval[i]<<3));
+					fdtbl[i] = 1.0f/((FLOAT32)(qtbl->quantval[i]<<3));
 					break;
 				}
 
@@ -382,7 +391,7 @@ METHODDEF(void)
 	forward_DCT_method_ptr do_dct = fdct->do_dct;
 	float32_quant_method_ptr do_quant = fdct->do_float32_quant;
 	DCTELEM * divisors = fdct->divisors[compptr->quant_tbl_no];
-	DCTELEM workspace[DCTSIZE2];	/* work area for FDCT subroutine */
+	DCTELEM workspace[DCTSIZE2] ATTR_ALIGN(SIMD_ALIGN);	/* work area for FDCT subroutine */
 	JDIMENSION bi;
 
 	sample_data += start_row;	/* fold in the vertical offset once */
@@ -445,7 +454,7 @@ METHODDEF(void)
 	/* This routine is heavily used, so it's worth coding it tightly. */
 	my_fdct_ptr fdct = (my_fdct_ptr) cinfo->fdct;
 	forward_DCT_method_ptr do_dct = fdct->do_dct;
-	DCTELEM workspace[DCTSIZE2];	/* work area for FDCT subroutine */
+	DCTELEM workspace[DCTSIZE2] ATTR_ALIGN(SIMD_ALIGN);	/* work area for FDCT subroutine */
 	JDIMENSION bi;
 
 	sample_data += start_row;	/* fold in the vertical offset once */
