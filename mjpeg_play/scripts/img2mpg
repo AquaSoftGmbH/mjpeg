@@ -75,7 +75,7 @@
 # * Don't use an default external black 'PNG' background image file.
 # * Add an option with the RVB color for the background image color.
 # * Add a trap signal fonction : clear temporary files when killed.
-# - Add an option for a specific temporary folder.
+# * Add an option for a specific temporary folder.
 # - Add more return error codes.
 # - Testing ImageMagick & MjpegTools binary programs disponibility.
 # - Add an option for showing some image notations (file name, date, etc...).
@@ -129,6 +129,7 @@
 #                 Add a final transition for the sequence.
 #                 Add this script to the MjpegTools project on sourceforge repository.
 # January 2003  : Add a manual page (on MjpegTools project package).
+#                 Add an option for use a temporary folder.
 #
 # -------------------------------------------------------------------------------------------------------
 
@@ -156,13 +157,13 @@ if [ $AUDIO_WAV ]; then
     fi
 fi
 
-if [ $MASK="black.tmp.png" ]; then
+if [ $MASK="$TMPFILENAME.black.tmp.png" ]; then
     if [ -e $MASK ]; then
 	rm $MASK
     fi
 fi
 
-if [ $TRANSITIONENABLE = 1 ]; then 
+if [ $TRANSITIONENABLE = 1 ]; then
     if [ -e $TMPFILENAME.prev_trans.tmp.pnm ]; then
         rm $TMPFILENAME.prev_trans.tmp.pnm
     fi
@@ -204,6 +205,9 @@ IMAGEDURATION=10
 TRANSITIONENABLE=0
 TRANSITIONDURATION=0
 
+# Default temporary folder is local folder.
+TEMPORARYFOLDER=""
+
 # Command line parameters analyse...
 CPT_IMG_FILE=0
 
@@ -225,6 +229,16 @@ while test $# -gt 0; do
          exit -1
       fi
       VERBOSE=$1
+      ;;
+    
+    # Temporary folder...
+    -T)
+      shift
+      if [ -z $1 ]; then
+         echo -e "Missing parameter after '$OPTIONMESSAGE' option !"
+         exit -1
+      fi
+      TEMPORARYFOLDER=$1
       ;;
 
     # Transition between images...
@@ -370,6 +384,7 @@ Usage: img2mpg [options] -o <output MPEG file> -i <input image files>
 Options:
     -v <num>                : verbose level [0:none=default, 1:infos+warnings, 2:debug].
     -t <num>                : enable transition between images with the speed [1=slow, 2, 4, 5, 10, 20=fast].
+    -T <Temporary folder>   : use a specific folder for creating the temporary files (ex: '/tmp').
     -f <Video format>       : video format  [XVCD=default, SVCD, VCD].
     -n <Video type>         : video type    [PAL=default, NTSC, SECAM].
     -b <background file>    : 768x576 pixels background image file name [black color = default].
@@ -437,7 +452,6 @@ else
     echo -e "\nNumber of image file(s)       :  $CPT_IMG_FILE."
     echo -e "Processing sequence :"
 
-
     CPT=$CPT_IMG_FILE
 
     while test $CPT -gt 0; do
@@ -456,7 +470,11 @@ fi
 DATE_DEBUT=`date +%s`
 
 # For the mutisessions of this script, we use the number of seconds behind 1970 for the temporary name files.
-TMPFILENAME="$DATE_DEBUT"
+if [ -z $TEMPORARYFOLDER ]; then
+   TMPFILENAME="$DATE_DEBUT"
+else
+   TMPFILENAME="$TEMPORARYFOLDER/$DATE_DEBUT"
+fi
 
 # Number of video type for MjpegTools. The possibles values are :
 # 0 -> MPEG1 generic.                                         -> not used.
@@ -537,7 +555,7 @@ case $VERBOSE in
       ;;
 esac
 
-# Creating the temporary default background file image. It's used by ImageMagick when it 
+# Creating the temporary default background file image. It's used by ImageMagick when it
 # resizing image for the TV screen dimensions. ImageMagick add a border around the image with this.
 # ImageMagick create this temporary background image file only if you don't give a specific backgroung
 # image name on the command line.
@@ -546,7 +564,7 @@ if [ -z $MASK ]; then
     if [ -z $BACKGROUNDCOLOR ]; then
        BACKGROUNDCOLOR="000000"
     fi
-    MASK="black.tmp.png"
+    MASK="$TMPFILENAME.black.tmp.png"
     RET=`convert xc:#$BACKGROUNDCOLOR -resize '768x576!' $MASK`
 fi
 
@@ -554,9 +572,9 @@ fi
 # Append all images on a MPEG file.
 
 NBFRAMEIMAGE=`echo $(($IMAGEDURATION*$IMAGES_SEC))`
-if [ $TRANSITIONENABLE = 1 ]; then 	
+if [ $TRANSITIONENABLE = 1 ]; then
     NBFRAMETRANSITION=`echo $((100/$DISSOLVEVALUEINC))`
-else 
+else
     NBFRAMETRANSITION=0
 fi
 TRANSITIONDURATION=`echo $(($NBFRAMETRANSITION/$IMAGES_SEC))`
@@ -579,7 +597,7 @@ fi
 echo -e "Frames per second             : '$IMAGES_SEC'."
 echo -e "Image duration                :  $IMAGEDURATION s."
 echo -e "Total video sequence duration :  $TOTALDURATION s $WARNINGTOTALDURATION."
-if [ $TRANSITIONENABLE = 1 ]; then 
+if [ $TRANSITIONENABLE = 1 ]; then
     echo -e "Transition frames             :  $NBFRAMETRANSITION."
 fi
 echo -e "Total frames processing       :  $NBFRAMETOTAL."
@@ -613,22 +631,22 @@ while test $CPT -lt $NBFRAMETOTAL;\
      do
         CPT=`echo $(($CPT+1))`
 
-        # For debugging...	
+        # For debugging...
         # echo -ne "Frame Num. $CPT / $NBFRAMETOTAL      - DISSOLVE=$DISSOLVEVALUE    - Image Num. $CPF / $CPT_IMG_FILE [${INPUT_IMAGE_FILES[`echo $(($CPF-1))`]}] \n" >&2
         echo -ne "Frame Num. $CPT / $NBFRAMETOTAL      \r" >&2
 
-        if [ $TRANSITIONENABLE = 0 ]; then 
+        if [ $TRANSITIONENABLE = 0 ]; then
 	    if [ $CPT = `echo $((($CPF*$NBFRAMEIMAGE)-$NBFRAMEIMAGE+1))` ]; then
-    		
+
 		# Conversion and resizing the curent image file with ImageMagick.
     		montage -type TrueColor -quality 100 -geometry 768x576 -texture $MASK ${INPUT_IMAGE_FILES[`echo $(($CPF-1))`]} $TMPFILENAME.tmp.jpg
 		convert -type TrueColor -quality 100 $TMPFILENAME.tmp.jpg $TMPFILENAME.tmp.pnm
-		    
+
 		# Next input image...
     		CPF=`echo $(($CPF+1))`
 	    fi
 
-	else	    
+	else
 	    if [ $[$CPT >= `echo $((($CPF*($NBFRAMEIMAGE+$NBFRAMETRANSITION)-$NBFRAMEIMAGE-$NBFRAMETRANSITION)))`] = 1 ]; then
 		if [ $[$CPT <= `echo $((($CPF*($NBFRAMEIMAGE+$NBFRAMETRANSITION)-$NBFRAMEIMAGE)))`] = 1 ]; then
 
