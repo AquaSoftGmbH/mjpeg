@@ -41,9 +41,7 @@ void enable_mmxsse_motion(int cpucap)
 
         SIMD_MMX(variance);
 
-#ifdef HAVE_ASM_NASM
         SIMD_MMX(bsad);
-#endif
 
         SIMD_MMXE(build_sub22_mests);
 
@@ -67,9 +65,9 @@ void enable_mmxsse_motion(int cpucap)
         SIMD_MMX(sad_10);
 
         SIMD_MMX(sad_11);
+#endif
 
         SIMD_MMX(bsad);
-#endif
 
         SIMD_MMX(sumsq);
 
