@@ -453,7 +453,7 @@ static int check_param_constraints()
 		{
 			if( param_frame_rate == 1 || param_frame_rate == 2 )
 			{
-				param_frame_rate += 2;
+				param_frame_rate += 3;
 				mjpeg_warn("3:2 movie pulldown with frame rate set to decode rate not display rate\n");
 				mjpeg_warn("3:2 Setting frame rate code to display rate = %d (%2.3f fps)\n", 
 						   param_frame_rate,
@@ -461,9 +461,11 @@ static int check_param_constraints()
 
 			}
 			else
-				mjpeg_warn( "3:2 movie pulldown not sensible for %2.3f fps dispay rate\n",
+			{
+				mjpeg_error( "3:2 movie pulldown not sensible for %2.3f fps dispay rate\n",
 							Y4M_RATIO_DBL(mpeg_framerate(param_frame_rate)));
-			++nerr;
+				++nerr;
+			}
 		}
 		if( param_fieldenc != 0 && param_fieldenc != 3 )
 		{
