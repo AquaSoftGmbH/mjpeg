@@ -24,13 +24,12 @@
 #include "stdio.h"
 #include "mjpeg_types.h"
 
-class MPEG2Encoder;
 class EncoderParams;
 
 class ElemStrmWriter
 {
 public:
-	ElemStrmWriter( MPEG2Encoder &encoder );
+	ElemStrmWriter( EncoderParams &encoder );
     // TODO eventually byte write will be virtual and buffering
     // TODO will be part of base class...
 
@@ -47,7 +46,6 @@ public:
     inline int64_t BitCount() { return 8LL*bytecnt + (8-outcnt); }
 
 protected:
-	MPEG2Encoder &encoder;
 	EncoderParams &encparams;
     uint32_t outbfr;
     int64_t bytecnt;
@@ -59,8 +57,8 @@ protected:
 class FILE_StrmWriter : public ElemStrmWriter
 {
 public:
-    FILE_StrmWriter( MPEG2Encoder &encoder, FILE *ofile_ptr );
-        
+    FILE_StrmWriter( EncoderParams &encoder, const char *ofile_ptr ); 
+    virtual ~FILE_StrmWriter();       
     void PutBits( uint32_t val, int n);
     void FrameBegin();
     void FrameFlush();

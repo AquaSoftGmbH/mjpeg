@@ -1,4 +1,5 @@
-/* putseq.c, sequence level routines                                        */
+/* putseq.c MPEG1/2 Sequence encoding loop */
+
 //#define SEQ_DEBUG 1
 /* (C) Andrew Stevens 2000, 2001
  *  This file is free software; you can redistribute it
@@ -41,7 +42,7 @@
  * design.
  *
  */
-
+
 #include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,7 +51,7 @@
 #include "mjpeg_types.h"
 #include "mjpeg_logging.h"
 #include "simd.h"
-#include "global.h"
+#include "mpeg2syntaxcodes.h"
 #include "mpeg2encoder.hh"
 #include "picturereader.hh"
 #include "mpeg2coder.hh"
@@ -58,341 +59,21 @@
 #include "ratectl.hh"
 #include "tables.h"
 
-Picture::Picture( MPEG2Encoder &_encoder ) :
-    encoder( _encoder ),
-    encparams( _encoder.parms ),
-    coder( _encoder.coder )
-{
-    Init( encoder );
-}
-
-void Picture::Init( MPEG2Encoder &_encoder )
-{
-	int i,j;
-	/* Allocate buffers for picture transformation */
-	blocks = 
-        static_cast<DCTblock*>(
-            bufalloc(encparams.mb_per_pict*BLOCK_COUNT*sizeof(DCTblock)));
-	qblocks =
-		static_cast<DCTblock *>(
-            bufalloc(encparams.mb_per_pict*BLOCK_COUNT*sizeof(DCTblock)));
-    DCTblock *block = blocks;
-    DCTblock *qblock = qblocks;
-    for (j=0; j<encparams.enc_height2; j+=16)
-    {
-        for (i=0; i<encparams.enc_width; i+=16)
-        {
-            mbinfo.push_back(MacroBlock(*this, i,j, block,qblock ));
-            block += BLOCK_COUNT;
-            qblock += BLOCK_COUNT;
-        }
-    }
 
 
-	curref = new (uint8_t *)[5];
-	curorg = new (uint8_t *)[5];
-	pred   = new (uint8_t *)[5];
+SeqEncoder::SeqEncoder( EncoderParams &_encparams,
+                        PictureReader &_reader,
+                        Quantizer &_quantizer,
+                        ElemStrmWriter &_writer,
+                        MPEG2Coder &_coder,
+                        RateCtl    &_ratecontroller ) :
+    encparams( _encparams ),
+    reader( _reader ),
+    quantizer( _quantizer ),
+    writer( _writer ),
+    coder( _coder ),
+    ratecontroller( _ratecontroller )
 
-	for( i = 0 ; i<3; i++)
-	{
-		int size =  (i==0) ? encparams.lum_buffer_size : encparams.chrom_buffer_size;
-		curref[i] = static_cast<uint8_t *>(bufalloc(size));
-		curorg[i] = NULL;       // Will point to input frame data buffered by
-                                // PictureReader
-		pred[i]   = static_cast<uint8_t *>(bufalloc(size));
-	}
-
-	/* The (non-existent) previous encoding using an as-yet un-used
-	   picture encoding data buffers is "completed"
-	*/
-	sync_guard_init( &completion, 1 );
-}
-
-Picture::~Picture()
-{
-    int i;
-	for( i = 0 ; i<3; i++)
-	{
-		free( curref[i] );
-		free( pred[i] );
-	}
-    delete curref;
-    delete curorg;
-    delete pred;
-}
-
-/*
- *
- * Reconstruct the decoded image for references images and
- * for statistics
- *
- */
-
-
-void Picture::Reconstruct()
-{
-
-#ifndef OUTPUT_STAT
-	if( pict_type!=B_TYPE)
-	{
-#endif
-		IQuantize();
-		itransform( this);
-		calcSNR( this);
-		stats();
-#ifndef OUTPUT_STAT
-	}
-#endif
-}
-
-void Picture::SetSeqPos(int _decode,int b_index )
-{
-	decode = _decode;
-	dc_prec = encparams.dc_prec;
-	secondfield = false;
-	ipflag = 0;
-
-		
-	/* Handle picture structure... */
-	if( encparams.fieldpic )
-	{
-		pict_struct = encparams.topfirst ? TOP_FIELD : BOTTOM_FIELD;
-		topfirst = 0;
-		repeatfirst = 0;
-	}
-
-	/* Handle 3:2 pulldown frame pictures */
-	else if( encparams.pulldown_32 )
-	{
-		pict_struct = FRAME_PICTURE;
-		switch( present % 4 )
-		{
-		case 0 :
-			repeatfirst = 1;
-			topfirst = encparams.topfirst;			
-			break;
-		case 1 :
-			repeatfirst = 0;
-			topfirst = !encparams.topfirst;
-			break;
-		case 2 :
-			repeatfirst = 1;
-			topfirst = !encparams.topfirst;
-			break;
-		case 3 :
-			repeatfirst = 0;
-			topfirst = encparams.topfirst;
-			break;
-		}
-	}
-	
-	/* Handle ordinary frame pictures */
-	else
-
-	{
-		pict_struct = FRAME_PICTURE;
-		repeatfirst = 0;
-		topfirst = encparams.topfirst;
-	}
-
-
-	switch ( pict_type )
-	{
-	case I_TYPE :
-		forw_hor_f_code = 15;
-		forw_vert_f_code = 15;
-		back_hor_f_code = 15;
-		back_vert_f_code = 15;
-		sxf = encparams.motion_data[0].sxf;
-		syf = encparams.motion_data[0].syf;
-		break;
-	case P_TYPE :
-		forw_hor_f_code = encparams.motion_data[0].forw_hor_f_code;
-		forw_vert_f_code = encparams.motion_data[0].forw_vert_f_code;
-		back_hor_f_code = 15;
-		back_vert_f_code = 15;
-		sxf = encparams.motion_data[0].sxf;
-		syf = encparams.motion_data[0].syf;
-		break;
-	case B_TYPE :
-		forw_hor_f_code = encparams.motion_data[b_index].forw_hor_f_code;
-		forw_vert_f_code = encparams.motion_data[b_index].forw_vert_f_code;
-		back_hor_f_code = encparams.motion_data[b_index].back_hor_f_code;
-		back_vert_f_code = encparams.motion_data[b_index].back_vert_f_code;
-		sxf = encparams.motion_data[b_index].sxf;
-		syf = encparams.motion_data[b_index].syf;
-		sxb = encparams.motion_data[b_index].sxb;
-		syb = encparams.motion_data[b_index].syb;
-
-		break;
-	}
-
-	/* We currently don't support frame-only DCT/Motion Est.  for non
-	   progressive frames */
-	prog_frame = encparams.frame_pred_dct_tab[pict_type-1];
-	frame_pred_dct = encparams.frame_pred_dct_tab[pict_type-1];
-	q_scale_type = encparams.qscale_tab[pict_type-1];
-	intravlc = encparams.intravlc_tab[pict_type-1];
-	altscan = encparams.altscan_tab[pict_type-1];
-    scan_pattern = (altscan ? alternate_scan : zig_zag_scan);
-
-    /* If we're using B frames then we reserve unit coefficient
-       dropping for them as B frames have no 'knock on' information
-       loss */
-    if( pict_type == B_TYPE || encparams.M == 1 )
-    {
-        unit_coeff_threshold = abs( encparams.unit_coeff_elim );
-        unit_coeff_first = encparams.unit_coeff_elim < 0 ? 0 : 1;
-    }
-    else
-    {
-        unit_coeff_threshold = 0;
-        unit_coeff_first = 0;
-    }
-        
-
-#ifdef OUTPUT_STAT
-	fprintf(statfile,"\nFrame %d (#%d in display order):\n",decode,display);
-	fprintf(statfile," picture_type=%c\n",pict_type_char[pict_type]);
-	fprintf(statfile," temporal_reference=%d\n",temp_ref);
-	fprintf(statfile," frame_pred_frame_dct=%d\n",frame_pred_dct);
-	fprintf(statfile," q_scale_type=%d\n",q_scale_type);
-	fprintf(statfile," intra_vlc_format=%d\n",intravlc);
-	fprintf(statfile," alternate_scan=%d\n",altscan);
-
-	if (pict_type!=I_TYPE)
-	{
-		fprintf(statfile," forward search window: %d...%d / %d...%d\n",
-				-sxf,sxf,-syf,syf);
-		fprintf(statfile," forward vector range: %d...%d.5 / %d...%d.5\n",
-				-(4<<forw_hor_f_code),(4<<forw_hor_f_code)-1,
-				-(4<<forw_vert_f_code),(4<<forw_vert_f_code)-1);
-	}
-
-	if (pict_type==B_TYPE)
-	{
-		fprintf(statfile," backward search window: %d...%d / %d...%d\n",
-				-sxb,sxb,-syb,syb);
-		fprintf(statfile," backward vector range: %d...%d.5 / %d...%d.5\n",
-				-(4<<back_hor_f_code),(4<<back_hor_f_code)-1,
-				-(4<<back_vert_f_code),(4<<back_vert_f_code)-1);
-	}
-#endif
-
-
-}
-
-/*
- * Adjust picture parameters for the second field in a pair of field
- * pictures.
- *
- */
-
-void Picture::Set2ndField()
-{
-	secondfield = true;
-    gop_start = false;
-	if( pict_struct == TOP_FIELD )
-		pict_struct =  BOTTOM_FIELD;
-	else
-		pict_struct =  TOP_FIELD;
-	
-	if( pict_type == I_TYPE )
-	{
-		ipflag = 1;
-		pict_type = P_TYPE;
-		
-		forw_hor_f_code = encparams.motion_data[0].forw_hor_f_code;
-		forw_vert_f_code = encparams.motion_data[0].forw_vert_f_code;
-		back_hor_f_code = 15;
-		back_vert_f_code = 15;
-		sxf = encparams.motion_data[0].sxf;
-		syf = encparams.motion_data[0].syf;	
-	}
-}
-
-
-
-
-/* Set the sequencing structure information
-   of a picture (type and temporal reference)
-   based on the specified sequence state
-*/
-
-void Picture::Set_IP_Frame( StreamState *ss, int num_frames )
-{
-	/* Temp ref of I frame in closed GOP of sequence is 0 We have to
-	   be a little careful with the end of stream special-case.
-	*/
-	if( ss->g == 0 && ss->closed_gop )
-	{
-		temp_ref = 0;
-	}
-	else 
-	{
-		temp_ref = ss->g+(ss->bigrp_length-1);
-	}
-
-	if (temp_ref >= (num_frames-ss->gop_start_frame))
-		temp_ref = (num_frames-ss->gop_start_frame) - 1;
-
-	present = (ss->i-ss->g)+temp_ref;
-	if (ss->g==0) /* first displayed frame in GOP is I */
-	{
-		pict_type = I_TYPE;
-	}
-	else 
-	{
-		pict_type = P_TYPE;
-	}
-
-	/* Start of GOP - set GOP data for picture */
-	if( ss->g == 0 )
-	{
-		gop_start = true;
-        closed_gop = ss->closed_gop;
-		new_seq = ss->new_seq;
-		nb = ss->nb;
-		np = ss->np;
-	}		
-	else
-	{
-		gop_start = false;
-        closed_gop = false;
-		new_seq = false;
-	}
-}
-
-
-void Picture::Set_B_Frame(  StreamState *ss )
-{
-	temp_ref = ss->g - 1;
-	present = ss->i-1;
-	pict_type = B_TYPE;
-	gop_start = false;
-	new_seq = false;
-}
-
-void Picture::EncodeMacroBlocks()
-{ 
-    vector<MacroBlock>::iterator mbi = mbinfo.begin();
-
-	for( mbi = mbinfo.begin(); mbi < mbinfo.end(); ++mbi)
-	{
-        mbi->MotionEstimate();
-        // TODO: Eventually we will allow alternative selectors to be used!
-        mbi->SelectCodingModeOnVariance();
-        mbi->Predict();
-        mbi->Transform();
-	}
-
-}
-
-
-SeqEncoder::SeqEncoder( MPEG2Encoder &_encoder ) :
-    encoder( _encoder ),
-    encparams( encoder.parms ),
-    coder( encoder.coder )
 {
     mp_semaphore_init( &worker_available, 0 );
     mp_semaphore_init( &picture_available, 0 );
@@ -443,7 +124,7 @@ int SeqEncoder::FindGopLength( int gop_start_frame,
     else
     {
         int cur_lum_mean = 
-            encoder.reader.FrameLumMean( gop_start_frame+gop_min_len-min_b_grp+I_frame_temp_ref );
+            reader.FrameLumMean( gop_start_frame+gop_min_len-min_b_grp+I_frame_temp_ref );
 
         /* Search forwards from min gop length for I-frame candidate
            which has the largest change in mean luminance.
@@ -454,7 +135,7 @@ int SeqEncoder::FindGopLength( int gop_start_frame,
         gop_len = 0;
         for( i = gop_min_len; i <= gop_max_len; i += min_b_grp )
         {
-            pred_lum_mean = encoder.reader.FrameLumMean( gop_start_frame+i+I_frame_temp_ref);
+            pred_lum_mean = reader.FrameLumMean( gop_start_frame+i+I_frame_temp_ref);
             if( abs(cur_lum_mean-pred_lum_mean ) >= SCENE_CHANGE_THRESHOLD 
                 && abs(cur_lum_mean-pred_lum_mean ) > max_change )
             {
@@ -476,7 +157,7 @@ int SeqEncoder::FindGopLength( int gop_start_frame,
             for( j = gop_max_len+min_b_grp; j < gop_max_len+gop_min_len; j += min_b_grp )
             {
                 cur_lum_mean = 
-                    encoder.reader.FrameLumMean( gop_start_frame+j+I_frame_temp_ref );
+                    reader.FrameLumMean( gop_start_frame+j+I_frame_temp_ref );
                 if( abs(cur_lum_mean-pred_lum_mean ) >= SCENE_CHANGE_THRESHOLD
                     &&  abs(cur_lum_mean-pred_lum_mean > max_change )
                     )
@@ -524,7 +205,7 @@ int SeqEncoder::FindGopLength( int gop_start_frame,
         }
     }
 	/* last GOP may contain less frames! */
-    int istrm_nframes = encoder.reader.NumberOfFrames();
+    int istrm_nframes = reader.NumberOfFrames();
 	if (gop_len > istrm_nframes-gop_start_frame)
 		gop_len = istrm_nframes-gop_start_frame;
 	mjpeg_info( "GOP start (%d frames)", gop_len);
@@ -597,7 +278,7 @@ void SeqEncoder::GopStart( StreamState *ss )
       TODO: This should be placed in the bitrate controller....
     */
     
-    if( encparams.quant_floor > 0.0 ) bits_after_mux = encoder.writer.BitCount() + 
+    if( encparams.quant_floor > 0.0 ) bits_after_mux = writer.BitCount() + 
             (uint64_t)((frame_periods / encparams.frame_rate) * encparams.nonvid_bit_rate);
     else
         bits_after_mux = (uint64_t)((frame_periods / encparams.frame_rate) * 
@@ -746,10 +427,6 @@ void SeqEncoder::LinkPictures( Picture *ref_pictures[],
 
 	int i,j;
 
-	//REMOVE
-	//for( i = 0; i < encparams.max_active_ref_frames; ++i )
-    //ref_pictures[i].Init( encoder );
-
 	for( i = 0; i < encparams.max_active_ref_frames; ++i )
 	{
 		j = (i + 1) % encparams.max_active_ref_frames;
@@ -759,12 +436,6 @@ void SeqEncoder::LinkPictures( Picture *ref_pictures[],
 		ref_pictures[j]->neworg = ref_pictures[j]->curorg;
 		ref_pictures[j]->newref = ref_pictures[j]->curref;
 	}
-
-    // REMOVE
-	//for( i = 0; i < encparams.max_active_b_frames; ++i )
-	//{
-    //b_pictures[i].Init( encoder );
-    //}	
 
 }
 
@@ -798,32 +469,11 @@ void SeqEncoder::SequentialEncode(Picture *picture)
 				   picture->pict_struct
 			);
 
-	motion_subsampled_lum(picture);
+	picture->MotionSubSampledLum();
 
 		
-	/* DEPEND on completion previous Reference frames (P) or on old
-	   and new Reference frames B.  However, since new reference frame
-	   cannot complete until old reference frame completed (see below)
-	   suffices just to check new reference frame... 
-	   N.b. completion guard of picture is always reset to false
-	   before this function is called...
-		   
-	   In field picture encoding the P field of an I frame is
-	   a special case.  We have to wait for completion of the I field
-	   before starting the P field
-	*/
-
-#ifdef ORIGINAL_PHASE_BASED_PROC
-	motion_estimation(picture);
-	predict(picture);
-	transform(picture);
-#else
     picture->EncodeMacroBlocks();
-#endif
-	/* Depends on previous frame completion for IB and P */
-
-	picture->PutHeadersAndEncoding(encoder.bitrate_controller);
-
+	picture->PutHeadersAndEncoding(ratecontroller);
 	picture->Reconstruct();
 
 	/* Handle second field of a frame that is being field encoded */
@@ -835,10 +485,8 @@ void SeqEncoder::SequentialEncode(Picture *picture)
 				   picture->pict_struct
 			);
 
-		motion_estimation(picture);
-		predict(picture);
-		transform(picture);
-		picture->PutHeadersAndEncoding(encoder.bitrate_controller);
+        picture->EncodeMacroBlocks();
+		picture->PutHeadersAndEncoding(ratecontroller);
 		picture->Reconstruct();
 
 	}
@@ -889,7 +537,7 @@ void SeqEncoder::ParallelEncodeWorker()
 					   picture->pict_struct
 				);
 
-		motion_subsampled_lum(picture);
+		picture->MotionSubSampledLum();
 
 		
 		/* DEPEND on completion previous Reference frames (P) or on old
@@ -903,24 +551,9 @@ void SeqEncoder::ParallelEncodeWorker()
 		   a special case.  We have to wait for completion of the I field
 		   before starting the P field
 		*/
-#ifdef ORIGINAL_PHASE_BASED_PROC
-		if( encparams.refine_from_rec )
-		{
-			sync_guard_test( &picture->ref_frame->completion );
-			motion_estimation(picture);
-		}
-		else
-		{
-			motion_estimation(picture);
-			sync_guard_test( &picture->ref_frame->completion );
-		}
-		predict(picture);
 
-		/* No dependency */
-		transform(picture);
-#else
 #ifdef SEQ_DEBUG
-        printf( "Frmae %d %08x Waiting for ref: %d %08x\n",
+        printf( "Frame %d %08x Waiting for ref: %d %08x\n",
                 picture->decode, 
                 picture, 
                 picture->ref_frame->decode,
@@ -928,17 +561,17 @@ void SeqEncoder::ParallelEncodeWorker()
 #endif
         sync_guard_test( &picture->ref_frame->completion );
         picture->EncodeMacroBlocks();
-#endif
+
 		/* Depends on previous frame completion for IB and P */
 #ifdef SEQ_DEBUG
-        printf( "Frmae %d %08x Waiting for compl: %d %08x\n",
+        printf( "Frame %d %08x Waiting for compl: %d %08x\n",
                 picture->decode, 
                 picture, 
                 picture->prev_frame->decode,
                 picture->prev_frame );
 #endif
 		sync_guard_test( &picture->prev_frame->completion );
-		picture->PutHeadersAndEncoding(encoder.bitrate_controller);
+		picture->PutHeadersAndEncoding(ratecontroller);
 
 		picture->Reconstruct();
 		/* Handle second field of a frame that is being field encoded */
@@ -951,10 +584,8 @@ void SeqEncoder::ParallelEncodeWorker()
 					   picture->pict_struct
 				);
 
-			motion_estimation(picture);
-			predict(picture);
-			transform(picture);
-            picture->PutHeadersAndEncoding(encoder.bitrate_controller);
+            picture->EncodeMacroBlocks();
+            picture->PutHeadersAndEncoding(ratecontroller);
 			picture->Reconstruct();
 
 		}
@@ -1015,11 +646,11 @@ void SeqEncoder::Encode()
 	Picture *ref_pictures[encparams.max_active_ref_frames];
     for( i = 0; i < encparams.max_active_b_frames; ++i )
     {
-        b_pictures[i] = new Picture(encoder);
+        b_pictures[i] = new Picture(encparams, coder, quantizer);
     }
     for( i = 0; i < encparams.max_active_ref_frames; ++i )
     {
-        ref_pictures[i] = new Picture(encoder);
+        ref_pictures[i] = new Picture(encparams, coder, quantizer);
     }
 
 	LinkPictures( ref_pictures, b_pictures );
@@ -1040,7 +671,7 @@ void SeqEncoder::Encode()
 	new_ref_picture = ref_pictures[cur_ref_idx];
 	cur_picture = new_ref_picture;
 	
-	encoder.bitrate_controller.InitSeq(false);
+	ratecontroller.InitSeq(false);
 	
 	ss.i = 0;		                /* Index in current MPEG sequence */
 	ss.g = 0;						/* Index in current GOP */
@@ -1059,7 +690,7 @@ void SeqEncoder::Encode()
 	GopStart( &ss);
 
 	/* loop through all frames in encoding/decoding order */
-	while( frame_num< encoder.reader.NumberOfFrames() )
+	while( frame_num< reader.NumberOfFrames() )
 	{
 		old_picture = cur_picture;
 
@@ -1077,7 +708,7 @@ void SeqEncoder::Encode()
 			new_ref_picture = ref_pictures[cur_ref_idx];
 			new_ref_picture->ref_frame = old_ref_picture;
 			new_ref_picture->prev_frame = cur_picture;
-			new_ref_picture->Set_IP_Frame(&ss, encoder.reader.NumberOfFrames());
+			new_ref_picture->Set_IP_Frame(&ss, reader.NumberOfFrames());
 			cur_picture = new_ref_picture;
 		}
 		else
@@ -1106,8 +737,8 @@ void SeqEncoder::Encode()
         printf( "Mark incomplete: %d %08x prev = %08x ref = %08x\n", index, cur_picture, cur_picture->ref_frame, cur_picture->prev_frame );
 #endif
 		sync_guard_update( &cur_picture->completion, 0 );
-		encoder.reader.ReadFrame( cur_picture->temp_ref+ss.gop_start_frame,
-                                  cur_picture->curorg );
+		reader.ReadFrame( cur_picture->temp_ref+ss.gop_start_frame,
+                          cur_picture->curorg );
 
 		cur_picture->SetSeqPos( ss.i, ss.b );
 		if( encparams.max_encoding_frames > 1 )
@@ -1136,7 +767,7 @@ void SeqEncoder::Encode()
     
     // TODO Belongs in BitRateCtl
     if( encparams.quant_floor > 0.0 )
-        bits_after_mux = encoder.writer.BitCount() + 
+        bits_after_mux = writer.BitCount() + 
             (uint64_t)((frame_periods / encparams.frame_rate) * encparams.nonvid_bit_rate);
     else
         bits_after_mux = (uint64_t)((frame_periods / encparams.frame_rate) * 

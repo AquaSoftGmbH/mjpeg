@@ -25,12 +25,17 @@
 
 #include "config.h"
 #include "mjpeg_types.h"
-#include "mpeg2enc.h"
+#include "synchrolib.h"
 #include "macroblock.hh"
 #include <vector>
 
 using namespace std;
 
+
+/* Transformed per-picture data  */
+
+typedef int MotionVecPred[2][2][2];
+typedef int DC_DctPred[3];
 
 class CodingPredictors
 {
@@ -62,19 +67,32 @@ class MPEG2Encoder;
 class RateCtl;
 class EncoderParams;
 class MPEG2Coder;
+class Quantizer;
 class StreamState;
+
+
+
+// TODO: Nasty hack to keep interface to some old routines the same
+// Allocation should be done with ImagePlaneArray
+typedef uint8_t **ImagePlanes;
+typedef uint8_t *ImagePlaneArray[5];
 
 class Picture : public CodingPredictors
 {
 public:
-    Picture(  MPEG2Encoder &_encoder ); 
+    Picture( EncoderParams &_encparams, 
+             MPEG2Coder &_coder, 
+             Quantizer &_quantizer );
     ~Picture();
 
     // In putseq.cc
-    void Init( MPEG2Encoder &_encoder ); 
-    void Reconstruct();
+    void MotionSubSampledLum();
     void EncodeMacroBlocks();
+    void ITransform();
     void IQuantize();
+    void CalcSNR();
+    void Stats();
+    void Reconstruct();
 
     void SetSeqPos( int decode, int b_index );
     void Set2ndField();
@@ -90,6 +108,7 @@ public:
     void ActivityMeasures( double &act_sum, double &var_sum);
 
 private:
+
     void PutSliceHdr( int slice_mb_y );
     void PutMVs( MotionEst &me, bool back );
     void PutCodingExt(); 
@@ -102,9 +121,10 @@ public:
      *
      **************/
 
-    MPEG2Encoder &encoder;
+    //MPEG2Encoder &encoder;
     EncoderParams &encparams;
     MPEG2Coder &coder;
+    Quantizer &quantizer;
 
 	/* 8*8 block data, raw (unquantised) and quantised, and (eventually but
 	   not yet inverse quantised */

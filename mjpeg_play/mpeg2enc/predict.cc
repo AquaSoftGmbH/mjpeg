@@ -48,24 +48,11 @@
 
 #include "config.h"
 #include "mjpeg_logging.h"
-#include "global.h"
 #include "mpeg2encoder.hh"
+#include "mpeg2syntaxcodes.h"
+#include "picture.hh"
+#include "macroblock.hh"
 #include "predict_ref.h"
-
-/* form prediction for a complete picture (frontend for predict_mb)
- *
- * mbi:  macroblock info
- *
- */
-
-void predict(Picture *picture)
-{
-	vector<MacroBlock>::iterator mbi;
-
-	/* loop through all macroblocks of the picture */
-	for( mbi = picture->mbinfo.begin(); mbi < picture->mbinfo.end(); ++mbi)
-		mbi->Predict();
-}
 
 
 /* predict a rectangular block (all three components)
@@ -96,17 +83,11 @@ void pred (	uint8_t *src[], int sfield,
 		if (cc==1)
 		{
 			/* scale for color components */
-			if (CHROMA420==CHROMA420)
-			{
-				/* vertical */
-				h >>= 1; y >>= 1; dy /= 2;
-			}
-			if (CHROMA420!=CHROMA444)
-			{
-				/* horizontal */
-				w >>= 1; x >>= 1; dx /= 2;
-				lx >>= 1;
-			}
+			/* vertical */
+			h >>= 1; y >>= 1; dy /= 2;
+			/* horizontal */
+			w >>= 1; x >>= 1; dx /= 2;
+			lx >>= 1;
 		}
 		ppred_comp(	src[cc]+(sfield?lx>>1:0),dst[cc]+(dfield?lx>>1:0),
 					lx,w,h,x,y,dx,dy, (int)addflag);

@@ -22,7 +22,7 @@
 #include <stdio.h>
 
 #include "macroblock.hh"
-#include "mpeg2enc.h"
+#include "mpeg2syntaxcodes.h"
 #include "picture.hh"
 
 void MacroBlock::MotionEstimate()

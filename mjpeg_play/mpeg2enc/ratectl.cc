@@ -51,6 +51,7 @@
 #include <limits.h>
 #include "mjpeg_types.h"
 #include "mjpeg_logging.h"
+#include "mpeg2syntaxcodes.h"
 #include "tables.h"
 #include "simd.h"
 #include "fastintfns.h"
@@ -58,7 +59,7 @@
 #include "picture.hh"
 #include "ratectl.hh"
 #include "quantize.hh"
-#include "elemstrmwriter.hh"
+
 /* private prototypes */
 
 
@@ -109,7 +110,7 @@ static double scale_quantf( int q_scale_type, double quant )
 }
 
 
-int scale_quant( int q_scale_type , double quant )
+int RateCtl::ScaleQuant( int q_scale_type , double quant )
 {
 	int iquant;
 	
@@ -139,7 +140,7 @@ int scale_quant( int q_scale_type , double quant )
 	return iquant;
 }
 
-double inv_scale_quant( int q_scale_type, int raw_code )
+double RateCtl::InvScaleQuant( int q_scale_type, int raw_code )
 {
 	int i;
 	if( q_scale_type )
@@ -153,9 +154,8 @@ double inv_scale_quant( int q_scale_type, int raw_code )
 		return ((double)raw_code);
 }
 
-RateCtl::RateCtl( MPEG2Encoder &_encoder ) :
-	encoder( _encoder ),
-	encparams( _encoder.parms )
+RateCtl::RateCtl( EncoderParams &_encparams ) :
+	encparams( _encparams )
 {
 }
 
@@ -167,9 +167,8 @@ RateCtl::RateCtl( MPEG2Encoder &_encoder ) :
  * tuned anyway so these values are not too critical.
  *
  ****************************/
-OnTheFlyRateCtl::OnTheFlyRateCtl(MPEG2Encoder &_encoder ) :
-	RateCtl(_encoder),
-    writer( _encoder.writer )
+OnTheFlyRateCtl::OnTheFlyRateCtl(EncoderParams &encparams ) :
+	RateCtl(encparams)
 {
 	buffer_variation = 0;
 	bits_transported = 0;
@@ -358,7 +357,7 @@ void OnTheFlyRateCtl::InitGOP( int np, int nb)
 
 
 /* Step 1: compute target bits for current picture being coded */
-void OnTheFlyRateCtl::InitPict(Picture &picture)
+void OnTheFlyRateCtl::InitPict(Picture &picture, int64_t bitcount_SOP)
 {
 	double avg_K = 0.0;
 	double target_Q;
@@ -546,7 +545,7 @@ void OnTheFlyRateCtl::InitPict(Picture &picture)
 	}
 
 
-	current_Q = scale_quant(picture.q_scale_type,62.0*d / r);
+	current_Q = ScaleQuant(picture.q_scale_type,62.0*d / r);
 	if( no_avg_K )
 		target_Q = current_Q;
 	else
@@ -575,7 +574,7 @@ void OnTheFlyRateCtl::InitPict(Picture &picture)
 		d = (int) (d+(target_Q  * r / 62.0))/2;
 	}
 
-	S = writer.BitCount();
+	S = bitcount_SOP;
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: start of picture\n");
@@ -584,73 +583,15 @@ void OnTheFlyRateCtl::InitPict(Picture &picture)
 }
 
 
-void Picture::ActivityMeasures( double &act_sum, double &var_sum)
-{
-	int i,j,k,l;
-	double actj,sum;
-	double varsum;
-	int blksum;
-	sum = 0.0;
-	varsum = 0.0;
-	k = 0;
-	Quantizer &quant = encoder.quantizer;
-	for (j=0; j<encparams.enc_height2; j+=16)
-		for (i=0; i<encparams.enc_width; i+=16)
-		{
-			/* A.Stevens Jul 2000 Luminance variance *has* to be a
-			   rotten measure of how active a block in terms of bits
-			   needed to code a lossless DCT.  E.g. a half-white
-			   half-black block has a maximal variance but pretty
-			   small DCT coefficients.
-
-			   So.... instead of luminance variance as used in the
-			   original we use the absolute sum of DCT coefficients as
-			   our block activity measure.  */
-
-			varsum += (double)mbinfo[k].final_me.var;
-			if( mbinfo[k].final_me.mb_type  & MB_INTRA )
-			{
-				/* Compensate for the wholly disproprotionate weight
-				 of the DC coefficients.  Shold produce more sensible
-				 results...  yes... it *is* an mostly empirically derived
-				 fudge factor ;-)
-				*/
-				blksum =  -80*COEFFSUM_SCALE;
-				for( l = 0; l < 6; ++l )
-					blksum += 
-						quant.WeightCoeffIntra( mbinfo[k].RawDCTblocks()[l] ) ;
-			}
-			else
-			{
-				blksum = 0;
-				for( l = 0; l < 6; ++l )
-					blksum += 
-						quant.WeightCoeffInter( mbinfo[k].RawDCTblocks()[l] ) ;
-			}
-			/* It takes some bits to code even an entirely zero block...
-			   It also makes a lot of calculations a lot better conditioned
-			   if it can be guaranteed that activity is always distinctly
-			   non-zero.
-			 */
-
-
-			actj = (double)blksum / (double)COEFFSUM_SCALE;
-			if( actj < 12.0 )
-				actj = 12.0;
-
-			mbinfo[k].act = (double)actj;
-			sum += (double)actj;
-			++k;
-		}
-	act_sum = sum;
-	var_sum = varsum;
-}
 
 /*
  * Update rate-controls statistics after pictures has ended..
  *
+ * RETURN: The amount of padding necessary for picture to meet syntax or
+ * rate constraints...
  */
-void OnTheFlyRateCtl::UpdatePict(Picture &picture)
+
+int OnTheFlyRateCtl::UpdatePict(Picture &picture, int64_t _bitcount_EOP)
 {
 	double X;
 	double K;
@@ -659,13 +600,14 @@ void OnTheFlyRateCtl::UpdatePict(Picture &picture)
 	int    i;
 	int    Qsum;
 	int frame_overshoot;
-
-	AP = writer.BitCount() - S;
+    int64_t bitcount_EOP = _bitcount_EOP; 
+	AP = bitcount_EOP - S;
 	frame_overshoot = (int)AP-(int)T;
 
 	/* For the virtual buffers for quantisation feedback it is the
 	   actual under/overshoot *including* padding.  Otherwise the
 	   buffers go zero.
+       BUGBUGBUG  should'nt this go after the padding calculation?
 	*/
 	d += frame_overshoot;
 
@@ -675,10 +617,9 @@ void OnTheFlyRateCtl::UpdatePict(Picture &picture)
 	   specified in advance in vbv_buffer_size.
 	*/
 	picture.pad = 0;
-
+    int padding_bits = 0;
 	if( encparams.still_size > 0 && encparams.vbv_buffer_still_size)
 	{
-		int padding_bytes;
 		if( frame_overshoot > frame_overshoot_margin )
 		{
 			mjpeg_warn( "Rate overshoot: VCD hi-res still %d bytes too large! ", 
@@ -693,23 +634,31 @@ void OnTheFlyRateCtl::UpdatePict(Picture &picture)
 		frame_overshoot = frame_overshoot - frame_overshoot_margin;
 		if( frame_overshoot < -2048*8 )
 			frame_overshoot += 1024*8;
-
-		padding_bytes = -frame_overshoot/8;
+        
+        // Make sure we pad nicely to byte alignment
+        if( frame_overshoot < 0 )
+        {
+            padding_bits = (((bitcount_EOP-frame_overshoot)>>3)<<3)-bitcount_EOP;
+            picture.pad = 1;
+        }
+#ifdef JUNK_DONE_ELSEWHERE_NOW
 		if( padding_bytes > 0 )
 		{
 			mjpeg_debug( "Padding still to size: %d extra bytes", padding_bytes );
 			picture.pad = 1;
-            // TODO BELONGS in CODER!!!
-			writer.AlignBits();
 			for( i = 0; i < padding_bytes/2; ++i )
 			{
 				writer.PutBits(0, 16);
 			}
 		}
-		AP += padding_bytes*8 ;			/* total # of bits in picture */
-		frame_overshoot += padding_bytes*8;
+#endif
 	}
 
+    /* Adjust the various bit counting  parameters for the padding bytes that
+     * will be added */
+    AP += padding_bits ;
+    frame_overshoot += padding_bits;
+    bitcount_EOP += padding_bits;
 
 	/*
 	  Compute the estimate of the current decoder buffer state.  We
@@ -725,8 +674,9 @@ void OnTheFlyRateCtl::UpdatePict(Picture &picture)
 	*/
 
 	
-	bits_used += (writer.BitCount()-prev_bitcount);
-	prev_bitcount = writer.BitCount();
+	bits_used += (bitcount_EOP-prev_bitcount);
+	prev_bitcount = bitcount_EOP;
+    
 	bits_transported += per_pict_bits;
 	mjpeg_debug( "TR=%" PRId64 " USD=%" PRId64 "", bits_transported/8, bits_used/8);
 	buffer_variation  = (int32_t)(bits_transported - bits_used);
@@ -854,7 +804,7 @@ void OnTheFlyRateCtl::UpdatePict(Picture &picture)
 		break;
 	}
 
-	VbvEndOfPict(picture);
+	VbvEndOfPict(picture, bitcount_EOP);
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: end of picture\n");
@@ -872,7 +822,7 @@ void OnTheFlyRateCtl::UpdatePict(Picture &picture)
 	fprintf(statfile," remaining number of B pictures in GOP: Nb=%d\n",Nb);
 	fprintf(statfile," average activity: avg_act=%.1f \n", avg_act );
 #endif
-
+    return padding_bits/8;
 }
 
 /* compute initial quantization stepsize (at the beginning of picture) 
@@ -884,7 +834,7 @@ void OnTheFlyRateCtl::UpdatePict(Picture &picture)
 int OnTheFlyRateCtl::InitialMacroBlockQuant(Picture &picture)
 {
 	
-	int mquant = scale_quant( picture.q_scale_type, d*62.0/r );
+	int mquant = ScaleQuant( picture.q_scale_type, d*62.0/r );
 	
 /*
   fprintf(statfile,"rc_start_mb:\n");
@@ -901,7 +851,7 @@ int OnTheFlyRateCtl::InitialMacroBlockQuant(Picture &picture)
  *
  ************/
 
-int OnTheFlyRateCtl::MacroBlockQuant( const MacroBlock &mb )
+int OnTheFlyRateCtl::MacroBlockQuant( const MacroBlock &mb, int64_t bitcount )
 {
 	int mquant;
 	int lum_variance = mb.BaseLumVariance();
@@ -921,7 +871,7 @@ int OnTheFlyRateCtl::MacroBlockQuant( const MacroBlock &mb )
 	*/
 
 	double dj = ((double)d) + 
-		((double)(writer.BitCount()-S) - actcovered * ((double)T) / actsum);
+		((double)(bitcount-S) - actcovered * ((double)T) / actsum);
 
 
 	/* scale against dynamic range of mquant and the bits/picture
@@ -967,7 +917,7 @@ int OnTheFlyRateCtl::MacroBlockQuant( const MacroBlock &mb )
 
 #endif	
 	sum_vbuf_Q += scale_quantf(picture.q_scale_type,Qj/act_boost);
-	mquant = scale_quant(picture.q_scale_type,Qj/act_boost) ;
+	mquant = ScaleQuant(picture.q_scale_type,Qj/act_boost) ;
 	
 	/* Update activity covered */
 
@@ -999,9 +949,9 @@ int OnTheFlyRateCtl::MacroBlockQuant( const MacroBlock &mb )
  * bit-stream.
  */
 
-void OnTheFlyRateCtl::VbvEndOfPict(Picture &picture)
+void OnTheFlyRateCtl::VbvEndOfPict(Picture &picture, int64_t bitcount)
 {
-	bitcnt_EOP = (writer.BitCount()) - BITCOUNT_OFFSET;
+	bitcnt_EOP = bitcount - BITCOUNT_OFFSET;
 
 }
 

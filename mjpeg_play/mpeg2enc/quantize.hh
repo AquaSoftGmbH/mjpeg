@@ -22,13 +22,13 @@
 
 #include <config.h>
 #include "mjpeg_types.h"
-#include "mpeg2encoder.hh"
 #include "quantize_ref.h"
 
+class EncoderParams;
 class Quantizer : public QuantizerCalls
 {
 public:
-	Quantizer( MPEG2Encoder &_encoder );
+	Quantizer( EncoderParams &_encoder );
 	void Init();
 	~Quantizer();
 
@@ -83,7 +83,7 @@ public:
 
 private:
 	QuantizerWorkSpace *workspace;
-	MPEG2Encoder &encoder;
+	EncoderParams &encparams;
 	//int dctsatlim;
 };
 

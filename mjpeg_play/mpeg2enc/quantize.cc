@@ -47,8 +47,11 @@
 
 
 #include "config.h"
-#include "global.h"
 #include "fastintfns.h"
+#include "encoderparams.hh"
+#include "mpeg2syntaxcodes.h"
+#include "picture.hh"
+#include "macroblock.hh"
 #include "quantize.hh"
 
 /********************
@@ -191,17 +194,9 @@ void MacroBlock::IQuantize( Quantizer &quant)
 }
 
 
-void Picture::IQuantize()
-{
-    int k;
-	for (k=0; k<encparams.mb_per_pict; k++)
-	{
-        mbinfo[k].IQuantize( encoder.quantizer );
-	}
-}
 
-Quantizer::Quantizer( MPEG2Encoder &_encoder ) :
-    encoder( _encoder )
+Quantizer::Quantizer( EncoderParams &_encparams ) :
+    encparams( _encparams )
 {
 }
 
@@ -209,10 +204,9 @@ void Quantizer::Init()
 {
     init_quantizer( static_cast<QuantizerCalls *>(this),
                     &workspace,
-                    static_cast<int>(encoder.parms.mpeg1), 
-                    encoder.parms.intra_q, 
-                    encoder.parms.inter_q );
-    //dctsatlim = encoder.parms.dctsatlim;
+                    static_cast<int>(encparams.mpeg1), 
+                    encparams.intra_q, 
+                    encparams.inter_q );
 }
 
 Quantizer::~Quantizer()

@@ -1,9 +1,9 @@
-#ifndef _MPEG2ENCODER_HH
-#define _MPEG2ENCODER_HH
+#ifndef _MPEG2ENCOPTIONS_HH
+#define _MPEG2ENCOPTIONS_HH
 
-/* mpeg2encoder.hh Top-level class for an instance of mpeg2enc++
- * MPEG-1/2 encoder.   */
-/*  (C) 2003 Andrew Stevens */
+/* mpeg2encoptions.h - Encoding options for mpeg2enc++ MPEG-1/2
+ * encoder library */
+/*  (C) 2000/2001 Andrew Stevens */
 
 /*  This Software is free software; you can redistribute it
  *  and/or modify it under the terms of the GNU General Public License
@@ -22,40 +22,33 @@
  *
  */
 
-#include "config.h"
-#include <stdio.h>
-#include "mpeg2encoptions.hh"
-#include "encoderparams.hh"
+#include <config.h>
+#include "mpeg2encparams.h"
+#include "mpegconsts.h"
 
- 
-class EncoderParams;
-class PictureReader;
-class RateController;
-class SeqEncoder;
-class Quantizer;
-class Transformer;
-class MPEG2Coder;
-class BitStreamWriter;
-class ElemStrmWriter;
 
-class MPEG2Encoder
+struct MPEG2EncInVidParams
 {
-public:
-    MPEG2Encoder( MPEG2EncOptions &options );
-    ~MPEG2Encoder();
-
-    static void SIMDInitOnce();
-    static bool simd_init;
-    MPEG2EncOptions &options;
-    EncoderParams parms;
-    PictureReader *reader;
-    ElemStrmWriter *writer;
-    Quantizer     *quantizer;
-    MPEG2Coder    *coder;
-    RateCtl       *bitrate_controller;
-    SeqEncoder    *seqencoder;
+    int horizontal_size;
+    int vertical_size;
+    mpeg_aspect_code_t aspect_ratio_code;
+    mpeg_framerate_code_t frame_rate_code;
+    int interlacing_code;
 };
 
+
+class MPEG2EncOptions : public MPEG2EncParams
+{
+public:
+    MPEG2EncOptions();
+    bool SetFormatPresets(  const MPEG2EncInVidParams &strm );  // True iff fail
+    int InferStreamDataParams( const MPEG2EncInVidParams &strm );
+    int CheckBasicConstraints();
+
+    uint16_t custom_intra_quantizer_matrix[64];
+    uint16_t custom_nonintra_quantizer_matrix[64];
+};
+#endif
 
 /* 
  * Local variables:
@@ -64,5 +57,3 @@ public:
  *  indent-tabs-mode: nil
  * End:
  */
-#endif
-

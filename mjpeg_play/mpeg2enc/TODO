@@ -1,18 +1,10 @@
 IN PROGRESS
 
-	- We should replace BUFFER_ALIGN with something cleaner/more OS / Compiler
-	  aware...
-	- Tidy up the source code placement of the Picture, StreamState etc classes
-	- Tidy up filenames: they are now wildy out-of-date compared to their contents.
+	- Replace appending subsampled luminance to luminance data with a 5-plane
+	  picture data model (YUVHQ)
 	- MotionEst should be called 'MacroBlockCodingMode'
-	- Shouldn't <X> (picture et al) be called <X>Encoder?
 
-	- Remove 'clearing' of INTRA blocks for prediction... what a waste
-	of CPU resources...
-	- Remove old YUV444 YUV422 video support: search for CHROMA_FORMAT!!
 	- Set satlim and scale type in quantizer during init
-	- Move penalty for motion vector length into sad routine so it it
-	is always consistent (or write a penalty inline).
 
 	- Move to a buffering output model where a frame can be aborted/restarted
 	with different quantisation if it is coming out too large or too small.
@@ -35,8 +27,9 @@ Near Future improvements
 	quantisatises forall the motion estimates and selects the one that
 	worked best for encoding.
 
-	Alternatively: select using the base quantisation and use the old
-	encoder...
+	- Modify the on-the-fly rate controller so it can handle adjusting
+	  quantisation at select Macroblock's and not at *every* macroblock
+	  if no fancy per-block quantisation fiddles are active...
 
 1. Add single coefficient dropping to DCT...
 

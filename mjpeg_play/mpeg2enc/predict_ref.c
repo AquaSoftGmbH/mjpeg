@@ -50,12 +50,15 @@
 #include "config.h"
 #include "mjpeg_types.h"
 #include "mjpeg_logging.h"
-#include "mpeg2enc.h"
+#include "mpeg2syntaxcodes.h"
 #include "predict_ref.h"
 #include "cpu_accel.h"
 #include "simd.h"
 
 
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
+extern void init_x86_predict(uint32_t cpucap);
+#endif
 
 
 #ifdef HAVE_ALTIVEC
@@ -286,16 +289,10 @@ void init_predict(void)
 	}
 
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
-	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
-	{
-		mjpeg_info( "SETTING EXTENDED MMX for PREDICTION!");
-		ppred_comp = pred_comp_mmxe;
-	}
-    else if(cpucap & ACCEL_X86_MMX ) /* Original MMX... */
-	{
-		mjpeg_info( "SETTING MMX for PREDICTION!");
-		ppred_comp = pred_comp_mmx;
-	}
+    else
+    {
+        init_x86_predict(cpucap);
+    }
 #endif
 #ifdef HAVE_ALTIVEC
     else

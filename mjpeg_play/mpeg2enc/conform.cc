@@ -50,8 +50,7 @@
 #include "config.h"
 #include <stdlib.h>
 #include "mjpeg_logging.h"
-#include "global.h"
-#include "syntaxparams.h"
+#include "encoderparams.hh"
 
 /* check for (level independent) parameter limits */
 void EncoderParams::RangeChecks()

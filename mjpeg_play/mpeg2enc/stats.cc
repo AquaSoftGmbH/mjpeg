@@ -49,7 +49,7 @@
 #include <config.h>
 #include <stdio.h>
 #include <math.h>
-#include "global.h"
+#include "picture.hh"
 
 #ifdef OUTPUT_STAT
 static void calcSNR1(org,rec,lx,w,h,pv,pe)
@@ -91,12 +91,12 @@ double *pv,*pe;
 
 #endif
 
-void calcSNR(Picture *picture)
+void Picture::CalcSNR()
 {
 
 #ifdef OUTPUT_STAT
-	uint8_t **org = picture->curorg;
-	uint8_t **rec = picture->curref;
+	uint8_t **org = curorg;
+	uint8_t **rec = curref;
 	int w,h,offs;
 	double v,e;
 
@@ -130,7 +130,7 @@ void calcSNR(Picture *picture)
 #endif
 }
 
-void stats(void)
+void Picture::Stats()
 {
 #ifdef OUTPUT_STAT
   int i, j, k,  mb_type;
@@ -140,22 +140,22 @@ void stats(void)
 
   /* Needs adjusting to reflect its move... */
 #ifdef NOT_DONE_YET
-		if (cur_picture.pict_type!=I_TYPE)
+		if (pict_type!=I_TYPE)
 		{
 			fprintf(statfile," forward search window: %d...%d / %d...%d\n",
 					-sxf,sxf,-syf,syf);
 			fprintf(statfile," forward vector range: %d...%d.5 / %d...%d.5\n",
-					-(4<<cur_picture.forw_hor_f_code),(4<<cur_picture.forw_hor_f_code)-1,
-					-(4<<cur_picture.forw_vert_f_code),(4<<cur_picture.forw_vert_f_code)-1);
+					-(4<<forw_hor_f_code),(4<<forw_hor_f_code)-1,
+					-(4<<forw_vert_f_code),(4<<forw_vert_f_code)-1);
 		}
 
-		if (cur_picture.pict_type==B_TYPE)
+		if (pict_type==B_TYPE)
 		{
 			fprintf(statfile," backward search window: %d...%d / %d...%d\n",
 					-sxb,sxb,-syb,syb);
 			fprintf(statfile," backward vector range: %d...%d.5 / %d...%d.5\n",
-					-(4<<cur_picture.back_hor_f_code),(4<<cur_picture.back_hor_f_code)-1,
-					-(4<<cur_picture.back_vert_f_code),(4<<cur_picture.back_vert_f_code)-1);
+					-(4<<back_hor_f_code),(4<<back_hor_f_code)-1,
+					-(4<<back_vert_f_code),(4<<back_vert_f_code)-1);
 		}
 #endif
 
@@ -163,7 +163,7 @@ void stats(void)
 
   for (k=0; k<mb_per_pict; k++)
   {
-    mbi = cur_picture.mbinfo+k;
+    mbi = mbinfo+k;
     if (mbi->skipped)
       n_skipped++;
     else if (mbi->mb_type & MB_INTRA)
@@ -210,7 +210,7 @@ void stats(void)
   {
     for (i=0; i<mb_width; i++)
     {
-      mbi = cur_picture.mbinfo + k;
+      mbi = mbinfo + k;
       mb_type = mbi->mb_type;
       if (mbi->skipped)
         putc('S',statfile);
@@ -253,8 +253,8 @@ void stats(void)
   {
     for (i=0; i<mb_width; i++)
     {
-      if (i==0 || cur_picture.mbinfo[k].mquant!=cur_picture.mbinfo[k-1].mquant)
-        fprintf(statfile,"%3d",cur_picture.mbinfo[k].mquant);
+      if (i==0 || mbinfo[k].mquant!=mbinfo[k-1].mquant)
+        fprintf(statfile,"%3d",mbinfo[k].mquant);
       else
         fprintf(statfile,"   ");
 
@@ -300,7 +300,7 @@ void stats(void)
   }
 #endif
 
-  if (cur_picture.pict_type!=I_TYPE )
+  if (pict_type!=I_TYPE )
   {
     fprintf(statfile,"\nforward motion vectors (first vector, horizontal):\n");
 
@@ -309,8 +309,8 @@ void stats(void)
     {
       for (i=0; i<mb_width; i++)
       {
-        if (cur_picture.mbinfo[k].mb_type & MB_FORWARD)
-          fprintf(statfile,"%4d",cur_picture.mbinfo[k].MV[0][0][0]);
+        if (mbinfo[k].mb_type & MB_FORWARD)
+          fprintf(statfile,"%4d",mbinfo[k].MV[0][0][0]);
         else
           fprintf(statfile,"   .");
   
@@ -326,8 +326,8 @@ void stats(void)
     {
       for (i=0; i<mb_width; i++)
       {
-        if (cur_picture.mbinfo[k].mb_type & MB_FORWARD)
-          fprintf(statfile,"%4d",cur_picture.mbinfo[k].MV[0][0][1]);
+        if (mbinfo[k].mb_type & MB_FORWARD)
+          fprintf(statfile,"%4d",mbinfo[k].MV[0][0][1]);
         else
           fprintf(statfile,"   .");
   
@@ -343,10 +343,10 @@ void stats(void)
     {
       for (i=0; i<mb_width; i++)
       {
-        if (cur_picture.mbinfo[k].mb_type & MB_FORWARD
-            && ((cur_picture.pict_struct==FRAME_PICTURE && cur_picture.mbinfo[k].motion_type==MC_FIELD) ||
-                (cur_picture.pict_struct!=FRAME_PICTURE && cur_picture.mbinfo[k].motion_type==MC_16X8)))
-          fprintf(statfile,"%4d",cur_picture.mbinfo[k].MV[1][0][0]);
+        if (mbinfo[k].mb_type & MB_FORWARD
+            && ((pict_struct==FRAME_PICTURE && mbinfo[k].motion_type==MC_FIELD) ||
+                (pict_struct!=FRAME_PICTURE && mbinfo[k].motion_type==MC_16X8)))
+          fprintf(statfile,"%4d",mbinfo[k].MV[1][0][0]);
         else
           fprintf(statfile,"   .");
   
@@ -362,10 +362,10 @@ void stats(void)
     {
       for (i=0; i<mb_width; i++)
       {
-        if (cur_picture.mbinfo[k].mb_type & MB_FORWARD
-            && ((cur_picture.pict_struct==FRAME_PICTURE && cur_picture.mbinfo[k].motion_type==MC_FIELD) ||
-                (cur_picture.pict_struct!=FRAME_PICTURE && cur_picture.mbinfo[k].motion_type==MC_16X8)))
-          fprintf(statfile,"%4d",cur_picture.mbinfo[k].MV[1][0][1]);
+        if (mbinfo[k].mb_type & MB_FORWARD
+            && ((pict_struct==FRAME_PICTURE && mbinfo[k].motion_type==MC_FIELD) ||
+                (pict_struct!=FRAME_PICTURE && mbinfo[k].motion_type==MC_16X8)))
+          fprintf(statfile,"%4d",mbinfo[k].MV[1][0][1]);
         else
           fprintf(statfile,"   .");
   
@@ -377,7 +377,7 @@ void stats(void)
 
   }
    
-  if (cur_picture.pict_type==B_TYPE)
+  if (pict_type==B_TYPE)
   {
     fprintf(statfile,"\nbackward motion vectors (first vector, horizontal):\n");
 
@@ -386,8 +386,8 @@ void stats(void)
     {
       for (i=0; i<mb_width; i++)
       {
-        if (cur_picture.mbinfo[k].mb_type & MB_BACKWARD)
-          fprintf(statfile,"%4d",cur_picture.mbinfo[k].MV[0][1][0]);
+        if (mbinfo[k].mb_type & MB_BACKWARD)
+          fprintf(statfile,"%4d",mbinfo[k].MV[0][1][0]);
         else
           fprintf(statfile,"   .");
   
@@ -403,8 +403,8 @@ void stats(void)
     {
       for (i=0; i<mb_width; i++)
       {
-        if (cur_picture.mbinfo[k].mb_type & MB_BACKWARD)
-          fprintf(statfile,"%4d",cur_picture.mbinfo[k].MV[0][1][1]);
+        if (mbinfo[k].mb_type & MB_BACKWARD)
+          fprintf(statfile,"%4d",mbinfo[k].MV[0][1][1]);
         else
           fprintf(statfile,"   .");
   
@@ -420,10 +420,10 @@ void stats(void)
     {
       for (i=0; i<mb_width; i++)
       {
-        if (cur_picture.mbinfo[k].mb_type & MB_BACKWARD
-            && ((cur_picture.pict_struct==FRAME_PICTURE && cur_picture.mbinfo[k].motion_type==MC_FIELD) ||
-                (cur_picture.pict_struct!=FRAME_PICTURE && cur_picture.mbinfo[k].motion_type==MC_16X8)))
-          fprintf(statfile,"%4d",cur_picture.mbinfo[k].MV[1][1][0]);
+        if (mbinfo[k].mb_type & MB_BACKWARD
+            && ((pict_struct==FRAME_PICTURE && mbinfo[k].motion_type==MC_FIELD) ||
+                (pict_struct!=FRAME_PICTURE && mbinfo[k].motion_type==MC_16X8)))
+          fprintf(statfile,"%4d",mbinfo[k].MV[1][1][0]);
         else
           fprintf(statfile,"   .");
   
@@ -439,10 +439,10 @@ void stats(void)
     {
       for (i=0; i<mb_width; i++)
       {
-        if (cur_picture.mbinfo[k].mb_type & MB_BACKWARD
-            && ((cur_picture.pict_struct==FRAME_PICTURE && cur_picture.mbinfo[k].motion_type==MC_FIELD) ||
-                (cur_picture.pict_struct!=FRAME_PICTURE && cur_picture.mbinfo[k].motion_type==MC_16X8)))
-          fprintf(statfile,"%4d",cur_picture.mbinfo[k].MV[1][1][1]);
+        if (mbinfo[k].mb_type & MB_BACKWARD
+            && ((pict_struct==FRAME_PICTURE && mbinfo[k].motion_type==MC_FIELD) ||
+                (pict_struct!=FRAME_PICTURE && mbinfo[k].motion_type==MC_16X8)))
+          fprintf(statfile,"%4d",mbinfo[k].MV[1][1][1]);
         else
           fprintf(statfile,"   .");
   
@@ -467,12 +467,12 @@ void stats(void)
 			  k = j*mb_width+i;
       fprintf(statfile,"(%d,%d): %02x %1.1f %d %3.1f %02x %d\n",
 			  i,j,
-		        cur_picture.mbinfo[k].mb_type,
-			  cur_picture.mbinfo[k].N_act,
-      cur_picture.mbinfo[k].mquant,
-	  cur_picture.mbinfo[k].act,
-      cur_picture.mbinfo[k].cbp,
-      cur_picture.mbinfo[k].skipped			  );
+		        mbinfo[k].mb_type,
+			  mbinfo[k].N_act,
+      mbinfo[k].mquant,
+	  mbinfo[k].act,
+      mbinfo[k].cbp,
+      mbinfo[k].skipped			  );
 	}
   }
 
@@ -486,20 +486,20 @@ void stats(void)
 
       fprintf(statfile,"(%d,%d): %02x %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
       i,j,
-      cur_picture.mbinfo[k].motion_type,
-      cur_picture.mbinfo[k].dct_type,
-      cur_picture.mbinfo[k].MV[0][0][0],
-      cur_picture.mbinfo[k].MV[0][0][1],
-      cur_picture.mbinfo[k].MV[0][1][0],
-      cur_picture.mbinfo[k].MV[0][1][1],
-      cur_picture.mbinfo[k].MV[1][0][0],
-      cur_picture.mbinfo[k].MV[1][0][1],
-      cur_picture.mbinfo[k].MV[1][1][0],
-      cur_picture.mbinfo[k].MV[1][1][1],
-      cur_picture.mbinfo[k].mv_field_sel[0][0],
-      cur_picture.mbinfo[k].mv_field_sel[0][1],
-      cur_picture.mbinfo[k].mv_field_sel[1][0],
-      cur_picture.mbinfo[k].mv_field_sel[1][1]);
+      mbinfo[k].motion_type,
+      mbinfo[k].dct_type,
+      mbinfo[k].MV[0][0][0],
+      mbinfo[k].MV[0][0][1],
+      mbinfo[k].MV[0][1][0],
+      mbinfo[k].MV[0][1][1],
+      mbinfo[k].MV[1][0][0],
+      mbinfo[k].MV[1][0][1],
+      mbinfo[k].MV[1][1][0],
+      mbinfo[k].MV[1][1][1],
+      mbinfo[k].mv_field_sel[0][0],
+      mbinfo[k].mv_field_sel[0][1],
+      mbinfo[k].mv_field_sel[1][0],
+      mbinfo[k].mv_field_sel[1][1]);
 
     }
   }

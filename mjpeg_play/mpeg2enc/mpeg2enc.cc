@@ -1,4 +1,5 @@
-/* mpeg2enc.c, main() and parameter file reading                            */
+/* mpeg2enc.cc, YUV4MPEG / mjpegtools command line wrapper for
+ * mpeg2enc++ library */
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
@@ -47,525 +48,34 @@
 
 #include <config.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <string.h>
 #ifdef HAVE_GETOPT_H
 #include <getopt.h>
 #endif
-
-
-#define GLOBAL /* used by global.h */
-#include "global.h"
-#include "simd.h"
-#include "motionsearch.h"
-#include "format_codes.h"
-#include "mpegconsts.h"
-#include "fastintfns.h"
-#ifdef HAVE_ALTIVEC
-/* needed for ALTIVEC_BENCHMARK and print_benchmark_statistics() */
-#include "../utils/altivec/altivec_conf.h"
-#endif
-int verbose = 1;
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
 
 #include "mpeg2encoder.hh"
+#include "mpeg2encoptions.hh"
+#include "encoderparams.hh"
 #include "picturereader.hh"
 #include "elemstrmwriter.hh"
 #include "quantize.hh"
 #include "ratectl.hh"
 #include "seqencoder.hh"
 #include "mpeg2coder.hh"
-#include "tables.h"
+#include "format_codes.h"
 
-
-
-MPEG2Encoder::MPEG2Encoder( int istrm_fd, MPEG2EncOptions &_options,
-                            FILE *ostrm_fd ) :
-    options( _options ),
-    parms( *new EncoderParams ),
-    reader( *new Y4MPipeReader( *this, istrm_fd ) ),
-    // TODO: Concrete types for writing to fd...
-    quantizer( *new Quantizer( *this ) ),
-    writer( *new FILE_StrmWriter( *this, ostrm_fd ) ),
-    coder( *new MPEG2Coder( *this ) ),
-    bitrate_controller( *new OnTheFlyRateCtl( *this ) ),
-    seqencoder( *new SeqEncoder( *this ) )
-{
-    if( !simd_init )
-        SIMDInitOnce();
-    simd_init = true;
-}
-
-MPEG2Encoder::~MPEG2Encoder()
-{
-    delete &coder;
-    delete &seqencoder;
-    delete &bitrate_controller;
-    delete &quantizer;
-    delete &reader;
-    delete &parms;
-}
-
-bool MPEG2Encoder::simd_init = false;
-    
-void MPEG2Encoder::SIMDInitOnce()
-{
-	init_motion();
-	init_transform();
-	init_predict();
-}    
-
-
-
-#define MAX(a,b) ( (a)>(b) ? (a) : (b) )
-#define MIN(a,b) ( (a)<(b) ? (a) : (b) )
-
-#ifndef O_BINARY
-# define O_BINARY 0
+#ifdef HAVE_ALTIVEC
+/* needed for ALTIVEC_BENCHMARK and print_benchmark_statistics() */
+#include "../utils/altivec/altivec_conf.h"
 #endif
 
 
 
 
 
-MPEG2EncOptions::MPEG2EncOptions()
-{
-    // Parameters initialised to -1 indicate a format-dependent
-    // or stream inferred default.
-    format = MPEG_FORMAT_MPEG1;
-    bitrate    = 0;
-    nonvid_bitrate = 0;
-    quant      = 0;
-    searchrad  = 16;
-    mpeg       = 1;
-    aspect_ratio = 0;
-    frame_rate  = 0;
-    fieldenc   = -1; /* 0: progressive, 1 = frame pictures,
-                        interlace frames with field MC and DCT
-                        in picture 2 = field pictures
-                     */
-    norm       = 0;  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
-    me44_red	= 2;
-    me22_red	= 3;	
-    hf_quant = 0;
-    hf_q_boost = 0.0;
-    act_boost = 0.0;
-    boost_var_ceil = 10*10;
-    video_buffer_size = 0;
-    seq_length_limit = 0;
-    min_GOP_size = -1;
-    max_GOP_size = -1;
-    closed_GOPs = 0;
-    preserve_B = 0;
-    Bgrp_size = 3;
-    num_cpus = 1;
-    vid32_pulldown = 0;
-    svcd_scan_data = -1;
-    seq_hdr_every_gop = 0;
-    seq_end_every_gop = 0;
-    still_size = 0;
-    pad_stills_to_vbv_buffer_size = 0;
-    vbv_buffer_still_size = 0;
-    force_interlacing = Y4M_UNKNOWN;
-    input_interlacing = 0;
-    hack_svcd_hds_bug = 1;
-    hack_altscan_bug = 0;
-    mpeg2_dc_prec = 1;
-    ignore_constraints = 0;
-    unit_coeff_elim = 0;
-};
-
-
-void MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
-{
-    in_img_width = strm.horizontal_size;
-    in_img_height = strm.vertical_size;
-	switch( format  )
-	{
-	case MPEG_FORMAT_MPEG1 :  /* Generic MPEG1 */
-		mjpeg_info( "Selecting generic MPEG1 output profile");
-		if( video_buffer_size == 0 )
-			video_buffer_size = 46;
-		if( bitrate == 0 )
-			bitrate = 1151929;
-		break;
-
-	case MPEG_FORMAT_VCD :
-		mpeg = 1;
-		bitrate = 1151929;
-		video_buffer_size = 46;
-        preserve_B = true;
-        min_GOP_size = 9;
-		max_GOP_size = norm == 'n' ? 18 : 15;
-		mjpeg_info("VCD default options selected");
-		
-	case MPEG_FORMAT_VCD_NSR : /* VCD format, non-standard rate */
-		mjpeg_info( "Selecting VCD output profile");
-		mpeg = 1;
-		svcd_scan_data = 0;
-		seq_hdr_every_gop = 1;
-		if( bitrate == 0 )
-			bitrate = 1151929;
-		if( video_buffer_size == 0 )
-			video_buffer_size = 46 * bitrate / 1151929;
-        if( seq_length_limit == 0 )
-            seq_length_limit = 700;
-        if( nonvid_bitrate == 0 )
-            nonvid_bitrate = 230;
-		break;
-		
-	case  MPEG_FORMAT_MPEG2 : 
-		mpeg = 2;
-		mjpeg_info( "Selecting generic MPEG2 output profile");
-		mpeg = 2;
-		if( fieldenc == -1 )
-			fieldenc = 1;
-		if( video_buffer_size == 0 )
-			video_buffer_size = 46 * bitrate / 1151929;
-		break;
-
-	case MPEG_FORMAT_SVCD :
-		mjpeg_info("SVCD standard settings selected");
-		bitrate = 2500000;
-		max_GOP_size = norm == 'n' ? 18 : 15;
-		video_buffer_size = 230;
-
-	case  MPEG_FORMAT_SVCD_NSR :		/* Non-standard data-rate */
-		mjpeg_info( "Selecting SVCD output profile");
-		mpeg = 2;
-		if( fieldenc == -1 )
-			fieldenc = 1;
-		if( quant == 0 )
-			quant = 8;
-		if( svcd_scan_data == -1 )
-			svcd_scan_data = 1;
-		if( min_GOP_size == -1 )
-            min_GOP_size = 9;
-        seq_hdr_every_gop = 1;
-        if( seq_length_limit == 0 )
-            seq_length_limit = 700;
-        if( nonvid_bitrate == 0 )
-            nonvid_bitrate = 230;
-        break;
-
-	case MPEG_FORMAT_VCD_STILL :
-		mjpeg_info( "Selecting VCD Stills output profile");
-		mpeg = 1;
-		/* We choose a generous nominal bit-rate as its VBR anyway
-		   there's only one frame per sequence ;-). It *is* too small
-		   to fill the frame-buffer in less than one PAL/NTSC frame
-		   period though...*/
-		bitrate = 8000000;
-
-		/* Now we select normal/hi-resolution based on the input stream
-		   resolution. 
-		*/
-		
-		if( in_img_width == 352 && 
-			(in_img_height == 240 || in_img_height == 288 ) )
-		{
-			/* VCD normal resolution still */
-			if( still_size == 0 )
-				still_size = 30*1024;
-			if( still_size < 20*1024 || still_size > 42*1024 )
-			{
-				mjpeg_error_exit1( "VCD normal-resolution stills must be >= 20KB and <= 42KB each");
-			}
-			/* VBV delay encoded normally */
-			vbv_buffer_still_size = 46*1024;
-			video_buffer_size = 46;
-			pad_stills_to_vbv_buffer_size = 0;
-		}
-		else if( in_img_width == 704 &&
-				 (in_img_height == 480 || in_img_height == 576) )
-		{
-			/* VCD high-resolution stills: only these use vbv_delay
-			 to encode picture size...
-			*/
-			if( still_size == 0 )
-				still_size = 125*1024;
-			if( still_size < 46*1024 || still_size > 220*1024 )
-			{
-				mjpeg_error_exit1( "VCD normal-resolution stills should be >= 46KB and <= 220KB each");
-			}
-			vbv_buffer_still_size = still_size;
-			video_buffer_size = 224;
-			pad_stills_to_vbv_buffer_size = 1;			
-		}
-		else
-		{
-			mjpeg_error("VCD normal resolution stills must be 352x288 (PAL) or 352x240 (NTSC)");
-			mjpeg_error_exit1( "VCD high resolution stills must be 704x576 (PAL) or 704x480 (NTSC)");
-		}
-		quant = 0;		/* We want to try and hit our size target */
-		
-		seq_hdr_every_gop = 1;
-		seq_end_every_gop = 1;
-		min_GOP_size = 1;
-		max_GOP_size = 1;
-		break;
-
-	case MPEG_FORMAT_SVCD_STILL :
-		mjpeg_info( "Selecting SVCD Stills output profile");
-		mpeg = 2;
-		if( fieldenc == -1 )
-			fieldenc = 1;
-		/* We choose a generous nominal bit-rate as its VBR anyway
-		   there's only one frame per sequence ;-). It *is* too small
-		   to fill the frame-buffer in less than one PAL/NTSC frame
-		   period though...*/
-
-		bitrate = 2500000;
-		video_buffer_size = 230;
-		vbv_buffer_still_size = 220*1024;
-		pad_stills_to_vbv_buffer_size = 0;
-
-		/* Now we select normal/hi-resolution based on the input stream
-		   resolution. 
-		*/
-		
-		if( in_img_width == 480 && 
-			(in_img_height == 480 || in_img_height == 576 ) )
-		{
-			mjpeg_info( "SVCD normal-resolution stills selected." );
-			if( still_size == 0 )
-				still_size = 90*1024;
-		}
-		else if( in_img_width == 704 &&
-				 (in_img_height == 480 || in_img_height == 576) )
-		{
-			mjpeg_info( "SVCD high-resolution stills selected." );
-			if( still_size == 0 )
-				still_size = 125*1024;
-		}
-		else
-		{
-			mjpeg_error("SVCD normal resolution stills must be 480x576 (PAL) or 480x480 (NTSC)");
-			mjpeg_error_exit1( "SVCD high resolution stills must be 704x576 (PAL) or 704x480 (NTSC)");
-		}
-
-		if( still_size < 30*1024 || still_size > 200*1024 )
-		{
-			mjpeg_error_exit1( "SVCD resolution stills must be >= 30KB and <= 200KB each");
-		}
-
-
-		seq_hdr_every_gop = 1;
-		seq_end_every_gop = 1;
-		min_GOP_size = 1;
-		max_GOP_size = 1;
-		break;
-
-
-	case MPEG_FORMAT_DVD :
-	case MPEG_FORMAT_DVD_NAV :
-		mjpeg_info( "Selecting DVD output profile");
-		
-		if( bitrate == 0 )
-			bitrate = 7500000;
-		if( fieldenc == -1 )
-			fieldenc = 1;
-		video_buffer_size = 230;
-		mpeg = 2;
-		if( quant == 0 )
-			quant = 8;
-		seq_hdr_every_gop = 1;
-		break;
-	}
-
-    switch( mpeg )
-    {
-    case 1 :
-        if( min_GOP_size == -1 )
-            min_GOP_size = 12;
-        if( max_GOP_size == -1 )
-            max_GOP_size = 12;
-        break;
-    case 2:
-        if( min_GOP_size == -1 )
-            min_GOP_size = 9;
-        if( max_GOP_size == -1 )
-            max_GOP_size = (norm == 'n' ? 18 : 15);
-        break;
-    }
-	if( svcd_scan_data == -1 )
-		svcd_scan_data = 0;
-}
-
-static int infer_mpeg1_aspect_code( char norm, mpeg_aspect_code_t mpeg2_code )
-{
-	switch( mpeg2_code )
-	{
-	case 1 :					/* 1:1 */
-		return 1;
-	case 2 :					/* 4:3 */
-		if( norm == 'p' || norm == 's' )
-			return 8;
-	    else if( norm == 'n' )
-			return 12;
-		else 
-			return 0;
-	case 3 :					/* 16:9 */
-		if( norm == 'p' || norm == 's' )
-			return 3;
-	    else if( norm == 'n' )
-			return 6;
-		else
-			return 0;
-	default :
-		return 0;				/* Unknown */
-	}
-}
-
-int MPEG2EncOptions::InferStreamDataParams( const MPEG2EncInVidParams &strm)
-{
-	int nerr = 0;
-
-
-	/* Infer norm, aspect ratios and frame_rate if not specified */
-	if( frame_rate == 0 )
-	{
-		if(strm.frame_rate_code<1 || strm.frame_rate_code>8)
-		{
-			mjpeg_error("Input stream with unknown frame-rate and no frame-rate specified with -a!");
-			++nerr;
-		}
-		else
-			frame_rate = strm.frame_rate_code;
-	}
-
-	if( norm == 0 && (strm.frame_rate_code==3 || strm.frame_rate_code == 2) )
-	{
-		mjpeg_info("Assuming norm PAL");
-		norm = 'p';
-	}
-	if( norm == 0 && (strm.frame_rate_code==4 || strm.frame_rate_code == 1) )
-	{
-		mjpeg_info("Assuming norm NTSC");
-		norm = 'n';
-	}
-
-
-
-
-
-	if( frame_rate != 0 )
-	{
-		if( strm.frame_rate_code != frame_rate && 
-			strm.frame_rate_code > 0 && 
-			strm.frame_rate_code < mpeg_num_framerates )
-		{
-			mjpeg_warn( "Specified display frame-rate %3.2f will over-ride", 
-						Y4M_RATIO_DBL(mpeg_framerate(frame_rate)));
-			mjpeg_warn( "(different!) frame-rate %3.2f of the input stream",
-						Y4M_RATIO_DBL(mpeg_framerate(strm.frame_rate_code)));
-		}
-	}
-
-	if( aspect_ratio == 0 )
-	{
-		aspect_ratio = strm.aspect_ratio_code;
-	}
-
-	if( aspect_ratio == 0 )
-	{
-		mjpeg_warn( "No aspect ratio specifed and no guess possible: assuming 4:3 display aspect!");
-		aspect_ratio = 2;
-	}
-
-	/* Convert to MPEG1 coding if we're generating MPEG1 */
-	if( mpeg == 1 )
-	{
-		aspect_ratio = infer_mpeg1_aspect_code( norm, aspect_ratio );
-	}
-
-    input_interlacing = strm.interlacing_code;
-	return nerr;
-}
-
-int MPEG2EncOptions::CheckBasicConstraints()
-{
-	int nerr = 0;
-	if( vid32_pulldown )
-	{
-		if( mpeg == 1 )
-			mjpeg_error_exit1( "MPEG-1 cannot encode 3:2 pulldown (for transcoding to VCD set 24fps)!" );
-
-		if( frame_rate != 4 && frame_rate != 5  )
-		{
-			if( frame_rate == 1 || frame_rate == 2 )
-			{
-				frame_rate += 3;
-				mjpeg_warn("3:2 movie pulldown with frame rate set to decode rate not display rate");
-				mjpeg_warn("3:2 Setting frame rate code to display rate = %d (%2.3f fps)", 
-						   frame_rate,
-						   Y4M_RATIO_DBL(mpeg_framerate(frame_rate)));
-
-			}
-			else
-			{
-				mjpeg_error( "3:2 movie pulldown not sensible for %2.3f fps dispay rate",
-							Y4M_RATIO_DBL(mpeg_framerate(frame_rate)));
-				++nerr;
-			}
-		}
-		if( fieldenc == 2 )
-		{
-			mjpeg_error( "3:2 pulldown only possible for frame pictures (-I 1 or -I 0)");
-			++nerr;
-		}
-	}
-	
-
-
-	if(  aspect_ratio > mpeg_num_aspect_ratios[mpeg-1] ) 
-	{
-		mjpeg_error("For MPEG-%d aspect ratio code  %d > %d illegal", 
-					mpeg, aspect_ratio, 
-					mpeg_num_aspect_ratios[mpeg-1]);
-		++nerr;
-	}
-		
-
-
-	if( min_GOP_size > max_GOP_size )
-	{
-		mjpeg_error( "Min GOP size must be <= Max GOP size" );
-		++nerr;
-	}
-
-    if( preserve_B && Bgrp_size == 0 )
-    {
-		mjpeg_error_exit1("Preserving I/P frame spacing is impossible for still encoding" );
-    }
-
-	if( preserve_B && 
-		( min_GOP_size % Bgrp_size != 0 ||
-		  max_GOP_size % Bgrp_size != 0 )
-		)
-	{
-		mjpeg_error("Preserving I/P frame spacing is impossible if min and max GOP sizes are" );
-		mjpeg_error_exit1("Not both divisible by %d", Bgrp_size );
-	}
-
-	switch( format )
-	{
-	case MPEG_FORMAT_SVCD_STILL :
-	case MPEG_FORMAT_SVCD_NSR :
-	case MPEG_FORMAT_SVCD : 
-		if( aspect_ratio != 2 && aspect_ratio != 3 )
-			mjpeg_error_exit1("SVCD only supports 4:3 and 16:9 aspect ratios");
-		if( svcd_scan_data )
-		{
-			mjpeg_warn( "Generating dummy SVCD scan-data offsets to be filled in by \"vcdimager\"");
-			mjpeg_warn( "If you're not using vcdimager you may wish to turn this off using -d");
-		}
-		break;
-	}
-	return nerr;
-}
 
 /**************************
  *
@@ -578,7 +88,9 @@ class MPEG2EncCmdLineOptions : public MPEG2EncOptions
 public:
     MPEG2EncCmdLineOptions();
     int SetFromCmdLine(int argc, char *argv[] );
-    void Usage(const char *str);
+    void Usage();
+    void StartupBanner();
+    void SetFormatPresets( const MPEG2EncInVidParams &strm );
 private:
     void DisplayFrameRates();
     void DisplayAspectRatios();
@@ -589,6 +101,12 @@ public:
     char *outfilename;
 
 };
+
+void MPEG2EncCmdLineOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
+{
+    if( MPEG2EncOptions::SetFormatPresets( strm ) )
+        Usage();
+}
 
 MPEG2EncCmdLineOptions::MPEG2EncCmdLineOptions() :
     MPEG2EncOptions()
@@ -723,7 +241,7 @@ void MPEG2EncCmdLineOptions::ParseCustomOption(const char *arg)
     	mjpeg_error_exit1("Unknown type '%s' used with -K/--custom-quant", arg);
 }
 
-void MPEG2EncCmdLineOptions::Usage(const char *str)
+void MPEG2EncCmdLineOptions::Usage()
 {
 	fprintf(stderr,
 "--verbose|-v num\n" 
@@ -835,7 +353,41 @@ void MPEG2EncCmdLineOptions::Usage(const char *str)
 }
 
 
+void MPEG2EncCmdLineOptions::StartupBanner()
+{
+	mjpeg_info("Encoding MPEG-%d video to %s",mpeg, outfilename);
+	mjpeg_info("Horizontal size: %d pel",in_img_width);
+	mjpeg_info("Vertical size: %d pel",in_img_height);
+	mjpeg_info("Aspect ratio code: %d = %s", 
+               aspect_ratio,
+               mpeg_aspect_code_definition(mpeg,aspect_ratio));
+	mjpeg_info("Frame rate code:   %d = %s",
+               frame_rate,
+               mpeg_framerate_code_definition(frame_rate));
 
+	if(bitrate) 
+		mjpeg_info("Bitrate: %d KBit/s",bitrate/1000);
+	else
+		mjpeg_info( "Bitrate: VCD");
+	if(quant) 
+		mjpeg_info("Quality factor: %d (Quantisation = %.0f) (1=best, 31=worst)",
+                   quant, 
+                   RateCtl::InvScaleQuant( mpeg == 1 ? 0 : 1, quant)
+            );
+
+	mjpeg_info("Field order for input: %s", 
+			   mpeg_interlace_code_definition(input_interlacing) );
+
+	if( seq_length_limit )
+	{
+		mjpeg_info( "New Sequence every %d Mbytes", seq_length_limit );
+		mjpeg_info( "Assuming non-video stream of %d Kbps", nonvid_bitrate );
+	}
+	else
+		mjpeg_info( "Sequence unlimited length" );
+
+	mjpeg_info("Search radius: %d",searchrad);
+}
 
 
 
@@ -1158,7 +710,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 	{
 		if( optind == argc-1 )
 		{
-			istrm_fd = open( argv[optind], O_RDONLY | O_BINARY );
+			istrm_fd = open( argv[optind], O_RDONLY );
 			if( istrm_fd < 0 )
 			{
 				mjpeg_error( "Unable to open: %s: ",argv[optind] );
@@ -1182,92 +734,52 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 }
 
 
+
+class YUV4MPEGEncoder : public MPEG2Encoder
+{
+public:
+    YUV4MPEGEncoder( MPEG2EncCmdLineOptions &options );
+};
+
+
+YUV4MPEGEncoder::YUV4MPEGEncoder( MPEG2EncCmdLineOptions &cmd_options ) :
+    MPEG2Encoder( cmd_options )
+{
+    reader = new Y4MPipeReader( parms, cmd_options.istrm_fd );
+    MPEG2EncInVidParams strm;
+
+
+	reader->StreamPictureParams(strm);
+	cmd_options.SetFormatPresets( strm );
+    cmd_options.StartupBanner();
+
+    writer = new FILE_StrmWriter( parms, cmd_options.outfilename );
+    quantizer = new Quantizer( parms );
+    coder = new MPEG2Coder( parms, *writer );
+    bitrate_controller = new OnTheFlyRateCtl( parms );
+    seqencoder = new SeqEncoder( parms, *reader, *quantizer,
+                                 *writer, *coder, *bitrate_controller);
+
+    
+    parms.Init( options );
+    reader->Init();
+    quantizer->Init();
+
+}
+
 int main( int argc,	char *argv[] )
 {
 
 	/* Set up error logging.  The initial handling level is LOG_INFO
 	 */
     MPEG2EncCmdLineOptions options;
+	mjpeg_default_handler_verbosity(options.verbose);
     if( options.SetFromCmdLine( argc, argv ) != 0 )
-		options.Usage(argv[0]);
+		options.Usage();
 
-	mjpeg_default_handler_verbosity(verbose);
+    YUV4MPEGEncoder encoder( options );
+    encoder.seqencoder->Encode();
 
-	/* open output file */
-    FILE *outfile;
-	if (!(outfile=fopen(options.outfilename,"wb")))
-	{
-		mjpeg_error_exit1("Couldn't create output file %s",options.outfilename);
-	}
-
-    MPEG2Encoder encoder( options.istrm_fd, options, outfile );
-    //istrm_fd = options.istrm_fd;
-
-	/* Read parameters of input stream used for infering MPEG parameters */
-    MPEG2EncInVidParams strm;
-	encoder.reader.StreamPictureParams(strm);
-	
-	/* Check parameters that cannot be checked when parsed/read */
-
-
-	
-    int nerr = 0;
-	options.SetFormatPresets( strm );
-	nerr += options.InferStreamDataParams(strm);
-	nerr += options.CheckBasicConstraints();
-
-	if(nerr) 
-	{
-		options.Usage(argv[0]);
-	}
-
-
-	mjpeg_info("Encoding MPEG-%d video to %s",options.mpeg,options.outfilename);
-	mjpeg_info("Horizontal size: %d pel",options.in_img_width);
-	mjpeg_info("Vertical size: %d pel",options.in_img_height);
-	mjpeg_info("Aspect ratio code: %d = %s", 
-               options.aspect_ratio,
-               mpeg_aspect_code_definition(options.mpeg,options.aspect_ratio));
-	mjpeg_info("Frame rate code:   %d = %s",
-               options.frame_rate,
-               mpeg_framerate_code_definition(options.frame_rate));
-
-	if(options.bitrate) 
-		mjpeg_info("Bitrate: %d KBit/s",options.bitrate/1000);
-	else
-		mjpeg_info( "Bitrate: VCD");
-	if(options.quant) 
-		mjpeg_info("Quality factor: %d (Quantisation = %d) (1=best, 31=worst)",
-                   options.quant, 
-                   (int)(inv_scale_quant( options.mpeg == 1 ? 0 : 1, 
-                                          options.quant))
-            );
-
-	mjpeg_info("Field order for input: %s", 
-			   mpeg_interlace_code_definition(options.input_interlacing) );
-
-	if( options.seq_length_limit )
-	{
-		mjpeg_info( "New Sequence every %d Mbytes", options.seq_length_limit );
-		mjpeg_info( "Assuming non-video stream of %d Kbps", options.nonvid_bitrate );
-	}
-	else
-		mjpeg_info( "Sequence unlimited length" );
-
-	mjpeg_info("Search radius: %d",options.searchrad);
-
-
-
-    encoder.parms.Init( options );
-
-
-    encoder.reader.Init();
-    encoder.quantizer.Init();
-	//init_motion();
-	//init_transform();
-	//init_predict();
-    encoder.seqencoder.Encode();
-	fclose(outfile);
 #ifdef OUTPUT_STAT
 	if( statfile != NULL )
 		fclose(statfile);
@@ -1278,703 +790,7 @@ int main( int argc,	char *argv[] )
 	return 0;
 }
 
-/*
-	Wrapper for memory allocation that checks for failure.
-*/
 
-void *bufalloc( size_t size )
-{
-	void *buf;
-    if( posix_memalign( &buf, static_cast<size_t>(BUFFER_ALIGN), size ) !=0 )
-		mjpeg_error_exit1("malloc failed");
-    return buf;
-}
-
-EncoderParams::EncoderParams()
-{
-    memset( this, -1, sizeof(EncoderParams) );
-}
-
-void EncoderParams::InitEncodingControls( const MPEG2EncOptions &options)
-{
-
-	/* Tune threading and motion compensation for specified number of CPU's 
-	   and specified speed parameters.
-	 */
-    
-	act_boost =  options.act_boost >= 0.0 
-        ? (options.act_boost+1.0)
-        : (options.act_boost-1.0);
-    boost_var_ceil = options.boost_var_ceil;
-	switch( options.num_cpus )
-	{
-
-	case 0 : /* Special case for debugging... turns of multi-threading */
-		max_encoding_frames = 1;
-		refine_from_rec = true;
-		parallel_read = false;
-		break;
-
-	case 1 :
-		max_encoding_frames = 1;
-		refine_from_rec = true;
-		parallel_read = true;
-		break;
-	case 2:
-		max_encoding_frames = 2;
-		refine_from_rec = true;
-		parallel_read = true;
-		break;
-	default :
-		max_encoding_frames = options.num_cpus > MAX_WORKER_THREADS-1 ?
-			                  MAX_WORKER_THREADS-1 :
-			                  options.num_cpus;
-		refine_from_rec = false;
-		parallel_read = true;
-		break;
-	}
-
-    max_active_ref_frames = 
-        M == 0 ? max_encoding_frames : (max_encoding_frames+2);
-    max_active_b_frames = 
-        M <= 1 ? 0 : max_encoding_frames+1;
-
-	me44_red		= options.me44_red;
-	me22_red		= options.me22_red;
-
-    unit_coeff_elim	= options.unit_coeff_elim;
-
-	/* round picture dimensions to nearest multiple of 16 or 32 */
-	mb_width = (horizontal_size+15)/16;
-	mb_height = prog_seq ? (vertical_size+15)/16 : 2*((vertical_size+31)/32);
-	mb_height2 = fieldpic ? mb_height>>1 : mb_height; /* for field pictures */
-	enc_width = 16*mb_width;
-	enc_height = 16*mb_height;
-
-#ifdef DEBUG_MOTION_EST
-    static const int MARGIN = 64;
-#else
-    static const int MARGIN = 0;
-#endif
-    
-#ifdef HAVE_ALTIVEC
-	/* Pad phy_width to 64 so that the rowstride of 4*4
-	 * sub-sampled data will be a multiple of 16 (ideal for AltiVec)
-	 * and the rowstride of 2*2 sub-sampled data will be a multiple
-	 * of 32. Height does not affect rowstride, no padding needed.
-	 */
-	phy_width = (enc_width + 63) & (~63);
-#else
-	phy_width = enc_width+MARGIN;
-#endif
-	phy_height = enc_height+MARGIN;
-
-	/* Calculate the sizes and offsets in to luminance and chrominance
-	   buffers.  A.Stevens 2000 for luminance data we allow space for
-	   fast motion estimation data.  This is actually 2*2 pixel
-	   sub-sampled uint8_t followed by 4*4 sub-sampled.  We add an
-	   extra row to act as a margin to allow us to neglect / postpone
-	   edge condition checking in time-critical loops...  */
-
-	phy_chrom_width = (CHROMA420==CHROMA444) 
-        ? phy_width 
-        : phy_width>>1;
-	phy_chrom_height = (CHROMA420!=CHROMA420) 
-        ? phy_height 
-        : phy_height>>1;
-	enc_chrom_width = (CHROMA420==CHROMA444) 
-        ? enc_width 
-        : enc_width>>1;
-	enc_chrom_height = (CHROMA420!=CHROMA420) 
-        ? enc_height 
-        : enc_height>>1;
-
-	phy_height2 = fieldpic ? phy_height>>1 : phy_height;
-	enc_height2 = fieldpic ? enc_height>>1 : enc_height;
-	phy_width2 = fieldpic ? phy_width<<1 : phy_width;
-	phy_chrom_width2 = fieldpic 
-        ? phy_chrom_width<<1 
-        : phy_chrom_width;
- 
-	lum_buffer_size = (phy_width*phy_height) +
-					 sizeof(uint8_t) *(phy_width/2)*(phy_height/2) +
-					 sizeof(uint8_t) *(phy_width/4)*(phy_height/4);
-	chrom_buffer_size = phy_chrom_width*phy_chrom_height;
-    
-
-	fsubsample_offset = (phy_width)*(phy_height) * sizeof(uint8_t);
-	qsubsample_offset =  fsubsample_offset 
-        + (phy_width/2)*(phy_height/2)*sizeof(uint8_t);
-
-	mb_per_pict = mb_width*mb_height2;
-
-
-#ifdef OUTPUT_STAT
-	/* open statistics output file */
-	if (!(statfile = fopen(statname,"w")))
-	{
-		mjpeg_error_exit1( "Couldn't create statistics output file %s",
-						   statname);
-	}
-#endif
-}
-
-
-static int f_code( int max_radius )
-{
-	int c=5;
-	if( max_radius < 64) c = 4;
-	if( max_radius < 32) c = 3;
-	if( max_radius < 16) c = 2;
-	if( max_radius < 8) c = 1;
-	return c;
-}
-
-void EncoderParams::Init( const MPEG2EncOptions &options )
-{
-	int i;
-    const char *msg;
-
-	//istrm_nframes = 999999999; /* determined by EOF of stdin */
-
-	N_min = options.min_GOP_size;      /* I frame distance */
-	N_max = options.max_GOP_size;
-    closed_GOPs = options.closed_GOPs;
-	mjpeg_info( "GOP SIZE RANGE %d TO %d %s", 
-                N_min, N_max,
-                closed_GOPs ? "(all GOPs closed)" : "" 
-                );
-	M = options.Bgrp_size;             /* I or P frame distance */
-	M_min = options.preserve_B ? M : 1;
-	if( M >= N_min )
-		M = N_min-1;
-	mpeg1           = (options.mpeg == 1);
-	fieldpic        = (options.fieldenc == 2);
-
-    // SVCD and probably DVD? mandate progressive_sequence = 0 
-    switch( options.format )
-    {
-    case MPEG_FORMAT_SVCD :
-    case MPEG_FORMAT_SVCD_NSR :
-    case MPEG_FORMAT_SVCD_STILL :
-    case MPEG_FORMAT_DVD :
-    case MPEG_FORMAT_DVD_NAV :
-        prog_seq = 0;
-        break;
-    default :
-        prog_seq        = (options.mpeg == 1 || options.fieldenc == 0);
-        break;
-    }
-	pulldown_32     = options.vid32_pulldown;
-
-	aspectratio     = options.aspect_ratio;
-	frame_rate_code = options.frame_rate;
-	dctsatlim		= mpeg1 ? 255 : 2047;
-
-	/* If we're using a non standard (VCD?) profile bit-rate adjust	the vbv
-		buffer accordingly... */
-
-	if(options.bitrate == 0 )
-	{
-		mjpeg_error_exit1( "Generic format - must specify bit-rate!" );
-	}
-
-	still_size = 0;
-	if( MPEG_STILLS_FORMAT(options.format) )
-	{
-		vbv_buffer_code = options.vbv_buffer_still_size / 2048;
-		vbv_buffer_still_size = options.pad_stills_to_vbv_buffer_size;
-		bit_rate = options.bitrate;
-		still_size = options.still_size;
-	}
-	else if( options.mpeg == 1 )
-	{
-		/* Scale VBV relative to VCD  */
-		bit_rate = MAX(10000, options.bitrate);
-		vbv_buffer_code = (20 * options.bitrate  / 1151929);
-	}
-	else
-	{
-		bit_rate = MAX(10000, options.bitrate);
-		vbv_buffer_code = MIN(112,options.video_buffer_size / 2);
-	}
-	vbv_buffer_size = vbv_buffer_code*16384;
-
-	if( options.quant )
-	{
-		quant_floor = inv_scale_quant( options.mpeg == 1 ? 0 : 1, 
-                                           options.quant );
-	}
-	else
-	{
-		quant_floor = 0.0;		/* Larger than max quantisation */
-	}
-
-	video_buffer_size = options.video_buffer_size * 1024 * 8;
-	
-	seq_hdr_every_gop = options.seq_hdr_every_gop;
-	seq_end_every_gop = options.seq_end_every_gop;
-	svcd_scan_data = options.svcd_scan_data;
-	ignore_constraints = options.ignore_constraints;
-	seq_length_limit = options.seq_length_limit;
-	nonvid_bit_rate = options.nonvid_bitrate * 1000;
-	low_delay       = 0;
-	constrparms     = (options.mpeg == 1 && 
-						   !MPEG_STILLS_FORMAT(options.format));
-	profile         = 4; /* Main profile resp. */
-	level           = 8; /* Main Level      CCIR 601 rates */
-	switch(options.norm)
-	{
-	case 'p': video_format = 1; break;
-	case 'n': video_format = 2; break;
-	case 's': video_format = 3; break;
-	default:  video_format = 5; break; /* unspec. */
-	}
-	switch(options.norm)
-	{
-	case 's':
-	case 'p':  /* ITU BT.470  B,G */
-		color_primaries = 5;
-		transfer_characteristics = 5; /* Gamma = 2.8 (!!) */
-		matrix_coefficients = 5; 
-        msg = "PAL B/G";
-		break;
-	case 'n': /* SMPTPE 170M "modern NTSC" */
-		color_primaries = 6;
-		matrix_coefficients = 6; 
-		transfer_characteristics = 6;
-        msg = "NTSC";
-		break; 
-	default:   /* unspec. */
-		color_primaries = 2;
-		matrix_coefficients = 2; 
-		transfer_characteristics = 2;
-        msg = "unspecified";
-		break;
-	}
-    mjpeg_info( "Setting colour/gamma parameters to \"%s\"", msg);
-
-    horizontal_size = options.in_img_width;
-    vertical_size = options.in_img_height;
-	switch( options.format )
-	{
-	case MPEG_FORMAT_SVCD_STILL :
-	case MPEG_FORMAT_SVCD_NSR :
-	case MPEG_FORMAT_SVCD :
-    case MPEG_FORMAT_DVD :
-    case MPEG_FORMAT_DVD_NAV :
-        /* It would seem DVD and perhaps SVCD demand a 540 pixel display size
-           for 4:3 aspect video. However, many players expect 480 and go weird
-           if this isn't set...
-        */
-        if( options.hack_svcd_hds_bug )
-        {
-            display_horizontal_size  = options.in_img_width;
-            display_vertical_size    = options.in_img_height;
-        }
-        else
-        {
-            display_horizontal_size  = aspectratio == 2 ? 540 : 720;
-            display_vertical_size    = options.in_img_height;
-        }
-		break;
-	default:
-		display_horizontal_size  =  options.in_img_width;
-		display_vertical_size    =  options.in_img_height;
-		break;
-	}
-
-	dc_prec         = options.mpeg2_dc_prec;  /* 9 bits */
-    topfirst = 0;
-	if( ! prog_seq )
-	{
-		int fieldorder;
-		if( options.force_interlacing != Y4M_UNKNOWN ) 
-		{
-			mjpeg_info( "Forcing playback video to be: %s",
-						mpeg_interlace_code_definition(	options.force_interlacing ) );	
-			fieldorder = options.force_interlacing;
-		}
-		else
-			fieldorder = options.input_interlacing;
-
-		topfirst = (fieldorder == Y4M_ILACE_TOP_FIRST || 
-                              fieldorder ==Y4M_ILACE_NONE );
-	}
-	else
-		topfirst = 0;
-
-    // Restrict to frame motion estimation and DCT modes only when MPEG1
-    // or when progressive content is specified for MPEG2.
-    // Note that for some profiles although we have progressive sequence 
-    // header bit = 0 we still only encode with frame modes (for speed).
-	frame_pred_dct_tab[0] 
-		= frame_pred_dct_tab[1] 
-		= frame_pred_dct_tab[2] 
-        = (options.mpeg == 1 || options.fieldenc == 0) ? 1 : 0;
-
-    mjpeg_info( "Progressive format frames = %d", 	frame_pred_dct_tab[0] );
-	qscale_tab[0] 
-		= qscale_tab[1] 
-		= qscale_tab[2] 
-		= options.mpeg == 1 ? 0 : 1;
-
-	intravlc_tab[0] 
-		= intravlc_tab[1] 
-		= intravlc_tab[2] 
-		= options.mpeg == 1 ? 0 : 1;
-
-	altscan_tab[2]  
-		= altscan_tab[1]  
-		= altscan_tab[0]  
-		= (options.mpeg == 1 || options.hack_altscan_bug) ? 0 : 1;
-	
-
-	/*  A.Stevens 2000: The search radius *has* to be a multiple of 8
-		for the new fast motion compensation search to work correctly.
-		We simply round it up if needs be.  */
-
-    int searchrad = options.searchrad;
-	if(searchrad*M>127)
-	{
-		searchrad = 127/M;
-		mjpeg_warn("Search radius reduced to %d",searchrad);
-	}
-	
-	{ 
-		int radius_x = searchrad;
-		int radius_y = searchrad*vertical_size/horizontal_size;
-
-		/* TODO: These f-codes should really be adjusted for each
-		   picture type... */
-
-		motion_data = (struct motion_data *)malloc(M*sizeof(struct motion_data));
-		if (!motion_data)
-			mjpeg_error_exit1("malloc failed");
-
-		for (i=0; i<M; i++)
-		{
-			if(i==0)
-			{
-				motion_data[i].sxf = round_search_radius(radius_x*M);
-				motion_data[i].forw_hor_f_code  = f_code(motion_data[i].sxf);
-				motion_data[i].syf = round_search_radius(radius_y*M);
-				motion_data[i].forw_vert_f_code  = f_code(motion_data[i].syf);
-			}
-			else
-			{
-				motion_data[i].sxf = round_search_radius(radius_x*i);
-				motion_data[i].forw_hor_f_code  = f_code(motion_data[i].sxf);
-				motion_data[i].syf = round_search_radius(radius_y*i);
-				motion_data[i].forw_vert_f_code  = f_code(motion_data[i].syf);
-				motion_data[i].sxb = round_search_radius(radius_x*(M-i));
-				motion_data[i].back_hor_f_code  = f_code(motion_data[i].sxb);
-				motion_data[i].syb = round_search_radius(radius_y*(M-i));
-				motion_data[i].back_vert_f_code  = f_code(motion_data[i].syb);
-			}
-
-			/* MPEG-1 demands f-codes for vertical and horizontal axes are
-			   identical!!!!
-			*/
-			if( mpeg1 )
-			{
-				motion_data[i].syf = motion_data[i].sxf;
-				motion_data[i].syb  = motion_data[i].sxb;
-				motion_data[i].forw_vert_f_code  = 
-					motion_data[i].forw_hor_f_code;
-				motion_data[i].back_vert_f_code  = 
-					motion_data[i].back_hor_f_code;
-				
-			}
-		}
-		
-	}
-	
-
-
-	/* make sure MPEG specific parameters are valid */
-	RangeChecks();
-
-	/* Set the frame decode rate and frame display rates.
-	   For 3:2 movie pulldown decode rate is != display rate due to
-	   the repeated field that appears every other frame.
-	*/
-	frame_rate = Y4M_RATIO_DBL(mpeg_framerate(frame_rate_code));
-	if( options.vid32_pulldown )
-	{
-		decode_frame_rate = frame_rate * (2.0 + 2.0) / (3.0 + 2.0);
-		mjpeg_info( "3:2 Pulldown selected frame decode rate = %3.3f fps", 
-					decode_frame_rate);
-	}
-	else
-		decode_frame_rate = frame_rate;
-
-	if ( !mpeg1)
-	{
-		ProfileAndLevelChecks();
-	}
-	else
-	{
-		/* MPEG-1 */
-		if (constrparms)
-		{
-			if (horizontal_size>768
-				|| vertical_size>576
-				|| ((horizontal_size+15)/16)*((vertical_size+15)/16)>396
-				|| ((horizontal_size+15)/16)*((vertical_size+15)/16)*frame_rate>396*25.0
-				|| frame_rate>30.0)
-			{
-				mjpeg_info( "size - setting constrained_parameters_flag = 0");
-				constrparms = 0;
-			}
-		}
-
-		if (constrparms)
-		{
-			for (i=0; i<M; i++)
-			{
-				if (motion_data[i].forw_hor_f_code>4)
-				{
-					mjpeg_info("Hor. motion search forces constrained_parameters_flag = 0");
-					constrparms = 0;
-					break;
-				}
-
-				if (motion_data[i].forw_vert_f_code>4)
-				{
-					mjpeg_info("Ver. motion search forces constrained_parameters_flag = 0");
-					constrparms = 0;
-					break;
-				}
-
-				if (i!=0)
-				{
-					if (motion_data[i].back_hor_f_code>4)
-					{
-						mjpeg_info("Hor. motion search setting constrained_parameters_flag = 0");
-						constrparms = 0;
-						break;
-					}
-
-					if (motion_data[i].back_vert_f_code>4)
-					{
-						mjpeg_info("Ver. motion search setting constrained_parameters_flag = 0");
-						constrparms = 0;
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	/* relational checks */
-	if ( mpeg1 )
-	{
-		if (!prog_seq)
-		{
-			mjpeg_warn("mpeg1 specified - setting progressive_sequence = 1");
-			prog_seq = 1;
-		}
-
-		if (dc_prec!=0)
-		{
-			mjpeg_info("mpeg1 - setting intra_dc_precision = 0");
-			dc_prec = 0;
-		}
-
-		for (i=0; i<3; i++)
-			if (qscale_tab[i])
-			{
-				mjpeg_info("mpeg1 - setting qscale_tab[%d] = 0",i);
-				qscale_tab[i] = 0;
-			}
-
-		for (i=0; i<3; i++)
-			if (intravlc_tab[i])
-			{
-				mjpeg_info("mpeg1 - setting intravlc_tab[%d] = 0",i);
-				intravlc_tab[i] = 0;
-			}
-
-		for (i=0; i<3; i++)
-			if (altscan_tab[i])
-			{
-				mjpeg_info("mpeg1 - setting altscan_tab[%d] = 0",i);
-				altscan_tab[i] = 0;
-			}
-	}
-
-	if ( !mpeg1 && constrparms)
-	{
-		mjpeg_info("not mpeg1 - setting constrained_parameters_flag = 0");
-		constrparms = 0;
-	}
-
-
-	if( (!prog_seq || fieldpic != 0 ) &&
-		( (vertical_size+15) / 16)%2 != 0 )
-	{
-		mjpeg_warn( "Frame height won't split into two equal field pictures...");
-		mjpeg_warn( "forcing encoding as progressive video");
-		prog_seq = 1;
-		fieldpic = 0;
-	}
-
-
-	if (prog_seq && fieldpic != 0)
-	{
-		mjpeg_info("prog sequence - forcing progressive frame encoding");
-		fieldpic = 0;
-	}
-
-
-	if (prog_seq && topfirst)
-	{
-		mjpeg_info("prog sequence setting top_field_first = 0");
-		topfirst = 0;
-	}
-
-	/* search windows */
-	for (i=0; i<M; i++)
-	{
-		if (motion_data[i].sxf > (4U<<motion_data[i].forw_hor_f_code)-1)
-		{
-			mjpeg_info(
-				"reducing forward horizontal search width to %d",
-						(4<<motion_data[i].forw_hor_f_code)-1);
-			motion_data[i].sxf = (4U<<motion_data[i].forw_hor_f_code)-1;
-		}
-
-		if (motion_data[i].syf > (4U<<motion_data[i].forw_vert_f_code)-1)
-		{
-			mjpeg_info(
-				"reducing forward vertical search width to %d",
-				(4<<motion_data[i].forw_vert_f_code)-1);
-			motion_data[i].syf = (4U<<motion_data[i].forw_vert_f_code)-1;
-		}
-
-		if (i!=0)
-		{
-			if (motion_data[i].sxb > (4U<<motion_data[i].back_hor_f_code)-1)
-			{
-				mjpeg_info(
-					"reducing backward horizontal search width to %d",
-					(4<<motion_data[i].back_hor_f_code)-1);
-				motion_data[i].sxb = (4U<<motion_data[i].back_hor_f_code)-1;
-			}
-
-			if (motion_data[i].syb > (4U<<motion_data[i].back_vert_f_code)-1)
-			{
-				mjpeg_info(
-					"reducing backward vertical search width to %d",
-					(4<<motion_data[i].back_vert_f_code)-1);
-				motion_data[i].syb = (4U<<motion_data[i].back_vert_f_code)-1;
-			}
-		}
-	}
-
-    InitQuantMatrices( options );
-    InitEncodingControls( options );
-}
-
-/*
-  If the use has selected suppression of hf noise via quantisation
-  then we boost quantisation of hf components EXPERIMENTAL: currently
-  a linear ramp from 0 at 4pel to hf_q_boost increased
-  quantisation...
-
-*/
-
-static int quant_hfnoise_filt(int orgquant, int qmat_pos, double hf_q_boost )
-    {
-    int orgdist = intmax(qmat_pos % 8, qmat_pos/8);
-    double qboost;
-
-    /* Maximum hf_q_boost quantisation boost for HF components.. */
-    qboost = 1.0 + ((hf_q_boost * orgdist) / 8);
-    return static_cast<int>(orgquant * qboost);
-    }
-
-
-void EncoderParams::InitQuantMatrices( const MPEG2EncOptions &options )
-{
-    int i, v;
-    const char *msg = NULL;
-    const uint16_t *qmat = 0;
-    const uint16_t *niqmat = 0;
-    load_iquant = 0;
-    load_niquant = 0;
-
-    /* bufalloc to ensure alignment */
-    intra_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
-    inter_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
-
-    switch  (options.hf_quant)
-    {
-    case  0:    /* No -N, -H or -K used.  Default matrices */
-        msg = "Using default unmodified quantization matrices";
-        qmat = default_intra_quantizer_matrix;
-        niqmat = default_nonintra_quantizer_matrix;
-        break;
-    case  1:    /* "-N value" used but not -K or -H */
-        msg = "Using -N modified default quantization matrices";
-        qmat = default_intra_quantizer_matrix;
-        niqmat = default_nonintra_quantizer_matrix;
-        load_iquant = 1;
-        load_niquant = 1;
-        break;
-    case  2:    /* -H used OR -H followed by "-N value" */
-        msg = "Setting hi-res intra Quantisation matrix";
-        qmat = hires_intra_quantizer_matrix;
-        niqmat = hires_nonintra_quantizer_matrix;
-        load_iquant = 1;
-        if(options.hf_q_boost)
-            load_niquant = 1;   /* Custom matrix if -N used */
-        break;
-    case  3:
-        msg = "KVCD Notch Quantization Matrix";
-        qmat = kvcd_intra_quantizer_matrix;
-        niqmat = kvcd_nonintra_quantizer_matrix;
-        load_iquant = 1;
-        load_niquant = 1;
-        break;
-    case  4:
-        msg = "TMPGEnc Quantization matrix";
-        qmat = tmpgenc_intra_quantizer_matrix;
-        niqmat = tmpgenc_nonintra_quantizer_matrix;
-        load_iquant = 1;
-        load_niquant = 1;
-        break;
-    case  5:            /* -K file=qmatrixfilename */
-        msg = "Loading custom matrices from user specified file";
-        load_iquant = 1;
-        load_niquant = 1;
-        qmat = options.custom_intra_quantizer_matrix;
-        niqmat = options.custom_nonintra_quantizer_matrix;
-        break;
-    default:
-        mjpeg_error_exit1("Help!  Unknown hf_quant value %d",
-                          options.hf_quant);
-        /* NOTREACHED */
-    }
-
-    if  (msg)
-        mjpeg_info(msg);
-    
-    for (i = 0; i < 64; i++)
-    {
-        v = quant_hfnoise_filt(qmat[i], i, options.hf_q_boost);
-        if  (v < 1 || v > 255)
-            mjpeg_error_exit1("bad intra value after -N adjust");
-        intra_q[i] = v;
-
-        v = quant_hfnoise_filt(niqmat[i], i, options.hf_q_boost);
-        if  (v < 1 || v > 255)
-            mjpeg_error_exit1("bad nonintra value after -N adjust");
-        inter_q[i] = v;
-    }
-
-}
 
 
 /* 

@@ -29,6 +29,7 @@
 class MPEG2Encoder;
 class EncoderParams;
 class MPEG2Coder;
+class PictureReader;
 
 struct StreamState 
 {
@@ -55,7 +56,13 @@ struct StreamState
 class SeqEncoder
 {
 public:
-	SeqEncoder( MPEG2Encoder &encoder );
+	SeqEncoder( EncoderParams &encparams,
+                PictureReader &reader,
+                Quantizer &quantizer,
+                ElemStrmWriter &writer,
+                MPEG2Coder &coder,
+                RateCtl    &ratecontroller
+        );
 	~SeqEncoder();
 
 	void Encode();
@@ -75,9 +82,13 @@ private:
 	void ParallelEncodeWorker();
 	void ParallelEncode( Picture *picture );
 	void SequentialEncode( Picture *picture );
-	MPEG2Encoder &encoder;
     EncoderParams &encparams;
+    PictureReader &reader;
+    Quantizer &quantizer;
+    ElemStrmWriter &writer;
     MPEG2Coder &coder;
+    RateCtl    &ratecontroller;
+
 	mp_semaphore_t worker_available;
 	mp_semaphore_t picture_available;
 	mp_semaphore_t picture_started;

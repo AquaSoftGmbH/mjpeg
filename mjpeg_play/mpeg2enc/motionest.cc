@@ -50,14 +50,15 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <cassert>
-#include "global.h"
-#include "math.h"
+#include <math.h>
+#include <mpeg2syntaxcodes.h>
 #include "cpu_accel.h"
 #include "simd.h"
 #include "fastintfns.h"
 #include "motionsearch.h"
 #include "mjpeg_logging.h"
-#include "syntaxparams.h"
+#include "encoderparams.hh"
+#include "picture.hh"
 
 /* Macro-block Motion estimation results record */
 
@@ -131,17 +132,6 @@ inline int mv_coding_penalty( int mv_x, int mv_y )
     return (intabs(mv_x) + intabs(mv_y))<<3;
 }
 
-/*
- *  Initialise motion estimation - currently only selection of which
- * versions of the various low level computation routines to use
- * 
- */
-
-void init_motion(void)
-{
-	init_motion_search();
-}
-
 
 /* 
  *  Compute subsampled images for fast motion compensation search
@@ -149,50 +139,7 @@ void init_motion(void)
  *  as two half-height images side-by-side.
  */
 
-void motion_subsampled_lum( Picture *picture )
-{
-	int linestride;
-    EncoderParams &eparams = picture->encparams;
-	/* In an interlaced field the "next" line is 2 width's down rather
-	   than 1 width down  .
-       TODO: Shoudn't we be treating the frame as interlaced for
-       frame based interlaced encoding too... or at least for the
-       interlaced ME modes?
-    */
 
-	if (!eparams.fieldpic)
-	{
-		linestride = eparams.phy_width;
-	}
-	else
-	{
-		linestride = 2*eparams.phy_width;
-	}
-
-	psubsample_image( picture->curorg[0], 
-					 linestride,
-					 picture->curorg[0]+eparams.fsubsample_offset, 
-					 picture->curorg[0]+eparams.qsubsample_offset );
-}
-
-/*
- * motion estimation top level entry point
- *
- * Fills in the macro-block info of the specified picture with 
- * best-guess motion estimates.  Seperate frame and field based MC
- * routines are used depending on picture (and hence stream) structure.
- */
-
-
-void motion_estimation(	Picture *picture )
-{
-	vector<MacroBlock>::iterator mbi;
-
-    for( mbi = picture->mbinfo.begin(); mbi < picture->mbinfo.end(); ++mbi )
-    {
-        mbi->MotionEstimate();
-    }
-}
 
 /*
  * Compute the variance of the residual of uni-directionally motion

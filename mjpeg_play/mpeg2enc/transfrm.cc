@@ -26,9 +26,10 @@
 #include <config.h>
 #include <stdio.h>
 #include <math.h>
+#include "mpeg2syntaxcodes.h"
 #include "macroblock.hh"
 #include "picture.hh"
-#include "syntaxparams.h"
+#include "encoderparams.hh"
 #include "transfrm_ref.h"
 
 
@@ -77,17 +78,19 @@ void MacroBlock::Transform()
 			/* chrominance */
 
 			/* scale coordinates */
-			i1 = (CHROMA420==CHROMA444) ? i : i>>1;
-			j1 = (CHROMA420!=CHROMA420) ? j : j>>1;
+			i1 = i>>1;
+			j1 = j>>1;
 
-			if ((picture->pict_struct==FRAME_PICTURE) && field_dct
-				&& (CHROMA420!=CHROMA420))
+#ifdef NO_NON_420_SUPPORT
+			if(picture->pict_struct==FRAME_PICTURE) && field_dct
+				 && (CHROMA420!=CHROMA420))
 			{
 				/* field DCT */
 				lx =  picture->encparams.phy_chrom_width<<1;
 				offs = i1 + (n&8) +  picture->encparams.phy_chrom_width*(j1+((n&2)>>1));
 			}
 			else
+#endif
 			{
 				/* frame DCT */
 				lx =  picture->encparams.phy_chrom_width2;
@@ -153,9 +156,10 @@ void MacroBlock::ITransform()
 			/* chrominance */
 
 			/* scale coordinates */
-			i1 = (CHROMA420==CHROMA444) ? i : i>>1;
-			j1 = (CHROMA420!=CHROMA420) ? j : j>>1;
+			i1 = i>>1;
+			j1 = j>>1;
 
+#ifdef NO_NON_420_SUPPORT
 			if ((picture->pict_struct==FRAME_PICTURE) && field_dct
 				&& (CHROMA420!=CHROMA420))
 			{
@@ -164,6 +168,7 @@ void MacroBlock::ITransform()
 				offs = i1 + (n&8) +  picture->encparams.phy_chrom_width*(j1+((n&2)>>1));
 			}
 			else
+#endif
 			{
 				/* frame DCT */
 				lx =  picture->encparams.phy_chrom_width2;
@@ -178,15 +183,6 @@ void MacroBlock::ITransform()
 	}
 }
 
-/* inverse transform prediction error and add prediction */
-void itransform(Picture *picture)
-{
-    vector<MacroBlock>::iterator mbi = picture->mbinfo.begin();
-	for( mbi = picture->mbinfo.begin(); mbi < picture->mbinfo.end(); ++mbi)
-	{
-		mbi->ITransform();
-	}
-}
 
 
 

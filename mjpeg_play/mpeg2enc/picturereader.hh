@@ -23,17 +23,16 @@
 
 #include <config.h>
 #include <mjpeg_types.h>
-#include "mpeg2enc.h"
 #include <pthread.h>
 #include "picture.hh"
 
-class MPEG2Encoder;
+class EncoderParams;
 struct MPEG2EncInVidParams;
 
 class PictureReader
 {
 public:
-	PictureReader(MPEG2Encoder &encoder );
+	PictureReader(EncoderParams &encoder );
     virtual ~PictureReader();
     void Init();
     void ReadPictureData( int num_frame, uint8_t **frame);
@@ -53,7 +52,6 @@ protected:
     virtual bool LoadFrame( ) = 0;
     
 protected:
-    MPEG2Encoder &encoder;
     EncoderParams &encparams;
 	pthread_mutex_t input_imgs_buf_lock;
 
@@ -77,7 +75,7 @@ protected:
 class Y4MPipeReader : public PictureReader
 {
 public:
-    Y4MPipeReader( MPEG2Encoder &encoder, int pipe_fd );
+    Y4MPipeReader( EncoderParams &encparams, int pipe_fd );
     ~Y4MPipeReader() {}
     void StreamPictureParams( MPEG2EncInVidParams &strm );
 protected:

@@ -24,42 +24,41 @@
 #include "mjpeg_types.h"
 
 class MacroBlock;
-class MPEG2Encoder;
 class EncoderParams;
-class ElemStrmWriter;
+class Picture;
 
 class RateCtl
 {
 public:
-    RateCtl( MPEG2Encoder &encoder );
+    RateCtl( EncoderParams &encoder );
 	virtual void InitSeq( bool reinit ) = 0;
 	virtual void InitGOP( int nb, int np ) = 0;
-	virtual void InitPict (Picture &picture)= 0;
-	virtual void UpdatePict (Picture &picture) = 0;
-	virtual int  MacroBlockQuant( const MacroBlock &mb) = 0;
+	virtual void InitPict (Picture &picture, int64_t bitcount)= 0;
+	virtual int UpdatePict (Picture &picture, int64_t bitcount) = 0;
+	virtual int  MacroBlockQuant( const MacroBlock &mb, int64_t bitcount) = 0;
 	virtual int  InitialMacroBlockQuant(Picture &picture) = 0;
-	virtual void VbvEndOfPict (Picture &picture) = 0;
 	virtual void CalcVbvDelay (Picture &picture) = 0;
+    static double InvScaleQuant(  int q_scale_type, int raw_code );
+    static int ScaleQuant( int q_scale_type, double quant );
 protected:
-    MPEG2Encoder &encoder;
+	virtual void VbvEndOfPict (Picture &picture, int64_t bitcount) = 0;
     EncoderParams &encparams;
 };
 
 class OnTheFlyRateCtl : public RateCtl
 {
 public:
-	OnTheFlyRateCtl( MPEG2Encoder &encoder );
+	OnTheFlyRateCtl( EncoderParams &encoder );
 	virtual void InitSeq( bool reinit );
 	virtual void InitGOP( int nb, int np );
-	virtual void InitPict (Picture &picture);
-	virtual void UpdatePict (Picture &picture);
-	virtual int  MacroBlockQuant( const MacroBlock &mb );
+	virtual void InitPict (Picture &picture, int64_t bitcount);
+	virtual int UpdatePict (Picture &picture, int64_t bitcount);
+	virtual int  MacroBlockQuant( const MacroBlock &mb, int64_t bitcount );
 	virtual int  InitialMacroBlockQuant(Picture &picture);
-	virtual void VbvEndOfPict (Picture &picture);
 	virtual void CalcVbvDelay (Picture &picture);
 private:
+	virtual void VbvEndOfPict (Picture &picture, int64_t bitcount);
 
-    ElemStrmWriter &writer;
    /* X's measure global complexity (Chi! not X!) of frame types.
 	* Actually: X = average quantisation * bits allocated in *previous* frame
 	* N.b. the choice of measure is *not* arbitrary.  The feedback bit

@@ -1,8 +1,9 @@
 #ifndef _MPEG2CODER_HH
 #define _MPEG2CODER_HH
 
+/* mpeg2coder.hh - MPEG2 packed bit / VLC syntax coding engine */
 
-/*  (C) 2000/2001 Andrew Stevens */
+/*  (C) 2003 Andrew Stevens */
 
 /*  This Software is free software; you can redistribute it
  *  and/or modify it under the terms of the GNU General Public License
@@ -26,14 +27,12 @@
 #include "synchrolib.h"
 #include "elemstrmwriter.hh"
 
-class MPEG2Encoder;
-class EncoderParams;
 class Picture;
 
 class MPEG2Coder
 {
 public:
-	MPEG2Coder( MPEG2Encoder &encoder );
+	MPEG2Coder( EncoderParams &encoder, ElemStrmWriter &writer );
 
 	void PutUserData( const uint8_t *userdata, int len);
 	void PutGopHdr(int frame, int closed_gop );
@@ -109,7 +108,6 @@ private:
     int CBP_bits(int cbp);
 
 private:
-	MPEG2Encoder &encoder;
 	EncoderParams &encparams;
     ElemStrmWriter &writer;
 

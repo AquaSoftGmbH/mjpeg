@@ -48,7 +48,7 @@
 
 #include <config.h>
 #include <stdio.h>
-#include "mpeg2enc.h"
+#include "mpeg2syntaxcodes.h"
 #include "tables.h"
 #include "simd.h"
 #include "mpeg2encoder.hh"
@@ -364,7 +364,7 @@ void Picture::PutHeadersAndEncoding( RateCtl &ratecontrol )
 	}
 
 	ratecontrol.CalcVbvDelay(*this);
-    ratecontrol.InitPict(*this); /* set up rate control */
+    ratecontrol.InitPict(*this, coder.BitCount()); /* set up rate control */
 
 	/* Sequence header if new sequence or we're generating for a
        format like (S)VCD that mandates sequence headers every GOP to
@@ -439,11 +439,11 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
 			cur_mb = &mbinfo[k];
 
 			/* determine mquant (rate control) */
-            cur_mb->mquant = ratectl.MacroBlockQuant( *cur_mb );
+            cur_mb->mquant = ratectl.MacroBlockQuant( *cur_mb, coder.BitCount() );
 
 			/* quantize macroblock : N.b. the MB_PATTERN bit may be
                set as a side-effect of this call. */
-            cur_mb->Quantize( encoder.quantizer);
+            cur_mb->Quantize( quantizer);
 
 			/* output mquant if it has changed */
 			if (cur_mb->cbp && mquant_pred!=cur_mb->mquant)
@@ -494,8 +494,6 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
                 if (cur_mb->final_me.mb_type & MB_PATTERN)
                 {
                     coder.PutCPB((cur_mb->cbp >> (BLOCK_COUNT-6)) & 63);
-                    if (CHROMA420!=CHROMA420)
-                        coder.PutBits(cur_mb->cbp,BLOCK_COUNT-6);
                 }
             
                 /* Output VLC DCT Blocks for Macroblock */
@@ -514,8 +512,19 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
             ++k;
         } /* Slice MB loop */
     } /* Slice loop */
-
-	ratectl.UpdatePict(*this);
+    int64_t bitcount_EOP = coder.BitCount();
+	int padding_needed = ratectl.UpdatePict(*this, bitcount_EOP );
+    if( padding_needed > 0 )
+    {
+        coder.AlignBits();          // Important: per-pic rate control byte based
+        mjpeg_debug( "Padding coded picture to size: %d extra bytes", 
+                     padding_needed );
+        for( i = 0; i < padding_needed; ++i )
+        {
+            coder.PutBits(0, 8);
+        }
+    }
+    
 }
 
 

@@ -26,15 +26,13 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include "global.h"
 #include "simd.h"
 #include "mpegconsts.h"
 #include "yuv4mpeg.h"
 #include "mpeg2encoder.hh"
 
-PictureReader::PictureReader(MPEG2Encoder &_encoder ) :
-    encoder( _encoder ),
-    encparams( encoder.parms )
+PictureReader::PictureReader( EncoderParams &_encparams ) :
+    encparams( _encparams )
 {
     pthread_cond_init( &new_chunk_req, NULL );
     pthread_cond_init( &new_chunk_ack, NULL );
@@ -437,11 +435,22 @@ int PictureReader::FrameLumMean( int num_frame )
 }
 
 
-Y4MPipeReader::Y4MPipeReader( MPEG2Encoder &encoder, int istrm_fd ) :
-    PictureReader( encoder ),
+Y4MPipeReader::Y4MPipeReader( EncoderParams &encparams, int istrm_fd ) :
+    PictureReader( encparams ),
     pipe_fd( istrm_fd )
 {
 }
+
+/****************************************
+ *
+ * Initialise the reader and return the parameter of the video stream
+ * to be encoded.
+ *
+ * WARNING: This routine must run before encoder parameters are defined.
+ * TODO: Reader should be constructed before EncoderParams and this
+ * routine invoked from EncoderParams constructor...
+ *
+ *****************************************/
 
 void Y4MPipeReader::StreamPictureParams( MPEG2EncInVidParams &strm )
 {
@@ -514,10 +523,8 @@ bool Y4MPipeReader::LoadFrame( )
            return true;
    }
    lum_mean[buffer_slot] = LumMean(input_imgs_buf[buffer_slot][0] );
-   v = CHROMA420==CHROMA420 ? 
-       encparams.vertical_size/2 : encparams.vertical_size;
-   h = CHROMA420!=CHROMA444 ? 
-       encparams.horizontal_size/2 : encparams.horizontal_size;
+   v = encparams.vertical_size/2;
+   h = encparams.horizontal_size/2;
    for(i=0;i<v;i++)
    {
        if(PipeRead(input_imgs_buf[buffer_slot][1]+i*encparams.phy_chrom_width,h)!=h)
