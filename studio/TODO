@@ -30,9 +30,11 @@ Bernhards Problems:
 * make the input fields more secure
 * make test for the input and output files
 * remove beginning mistakes
-* make some kind of batch productions 
 * write a description for the thing. 
-* Long term: make it look better
+* make a thing that created scripts can be scheduled with crontab or at
+* create a DVD profile
+* make a solution for dermining the active window in LVS 
+* Long term: make it look better (especially the distributed part)
 * Long term: make the task labes editable
 * Long term: add lavtrans (works for video already with yuv2lav)
 * Long term: support for MPEG audio Layer3 

@@ -6,14 +6,20 @@ Updates from 0.1.5 to 0.1.6
 ---------------------------
 
 * Changed the saving of the encoding options. 
-* Updated som options in the encoding part because they were chnaged in the 
+* Updated som options in the encoding part because they were changed in the 
   mjpeg tools, some shown options do not work in every version !!!
-* Added the yuv2lav encoding part (a better name would be fine too
+* Added the yuv2lav encoding part (a better name would be fine too)
 * Added the aviable interlacing correction options to the input field
-* A proper error handling for missing/not aviable apllications was added
-* Distributed encoding support added
+* A proper error handling for missing/not aviable applications was added
+* Distributed encoding support added (means RSH)
 * A memory allocation error which totally screwed up the editor was fixed
 * pretty many small fixes which allow spaces in filenames
+* Script generation was added
+* A better support for yuvdenoise was added. You have now the most important
+  option to choose from. 
+* The support for the mjpeg-tools version 1.4.x was removed. 
+* The support for lav2yuv options was also removed.
+
 
 Updates from 0.1.4 to 0.1.5
 ---------------------------
