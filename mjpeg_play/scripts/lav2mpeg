@@ -24,9 +24,10 @@ MPEGENC=mpeg2enc
 MPLEX=mplex
 dst=""
 conc="0"
-mplexflags="-f 0"
+mplexflags=""
+mplexmode="1"
 
-while getopts ":s:q:n:d:o:MQSVTRNtcv" opt
+while getopts ":s:q:n:d:o:MQSVTRNtc" opt
 do
 case $opt in
 s) scale=$OPTARG
@@ -36,20 +37,24 @@ q) quality=$OPTARG
   echo Setting quality factor to $quality
 ;;
 M) quality="-b 1450"
-  mplexflags="-b 60"
+  mplexflags="-b 70"
+  mplexmode=0
   echo "Setting medium-quality (1550Kbps) mode"
 ;;
-Q) quality="-b 1800"
-  mplexflags="-b 70"
+Q) quality="-b 1700"
+  mplexflags="-b 80"
+  mplexmode=0
   echo "Setting high-quality (1800Kbps) mode"
 ;;
 S) quality="-b 2000"
-  mplexflags="-b 80"
+  mplexflags="-b 90"
+  mplexmode=0
   echo "Setting super high-quality (2000kbps) mode"
 ;;
 V)
   quality="-q 7 -b 3000 -v 240"
   mplexflags="-V -b 300"
+  mplexmode=0
   echo  "Using variable bitrate (quantisation floor)"
   echo "WARNING: don't expect this to work with hardware players!"
 ;;
@@ -76,18 +81,6 @@ dst=$OPTARG
 c) echo "Concurrent mode - > 1 avi2mpeg's can run on a file set without repeated work"
 conc=1
 ;;
-v) echo "VCD mode - VCD compliant multiplexing"
-if [ -n "$quality" ]
-then
-    echo
-    echo
-    echo "WARNING: VCD often won't play unless you use the standard VCD"
-    echo "WARNING: rate of 1152Kbps (default setting)"
-    echo
-    sleep 3
-    mplexflags = "-f 1"
-fi
-;;
 ?)
   echo "Usage: avi2mpeg [-s num] [-d num] [-n num] [-S] [-Q] [-M] [-V] [-t] [-c] [-o dstdir] srcfile ..."
   echo "Q - High quality mode (1800Kbps video)"
@@ -95,11 +88,6 @@ fi
   echo "M - Medium high quality mode (1450Kbps video)"
   echo "V - Variable bit rate [2400bps ceiling, quantisation floor 4]"
   echo "Default is 1152 Kbps video (VCD compliant)"
-  echo "c - Concurrent mode - allow multiple avi2mpeg's to work on the"
-  echo "    same file set without repeating work"
-  echo "v   VCD generation mode.  Force  the final result to be multiplexed"
-  echo "    in the format required by VCD's."
-
 exit 1
 ;;
 esac
@@ -139,7 +127,9 @@ do
     then
       tidyfile=${r}.m1v
     fi
-    lav2yuv -s ${scale} ${noise} $f | buffer -b 4M | ${MPEGENC} -m 1 ${quality}  ${test}  ${thresh} -r ${search}  -o ${r}.m1v
+     # USE the commented-out version multi-CPU machines!
+#    lav2yuv -s ${scale} ${noise} $f | buffer -b 4M | ${MPEGENC} -m 1 ${quality}  ${test}  ${thresh} -r ${search}  -o ${r}.m1v
+    lav2yuv -s ${scale} ${noise} $f | ${MPEGENC} -m 1 ${quality}  ${test}  ${thresh} -r ${search}  -o ${r}.m1v
     if [ ! $? = 0 ]
     then
        exit $?
@@ -166,7 +156,18 @@ do
 	sleep 30
     done
 	echo  > ${r%%.*}.mux
-     nice -n 15 ${MPLEX} -q ${mplexflags} ${r}.m1v ${r}.mp2 ${mpgfile} 
+     echo
+     echo 
+     echo
+     if [ $mplexmode = 1 ]
+     then
+	echo
+	echo Using VCD-compliant multiplexing format.
+     else
+	echo
+	echo WARNING: vcd compliant multiplexing not possible
+     fi
+     nice -n 15 ${MPLEX} -f $mplexmode -q ${mplexflags} ${r}.m1v ${r}.mp2 ${mpgfile} 
      rm -f ${r%%.*}.mux
 # Uncomment this if you want the raw files delete
 #	 rm -f  ${r}.m1v ${r}.mp2

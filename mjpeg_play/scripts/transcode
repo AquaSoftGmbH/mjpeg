@@ -1,0 +1,61 @@
+#!/bin/bash
+
+function usage ()
+{
+echo "Usage: transcode [-S] [-T] [-s mins] [-b bitrate]  [-o dstfile] srcfile ..."
+echo "S - Single system file mode..."
+echo "o - output file root name"
+echo "b - bitrate for video in kbps"
+echo "s - sleep for specified number of minutes before starting work"
+echo "T - Use test encoder"
+exit 0
+}
+
+#  Use this commented-out version if you haven't got sox and toolame
+#MP2ENC="nice -n 29 mp2enc -v -o" 
+MPEG2ENC=mpeg2enc
+if [ $[$# < 3 ] = 1 ]
+then
+usage
+fi
+outpat=".%d"
+outfile=transcoded
+bitrate=""
+sleep=0
+while getopts ":o:b:s:STXh" opt
+do
+case $opt in
+S) outpat="" 
+;;
+s) sleep=$OPTARG
+;;
+b) bitrate="-b $OPTARG"
+;;
+o) outfile=$OPTARG
+;;
+T)
+echo Using test encoder
+MPEG2ENC="mpeg2enc.test"
+;;
+h)
+echo hi-res mode
+opts=-h
+;;
+X)
+echo Using test encoder max speed
+MPEG2ENC="mpeg2enc.test -4 1 -2 1"
+;;
+l)
+lavargs=$OPTARG
+;;
+?) usage
+;;
+esac
+done
+
+shift $[$OPTIND-1]
+sleep $[$sleep*60]
+cat $* |  mpeg2dec -s -m YUVh |  buffer -b 4M | ${MPEG2ENC} -r 24 $bitrate $opts -o $outfile.m1v
+cat $* |  extract_ac3 -  $sync |  ac3dec -m wav |   sox -t wav - -r 44100 -t wav - | toolame -p 2 -b 224 - $outfile.mp2
+# Eventually mux-ing goes here!
+# See lav2mpeg for an example of how to invoke the multiplexer.
