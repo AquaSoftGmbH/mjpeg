@@ -247,7 +247,7 @@ int movtar_parse_info(movtar_t *movtar, const char *infobuffer)
 	else if (0 == strcasecmp(normstr,"secam"))
 	  movtar->mov_norm = MOVTAR_NORM_SECAM;
 	else {
-	  printf("Warning: Unknown tv norm %s.\n", splitline[1]);
+	  MDEBUG(printf("Warning: Unknown tv norm %s.\n", splitline[1]));
 	  movtar->mov_norm = MOVTAR_NORM_UNKNOWN;      
 	}
       };
