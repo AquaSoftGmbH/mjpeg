@@ -697,12 +697,12 @@ void SeqEncoder::Init()
 
     // Allocate the Buffers for pictures active when encoding...
     int i;
-    b_pictures = new (Picture *)[encparams.max_active_b_frames];
+    b_pictures = new Picture *[encparams.max_active_b_frames];
     for( i = 0; i < encparams.max_active_b_frames; ++i )
     {
         b_pictures[i] = new Picture(encparams, coder, quantizer);
     }
-    ref_pictures = new (Picture *)[encparams.max_active_ref_frames];
+    ref_pictures = new Picture *[encparams.max_active_ref_frames];
     for( i = 0; i < encparams.max_active_ref_frames; ++i )
     {
         ref_pictures[i] = new Picture(encparams, coder, quantizer);
