@@ -985,7 +985,6 @@ int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
    cinfo.dct_method = JDCT_IFAST;
 
    cinfo.input_gamma = 1.0;
-   cinfo.write_JFIF_header = TRUE;
 
    cinfo.comp_info[0].h_samp_factor = 2;
    cinfo.comp_info[0].v_samp_factor = 1;	/*1||2 */
@@ -1022,9 +1021,13 @@ int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
 
    for (field = 0; field < numfields; field++) {
 
-      jpeg_start_compress (&cinfo, (field>0));
- 
+      jpeg_start_compress (&cinfo, FALSE);
+      
       if (numfields == 2) {
+         static const JOCTET marker0[40];
+
+	 jpeg_write_marker(&cinfo, JPEG_APP0,   marker0, 14);
+	 jpeg_write_marker(&cinfo, JPEG_APP0+1, marker0, 40);
 
          switch (itype) {
          case LAV_INTER_TOP_FIRST: /* top field first */
