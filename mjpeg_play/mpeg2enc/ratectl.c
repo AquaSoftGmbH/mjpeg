@@ -258,11 +258,11 @@ void rc_init_seq(int reinit)
 	}
 	else
 	{
-		per_frame_bits = opt_bit_rate / opt_frame_rate;
+		per_frame_bits = opt_bit_rate / ctl_decode_frame_rate;
 		R = opt_bit_rate;
 	}
 
-	field_rate = 2*opt_frame_rate;
+	field_rate = 2*ctl_decode_frame_rate;
 	fields_per_pict = opt_fieldpic ? 1 : 2;
 	/* Everything else already set or adaptive */
 	if( reinit )
@@ -308,9 +308,9 @@ void rc_init_seq(int reinit)
 	  more rapidly *within* a single frame.
 	*/
 	if( opt_still_size > 0 )
-		r = (int)floor(2.0*opt_bit_rate/opt_frame_rate);
+		r = (int)floor(2.0*opt_bit_rate/ctl_decode_frame_rate);
 	else
-		r = (int)floor(4.0*opt_bit_rate/opt_frame_rate);
+		r = (int)floor(4.0*opt_bit_rate/ctl_decode_frame_rate);
 
 	Ki = 1.2;
 	Kb = 1.3;

@@ -3,11 +3,10 @@
 	field-interlaced (-F 3) is now well tested.  Field
 	sequences (-F 1 and -F 2) appear to be working but aren't yet thoroughly
 	tested and lack some recent optimisations available for
-	progressive sequences.  Mplex *DOES NOT* support field -F 1 and -F 2 
-	streams.
+	progressive sequences.  
 
-2. Currently the VCD HR Stills muxing stuff assumes *all* HR stills
-  are the same size which is given in the initial vbv_buffer_size...
+2. 	Currently the VCD HR Stills muxing stuff assumes *all* HR stills
+  	are the same size which is given in the initial vbv_buffer_size...
 	This will work with mpeg2enc (which does this) but will fail fail fail
 	with other streams.
 

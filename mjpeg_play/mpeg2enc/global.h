@@ -360,9 +360,14 @@ EXTERN const char *statname
 EXTERN int opt_horizontal_size, opt_vertical_size; /* frame size (pels) */
 
 EXTERN int opt_aspectratio;			/* aspect ratio information (pel or display) */
-EXTERN int opt_frame_rate_code;		/* coded value of frame rate */
+EXTERN int opt_frame_rate_code;		/* coded value of playback display
+									 * frame rate */
 EXTERN int opt_dctsatlim;			/* Value to saturated DCT coeffs to */
-EXTERN double opt_frame_rate;		/* frames per second */
+EXTERN double opt_frame_rate;		/* Playback display frames per
+									   second N.b. when 3:2 pullback
+									   is active this is higher than
+									   the frame decode rate.
+									*/
 EXTERN double opt_bit_rate;			/* bits per second */
 EXTERN int opt_seq_hdr_every_gop;
 EXTERN int opt_seq_end_every_gop;   /* Useful for Stills
@@ -436,6 +441,11 @@ EXTERN uint16_t opt_intra_q[64], opt_inter_q[64];
  * Global flags controlling encoding behaviour 
  ************************** */
 
+EXTERN double ctl_decode_frame_rate;	/* Actual stream frame
+										   decode-rate. This is lower
+										   than playback rate if 3:2
+										   pulldown is active.
+										*/
 EXTERN int ctl_video_buffer_size;    /* Video buffer requirement target */
 
 EXTERN int ctl_N_max;				/* number of frames in Group of Pictures (max) */

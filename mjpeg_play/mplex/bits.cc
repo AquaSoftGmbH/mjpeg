@@ -367,7 +367,10 @@ bool IBitStream::seek_sync(uint32_t sync, int N, int lim)
 {
   uint32_t val, val1;
   uint32_t maxi = ((1U<<N)-1); /* pow(2.0, (double)N) - 1 */;
-
+  if( maxi == 0 )
+  {
+	  maxi = 0xffffffff;
+  }
   while (bitidx != 8)
   {
     get1bit();
@@ -376,7 +379,6 @@ bool IBitStream::seek_sync(uint32_t sync, int N, int lim)
   val = getbits(N);
   if( eobs )
   	return false;
-
   while ((val & maxi) != sync && --lim)
   {
     val <<= 8;

@@ -152,10 +152,12 @@ static void Usage(char *str)
 	fprintf(stderr, " -v num  Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n");
 	fprintf( stderr, " -f fmt  Set pre-defined mux format.\n");
 	fprintf( stderr, "         [0 = Generic MPEG1, 1 = standard VCD, 2 = VCD,\n");
-	fprintf( stderr, "          3 = Generic MPEG2, 4 = standard SVCD, 5 = user SVCD, 6 = VCD Stills sequences, 7 = SVCD Stills sequences, 8 = DVD]\n");	
+	fprintf( stderr, "          3 = Generic MPEG2, 4 = standard SVCD, 5 = user SVCD,\n"
+			         "          6 = VCD Stills sequences, 7 = SVCD Stills sequences, 8 = DVD]\n");	
 	fprintf(stderr,"   -a num     Aspect ratio displayed image [1..14] (default: code for 4:3 in specified norm)\n" );
 	fprintf(stderr,"              0 - Display MPEG1 and MPEG2 aspect ratio code tables\n");
-	fprintf(stderr,"   -F num     Frame rate for encoded video (default: frame rate of input stream)\n");
+	fprintf(stderr,"   -F num     Playback frame rate of encoded video\n"
+			       "      (default: frame rate of input stream)\n");
 	fprintf(stderr,"              0 - Display frame rate code table\n");
 	fprintf(stderr,"   -b num     Bitrate in KBit/sec (default: 1152 KBit/s for VCD)\n");
 	fprintf(stderr,"   -B num     Non-video data bitrate to use for sequence splitting\n");
@@ -171,21 +173,23 @@ static void Usage(char *str)
 	fprintf(stderr,"               3 = encode by frame (per-field MC and MDCT\n)");
 	fprintf(stderr,"   -r num     Search radius for motion compensation [0..32] (default 16)\n");
 	fprintf(stderr,"   -4 num     (default: 2)\n");
-	fprintf(stderr,"   			  Population halving passes 4*4-pel subsampled motion compensation\n" );
+	fprintf(stderr,"   	  Population halving passes 4*4-pel subsampled motion compensation\n" );
 	fprintf(stderr,"   -2 num     (default: 3)\n");
-	fprintf(stderr,"   			  Population halving passes 2*2-pel subsampled motion compensation\n" );
+	fprintf(stderr,"   	  Population halving passes 2*2-pel subsampled motion compensation\n" );
 	fprintf(stderr,"   -g num     Minimum GOP size (default 12)\n" );
 	fprintf(stderr,"   -G num     Maximum GOP size (default 12)\n" );
 	fprintf(stderr,"   -P         Preserve 2 B frames between I/P even when adjusting GOP size\n");
 	fprintf(stderr,"   -M num     Optimise threading for num CPU's (default: 1)\n");
-	fprintf(stderr,"   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 .. 10] (default: 2.5)\n");
+	fprintf(stderr,"   -Q num     Quality factor decrement for highly active blocks"
+			       "      [0.0 .. 10] (default: 2.5)\n");
 	fprintf(stderr,"   -V num     Target video buffer size in KB (default 46)\n");
 	fprintf(stderr,"   -n n|p|s   Force video norm (NTSC, PAL, SECAM) (default: PAL).\n");
 	fprintf(stderr,"   -S num     Start a new sequence every num Mbytes in the final mux-ed\n");
 	fprintf(stderr,"              stream.  -B specifies the bitrate of non-video data\n");
 	fprintf(stderr,"   -p         Generate header flags for 32 pull down of 24fps movie.\n");
-	fprintf(stderr,"   -N         Noise filter via quantisation adjustment (experimental)\n" );
-	fprintf(stderr,"   -h         Maximise high-frequency resolution (useful for high quality sources at high bit-rates)\n" );
+	fprintf(stderr,"   -N         Noise filter via quantisation adjustment\n" );
+	fprintf(stderr,"   -h         Maximise high-frequency resolution\n"
+			       "              (useful for high quality sources at high bit-rates)\n" );
 	fprintf(stderr,"   -s         Include a sequence header every GOP.\n" );
 	fprintf(stderr,"   -z b|t     Force playback field order of bottom or top first\n");
 	printf("   -?         Print this lot out!\n");
@@ -375,7 +379,7 @@ static int infer_default_params()
 			opt_frame_rate_code > 0 && 
 			opt_frame_rate_code < mpeg_num_framerates )
 		{
-			mjpeg_warn( "Specified output frame-rate %3.2f will over-ride\n", 
+			mjpeg_warn( "Specified display frame-rate %3.2f will over-ride\n", 
 						Y4M_RATIO_DBL(mpeg_framerate(param_frame_rate)));
 			mjpeg_warn( "(different!) frame-rate %3.2f of the input stream\n",
 						Y4M_RATIO_DBL(mpeg_framerate(opt_frame_rate_code)));
@@ -407,14 +411,14 @@ static int check_param_constraints()
 	int nerr = 0;
 	if( param_32_pulldown )
 	{
-		if( opt_frame_rate_code != 1 && opt_frame_rate_code != 2  )
+		if( opt_frame_rate_code != 4 && opt_frame_rate_code != 5  )
 		{
-			mjpeg_error( "3:2 pulldown only sensible for 2400/1001 or 24fps output stream\n" );
+			mjpeg_error( "3:2 movie pulldown only sensible for 30000/1001 or 30fps output stream\n" );
 			++nerr;
 		}
-		if( param_fieldenc != 0 )
+		if( param_fieldenc != 0 && param_fieldenc != 3 )
 		{
-			mjpeg_error( "3:2 pulldown only sensible for Frame pictures\n");
+			mjpeg_error( "3:2 movie pulldown only sensible for Frame pictures\n");
 			++nerr;
 		}
 	}
@@ -1150,8 +1154,19 @@ static void init_mpeg_parms(void)
 	/* make sure MPEG specific parameters are valid */
 	range_checks();
 
+	/* Set the frame decode rate and frame display rates.
+	   For 3:2 movie pulldown decode rate is != display rate due to
+	   the repeated field that appears every other frame.
+	*/
 	opt_frame_rate = Y4M_RATIO_DBL(mpeg_framerate(opt_frame_rate_code));
-
+	if( param_32_pulldown )
+	{
+		ctl_decode_frame_rate = opt_frame_rate * (2.0 + 2.0) / (3.0 + 2.0);
+		mjpeg_info( "3:2 Pulldown selected frame decode rate = %3.3f fps\n", 
+					ctl_decode_frame_rate);
+	}
+	else
+		ctl_decode_frame_rate = opt_frame_rate;
 
 	if ( !opt_mpeg1)
 	{

@@ -1,10 +1,5 @@
 IMMEDIATE
 
-Merge the interlace fixes.
-
-Have a look over and test the denoiser.
-
-
 Fix all the BUGS (see BUGS) of course!
 
 
@@ -20,16 +15,8 @@ a look at the source code for vcdimager!
 	stdint.h via utils/mjpeg_types.h.
 
 - The filtering / decimation code in the lav* utilities is now redundant
-	with yuvscale in place... it should be removed once we're happy with
-	yuvscale.
-
-
-- Go through MJPEG lib and add proper error returns.  Go through lavplay
-	and lavrec and add proper error handling and break up those oversize
-	functions.
-
-- The single-letter soup of the various getopts needs to be replaced
-	with getopts_long style command lines.
+  with yuvscale in place... it should be removed once we're happy with
+  yuvscale.
 
 
 Medium
@@ -40,16 +27,12 @@ Medium
   sources frame pictures with field DCT/motion compensation seems to
   give better results.
 
-
 - Add the code to do DVD multiplexing into mplex.  This is
 mainly the addition of facilities to mux in AC-3 as stream PRIVATE1.
 As ever Brent Byeler's "bbmpeg" is a good source here.
 
 
 Major
-
--  I.e. add a dynamic noise reduction filter and an "intelligent" 
-   blurring to suppress mosaics. Make it go *still faster* ;-)
 
 -	Continuation of frozen encoding sessions.
 

@@ -259,18 +259,19 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 
 			/* Now scan forward a little for an MPEG-2 picture coding extension
 			   so we can get pulldown info (if present) */
-
+            film_rate = 1;
 			if( film_rate &&
-				bs.seek_sync(EXT_START_CODE, 32, 10) &&
-				bs.getbits(4) == CODING_EXT_ID )
+				bs.seek_sync(EXT_START_CODE, 32, 64) &&
+                bs.getbits(4) == CODING_EXT_ID)
 			{
 				/* Skip: 4 F-codes (4)... */
 				(void)bs.getbits(16); 
-                /* Skip: DC Precision(2), pict struct (2) topfirst (1)
-				   frame pred dct (1), q_scale_type (1), intravlc (1)*/
+                /* Skip: DC Precision(2), pict struct (2)
+                   topfirst (1)  frame pred dct (1), 
+                   concealment_mv(1), q_scale_type (1), */
 				(void)bs.getbits(8);	
-				/* Skip: altscan (1) */
-				(void)bs.getbits(1);	
+				/* Skip: intra_vlc_format(1), alternate_scan (1) */
+				(void)bs.getbits(2);	
 				repeat_first_field = bs.getbits(1);
 				pulldown_32 |= repeat_first_field;
 			}
@@ -278,7 +279,6 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 			{
 				repeat_first_field = 0;
 			}
-			
 				
 			if( access_unit.type == IFRAME )
 			{

@@ -495,12 +495,10 @@ static void I_or_P_frame_struct( stream_state_s *ss,
 	if( ss->i == 0 )
 	{
 		picture->temp_ref =  ss->i;
-		picture->present = 0;
 	}
 	else 
 	{
 		picture->temp_ref = ss->g+(ss->bigrp_length-1);
-		picture->present = ss->i+(ss->bigrp_length);
 	}
 
 	if (picture->temp_ref >= (istrm_nframes-ss->gop_start_frame))
@@ -536,7 +534,7 @@ static void B_frame_struct(  stream_state_s *ss,
 					  pict_data_s *picture )
 {
 	picture->temp_ref = ss->g - 1;
-	picture->present = ss->i;
+	picture->present = ss->i-1;
 	picture->pict_type = B_TYPE;
 	picture->gop_start = 0;
 	picture->new_seq = 0;
@@ -684,10 +682,11 @@ static semaphore_t picture_started = SEMAPHORE_INITIALIZER;
 static void stencodeworker(pict_data_s *picture)
 {
 		/* ALWAYS do-able */
-	mjpeg_info("Frame start %d %c %d\n",
+	mjpeg_info("Frame start %d %c %d %d\n",
 			   picture->decode, 
 			   pict_type_char[picture->pict_type],
-			   picture->temp_ref);
+			   picture->temp_ref,
+			   picture->present);
 
 
 	if( picture->pict_struct != FRAME_PICTURE )
@@ -769,9 +768,10 @@ static void *parencodeworker(void *start_arg)
 		mp_semaphore_signal( &picture_started, 1);
 
 		/* ALWAYS do-able */
-		mjpeg_info("Frame %d %c %d\n",  
+		mjpeg_info("Frame %d %c %d %d\n",  
 				   picture->decode,  pict_type_char[picture->pict_type],
-				   picture->temp_ref);
+				   picture->temp_ref,
+				   picture->present);
 
 		if( picture->pict_struct != FRAME_PICTURE )
 			mjpeg_info("Field %s (%d)\n",
