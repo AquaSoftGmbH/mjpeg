@@ -139,7 +139,7 @@ void MultiplexJob::Usage(char *str)
 	"--system-headers|-h\n"
     "  Create System header in every pack in generic formats\n"
 	"--max-segment-size|-S size\n"
-    "  Maximum size of output file(s) in Mbyte (default: 2000) (0 = no limit)\n"
+    "  Maximum size of output file(s) in Mbyte (default: 0) (no limit)\n"
 	"--split-segment|-M\n"
     "  Simply split a sequence across files rather than building run-out/run-in\n"
 	"--help|-?\n"
