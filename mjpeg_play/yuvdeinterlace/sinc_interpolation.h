@@ -1,3 +1,4 @@
+void interpolate_field_linear (uint8_t * frame, uint8_t * inframe, int field);
 void non_linear_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field);
 void sinc_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field);
 void interpolation_420JPEG_to_444_chroma (uint8_t * frame, uint8_t * inframe, int field);

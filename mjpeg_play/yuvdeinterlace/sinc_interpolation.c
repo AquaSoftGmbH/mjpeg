@@ -9,6 +9,24 @@
 extern int width;
 extern int height;
 
+void interpolate_field_linear (uint8_t * dst, uint8_t * src, int field)
+{
+	int x,y;
+
+	memcpy( dst,src, width*height);
+	for(y=field;y<(height-1);y+=2)
+		for(x=0;x<width;x++)
+		{
+			*(dst+x+y*width) = 
+				(
+				*(dst+x+(y-1)*width) + 
+				*(dst+x+(y+1)*width)
+				)/2;
+		}
+}
+
+#define ABS(a) a<0? -a:a
+
 void
 non_linear_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field)
 {
@@ -25,24 +43,19 @@ non_linear_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field)
 		{
 			d = *(frame+x+(y-1)*width) - *(frame+x+(y+1)*width) ;
 			min = d < 0 ? -d:d;
-			d = *(frame+x+(y-1)*width-1) - *(frame+x+(y+1)*width-1) ;
+			d = *(frame+x+(y-1)*width) - *(frame+x+(y+1)*width) ;
 			min += d < 0 ? -d:d;
-			d = *(frame+x+(y-1)*width+1) - *(frame+x+(y+1)*width+1) ;
-			min += d < 0 ? -d:d;
+
 			v = 0;
 
 			/* search best diagonal pixel-match */
 			a  = *(frame+x  +(y+1)*width);
 			b  = *(frame+x  +(y-1)*width);
 
-			for(vx=-5;vx<=5;vx++)
+			for(vx=0;vx<=4;vx++)
 			{
 				d = *(frame+x+vx+(y-1)*width) - *(frame+x-vx+(y+1)*width) ;
 				delta = d < 0 ? -d:d;
-				d = *(frame+x+vx+(y-1)*width-1) - *(frame+x-vx+(y+1)*width-1) ;
-				delta += d < 0 ? -d:d;
-				d = *(frame+x+vx+(y-1)*width+1) - *(frame+x-vx+(y+1)*width+1) ;
-				delta += d < 0 ? -d:d;
 
 				if(delta<min)
 				{
@@ -53,14 +66,31 @@ non_linear_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field)
 						v   = vx;
 					}
 				}
+
+				vx = -vx;
+				d = *(frame+x+vx+(y-1)*width) - *(frame+x-vx+(y+1)*width) ;
+				delta = d < 0 ? -d:d;
+
+				if(delta<min)
+				{
+					iv = (*(frame+x+vx+(y-1)*width) + *(frame+x-vx+(y+1)*width) )/2;
+					if( (iv<a && b<iv) || (iv>a && b>iv) )
+					{
+						min = delta;
+						v   = vx;
+					}
+				}
+				vx = -vx;
 			}
 
-			iv = (*(frame+x+v+(y-1)*width) + *(frame+x-v+(y+1)*width) )/2;
+			iv  = *(frame+x+v+(y-1)*width);
+			iv += *(frame+x-v+(y+1)*width);
+
+			iv /= 2;
+
 			*(frame+x+y*width) = iv;
 
 		}
-	
-		
 }
 
 void
