@@ -167,22 +167,19 @@ void OutputStream::InitSyntaxParameters()
 	case MPEG_FORMAT_SVCD :
 		opt_data_rate = 150*2324;
 	  	video_buffer_size = 230*1024;
-	  	opt_VBR = 1;
 
 	case  MPEG_FORMAT_SVCD_NSR :		/* Non-standard data-rate */
 		mjpeg_info( "Selecting SVCD output profile\n");
 		if( video_buffer_size == 0 )
 			video_buffer_size = opt_buffer_size * 1024;
 		opt_mpeg = 2;
-		/* TODO should test specified data-rate is < 2*CD
-		   = 150 sectors/sec * (mode 2 XA payload) */ 
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 0;
 	  	always_sys_header_in_pack = 0;
 	  	sector_transport_size = 2324;
 	  	transport_prefix_sectors = 0;
 	  	sector_size = 2324;
-		vbr = opt_VBR;
+		vbr = true;
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
 		buffers_in_audio = 1;
@@ -197,7 +194,7 @@ void OutputStream::InitSyntaxParameters()
 
 	case MPEG_FORMAT_VCD_STILL :
 		opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
-	  	vbr = opt_VBR = 0;
+	  	vbr = false;
 		opt_mpeg = 1;
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 0;
@@ -241,7 +238,7 @@ void OutputStream::InitSyntaxParameters()
 	  	sector_transport_size = 2324;
 	  	transport_prefix_sectors = 0;
 	  	sector_size = 2324;
-		vbr = opt_VBR = 1;
+		vbr = true;
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
 		buffers_in_audio = 1;
@@ -255,7 +252,6 @@ void OutputStream::InitSyntaxParameters()
 
     case MPEG_FORMAT_DVD :
 		mjpeg_info( "Selecting DVD output profile (INCOMEPLETE!!!!)\n");
-        opt_VBR = true;
         opt_data_rate = 1260000;
 		opt_mpeg = 2;
 	 	packets_per_pack = 1;
@@ -274,7 +270,7 @@ void OutputStream::InitSyntaxParameters()
 		sector_align_iframeAUs = true;
         timestamp_iframe_only = true;
         video_buffers_iframe_only = true;
-		vbr = opt_VBR;
+		vbr = true;
         break;
 			 
 	default : /* MPEG_FORMAT_MPEG1 - auto format MPEG1 */
@@ -882,7 +878,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 					{
 						seg_state = runout_segment;
 						runout_PTS = master->NextRequiredPTS();
-						mjpeg_info("Running out to (raw) PTS %lld SCR=%lld\n", 
+						mjpeg_debug("Running out to (raw) PTS %lld SCR=%lld\n", 
 								   runout_PTS/300, current_SCR/300 );
 						running_out = true;
 						seg_state = runout_segment;
@@ -900,9 +896,9 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 					}
 						
 					runout_PTS = master->NextRequiredPTS();
-                    mjpeg_info("Running out to %lld SCR=%lld\n", 
-                               runout_PTS/300, 
-                               current_SCR/300 );
+                    mjpeg_debug("Running out to %lld SCR=%lld\n", 
+                                runout_PTS/300, 
+                                current_SCR/300 );
                     MuxStatus( LOG_INFO );
 					running_out = true;
 					seg_state = runout_segment;
@@ -929,14 +925,14 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 		clockticks earliest;
 		for( str = estreams->begin(); str < estreams->end(); ++str )
 		{
-            if( running_out )
+/*
                 mjpeg_info("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld\n", 
                            (*str)->stream_id,
                            current_SCR /300,
                            (*str)->MuxPossible(current_SCR),
                            (*str)->RequiredDTS()/300
 				);
-
+*/
 			if( (*str)->MuxPossible(current_SCR) && 
 				( !video_first || (*str)->Kind() == ElementaryStream::video )
 				 )
