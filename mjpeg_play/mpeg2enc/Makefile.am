@@ -84,6 +84,7 @@ libmpeg2encpp_la_SOURCES = \
 	$(SIMD_INLINE)
 
 noinst_HEADERS = \
+	channel.hh \
 	mpeg2syntaxcodes.h \
 	quantize_precomp.h \
 	simd.h \
@@ -95,6 +96,7 @@ libmpeg2encpp_includedir = $(pkgincludedir)/mpeg2enc
 libmpeg2encpp_include_HEADERS = \
 	elemstrmwriter.hh \
 	encoderparams.hh \
+	encodertypes.h \
 	macroblock.hh \
 	mpeg2coder.hh \
 	mpeg2encoder.hh \
