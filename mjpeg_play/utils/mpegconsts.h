@@ -28,8 +28,8 @@ typedef unsigned int mpeg_frame_rate_code_t;
 typedef unsigned int mpeg_aspect_code_t;
 
 
-const mpeg_frame_rate_code_t mpeg_num_frame_rates;
-const mpeg_aspect_code_t mpeg_num_aspect_ratios[2];
+extern const mpeg_frame_rate_code_t mpeg_num_frame_rates;
+extern const mpeg_aspect_code_t mpeg_num_aspect_ratios[2];
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,7 +64,7 @@ mpeg_frame_rate_code( double frame_rate );
  */
 
 const double 
-extern mpeg_aspect_ratio( int mpeg_version,  mpeg_aspect_code_t code );
+mpeg_aspect_ratio( int mpeg_version,  mpeg_aspect_code_t code );
 
 /*
  * Look-up MPEG aspect ratio code for an aspect ratio - tolerance

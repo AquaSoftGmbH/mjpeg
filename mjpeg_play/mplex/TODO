@@ -16,6 +16,7 @@ TODO
 - Add checking for changed sequence parameters in mid-sequence sequence headers.
 
 - Add basic DVD support ( needs predecessor really).
+	Note the bizarre absence of PTS/DTS except on I-frames.
 
 
 - Make VBR more efficient.

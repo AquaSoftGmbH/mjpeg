@@ -85,6 +85,7 @@
    */
 
 static pthread_mutex_t frame_buffer_lock;
+
 static pthread_cond_t new_chunk_req = PTHREAD_COND_INITIALIZER;
 static pthread_cond_t new_chunk_ack = PTHREAD_COND_INITIALIZER;
 static pthread_t      worker_thread;
@@ -260,6 +261,7 @@ static void start_worker()
 	pattr = &attr;
 #endif
 
+
 	if( pthread_create( &worker_thread, pattr, read_chunks_worker, NULL ) != 0 )
 	{
 		mjpeg_error_exit1( "worker thread creation failed: %s\n", strerror(errno) );
@@ -304,22 +306,32 @@ static void read_chunk_par( int num_frame)
 
 static void load_frame( int num_frame )
 {
+	
+	if( frames_read == 0)
+	{
+#ifdef __linux__
+		pthread_mutexattr_t mu_attr;
+		pthread_mutexattr_t *p_attr = &mu_attr;
+		pthread_mutexattr_settype( &mu_attr, PTHREAD_MUTEX_ERRORCHECK );
 
-   if( frames_read == 0)
-   {
-      /* Read first + second look-ahead buffer loads */
-	   read_chunk();
-	   if( frames_read != istrm_nframes )
-		   read_chunk();
-	   if( ctl_parallel_read )
-		   start_worker();
-   }
+#else
+		pthread_mutexattr_t *p_attr = NULL;		
+#endif		
+		pthread_mutex_init( &frame_buffer_lock, p_attr );
 
-   if(last_frame>=0 && num_frame>last_frame &&num_frame<istrm_nframes)
-   {
-	   mjpeg_error("Internal:readframe: internal error reading beyond end of frames\n");
-	   abort();
-   }
+		/* Read first + second look-ahead buffer loads */
+		read_chunk();
+		if( frames_read != istrm_nframes )
+			read_chunk();
+		if( ctl_parallel_read )
+			start_worker();
+	}
+	
+	if(last_frame>=0 && num_frame>last_frame &&num_frame<istrm_nframes)
+	{
+		mjpeg_error("Internal:readframe: internal error reading beyond end of frames\n");
+		abort();
+	}
 
    /* Read a chunk of frames if we've got less than one chunk buffered
 	*/

@@ -25,6 +25,7 @@
    work properly if the same thread does the locking and unlocking. Gaah!
  */
 
+#include <config.h>
 #include <stdio.h>
 #include "synchrolib.h"
 
@@ -36,7 +37,15 @@
 
 void sync_guard_init( sync_guard_t *guard, int init )
 {
-	pthread_mutex_init( &guard->mutex, NULL );
+#ifdef __linux__
+	pthread_mutexattr_t mu_attr;
+	pthread_mutexattr_t *p_attr = &mu_attr;
+	pthread_mutexattr_settype( &mu_attr, PTHREAD_MUTEX_ERRORCHECK );
+	
+#else
+	pthread_mutexattr_t *p_attr = NULL;		
+#endif		
+	pthread_mutex_init( &guard->mutex, p_attr );
 	pthread_cond_init( &guard->cond, NULL );
 	guard->predicate = init;
 }
@@ -62,7 +71,16 @@ void sync_guard_update( sync_guard_t *guard, int predicate )
 
 void mp_semaphore_init( semaphore_t *sema, int init_count )
 {
-	pthread_mutex_init( &sema->mutex, NULL );
+#ifdef __linux__
+	pthread_mutexattr_t mu_attr;
+	pthread_mutexattr_t *p_attr = &mu_attr;
+	pthread_mutexattr_settype( &mu_attr, PTHREAD_MUTEX_ERRORCHECK );
+	
+#else
+	pthread_mutexattr_t *p_attr = NULL;		
+#endif		
+
+	pthread_mutex_init( &sema->mutex, p_attr );
 	pthread_cond_init( &sema->raised, NULL );
 	sema->count = init_count;
 }
