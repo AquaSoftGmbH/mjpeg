@@ -463,13 +463,11 @@ Several common MPEG-1 decoders can't handle streams where less than
 .PP
 This flag sets the amount quantisation is reduced for
 blocks containing unusually large amounts of sharp image detail.
-Setting this value 0.0 produces the most efficient use of bits but may
-cause visible/artefacting around detailed sections.  A larger value
-may help suppress artefacts, however, on noisy source material this may cause
-a "swimming" effect on textured backgrounds as the noise cause blocks to
+Setting this value to 5.0 produces the most efficient use of bits but may
+cause visible/artifacting around detailed sections.  A larger value
+may help suppress artifacts.  However, on noisy source material this may cause
+a "swimming" effect on textured backgrounds as the noise causes blocks to
 be boosted at random.  The default is 0.0 (off).
-
-
 .PP
 .BR -r|--motion-search-radius \ num
 .PP
