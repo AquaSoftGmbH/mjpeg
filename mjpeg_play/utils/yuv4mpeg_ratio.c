@@ -52,6 +52,7 @@ const y4m_ratio_t y4m_sar_PAL_SVCD_4_3   = Y4M_SAR_PAL_SVCD_4_3;
 const y4m_ratio_t y4m_sar_PAL_SVCD_16_9  = Y4M_SAR_PAL_SVCD_16_9;
 
 /* useful list of standard display aspect ratios */
+const y4m_ratio_t y4m_dar_UNKNOWN        = Y4M_DAR_UNKNOWN;
 const y4m_ratio_t y4m_dar_4_3            = Y4M_DAR_4_3;
 const y4m_ratio_t y4m_dar_16_9           = Y4M_DAR_16_9;
 const y4m_ratio_t y4m_dar_221_100        = Y4M_DAR_221_100;
