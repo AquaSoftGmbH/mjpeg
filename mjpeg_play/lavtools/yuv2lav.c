@@ -94,7 +94,7 @@ static void usage(void)
 
 static void sigint_handler (int signal) {
  
-   mjpeg_debug( "Caught SIGINT, exiting...\n");
+   mjpeg_debug( "Caught SIGINT, exiting...");
    got_sigint = 1;
    
 }
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
       case 'v':
          verbose = atoi(optarg);
          if (verbose < 0 || verbose > 2) {
-            mjpeg_error( "-v option requires arg 0, 1, or 2\n");
+            mjpeg_error( "-v option requires arg 0, 1, or 2");
 			usage();
          }
          break;
@@ -154,14 +154,14 @@ int main(int argc, char *argv[])
       case 'I':
 	 param_interlace = atoi(optarg);
          if (2 < param_interlace) {
-            mjpeg_error("-I parameter must be one of 0,1,2\n");
+            mjpeg_error("-I parameter must be one of 0,1,2");
             exit (1);
          }
 	 break;
       case 'q':
          param_quality = atoi (optarg);
          if ((param_quality<24)||(param_quality>100)) {
-            mjpeg_error( "quality parameter (%d) out of range [24..100]!\n", param_quality);
+            mjpeg_error( "quality parameter (%d) out of range [24..100]!", param_quality);
             exit (1);
          }
          break;
@@ -182,13 +182,13 @@ int main(int argc, char *argv[])
    }
 
    if (!param_output) {
-      mjpeg_error( "yuv2lav needs an output filename\n");
+      mjpeg_error( "yuv2lav needs an output filename");
       usage ();
       exit (1);
    }
    if (param_interlace == 2 &&
        (param_format == 'q' || param_format == 'm')) {
-      mjpeg_error("cannot use -I 2 with -f %c\n", param_format);
+      mjpeg_error("cannot use -I 2 with -f %c", param_format);
       usage ();
       exit (1);
    }
@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
    y4m_init_stream_info(&streaminfo);
    y4m_init_frame_info(&frameinfo);
    if (y4m_read_stream_header(fd_in, &streaminfo) != Y4M_OK) {
-      mjpeg_error( "Couldn't read YUV4MPEG header!\n");
+      mjpeg_error( "Couldn't read YUV4MPEG header!");
       exit (1);
    }
 
@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
                                   Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo)),
                                   0, 0, 0);
       if (!output) {
-         mjpeg_error( "Error opening output file %s: %s\n", buff, lav_strerror ());
+         mjpeg_error( "Error opening output file %s: %s", buff, lav_strerror ());
          exit(1);
       }
    }
@@ -243,7 +243,7 @@ int main(int argc, char *argv[])
                                   0, 0, 0);
 /*                                audio_bits, audio_chans, audio_rate); */
       if (!output) {
-         mjpeg_error( "Error opening output file %s: %s\n", param_output, lav_strerror ());
+         mjpeg_error( "Error opening output file %s: %s", param_output, lav_strerror ());
          exit(1);
       }
    }
@@ -273,7 +273,7 @@ int main(int argc, char *argv[])
 				  y4m_si_get_height(&streaminfo),
                                   yuv[0], yuv[1], yuv[2]);
       if (jpegsize==-1) {
-         mjpeg_error( "Couldn't compress YUV to JPEG\n");
+         mjpeg_error( "Couldn't compress YUV to JPEG");
          exit(1);
       }
 
@@ -284,7 +284,7 @@ int main(int argc, char *argv[])
          {
             char buff[256];
             if (lav_close (output)) {
-               mjpeg_error("Closing output file: %s\n",lav_strerror());
+               mjpeg_error("Closing output file: %s",lav_strerror());
                exit(1);
             }
             sprintf(buff, param_output, filenum++);
@@ -295,22 +295,22 @@ int main(int argc, char *argv[])
                                         Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo)),
                                         0, 0, 0);
             if (!output) {
-               mjpeg_error( "Error opening output file %s: %s\n", buff, lav_strerror ());
+               mjpeg_error( "Error opening output file %s: %s", buff, lav_strerror ());
                exit(1);
             }
-            mjpeg_info("Maximum file size reached (%d MB), opened new file: %s\n",
+            mjpeg_info("Maximum file size reached (%d MB), opened new file: %s",
                param_maxfilesize, buff);
             filesize_cur = 0;
          }
          else
          {
-            mjpeg_warn("Maximum file size reached\n");
+            mjpeg_warn("Maximum file size reached");
             break;
          }
       }
 
       if (lav_write_frame (output, jpeg, jpegsize, 1)) {
-         mjpeg_error( "Writing output: %s\n", lav_strerror());
+         mjpeg_error( "Writing output: %s", lav_strerror());
          exit(1);
       }
       filesize_cur += jpegsize;
@@ -319,7 +319,7 @@ int main(int argc, char *argv[])
    }
 
    if (lav_close (output)) {
-      mjpeg_error("Closing output file: %s\n",lav_strerror());
+      mjpeg_error("Closing output file: %s",lav_strerror());
       exit(1);
    }
       

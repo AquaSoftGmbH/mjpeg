@@ -60,7 +60,7 @@ static void putDC(const sVLCtable *tab, int val)
   if (absval>opt_dctsatlim)
   {
     /* should never happen */
-    mjpeg_error("Internal: DC value out of range (%d)\n",val);
+    mjpeg_error("Internal: DC value out of range (%d)",val);
 	abort();
   }
 
@@ -112,7 +112,7 @@ int run,signed_level,vlcformat;
   {
 	  if( signed_level != -(opt_dctsatlim+1)) 	/* Negative range is actually 1 more */
 	  {
-		  mjpeg_error("Internal: AC value out of range (run=%d, signed_level=%d)\n",
+		  mjpeg_error("Internal: AC value out of range (run=%d, signed_level=%d)",
 					  run,signed_level);
 		  abort();
 	  }

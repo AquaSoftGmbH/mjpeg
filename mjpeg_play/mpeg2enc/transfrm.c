@@ -105,7 +105,7 @@ void init_transform(void)
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
 	if( (flags & ACCEL_X86_MMX) ) /* MMX CPU */
 	{
-		mjpeg_info( "SETTING MMX for TRANSFORM!\n");
+		mjpeg_info( "SETTING MMX for TRANSFORM!");
 		pfdct = fdct_mmx;
 		pidct = idct_mmx;
 		padd_pred = add_pred_mmx;

@@ -45,7 +45,7 @@ static uint8_t jpeg_data[MAX_JPEG_LEN];
 #ifdef SUPPORT_READ_DV2
 
 dv_decoder_t *decoder;
-gint pitches[3];
+int pitches[3];
 uint8_t *dv_frame[3] = {NULL,NULL,NULL};
 
 /*
@@ -255,7 +255,7 @@ int readframe(int numframe,
   uint8_t *frame_tmp;
 
   if (MAX_JPEG_LEN < el.max_frame_size) {
-    mjpeg_error_exit1( "Max size of JPEG frame = %ld: too big\n",
+    mjpeg_error_exit1( "Max size of JPEG frame = %ld: too big",
 		       el.max_frame_size);
   }
   
@@ -266,10 +266,10 @@ int readframe(int numframe,
 
   case DATAFORMAT_DV2 :
 #ifndef SUPPORT_READ_DV2
-    mjpeg_error("DV input was not configured at compile time\n");
+    mjpeg_error("DV input was not configured at compile time");
     res = 1;
 #else
-    mjpeg_info("DV frame %d   len %d\n",numframe,len);
+    mjpeg_info("DV frame %d   len %d",numframe,len);
     res = 0;
     dv_parse_header(decoder, jpeg_data);
     switch(decoder->sampling) {
@@ -284,11 +284,11 @@ int readframe(int numframe,
       pitches[2] = decoder->width / 2;
       if (pitches[0] != param->output_width ||
 	  pitches[1] != param->chroma_width) {
-	mjpeg_error("for DV 4:2:0 only full width output is supported\n");
+	mjpeg_error("for DV 4:2:0 only full width output is supported");
 	res = 1;
       } else {
 	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
-			     (guchar **) frame, pitches);
+			     frame, pitches);
 	/* swap the U and V components */
 	frame_tmp = frame[2];
 	frame[2] = frame[1];
@@ -308,11 +308,11 @@ int readframe(int numframe,
       pitches[1] = 0;
       pitches[2] = 0;
       if (decoder->width != param->output_width) {
-	mjpeg_error("for DV only full width output is supported\n");
+	mjpeg_error("for DV only full width output is supported");
 	res = 1;
       } else {
 	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
-			     (guchar **) dv_frame, pitches);
+			     dv_frame, pitches);
 	frame_YUV422_to_YUV420P(frame, dv_frame[0],
 				decoder->width,	decoder->height);
 	
@@ -326,7 +326,7 @@ int readframe(int numframe,
     break;
 
   case DATAFORMAT_YUV420 :
-    mjpeg_info("YUV420 frame %d   len %d\n",numframe,len);
+    mjpeg_info("YUV420 frame %d   len %d",numframe,len);
     frame_tmp = jpeg_data;
     memcpy(frame[0], frame_tmp, param->output_width * param->output_height);
     frame_tmp += param->output_width * param->output_height;
@@ -337,7 +337,7 @@ int readframe(int numframe,
     break;
 
   default:
-    mjpeg_debug("MJPEG frame %d   len %d\n",numframe,len);
+    mjpeg_debug("MJPEG frame %d   len %d",numframe,len);
     res = decode_jpeg_raw(jpeg_data, len, el.video_inter,
 			  CHROMA420,
 			  param->output_width, param->output_height,
@@ -347,7 +347,7 @@ int readframe(int numframe,
   
   
   if (res) {
-    mjpeg_warn( "Decoding of Frame %d failed\n", numframe);
+    mjpeg_warn( "Decoding of Frame %d failed", numframe);
     /* TODO: Selective exit here... */
     return 1;
   }
@@ -386,7 +386,7 @@ void writeoutYUV4MPEGheader(int out_fd,
      y4m_si_set_sampleaspect(streaminfo, sar);
    } else {
      /* no idea! ...eh, just guess. */
-     mjpeg_warn("unspecified sample-aspect-ratio --- taking a guess...\n");
+     mjpeg_warn("unspecified sample-aspect-ratio --- taking a guess...");
      y4m_si_set_sampleaspect(streaminfo,
 			     y4m_guess_sar(param->output_width, 
 					   param->output_height,
@@ -395,7 +395,7 @@ void writeoutYUV4MPEGheader(int out_fd,
 
    n = y4m_write_stream_header(out_fd, streaminfo);
    if (n != Y4M_OK)
-      mjpeg_error("Failed to write stream header: %s\n", y4m_strerr(n));
+      mjpeg_error("Failed to write stream header: %s", y4m_strerr(n));
 }
 
 

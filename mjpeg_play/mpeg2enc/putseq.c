@@ -303,7 +303,7 @@ static int find_gop_length( int gop_start_frame,
             {
                 if( gop_len < 2*gop_min_len )
                 {
-                    mjpeg_info("GOP min length too small to permit scene-change on GOP boundary %d\n", j);
+                    mjpeg_info("GOP min length too small to permit scene-change on GOP boundary %d", j);
                     /* Its better to put the missed transition at the end
                        of a GOP so any eventual artefacting is soon washed
                        out by an I-frame*/
@@ -330,7 +330,7 @@ static int find_gop_length( int gop_start_frame,
 	/* last GOP may contain less frames! */
 	if (gop_len > istrm_nframes-gop_start_frame)
 		gop_len = istrm_nframes-gop_start_frame;
-	mjpeg_info( "GOP LENGTH = %d\n", gop_len);
+	mjpeg_info( "GOP LENGTH = %d", gop_len);
 	return gop_len;
 
 }
@@ -386,7 +386,7 @@ static void create_threads( pthread_t *threads, int num, void *(*start_routine)(
 	{
 		if( pthread_create( &threads[i], pattr, start_routine, NULL ) != 0 )
 		{
-			mjpeg_error_exit1( "worker thread creation failed: %s\n", strerror(errno) );
+			mjpeg_error_exit1( "worker thread creation failed: %s", strerror(errno) );
 		}
 	}
 }
@@ -428,7 +428,7 @@ static void gop_start( stream_state_s *ss )
 		|| (ss->i != 0 && opt_seq_end_every_gop)
 		)
 	{
-		mjpeg_info( "Splitting sequence this GOP start\n" );
+		mjpeg_info( "Splitting sequence this GOP start" );
 		ss->next_split_point += ss->seq_split_length;
 		/* This is the input stream display order sequence number of
 		   the frame that will become frame 0 in display
@@ -500,7 +500,7 @@ static void gop_start( stream_state_s *ss )
 	ss->nb = nb;
 	if( np+nb+1 != ss->gop_length )
 	{
-		mjpeg_error_exit1( "****INTERNAL: inconsistent GOP %d %d %d\n", 
+		mjpeg_error_exit1( "****INTERNAL: inconsistent GOP %d %d %d", 
 						   ss->gop_length, np, nb);
 	}
 
@@ -709,7 +709,7 @@ static mp_semaphore_t picture_started = SEMAPHORE_INITIALIZER;
 static void stencodeworker(pict_data_s *picture)
 {
 	/* ALWAYS do-able */
-	mjpeg_info("Frame start %d %c %d %d\n",
+	mjpeg_info("Frame start %d %c %d %d",
 			   picture->decode, 
 			   pict_type_char[picture->pict_type],
 			   picture->temp_ref,
@@ -717,7 +717,7 @@ static void stencodeworker(pict_data_s *picture)
 
 
 	if( picture->pict_struct != FRAME_PICTURE )
-		mjpeg_info("Field %s (%d)\n",
+		mjpeg_info("Field %s (%d)",
 				   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
 				   picture->pict_struct
 			);
@@ -752,7 +752,7 @@ static void stencodeworker(pict_data_s *picture)
 	if( opt_fieldpic )
 	{
 		set_2nd_field_params(picture);
-		mjpeg_info("Field %s (%d)\n",
+		mjpeg_info("Field %s (%d)",
 				   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
 				   picture->pict_struct
 			);
@@ -766,7 +766,7 @@ static void stencodeworker(pict_data_s *picture)
 	}
 
 
-	mjpeg_info("Frame end %d %s %3.2f %.2f %2.1f %.2f\n",
+	mjpeg_info("Frame end %d %s %3.2f %.2f %2.1f %.2f",
 				picture->decode, 
 				picture->pad ? "PAD" : "   ",
 				picture->avg_act, picture->sum_avg_act,
@@ -788,7 +788,7 @@ volatile static pict_data_ptr picture_to_encode;
 static void *parencodeworker(void *start_arg)
 {
 	pict_data_ptr picture;
-	mjpeg_debug( "Worker thread started\n" );
+	mjpeg_debug( "Worker thread started" );
 
 	for(;;)
 	{
@@ -800,13 +800,13 @@ static void *parencodeworker(void *start_arg)
 		mp_semaphore_signal( &picture_started, 1);
 
 		/* ALWAYS do-able */
-		mjpeg_info("Frame %d %c %d %d\n",  
+		mjpeg_info("Frame %d %c %d %d",  
 				   picture->decode,  pict_type_char[picture->pict_type],
 				   picture->temp_ref,
 				   picture->present);
 
 		if( picture->pict_struct != FRAME_PICTURE )
-			mjpeg_info("Field %s (%d)\n",
+			mjpeg_info("Field %s (%d)",
 					   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
 					   picture->pict_struct
 				);
@@ -849,7 +849,7 @@ static void *parencodeworker(void *start_arg)
 		{
 			set_2nd_field_params(picture);
 
-			mjpeg_info("Field %s (%d)\n",
+			mjpeg_info("Field %s (%d)",
 					   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
 					   picture->pict_struct
 				);
@@ -863,7 +863,7 @@ static void *parencodeworker(void *start_arg)
 		}
 
 
-		mjpeg_debug("Frame end %d %s %3.2f %.2f %2.1f %.2f\n",
+		mjpeg_debug("Frame end %d %s %3.2f %.2f %2.1f %.2f",
 					picture->decode, 
 					picture->pad ? "PAD" : "   ",
 					picture->avg_act, picture->sum_avg_act,
@@ -939,7 +939,7 @@ void putseq(void)
 	ss.gop_start_frame = 0;		/* Index start current gop in input stream */
 	ss.seq_split_length = ((int64_t)ctl_seq_length_limit)*(8*1024*1024);
 	ss.next_split_point = BITCOUNT_OFFSET + ss.seq_split_length;
-	mjpeg_debug( "Split len = %" PRId64 "\n", ss.seq_split_length );
+	mjpeg_debug( "Split len = %" PRId64 "", ss.seq_split_length );
 
 	frame_num = 0;              /* Encoding number */
 
@@ -986,7 +986,7 @@ void putseq(void)
 
 		if( readframe(cur_picture->temp_ref+ss.gop_start_frame,cur_picture->curorg) )
 		{
-		    mjpeg_error_exit1("Corrupt frame data in frame %d aborting!\n",
+		    mjpeg_error_exit1("Corrupt frame data in frame %d aborting!",
 							  cur_picture->temp_ref+ss.gop_start_frame );
 		}
 

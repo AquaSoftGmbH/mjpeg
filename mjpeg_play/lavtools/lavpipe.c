@@ -118,16 +118,16 @@ pid_t fork_child_sub(char *command, int *fd_in, int *fd_out)
   
   if (fd_in) {
     if (pipe(pipe_in)) {
-      mjpeg_error_exit1( "Couldn't create input pipe from %s\n", command);
+      mjpeg_error_exit1( "Couldn't create input pipe from %s", command);
     }
   }
   if (fd_out) {
     if (pipe(pipe_out)) {
-      mjpeg_error_exit1( "Couldn't create output pipe to %s\n", command);
+      mjpeg_error_exit1( "Couldn't create output pipe to %s", command);
     }
   }         
   if ((pid = fork ()) < 0) {
-    mjpeg_error_exit1("Couldn't fork %s\n", command);
+    mjpeg_error_exit1("Couldn't fork %s", command);
   }
    
   if (pid == 0) {
@@ -202,7 +202,7 @@ static pid_t fork_child(const char *command,
     next = p;
   }
   
-  mjpeg_debug( "Executing: '%s'\n", current);
+  mjpeg_debug( "Executing: '%s'", current);
   return fork_child_sub(current, fd_in, fd_out);
 }
 
@@ -259,7 +259,7 @@ static void spawn_pipe_source(pipe_source_t *ps, int offset, int count)
 		       offset, count,
 		       &(ps->fd), NULL);
   ps->frame_num = offset;
-  mjpeg_debug("spawned source '%s'\n", ps->command);
+  mjpeg_debug("spawned source '%s'", ps->command);
 }
 
 static void decommission_pipe_source(pipe_source_t *source)
@@ -269,7 +269,7 @@ static void decommission_pipe_source(pipe_source_t *source)
     source->fd = -1;
   }
   if (source->pid > 0) {
-    mjpeg_debug("DIE DIE DIE pid %d\n", source->pid);
+    mjpeg_debug("DIE DIE DIE pid %d", source->pid);
     kill(source->pid, SIGINT);
     source->pid = -1;
   }
@@ -305,7 +305,7 @@ static void spawn_pipe_filter(pipe_filter_t *pf, int offset, int count)
   pf->pid = fork_child(pf->command,
 		       offset, count,
 		       &(pf->in_fd), &(pf->out_fd));
-  mjpeg_debug("spawned filter '%s'\n", pf->command);
+  mjpeg_debug("spawned filter '%s'", pf->command);
 }
 
 static void decommission_pipe_filter(pipe_filter_t *filt)
@@ -319,7 +319,7 @@ static void decommission_pipe_filter(pipe_filter_t *filt)
     filt->out_fd = -1;
   }
   if (filt->pid > 0) {
-    mjpeg_debug("DIE DIE DIE pid %d\n", filt->pid);
+    mjpeg_debug("DIE DIE DIE pid %d", filt->pid);
     kill(filt->pid, SIGINT);
     filt->pid = -1;
   }
@@ -354,7 +354,7 @@ void open_segment_inputs(PipeSegment *seg, pipe_filter_t *filt,
     int in_offset = seg->input_offset[i];
     pipe_source_t *source = &(sources[in_index]);
 
-    mjpeg_debug("OSI:  input %d == source %d: '%s'\n",
+    mjpeg_debug("OSI:  input %d == source %d: '%s'",
 		i, in_index, source->command);
 
     /* spawn the source if not already running */
@@ -369,9 +369,9 @@ void open_segment_inputs(PipeSegment *seg, pipe_filter_t *filt,
       
       for (j = segnum + 1; j < pl->segment_count; j++) {
 	PipeSegment *other = pl->segments[j];
-	/*	mjpeg_debug("checking  i %d   j %d\n", i, j); */
+	/*	mjpeg_debug("checking  i %d   j %d", i, j); */
 	for (k = 0; k < other->input_count; k++) {
-	  /*	  mjpeg_debug("checking  i %d   j %d  k %d\n", i, j, k); */
+	  /*	  mjpeg_debug("checking  i %d   j %d  k %d", i, j, k); */
 	  if (in_index == other->input_index[k]) {
 	    if ((offset + count) == other->input_offset[k]) {
 	      count += other->frame_count; /* add another sequence */
@@ -383,7 +383,7 @@ void open_segment_inputs(PipeSegment *seg, pipe_filter_t *filt,
 	}
       }
     FINISH_CHECK:
-      /*      mjpeg_debug("finish-check  i %d   j %d  k %d\n", i, j, k); */
+      /*      mjpeg_debug("finish-check  i %d   j %d  k %d", i, j, k); */
       if (count > cl->frames - total_frames) {
 	count = cl->frames - total_frames;
       }
@@ -394,30 +394,30 @@ void open_segment_inputs(PipeSegment *seg, pipe_filter_t *filt,
       spawn_pipe_source(source, offset, 0);
 
       if (y4m_read_stream_header(source->fd, &(source->streaminfo)) != Y4M_OK)
-	mjpeg_error_exit1("Bad source header!\n");
+	mjpeg_error_exit1("Bad source header!");
 
-      mjpeg_debug("read header\n");
+      mjpeg_debug("read header");
       y4m_log_stream_info(LOG_DEBUG, "src: ", &(source->streaminfo));
     } else {
-      mjpeg_debug("...source %d is still alive.\n", in_index);
+      mjpeg_debug("...source %d is still alive.", in_index);
     }
     
     if (i == 0) {
       /* first time:  copy stream info to filter */
       y4m_copy_stream_info(&(filt->out_streaminfo), &(source->streaminfo));
-      mjpeg_debug("copied info\n");
+      mjpeg_debug("copied info");
     } else {
       /* n-th time:  make sure source streams match */
       if (y4m_si_get_width(&(filt->out_streaminfo)) != 
 	  y4m_si_get_width(&(source->streaminfo))) 
-	mjpeg_error_exit1("Stream mismatch:  frame width\n");
+	mjpeg_error_exit1("Stream mismatch:  frame width");
       if (y4m_si_get_height(&(filt->out_streaminfo)) != 
 	  y4m_si_get_height(&(source->streaminfo))) 
-	mjpeg_error_exit1("Stream mismatch:  frame height\n");
+	mjpeg_error_exit1("Stream mismatch:  frame height");
       if (y4m_si_get_interlace(&(filt->out_streaminfo)) != 
 	  y4m_si_get_interlace(&(source->streaminfo))) 
-	mjpeg_error_exit1("Stream mismatch:  interlace\n");
-      mjpeg_debug("verified info\n");
+	mjpeg_error_exit1("Stream mismatch:  interlace");
+      mjpeg_debug("verified info");
     }
   }
   
@@ -428,7 +428,7 @@ void open_segment_inputs(PipeSegment *seg, pipe_filter_t *filt,
 static
 void setup_segment_filter(PipeSegment *seg, pipe_filter_t *filt, int frame)
 {
-  mjpeg_debug("OSO:  '%s'\n", filt->command);
+  mjpeg_debug("OSO:  '%s'", filt->command);
   if (strcmp(filt->command, "-")) {
     /* ...via a filter command:
      *     o spawn filter process
@@ -441,7 +441,7 @@ void setup_segment_filter(PipeSegment *seg, pipe_filter_t *filt, int frame)
     spawn_pipe_filter(filt, frame, (seg->frame_count - frame));
     y4m_write_stream_header(filt->out_fd, &(filt->out_streaminfo));
     y4m_read_stream_header(filt->in_fd, &(filt->in_streaminfo));
-    mjpeg_debug("SSF:  read filter result stream header\n");
+    mjpeg_debug("SSF:  read filter result stream header");
     y4m_log_stream_info(LOG_DEBUG, "result: ", &(filt->in_streaminfo));
     alloc_yuv_buffers(filt->yuv, 
 		      y4m_si_get_width(&(filt->out_streaminfo)),
@@ -452,7 +452,7 @@ void setup_segment_filter(PipeSegment *seg, pipe_filter_t *filt, int frame)
      */
     filt->out_fd = filt->in_fd = -1;
     y4m_copy_stream_info(&(filt->in_streaminfo), &(filt->out_streaminfo));
-    mjpeg_debug("SSF:  copied source header\n");
+    mjpeg_debug("SSF:  copied source header");
   }
 }
 
@@ -470,7 +470,7 @@ void process_segment_frames(pipe_sequence_t *ps, int segnum,
   pipe_filter_t *filt = &(ps->filters[segnum]);
 
 
-  mjpeg_debug("PSF:  segment %d,  initial frame = %d\n", segnum, *frame);
+  mjpeg_debug("PSF:  segment %d,  initial frame = %d", segnum, *frame);
   while (*frame < seg->frame_count) {
     int i;
     
@@ -486,13 +486,13 @@ void process_segment_frames(pipe_sequence_t *ps, int segnum,
 	/* no filter present; source -> direct to output buffer */
 	yuv = the_output->yuv;
 
-      mjpeg_debug("read frame %03d > input %d, src %d  fd = %d\n", 
+      mjpeg_debug("read frame %03d > input %d, src %d  fd = %d", 
 		  *frame, i, in_index, source->fd);
       if (y4m_read_frame(source->fd,
 			 &(source->streaminfo), &(source->frameinfo),
 			 yuv) != Y4M_OK) {
 	int err = errno;
-	mjpeg_error("ERRNO says:  %s\n", strerror(err));
+	mjpeg_error("ERRNO says:  %s", strerror(err));
 	mjpeg_error_exit1("lavpipe: input stream error in stream %d,"
 			  "sequence %d, frame %d\n", 
 			  i, segnum, *frame);
@@ -569,13 +569,13 @@ void close_segment_inputs(pipe_sequence_t *ps, int segnum, int frame)
 	    /* A segment input offset matches the current frame...
 	     * ...this source can still be used.
 	     */
-	    mjpeg_info("allowing input %d (source %d) to live\n",
+	    mjpeg_info("allowing input %d (source %d) to live",
 		       i, current_index);
 	    goto KEEP_SOURCE;
 	  }
 	}
       }
-      mjpeg_info( "closing input %d (source %d)\n", i, current_index);
+      mjpeg_info( "closing input %d (source %d)", i, current_index);
       decommission_pipe_source(source);
     KEEP_SOURCE:
     }
@@ -664,7 +664,7 @@ void initialize_pipe_sequence(pipe_sequence_t *ps, int argc, char **argv)
 
   /* read pipe 'recipe' */
   if (read_pipe_list(cl->listfile, pl) < 0) {
-    mjpeg_error_exit1( "lavpipe: couldn't open \"%s\"\n", cl->listfile);
+    mjpeg_error_exit1( "lavpipe: couldn't open \"%s\"", cl->listfile);
   }
   
   /* a negative offset means "from the end" */
@@ -673,7 +673,7 @@ void initialize_pipe_sequence(pipe_sequence_t *ps, int argc, char **argv)
   }   
   if ((cl->offset >= pl->frame_count) ||
       (cl->offset < 0)) {
-    mjpeg_error_exit1( "error: offset greater than # of frames in input\n");
+    mjpeg_error_exit1( "error: offset greater than # of frames in input");
   }
 
   /* zero frame count means "all frames" */
@@ -681,7 +681,7 @@ void initialize_pipe_sequence(pipe_sequence_t *ps, int argc, char **argv)
     cl->frames = pl->frame_count - cl->offset;
   }
   if ((cl->offset + cl->frames) > pl->frame_count) {
-    mjpeg_warn( "input too short for -n %d\n", cl->frames);
+    mjpeg_warn( "input too short for -n %d", cl->frames);
     cl->frames = pl->frame_count - cl->offset;
   }
   
@@ -722,7 +722,7 @@ void process_pipe_sequence(pipe_sequence_t *ps)
     PipeSegment *seg = ps->pl.segments[segm_num];
     pipe_filter_t *filt = &(ps->filters[segm_num]);
     
-    mjpeg_debug("starting segment %d, frame %d\n", segm_num, segm_frame);
+    mjpeg_debug("starting segment %d, frame %d", segm_num, segm_frame);
     
     open_segment_inputs(seg, filt, segm_frame, segm_num, sequ_frame,
 			&ps->pl, &ps->cl, ps->sources);
@@ -743,7 +743,7 @@ void process_pipe_sequence(pipe_sequence_t *ps)
       alloc_yuv_buffers(ps->output.yuv, 
 			y4m_si_get_width(&(ps->output.out_streaminfo)),
 			y4m_si_get_height(&(ps->output.out_streaminfo)));
-      mjpeg_debug("output stream initialized\n");
+      mjpeg_debug("output stream initialized");
       first_iteration = 0;
     } else {
       /* For succeeding segments, make sure that the new filter's stream is
@@ -751,14 +751,14 @@ void process_pipe_sequence(pipe_sequence_t *ps)
        */
       if (y4m_si_get_width(&(filt->in_streaminfo)) != 
 	  y4m_si_get_width(&(ps->output.out_streaminfo)))
-	mjpeg_error_exit1("Stream mismatch:  frame width\n");
+	mjpeg_error_exit1("Stream mismatch:  frame width");
       if (y4m_si_get_height(&(filt->in_streaminfo)) != 
 	  y4m_si_get_height(&(ps->output.out_streaminfo)))
-	mjpeg_error_exit1("Stream mismatch:  frame height\n");
+	mjpeg_error_exit1("Stream mismatch:  frame height");
       if (y4m_si_get_interlace(&(filt->in_streaminfo)) != 
 	  y4m_si_get_interlace(&(ps->output.out_streaminfo)))
-	mjpeg_error_exit1("Stream mismatch:  interlace\n");
-      mjpeg_debug("filter stream verified\n");
+	mjpeg_error_exit1("Stream mismatch:  interlace");
+      mjpeg_debug("filter stream verified");
     }      
     
     process_segment_frames(ps, segm_num, &segm_frame, &sequ_frame);

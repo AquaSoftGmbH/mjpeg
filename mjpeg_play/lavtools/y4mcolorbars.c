@@ -101,25 +101,25 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
     switch (c) {
     case 'W':
       if ((cl->width = atoi(optarg)) <= 0) {
-	mjpeg_error("Invalid width:  '%s'\n", optarg);
+	mjpeg_error("Invalid width:  '%s'", optarg);
 	goto ERROR_EXIT;
       }
       break;
     case 'H':
       if ((cl->height = atoi(optarg)) <= 0) {
-	mjpeg_error("Invalid height:  '%s'\n", optarg);
+	mjpeg_error("Invalid height:  '%s'", optarg);
 	goto ERROR_EXIT;
       }
       break;
     case 'A':
       if (y4m_parse_ratio(&(cl->aspect), optarg) != Y4M_OK) {
-	mjpeg_error("Could not parse ratio:  '%s'\n", optarg);
+	mjpeg_error("Could not parse ratio:  '%s'", optarg);
 	goto ERROR_EXIT;
       }
       break;
     case 'F':
       if (y4m_parse_ratio(&(cl->framerate), optarg) != Y4M_OK) {
-	mjpeg_error("Could not parse framerate:  '%s'\n", optarg);
+	mjpeg_error("Could not parse framerate:  '%s'", optarg);
 	goto ERROR_EXIT;
       }
       break;
@@ -129,14 +129,14 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
       case 't':  cl->interlace = Y4M_ILACE_TOP_FIRST;  break;
       case 'b':  cl->interlace = Y4M_ILACE_BOTTOM_FIRST;  break;
       default:
-	mjpeg_error("Unknown value for interlace: '%c'\n", optarg[0]);
+	mjpeg_error("Unknown value for interlace: '%c'", optarg[0]);
 	goto ERROR_EXIT;
 	break;
       }
       break;
     case 'n':
       if ((cl->framecount = atoi(optarg)) <= 0) {
-	mjpeg_error("Invalid frame count:  '%s'\n", optarg);
+	mjpeg_error("Invalid frame count:  '%s'", optarg);
 	goto ERROR_EXIT;
       }
       break;
@@ -147,7 +147,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
       if (i < SSM_COUNT)
 	cl->ss_mode = i;
       else {
-	mjpeg_error("Unknown subsampling mode option:  %s\n\n", optarg);
+	mjpeg_error("Unknown subsampling mode option:  %s", optarg);
 	goto ERROR_EXIT;
       }
       break;
@@ -160,7 +160,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
       break;
     case '?':
     default:
-      mjpeg_error("Unknown option:  '-%c'\n", optopt);
+      mjpeg_error("Unknown option:  '-%c'", optopt);
       goto ERROR_EXIT;
       break;
     }
@@ -168,20 +168,20 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
 
   mjpeg_default_handler_verbosity(cl->verbosity);
 
-  mjpeg_info("Colorbar Command-line Parameters:\n");
-  mjpeg_info("            frame size:  %dx%d\n", cl->width, cl->height);
-  mjpeg_info("             framerate:  %d:%d\n",
+  mjpeg_info("Colorbar Command-line Parameters:");
+  mjpeg_info("            frame size:  %dx%d", cl->width, cl->height);
+  mjpeg_info("             framerate:  %d:%d",
 	     cl->framerate.n, cl->framerate.d);
-  mjpeg_info("    pixel aspect ratio:  %d:%d\n",
+  mjpeg_info("    pixel aspect ratio:  %d:%d",
 	     cl->aspect.n, cl->aspect.d);
-  mjpeg_info("             interlace:  %s\n",
+  mjpeg_info("             interlace:  %s",
 	     mpeg_interlace_code_definition(cl->interlace));
-  mjpeg_info("           # of frames:  %d\n", cl->framecount);
-  mjpeg_info("    chroma subsampling:  %s\n", ssm_description[cl->ss_mode]);
+  mjpeg_info("           # of frames:  %d", cl->framecount);
+  mjpeg_info("    chroma subsampling:  %s", ssm_description[cl->ss_mode]);
   return;
 
  ERROR_EXIT:
-  mjpeg_error("For usage hints, use option '-h':  '%s -h'\n", argv[0]);
+  mjpeg_error("For usage hints, use option '-h':  '%s -h'", argv[0]);
   exit(1);
 
 }
@@ -382,7 +382,7 @@ int main(int argc, char **argv)
   y4m_si_set_interlace(&sinfo, cl.interlace);
   y4m_si_set_framerate(&sinfo, cl.framerate);
   y4m_write_stream_header(fdout, &sinfo);
-  mjpeg_info("Colorbar Stream parameters:\n");
+  mjpeg_info("Colorbar Stream parameters:");
   y4m_log_stream_info(LOG_INFO, "  ", &sinfo);
 
   /* Create the colorbars frame */

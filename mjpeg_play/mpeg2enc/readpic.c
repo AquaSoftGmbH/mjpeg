@@ -172,7 +172,7 @@ static void read_chunk(void)
 		   // waiting on new_chunk_req.
 		   // Thus neither can suspend without first
 		   // starting the other.
-		   //mjpeg_info( "PRO:  releasing frame buf lock @ %d \n", frames_read);
+		   //mjpeg_info( "PRO:  releasing frame buf lock @ %d ", frames_read);
 
 		   pthread_mutex_unlock( &frame_buffer_lock );
 	   }
@@ -219,14 +219,14 @@ static void read_chunk(void)
 		  // if it suspended because a required frame was
 		  // unavailable
 		  //
-		  //mjpeg_info( "PRO:  waiting for frame buf lock @ %d \n", frames_read);
+		  //mjpeg_info( "PRO:  waiting for frame buf lock @ %d ", frames_read);
 		  pthread_mutex_lock( &frame_buffer_lock );
 	  }
 	  ++frames_read;
 
 	  if( ctl_parallel_read )
 	  {
-		  //mjpeg_info( "PRO: Signalling new_chunk_ack @ %d\n", frames_read );
+		  //mjpeg_info( "PRO: Signalling new_chunk_ack @ %d", frames_read );
 		  pthread_cond_broadcast( &new_chunk_ack );
 	  }
 
@@ -240,17 +240,17 @@ static void read_chunk(void)
    return;
 
    EOF_MARK:
-   mjpeg_debug( "End of input stream detected\n" );
+   mjpeg_debug( "End of input stream detected" );
    if( ctl_parallel_read )
    {
 	   pthread_mutex_lock( &frame_buffer_lock );
    }
    last_frame = frames_read-1;
    istrm_nframes = frames_read;
-   //mjpeg_info( "Signalling last frame = %d\n", last_frame );
+   //mjpeg_info( "Signalling last frame = %d", last_frame );
    if( ctl_parallel_read )
    {
-	   //mjpeg_info( "PRO: Signalling new_chunk_ack @ %d\n", frames_read );
+	   //mjpeg_info( "PRO: Signalling new_chunk_ack @ %d", frames_read );
 	   pthread_cond_broadcast( &new_chunk_ack );
    }
 
@@ -261,17 +261,17 @@ static void read_chunk(void)
 
 static void *read_chunks_worker(void *_dummy)
 {
-	//mjpeg_info("PRO: requesting frame buf lock\n" );
-    //mjpeg_info( "PRO: has frame buf lock @ %d \n", frames_read );
-    //mjpeg_info( "PRO: Initial fill of frame buf\n" );
+	//mjpeg_info("PRO: requesting frame buf lock" );
+    //mjpeg_info( "PRO: has frame buf lock @ %d ", frames_read );
+    //mjpeg_info( "PRO: Initial fill of frame buf" );
     pthread_mutex_lock( &frame_buffer_lock );
     read_chunk();
 	for(;;)
 	{
-		//mjpeg_info( "PRO: has frame buf lock @ %d \n", frames_read );
-		//mjpeg_info( "PRO: Waiting for new_chunk_req \n" );
+		//mjpeg_info( "PRO: has frame buf lock @ %d ", frames_read );
+		//mjpeg_info( "PRO: Waiting for new_chunk_req " );
 		pthread_cond_wait( &new_chunk_req, &frame_buffer_lock );
-		//mjpeg_info( "PRO: new_chunk_req regained frame buf lock @  %d \n", frames_read ); 
+		//mjpeg_info( "PRO: new_chunk_req regained frame buf lock @  %d ", frames_read ); 
 		if( frames_read < istrm_nframes ) 
 		{
 			read_chunk();
@@ -303,7 +303,7 @@ static void start_worker(void)
 
 	if( pthread_create( &worker_thread, pattr, read_chunks_worker, NULL ) != 0 )
 	{
-		mjpeg_error_exit1( "worker thread creation failed: %s\n", strerror(errno) );
+		mjpeg_error_exit1( "worker thread creation failed: %s", strerror(errno) );
 
 	}
 
@@ -347,29 +347,29 @@ static void read_chunk_seq( int num_frame )
 
 static void read_chunk_par( int num_frame)
 {
-	//mjpeg_info( "CON: requesting frame buf lock\n");
+	//mjpeg_info( "CON: requesting frame buf lock");
 	pthread_mutex_lock( &frame_buffer_lock);
 	for(;;)
 	{
-		//mjpeg_info( "CON: has frame buf lock @ %d (%d recorded read)\n", frames_read,  num_frame );
+		//mjpeg_info( "CON: has frame buf lock @ %d (%d recorded read)", frames_read,  num_frame );
 		// Activate reader process "on the fly"
 		if( frames_read - num_frame < READ_CHUNK_SIZE && 
 			frames_read < istrm_nframes )
 		{
-			//mjpeg_info( "CON: Running low on frames: signalling new_chunk_req\n" );
+			//mjpeg_info( "CON: Running low on frames: signalling new_chunk_req" );
 
 			pthread_cond_broadcast( &new_chunk_req );
 		}
 		if( frames_read > num_frame  || 
 			frames_read >= istrm_nframes )
 		{
-			//mjpeg_info( "CON:  releasing frame buf lock - enough frames to go on with...\n");
+			//mjpeg_info( "CON:  releasing frame buf lock - enough frames to go on with...");
 			pthread_mutex_unlock( &frame_buffer_lock );
 			return;
 		}
-		//mjpeg_info( "CON: waiting for new_chunk_ack - too few frames\n" );
+		//mjpeg_info( "CON: waiting for new_chunk_ack - too few frames" );
 		pthread_cond_wait( &new_chunk_ack, &frame_buffer_lock );
-		//mjpeg_info( "CON: regained frame buf lock @ %d (%d processed)\n", frames_read,  num_frame );
+		//mjpeg_info( "CON: regained frame buf lock @ %d (%d processed)", frames_read,  num_frame );
 
 	}
 	
@@ -380,7 +380,7 @@ static void load_frame( int num_frame )
 	
 	if(last_frame>=0 && num_frame>last_frame &&num_frame<istrm_nframes)
 	{
-		mjpeg_error("Internal:readframe: internal error reading beyond end of frames\n");
+		mjpeg_error("Internal:readframe: internal error reading beyond end of frames");
 		abort();
 	}
 	
@@ -424,7 +424,7 @@ static void load_frame( int num_frame )
 
    if(num_frame < frames_read - FRAME_BUFFER_SIZE)
    {
-	   mjpeg_error("Internal:readframe: internal error - buffer flushed too soon\n");
+	   mjpeg_error("Internal:readframe: internal error - buffer flushed too soon");
 	   abort();
    }
 
@@ -478,7 +478,7 @@ void read_stream_params( int *hsize, int *vsize,
 
    y4m_init_stream_info (&si);  
    if ((n = y4m_read_stream_header (istrm_fd, &si)) != Y4M_OK) {
-       mjpeg_log(LOG_ERROR, "Could not read YUV4MPEG header: %s!\n",
+       mjpeg_log(LOG_ERROR, "Could not read YUV4MPEG2 header: %s!",
                  y4m_strerr(n));
       exit (1);
    }

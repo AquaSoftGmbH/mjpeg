@@ -121,13 +121,13 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
     switch (c) {
     case 'A':
       if (y4m_parse_ratio(&(cl->aspect), optarg) != Y4M_OK) {
-	mjpeg_error("Could not parse ratio:  '%s'\n", optarg);
+	mjpeg_error("Could not parse ratio:  '%s'", optarg);
 	goto ERROR_EXIT;
       }
       break;
     case 'F':
       if (y4m_parse_ratio(&(cl->framerate), optarg) != Y4M_OK) {
-	mjpeg_error("Could not parse ratio:  '%s'\n", optarg);
+	mjpeg_error("Could not parse ratio:  '%s'", optarg);
 	goto ERROR_EXIT;
       }
       break;
@@ -137,7 +137,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
       case 't':  cl->interlace = Y4M_ILACE_TOP_FIRST;  break;
       case 'b':  cl->interlace = Y4M_ILACE_BOTTOM_FIRST;  break;
       default:
-	mjpeg_error("Unknown value for interlace: '%c'\n", optarg[0]);
+	mjpeg_error("Unknown value for interlace: '%c'", optarg[0]);
 	goto ERROR_EXIT;
 	break;
       }
@@ -147,11 +147,11 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
       break;
     case 'o':
       if ((cl->offset = atoi(optarg)) < 0)
-	mjpeg_error_exit1("Offset must be >= 0:  '%s'\n", optarg);
+	mjpeg_error_exit1("Offset must be >= 0:  '%s'", optarg);
       break;
     case 'n':
       if ((cl->framecount = atoi(optarg)) < 0)
-	mjpeg_error_exit1("Frame count must be >= 0:  '%s'\n", optarg);
+	mjpeg_error_exit1("Frame count must be >= 0:  '%s'", optarg);
       break;
     case 'r':
       cl->repeatlast = 1;
@@ -163,14 +163,14 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
       if (i < SSM_COUNT)
 	cl->ss_mode = i;
       else {
-	mjpeg_error("Unknown subsampling mode option:  %s\n", optarg);
+	mjpeg_error("Unknown subsampling mode option:  %s", optarg);
 	goto ERROR_EXIT;
       }
       break;
     case 'v':
       cl->verbosity = atoi(optarg);
       if ((cl->verbosity < 0) || (cl->verbosity > 2))
-	mjpeg_error("Verbosity must be 0, 1, or 2:  '%s'\n", optarg);
+	mjpeg_error("Verbosity must be 0, 1, or 2:  '%s'", optarg);
       break;
     case 'h':
       usage(argv[0]);
@@ -185,7 +185,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
   /* optional remaining argument is a filename */
   if (optind == (argc - 1)) {
     if ((cl->fdin = open(argv[optind], O_RDONLY | O_BINARY)) == -1)
-      mjpeg_error_exit1("Failed to open '%s':  %s\n",
+      mjpeg_error_exit1("Failed to open '%s':  %s",
 			argv[optind], strerror(errno));
   } else if (optind != argc) 
     goto ERROR_EXIT;
@@ -193,33 +193,33 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
 
   mjpeg_default_handler_verbosity(cl->verbosity);
 
-  mjpeg_info("Command-line Parameters:\n");
-  mjpeg_info("             framerate:  %d:%d\n",
+  mjpeg_info("Command-line Parameters:");
+  mjpeg_info("             framerate:  %d:%d",
 	     cl->framerate.n, cl->framerate.d);
-  mjpeg_info("    pixel aspect ratio:  %d:%d\n",
+  mjpeg_info("    pixel aspect ratio:  %d:%d",
 	     cl->aspect.n, cl->aspect.d);
-  mjpeg_info("             interlace:  %s%s\n",
+  mjpeg_info("             interlace:  %s%s",
 	     mpeg_interlace_code_definition(cl->interlace),
 	     (cl->interlace == Y4M_ILACE_NONE) ? "" :
 	     (cl->interleave) ? " (interleaved PPM input)" :
 	     " (field-sequential PPM input)");
-  mjpeg_info("        starting frame:  %d\n", cl->offset);
+  mjpeg_info("        starting frame:  %d", cl->offset);
   if (cl->framecount == 0)
-    mjpeg_info("           # of frames:  all%s\n",
+    mjpeg_info("           # of frames:  all%s",
 	       (cl->repeatlast) ? ", repeat last frame forever" :
 	       ", until input exhausted");
   else
-    mjpeg_info("           # of frames:  %d%s\n",
+    mjpeg_info("           # of frames:  %d%s",
 	       cl->framecount,
 	       (cl->repeatlast) ? ", repeat last frame until done" :
 	       ", or until input exhausted");
-  mjpeg_info("    chroma subsampling:  %s\n", ssm_description[cl->ss_mode]);
+  mjpeg_info("    chroma subsampling:  %s", ssm_description[cl->ss_mode]);
 
   /* DONE! */
   return;
 
  ERROR_EXIT:
-  mjpeg_error("For usage hints, use option '-h'.  Please take a hint.\n");
+  mjpeg_error("For usage hints, use option '-h'.  Please take a hint.");
   exit(1);
 
 }
@@ -236,7 +236,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
 #define DO_READ_NUMBER(var)                                     \
   do {                                                          \
     if (!isdigit(s[0]))                                         \
-      mjpeg_error_exit1("PPM read error:  bad char\n");         \
+      mjpeg_error_exit1("PPM read error:  bad char");         \
     (var) = ((var) * 10) + (s[0] - '0');                        \
   } while (((n = read(fd, s, 1)) == 1) && (!isspace(s[0])));    \
   if (n <= 0) return -1;                                        
@@ -270,7 +270,7 @@ int read_ppm_header(int fd, int *width, int *height)
     return 1;  /* EOF */
 
   if ((n < 0) || (strncmp(s, "P6", 2)))
-    mjpeg_error_exit1("Bad Raw PPM magic!\n");
+    mjpeg_error_exit1("Bad Raw PPM magic!");
 
   incomment = 0;
   DO_SKIP_WHITESPACE();
@@ -281,7 +281,7 @@ int read_ppm_header(int fd, int *width, int *height)
   DO_READ_NUMBER(maxval);
 
   if (maxval != 255)
-    mjpeg_error_exit1("Expecting maxval == 255, not %d!\n", maxval);
+    mjpeg_error_exit1("Expecting maxval == 255, not %d!", maxval);
 
   return 0;
 }
@@ -291,7 +291,7 @@ int read_ppm_header(int fd, int *width, int *height)
 static
 void alloc_buffers(uint8_t *buffers[], int width, int height)
 {
-  mjpeg_debug("Alloc'ing buffers\n");
+  mjpeg_debug("Alloc'ing buffers");
   buffers[0] = malloc(width * height * 2 * sizeof(buffers[0][0]));
   buffers[1] = malloc(width * height * 2 * sizeof(buffers[1][0]));
   buffers[2] = malloc(width * height * 2 * sizeof(buffers[2][0]));
@@ -318,12 +318,12 @@ void read_ppm_into_two_buffers(int fd,
   uint8_t *G2 = buffers2[1];
   uint8_t *B2 = buffers2[2];
 
-  mjpeg_debug("read into two buffers, %dx%d\n", width, height);
+  mjpeg_debug("read into two buffers, %dx%d", width, height);
   height /= 2;
   for (y = 0; y < height; y++) {
     pixels = rowbuffer;
     if (y4m_read(fd, pixels, width * 3))
-      mjpeg_error_exit1("read error A  y=%d\n", y);
+      mjpeg_error_exit1("read error A  y=%d", y);
     for (x = 0; x < width; x++) {
       *(R++) = *(pixels++);
       *(G++) = *(pixels++);
@@ -331,7 +331,7 @@ void read_ppm_into_two_buffers(int fd,
     }
     pixels = rowbuffer;
     if (y4m_read(fd, pixels, width * 3))
-      mjpeg_error_exit1("read error B  y=%d\n", y);
+      mjpeg_error_exit1("read error B  y=%d", y);
     for (x = 0; x < width; x++) {
       *(R2++) = *(pixels++);
       *(G2++) = *(pixels++);
@@ -387,11 +387,11 @@ int read_ppm_frame(int fd, ppm_info_t *ppm,
   err = read_ppm_header(fd, &width, &height);
   if (err > 0) return 1;  /* EOF */
   if (err < 0) return -1; /* error */
-  mjpeg_debug("Got PPM header:  %dx%d\n", width, height);
+  mjpeg_debug("Got PPM header:  %dx%d", width, height);
 
   if (ppm->width == 0) {
     /* first time */
-    mjpeg_debug("Initializing PPM read_frame\n");
+    mjpeg_debug("Initializing PPM read_frame");
     ppm->width = width;
     ppm->height = height;
     rowbuffer = malloc(width * 3 * sizeof(rowbuffer[0]));
@@ -399,14 +399,14 @@ int read_ppm_frame(int fd, ppm_info_t *ppm,
     /* make sure everything matches */
     if ( (ppm->width != width) ||
 	 (ppm->height != height) )
-      mjpeg_error_exit1("One of these frames is not like the others!\n");
+      mjpeg_error_exit1("One of these frames is not like the others!");
   }
   if (buffers[0] == NULL) 
     alloc_buffers(buffers, width, height);
   if ((buffers2[0] == NULL) && (ilace != Y4M_ILACE_NONE))
     alloc_buffers(buffers2, width, height);
 
-  mjpeg_debug("Reading rows\n");
+  mjpeg_debug("Reading rows");
 
   if ((ilace != Y4M_ILACE_NONE) && (ileave)) {
     /* Interlaced and Interleaved:
@@ -431,12 +431,12 @@ int read_ppm_frame(int fd, ppm_info_t *ppm,
       err = read_ppm_header(fd, &width, &height);
       if (err > 0) return 1;  /* EOF */
       if (err < 0) return -1; /* error */
-      mjpeg_debug("Got PPM header:  %dx%d\n", width, height);
+      mjpeg_debug("Got PPM header:  %dx%d", width, height);
       
       /* make sure everything matches */
       if ( (ppm->width != width) ||
 	   (ppm->height != height) )
-	mjpeg_error_exit1("One of these frames is not like the others!\n");
+	mjpeg_error_exit1("One of these frames is not like the others!");
       read_ppm_into_one_buffer(fd, buffers2, rowbuffer, width, height);
     }
   }
@@ -451,14 +451,14 @@ void setup_output_stream(int fdout, cl_info_t *cl,
 			 int *field_height) 
 {
   if ((ppm->width % 2) != 0) {
-    mjpeg_error("PPM width (%d) is not a multiple of 2!\n", ppm->width);
+    mjpeg_error("PPM width (%d) is not a multiple of 2!", ppm->width);
     exit(1);
   }
   if (((ppm->height % 2) != 0) && (cl->interlace == Y4M_ILACE_NONE)) {
-    mjpeg_error("PPM height (%d) is not a multiple of 2!\n", ppm->height);
+    mjpeg_error("PPM height (%d) is not a multiple of 2!", ppm->height);
     exit(1);
   } else if (((ppm->height % 4) != 0) && (cl->interlace != Y4M_ILACE_NONE)) {
-    mjpeg_error("PPM height (%d) is not a multiple of 4!\n", ppm->height);
+    mjpeg_error("PPM height (%d) is not a multiple of 4!", ppm->height);
     exit(1);
   }
 
@@ -479,7 +479,7 @@ void setup_output_stream(int fdout, cl_info_t *cl,
 
   y4m_write_stream_header(fdout, sinfo);
 
-  mjpeg_info("Output Stream parameters:\n");
+  mjpeg_info("Output Stream parameters:");
   y4m_log_stream_info(LOG_INFO, "  ", sinfo);
 }
 
@@ -514,7 +514,7 @@ int main(int argc, char **argv)
   /* Read first PPM frame/field-pair, to get dimensions */
   if (read_ppm_frame(cl.fdin, &ppm, buffers, buffers2, 
 		     cl.interlace, cl.interleave))
-    mjpeg_error_exit1("Failed to read first frame.\n");
+    mjpeg_error_exit1("Failed to read first frame.");
 
   /* Setup streaminfo and write output header */
   setup_output_stream(fdout, &cl, &sinfo, &ppm, &field_height);
@@ -537,13 +537,13 @@ int main(int argc, char **argv)
 	  repeating_last = 1;
 	  goto WRITE_FRAME;
 	} else if (cl.framecount != 0) {
-	  mjpeg_error_exit1("Input frame shortfall (only %d converted).\n",
+	  mjpeg_error_exit1("Input frame shortfall (only %d converted).",
 			    count - cl.offset);
 	} else {
 	  break;  /* input is exhausted; we are done!  time to go home! */
 	}
       } else if (err)
-	mjpeg_error_exit1("Error reading ppm frame\n");
+	mjpeg_error_exit1("Error reading ppm frame");
     }
     
     /* ...skip transforms if we are just going to skip this frame anyway.
@@ -573,7 +573,7 @@ int main(int argc, char **argv)
 	y4m_write_fields(fdout, &sinfo, &finfo, buffers2, buffers);
 	break;
       default:
-	mjpeg_error_exit1("Unknown ilace type!   %d\n", cl.interlace);
+	mjpeg_error_exit1("Unknown ilace type!   %d", cl.interlace);
 	break;
       }
     }
@@ -587,6 +587,6 @@ int main(int argc, char **argv)
   y4m_fini_stream_info(&sinfo);
   y4m_fini_frame_info(&finfo);
 
-  mjpeg_debug("Done.\n");
+  mjpeg_debug("Done.");
   return 0;
 }

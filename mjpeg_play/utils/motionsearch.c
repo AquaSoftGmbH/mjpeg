@@ -1206,7 +1206,7 @@ void init_motion_search(void)
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
 	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
 	{
-		mjpeg_info( "SETTING EXTENDED MMX for MOTION!\n");
+		mjpeg_info( "SETTING EXTENDED MMX for MOTION!");
 		psad_sub22 = sad_sub22_mmxe;
 		psad_sub44 = sad_sub44_mmxe;
 		psad_00 = sad_00_mmxe;
@@ -1226,7 +1226,7 @@ void init_motion_search(void)
 	}
 	else if(cpucap & ACCEL_X86_MMX) /* Ordinary MMX CPU */
 	{
-		mjpeg_info( "SETTING MMX for MOTION!\n");
+		mjpeg_info( "SETTING MMX for MOTION!");
 		psad_sub22 = sad_sub22_mmx;
 		psad_sub44 = sad_sub44_mmx;
 		psad_00 = sad_00_mmx;

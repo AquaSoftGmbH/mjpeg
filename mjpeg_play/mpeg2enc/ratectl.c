@@ -295,7 +295,7 @@ void rc_init_seq(int reinit)
 		int buffer_safe = 4 * per_pict_bits ;
 		undershoot_carry = (ctl_video_buffer_size - buffer_safe)/6;
 		if( undershoot_carry < 0 )
-			mjpeg_error_exit1("Rate control can't cope with a video buffer smaller 4 frame intervals\n");
+			mjpeg_error_exit1("Rate control can't cope with a video buffer smaller 4 frame intervals");
 		overshoot_gain =  opt_bit_rate / (ctl_video_buffer_size-buffer_safe);
 	}
 	bits_per_mb = (double)opt_bit_rate / (mb_per_pict);
@@ -367,7 +367,7 @@ void rc_init_GOP( int np, int nb)
 
 	if( first_gop || opt_still_size > 0)
 	{
-		mjpeg_debug( "FIRST GOP INIT\n");
+		mjpeg_debug( "FIRST GOP INIT");
 		fast_tune = true;
 		first_I = first_B = first_P = true;
 		first_gop = false;
@@ -383,7 +383,7 @@ void rc_init_GOP( int np, int nb)
 		int available_bits = 
 			( opt_bit_rate+buffer_variation*recovery_gain)*fields_in_gop/field_rate;
 		double Xsum = Ni*Xi+Np*Xp+Nb*Xb;
-		mjpeg_debug( "REST GOP INIT\n" );
+		mjpeg_debug( "REST GOP INIT" );
 		I_pict_base_bits = (int32_t)(fields_per_pict*available_bits*Xi/Xsum);
 		P_pict_base_bits = (int32_t)(fields_per_pict*available_bits*Xp/Xsum);
 		B_pict_base_bits = (int32_t)(fields_per_pict*available_bits*Xb/Xsum);
@@ -540,8 +540,8 @@ void rc_init_pict(pict_data_s *picture)
 
 	T = intmin( T, ctl_video_buffer_size*3/4 );
 
-	mjpeg_debug( "I=%d P=%d B=%d\n", I_pict_base_bits, P_pict_base_bits, B_pict_base_bits );
-	mjpeg_debug( "T=%05d A=%06d D=%06d (%06d) \n", (int)T/8, (int)available_bits/8, (int)buffer_variation/8, (int)(buffer_variation + gop_buffer_correction)/8 );
+	mjpeg_debug( "I=%d P=%d B=%d", I_pict_base_bits, P_pict_base_bits, B_pict_base_bits );
+	mjpeg_debug( "T=%05d A=%06d D=%06d (%06d) ", (int)T/8, (int)available_bits/8, (int)buffer_variation/8, (int)(buffer_variation + gop_buffer_correction)/8 );
 
 
 	/* 
@@ -557,7 +557,7 @@ void rc_init_pict(pict_data_s *picture)
 	   bit-allocation (which *won't* add up very well).
 	*/
 
-	mjpeg_debug( "PBB=%d PPB=%d\n", pict_base_bits, per_pict_bits );
+	mjpeg_debug( "PBB=%d PPB=%d", pict_base_bits, per_pict_bits );
 	gop_buffer_correction += (pict_base_bits-per_pict_bits);
 
 
@@ -576,7 +576,7 @@ void rc_init_pict(pict_data_s *picture)
 		/* If stills size must match then target low to ensure no
 		   overshoot.
 		*/
-		mjpeg_info( "Setting VCD HR still overshoot margin to %d bytes\n", T/(16*8) );
+		mjpeg_info( "Setting VCD HR still overshoot margin to %d bytes", T/(16*8) );
 		frame_overshoot_margin = T/16;
 		T -= frame_overshoot_margin;
 	}
@@ -719,7 +719,7 @@ void rc_update_pict(pict_data_s *picture)
 		int padding_bytes;
 		if( frame_overshoot > frame_overshoot_margin )
 		{
-			mjpeg_warn( "Rate overshoot: VCD hi-res still %d bytes too large! \n", 
+			mjpeg_warn( "Rate overshoot: VCD hi-res still %d bytes too large! ", 
 						((int)AP)/8-opt_still_size);
 		}
 		
@@ -735,7 +735,7 @@ void rc_update_pict(pict_data_s *picture)
 		padding_bytes = -frame_overshoot/8;
 		if( padding_bytes > 0 )
 		{
-			mjpeg_debug( "Padding still to size: %d extra bytes\n", padding_bytes );
+			mjpeg_debug( "Padding still to size: %d extra bytes", padding_bytes );
 			picture->pad = 1;
 			alignbits();
 			for( i = 0; i < padding_bytes/2; ++i )
@@ -765,7 +765,7 @@ void rc_update_pict(pict_data_s *picture)
 	bits_used += (bitcount()-prev_bitcount);
 	prev_bitcount = bitcount();
 	bits_transported += per_pict_bits;
-	mjpeg_debug( "TR=%" PRId64 " USD=%" PRId64 "\n", bits_transported/8, bits_used/8);
+	mjpeg_debug( "TR=%" PRId64 " USD=%" PRId64 "", bits_transported/8, bits_used/8);
 	buffer_variation  = (int32_t)(bits_transported - bits_used);
 
 	if( buffer_variation > 0 )
@@ -813,7 +813,7 @@ void rc_update_pict(pict_data_s *picture)
 	picture->AQ = AQ;
 	picture->SQ = SQ;
 
-	mjpeg_debug( "D=%d R=%d GC=%d\n", 
+	mjpeg_debug( "D=%d R=%d GC=%d", 
 				 buffer_variation/8,
 				 (int)R/8,
 				 gop_buffer_correction/8  );
@@ -1147,7 +1147,7 @@ void calc_vbv_delay(pict_data_s *picture)
 	if (!opt_low_delay && (decoding_time < (double)bitcnt_EOP*90000.0/opt_bit_rate))
 	{
 		/* picture not completely in buffer at intended decoding time */
-		mjpeg_warn("vbv_delay underflow frame %d (target=%.1f, actual=%.1f\n)",
+		mjpeg_warn("vbv_delay underflow frame %d (target=%.1f, actual=%.1f)",
 				   frame_num-1, decoding_time, bitcnt_EOP*90000.0/opt_bit_rate);
 	}
 
@@ -1169,7 +1169,7 @@ void calc_vbv_delay(pict_data_s *picture)
 		double oversize = opt_vbv_buffer_size -
 			(decoding_time / 90000.0 * bit_rate - (double)(bitcnt_EOP+frame_undershoot));
 		if(!quiet || oversize > 0.0  )
-			mjpeg_warn("vbv_delay overflow frame %d - %f.0 bytes!\n", 
+			mjpeg_warn("vbv_delay overflow frame %d - %f.0 bytes!", 
 					   frame_num,
 					   oversize / 8.0
 				);
@@ -1184,7 +1184,7 @@ void calc_vbv_delay(pict_data_s *picture)
 
 	if (picture->vbv_delay<0)
 	{
-		mjpeg_warn("vbv_delay underflow: %d\n",picture->vbv_delay);
+		mjpeg_warn("vbv_delay underflow: %d",picture->vbv_delay);
 		picture->vbv_delay = 0;
 	}
 
@@ -1192,7 +1192,7 @@ void calc_vbv_delay(pict_data_s *picture)
 
 	if (picture->vbv_delay>65535)
 	{
-		mjpeg_warn("vbv_delay frame %d exceeds permissible range: %d\n",
+		mjpeg_warn("vbv_delay frame %d exceeds permissible range: %d",
 				   frame_num, picture->vbv_delay);
 		picture->vbv_delay = 65535;
 	}

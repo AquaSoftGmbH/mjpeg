@@ -208,9 +208,9 @@ int audio_init(int a_read, int use_read, int a_stereo, int a_size, int a_rate)
    if (a_size != 8 && a_size != 16) { audio_errno = AUDIO_ERR_ASIZE; return -1; }
 
    if( use_read )
-	   mjpeg_info( "Using read(2) system call for capture\n");
+	   mjpeg_info( "Using read(2) system call for capture");
    else
-	   mjpeg_info( "Using mmap(2) system call for capture\n");
+	   mjpeg_info( "Using mmap(2) system call for capture");
    /* Copy our parameters into static space */
 
    audio_capt = a_read;
@@ -734,7 +734,7 @@ void do_audio(void)
    if(ret<0) {
        system_error("setting sound rate",fd,0);
    } else if(tmp != audio_rate) {
-       mjpeg_warn("Sound card told us it's using rate %dHz instead of %dHz\n", tmp, audio_rate);
+       mjpeg_warn("Sound card told us it's using rate %dHz instead of %dHz", tmp, audio_rate);
    }
 
 /* Calculate number of bytes corresponding to TIME_STAMP_TOL */
@@ -861,10 +861,10 @@ void do_audio(void)
    schedparam.sched_priority = 1;
 
    if(setpriority(PRIO_PROCESS, 0, -20)) { /* Give myself maximum priority */ 
-      mjpeg_warn("Unable to set negative priority for audio thread.\n");
+      mjpeg_warn("Unable to set negative priority for audio thread.");
    }
    if( (ret = pthread_setschedparam( pthread_self(), SCHED_FIFO, &schedparam ) ) ) {
-      mjpeg_warn("Pthread Real-time scheduling for audio thread could not be enabled.\n"); 
+      mjpeg_warn("Pthread Real-time scheduling for audio thread could not be enabled."); 
    }
 #endif
 
@@ -949,7 +949,7 @@ void do_audio(void)
 		 problems...
 	   */
 	  /*
-		mjpeg_info( "CB=%08d ND=%06d BL=%03d NB=%d\n", count.bytes, ndiff, count.blocks, NBUF(nbdone) );
+		mjpeg_info( "CB=%08d ND=%06d BL=%03d NB=%d", count.bytes, ndiff, count.blocks, NBUF(nbdone) );
 	  */
       if(ndiff>maxdiff)
 	  {

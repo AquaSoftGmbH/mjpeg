@@ -78,11 +78,11 @@ static int fork_child (char *child) {
    char **myargv;
 
    if (pipe (mypipe)) {
-      mjpeg_error( "Couldn't create pipe to %s\n", child);
+      mjpeg_error( "Couldn't create pipe to %s", child);
       exit (1);
    }
    if ((pid = fork ())<0) {
-      mjpeg_error( "Couldn't fork %s\n", child);
+      mjpeg_error( "Couldn't fork %s", child);
       exit (1);
    }
    
@@ -153,32 +153,32 @@ int main (int argc, char *argv[])
   command0 = strdup(argv[fstarg]);
   command1 = strdup(argv[fstarg + 1]);
    
-  mjpeg_info("0 Trying to create pipe to '%s'\n", command0);
+  mjpeg_info("0 Trying to create pipe to '%s'", command0);
   stream0 = fork_child(command0);
-  mjpeg_info("1 Trying to create pipe to '%s'\n", command1);
+  mjpeg_info("1 Trying to create pipe to '%s'", command1);
   stream1 = fork_child(command1);
 
   if ((err = y4m_read_stream_header(stream0, &sinfo0)) != Y4M_OK)
-    mjpeg_error_exit1("Failed to read first stream header:  %s\n",
+    mjpeg_error_exit1("Failed to read first stream header:  %s",
 		      y4m_strerr(err));
   if ((err = y4m_read_stream_header(stream1, &sinfo1)) != Y4M_OK)
-    mjpeg_error_exit1("Failed to read second stream header:  %s\n",
+    mjpeg_error_exit1("Failed to read second stream header:  %s",
 		      y4m_strerr(err));
   
-  mjpeg_info("First stream parameters:\n");
+  mjpeg_info("First stream parameters:");
   y4m_log_stream_info(LOG_INFO, "1> ", &sinfo0);
-  mjpeg_info("Second stream parameters:\n");
+  mjpeg_info("Second stream parameters:");
   y4m_log_stream_info(LOG_INFO, "2> ", &sinfo1);
   
   if (y4m_si_get_width(&sinfo0) != y4m_si_get_width(&sinfo1))
-    mjpeg_error_exit1("Width mismatch\n");
+    mjpeg_error_exit1("Width mismatch");
   if (y4m_si_get_height(&sinfo0) != y4m_si_get_height(&sinfo1))
-    mjpeg_error_exit1("Height mismatch\n");
+    mjpeg_error_exit1("Height mismatch");
   if (!(Y4M_RATIO_EQL(y4m_si_get_framerate(&sinfo0),
 		      y4m_si_get_framerate(&sinfo1))))
-    mjpeg_error_exit1("Framerate mismatch\n");
+    mjpeg_error_exit1("Framerate mismatch");
   if (y4m_si_get_interlace(&sinfo0) != y4m_si_get_interlace(&sinfo1))
-    mjpeg_error_exit1("Interlace mismatch\n");
+    mjpeg_error_exit1("Interlace mismatch");
   
   w = y4m_si_get_width(&sinfo0);
   h = y4m_si_get_height(&sinfo0);
@@ -190,7 +190,7 @@ int main (int argc, char *argv[])
   yuv0[2] = malloc (w*h/4); yuv1[2] = malloc (w*h/4);
   
   if ((err = y4m_write_stream_header(outstream, &sinfo0)) != Y4M_OK)
-    mjpeg_error_exit1("Failed to write output header:  %s\n",
+    mjpeg_error_exit1("Failed to write output header:  %s",
 		      y4m_strerr(err));
   
   while ( ((err = y4m_read_frame(stream0, &sinfo0, &finfo0, yuv0)) 
@@ -203,7 +203,7 @@ int main (int argc, char *argv[])
 	   == Y4M_OK) ) {}
   
   if (err != Y4M_ERR_EOF)
-    mjpeg_error_exit1("Some error somewhere:  %s\n", y4m_strerr(err));
+    mjpeg_error_exit1("Some error somewhere:  %s", y4m_strerr(err));
   
   y4m_fini_stream_info(&sinfo0);
   y4m_fini_stream_info(&sinfo1);

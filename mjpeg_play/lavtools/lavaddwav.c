@@ -65,37 +65,37 @@ int main(int argc, char **argv)
    lav_fd = lav_open_input_file(argv[1]);
    if(!lav_fd)
    {
-	   mjpeg_error_exit1("Error opening %s: %s\n",argv[1],lav_strerror());
+	   mjpeg_error_exit1("Error opening %s: %s",argv[1],lav_strerror());
    }
 
    /* Debug Output */
 
-   mjpeg_debug("File: %s\n",argv[1]);
-   mjpeg_debug("   frames:      %8ld\n",lav_video_frames(lav_fd));
-   mjpeg_debug("   width:       %8d\n",lav_video_width (lav_fd));
-   mjpeg_debug("   height:      %8d\n",lav_video_height(lav_fd));
-   mjpeg_debug("   interlacing: %8d\n",lav_video_interlacing(lav_fd));
-   mjpeg_debug("   frames/sec:  %8.3f\n",lav_frame_rate(lav_fd));
-   mjpeg_debug("\n");
+   mjpeg_debug("File: %s",argv[1]);
+   mjpeg_debug("   frames:      %8ld",lav_video_frames(lav_fd));
+   mjpeg_debug("   width:       %8d",lav_video_width (lav_fd));
+   mjpeg_debug("   height:      %8d",lav_video_height(lav_fd));
+   mjpeg_debug("   interlacing: %8d",lav_video_interlacing(lav_fd));
+   mjpeg_debug("   frames/sec:  %8.3f",lav_frame_rate(lav_fd));
+   mjpeg_debug("");
    video_frames = lav_video_frames(lav_fd);
    fps = lav_frame_rate(lav_fd);
    if(fps<=0)
    {
-	   mjpeg_error_exit1("Framerate illegal\n");
+	   mjpeg_error_exit1("Framerate illegal");
    }
 
    /* Open WAV file */
 
    wav_fd = open(argv[2],O_RDONLY);
-   if(wav_fd<0) { mjpeg_error_exit1("Open WAV file: %s\n", sys_errlist[errno]);}
+   if(wav_fd<0) { mjpeg_error_exit1("Open WAV file: %s", sys_errlist[errno]);}
 
    n = read(wav_fd,(char*)data,20);
-   if(n!=20) { mjpeg_error_exit1("Read WAV file: %s\n", sys_errlist[errno]); }
+   if(n!=20) { mjpeg_error_exit1("Read WAV file: %s", sys_errlist[errno]); }
 
    if(data[0] != FOURCC_RIFF || data[2] != FOURCC_WAVE ||
       data[3] != FOURCC_FMT  || data[4] > sizeof(data) )
    {
-      mjpeg_error_exit1("Error in WAV header\n");
+      mjpeg_error_exit1("Error in WAV header");
    }
 
    fmtlen = data[4];
@@ -105,7 +105,7 @@ int main(int argc, char **argv)
 
    if( (data[0]&0xffff) != 1)
    {
-      mjpeg_error_exit1("WAV file is not in PCM format\n");
+      mjpeg_error_exit1("WAV file is not in PCM format");
    }
 
    audio_chans = (data[0]>>16) & 0xffff;
@@ -116,25 +116,25 @@ int main(int argc, char **argv)
    if(audio_bps==0) audio_bps = 1; /* safety first */
 
    n = read(wav_fd,(char*)data,8);
-   if(n!=8) { mjpeg_error_exit1("Read WAV header: %s\n", sys_errlist[errno]); }
+   if(n!=8) { mjpeg_error_exit1("Read WAV header: %s", sys_errlist[errno]); }
 
    if(data[0] != FOURCC_DATA)
    {
-      mjpeg_error_exit1("Error in WAV header\n");
+      mjpeg_error_exit1("Error in WAV header");
    }
    audio_samps = data[1]/audio_bps;
 
    /* Debug Output */
 
-   mjpeg_debug("File: %s\n",argv[2]);
-   mjpeg_debug("   audio samps: %8ld\n",audio_samps);
-   mjpeg_debug("   audio chans: %8d\n",audio_chans);
-   mjpeg_debug("   audio bits:  %8d\n",audio_bits);
-   mjpeg_debug("   audio rate:  %8ld\n",audio_rate);
-   mjpeg_debug("\n");
-   mjpeg_debug("Length of video:  %15.3f sec\n",video_frames/fps);
-   mjpeg_debug("Length of audio:  %15.3f sec\n",(double)audio_samps/(double)audio_rate);
-   mjpeg_debug("\n");
+   mjpeg_debug("File: %s",argv[2]);
+   mjpeg_debug("   audio samps: %8ld",audio_samps);
+   mjpeg_debug("   audio chans: %8d",audio_chans);
+   mjpeg_debug("   audio bits:  %8d",audio_bits);
+   mjpeg_debug("   audio rate:  %8ld",audio_rate);
+   mjpeg_debug("");
+   mjpeg_debug("Length of video:  %15.3f sec",video_frames/fps);
+   mjpeg_debug("Length of audio:  %15.3f sec",(double)audio_samps/(double)audio_rate);
+   mjpeg_debug("");
 
 
    max_frame_size = 0;
@@ -151,7 +151,7 @@ int main(int argc, char **argv)
 
    if(vbuff==0 || abuff==0)
    {
-      mjpeg_error_exit1("Out of Memory - malloc failed\n");
+      mjpeg_error_exit1("Out of Memory - malloc failed");
    }
 
    lav_out = lav_open_output_file(argv[3],
@@ -165,7 +165,7 @@ int main(int argc, char **argv)
                                   audio_rate);
    if(!lav_out)
    {
-      mjpeg_error_exit1("Error opening %s: %s\n",argv[3],lav_strerror());
+      mjpeg_error_exit1("Error opening %s: %s",argv[3],lav_strerror());
    }
    
    lav_seek_start(lav_fd);
@@ -177,14 +177,14 @@ int main(int argc, char **argv)
       res = lav_read_frame(lav_fd,vbuff);
       if(res<0)
       {
-         mjpeg_error("Reading video frame: %s\n",lav_strerror());
+         mjpeg_error("Reading video frame: %s",lav_strerror());
          lav_close(lav_out);
          exit(1);
       }
       res = lav_write_frame(lav_out,vbuff,lav_frame_size(lav_fd,i),1);
       if(res<0)
       {
-        mjpeg_error("Writing video frame: %s\n", lav_strerror());
+        mjpeg_error("Writing video frame: %s", lav_strerror());
          lav_close(lav_out);
          exit(1);
       }
@@ -195,7 +195,7 @@ int main(int argc, char **argv)
          res = lav_write_audio(lav_out,abuff,n/audio_bps);
          if(res<0)
          {
-            mjpeg_error("Error writing audio: %s\n",lav_strerror());
+            mjpeg_error("Error writing audio: %s",lav_strerror());
             lav_close(lav_out);
             exit(1);
          }
@@ -213,7 +213,7 @@ int main(int argc, char **argv)
          res = lav_write_audio(lav_out,abuff,n/audio_bps);
          if(res<0)
          {
-            mjpeg_error("Writing audio: %s\n",lav_strerror());
+            mjpeg_error("Writing audio: %s",lav_strerror());
             lav_close(lav_out);
             exit(1);
          }
@@ -222,7 +222,7 @@ int main(int argc, char **argv)
    while(n>0);
    
    if(na_out != audio_samps)
-	   mjpeg_warn("audio samples expected: %ld, written: %ld\n",
+	   mjpeg_warn("audio samples expected: %ld, written: %ld",
 				  audio_samps, na_out);
    
    lav_close(lav_out);

@@ -104,7 +104,7 @@ void streamout(void)
 		fd = fopen(param.scenefile,"w");
 		if(fd==0)
 		{
-			mjpeg_error_exit1("Can not open %s - no edit list written!\n",param.scenefile);
+			mjpeg_error_exit1("Can not open %s - no edit list written!",param.scenefile);
 		}
 		fprintf(fd,"LAV Edit List\n");
 		fprintf(fd,"%s\n",el.video_norm=='n'?"NTSC":"PAL");
@@ -139,7 +139,7 @@ void streamout(void)
 				delta_lum = abs(lum_mean - last_lum_mean);
 			last_lum_mean = lum_mean;
 
-			mjpeg_debug( "frame %d/%ld, lum_mean %d, delta_lum %d        \n", framenum,
+			mjpeg_debug( "frame %d/%ld, lum_mean %d, delta_lum %d        ", framenum,
 						 el.video_frames, lum_mean, delta_lum);
 
 			if (delta_lum > param.delta_lum_threshold || index[N_EL_FILE(el.frame_list[framenum])] != movie_num ||
@@ -162,14 +162,14 @@ void streamout(void)
 		  i = y4m_write_frame(fd_out,
 				      &streaminfo, &frameinfo, frame_buf);
 		  if (i != Y4M_OK)
-		    mjpeg_error("Failed to write frame: %s\n", y4m_strerr(i));
+		    mjpeg_error("Failed to write frame: %s", y4m_strerr(i));
 		}
 	}
 	if (param.scenefile)
 	{
 		fprintf(fd, "%s %ld\n", temp, N_EL_FRAME(el.video_frames-1));
 		fclose(fd);
-		mjpeg_info( "Editlist written to %s\n", param.scenefile);
+		mjpeg_info( "Editlist written to %s", param.scenefile);
 	}
    
 y4m_fini_frame_info(&frameinfo);
@@ -199,7 +199,7 @@ int main(argc, argv)
 		case 'v':
 			verbose = atoi(optarg);
 			if (verbose < 0 ||verbose > 2) {
-				mjpeg_error( "-v option requires arg 0, 1, or 2\n");
+				mjpeg_error( "-v option requires arg 0, 1, or 2");
 				nerr++;
 			}
 			break;
@@ -224,13 +224,13 @@ int main(argc, argv)
 
 		case 'A':
 		  if (y4m_parse_ratio(&(param.sar), optarg)) {
-		    mjpeg_error("Couldn't parse ratio '%s'\n", optarg);
+		    mjpeg_error("Couldn't parse ratio '%s'", optarg);
 		    nerr++;
 		  }
 		  break;
 		case 'P':
 		  if (y4m_parse_ratio(&(param.dar), optarg)) {
-		    mjpeg_error("Couldn't parse ratio '%s'\n", optarg);
+		    mjpeg_error("Couldn't parse ratio '%s'", optarg);
 		    nerr++;
 		  }
 			break;
@@ -259,10 +259,10 @@ int main(argc, argv)
 		param.offset = el.video_frames + param.offset;
 	}
 	if (param.offset >= el.video_frames) {
-		mjpeg_error_exit1("offset greater than # of frames in input\n");
+		mjpeg_error_exit1("offset greater than # of frames in input");
 	}
 	if ((param.offset + param.frames) > el.video_frames) {
-		mjpeg_warn("input too short for -f %d\n", param.frames);
+		mjpeg_warn("input too short for -f %d", param.frames);
 		param.frames = el.video_frames - param.offset;
 	}
 	if (param.frames == 0) {

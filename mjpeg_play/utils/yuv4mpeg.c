@@ -394,7 +394,7 @@ int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i)
       if (_y4mparam_allow_unknown_tags) {
 	/* unknown tags ok:  store in xtag list and warn... */
 	if ((err = y4m_xtag_add(&(i->x_tags), token)) != Y4M_OK) return err;
-	mjpeg_warn("Unknown stream tag encountered:  '%s'\n", token);
+	mjpeg_warn("Unknown stream tag encountered:  '%s'", token);
       } else {
 	/* unknown tags are *not* ok */
 	return Y4M_ERR_BADTAG;
@@ -435,7 +435,7 @@ static int y4m_parse_frame_tags(char *s, y4m_frame_info_t *i)
       if (_y4mparam_allow_unknown_tags) {
 	/* unknown tags ok:  store in xtag list and warn... */
 	if ((err = y4m_xtag_add(&(i->x_tags), token)) != Y4M_OK) return err;
-	mjpeg_warn("Unknown frame tag encountered:  '%s'\n", token);
+	mjpeg_warn("Unknown frame tag encountered:  '%s'", token);
       } else {
 	/* unknown tags are *not* ok */
 	return Y4M_ERR_BADTAG;
@@ -728,22 +728,22 @@ void y4m_log_stream_info(log_level_t level, const char *prefix,
     snprintf(s+strlen(s), sizeof(s)-strlen(s), "(? bytes)");
   else
     snprintf(s+strlen(s), sizeof(s)-strlen(s), "(%d bytes)", i->framelength);
-  mjpeg_log(level, "%s%s\n", prefix, s);
+  mjpeg_log(level, "%s%s", prefix, s);
   if ((i->framerate.n == 0) && (i->framerate.d == 0))
-    mjpeg_log(level, "%s  frame rate:  ??? fps\n", prefix);
+    mjpeg_log(level, "%s  frame rate:  ??? fps", prefix);
   else
-    mjpeg_log(level, "%s  frame rate:  %d/%d fps (~%f)\n", prefix,
+    mjpeg_log(level, "%s  frame rate:  %d/%d fps (~%f)", prefix,
 	      i->framerate.n, i->framerate.d, 
 	      (double) i->framerate.n / (double) i->framerate.d);
-  mjpeg_log(level, "%s   interlace:  %s\n", prefix,
+  mjpeg_log(level, "%s   interlace:  %s", prefix,
 	  (i->interlace == Y4M_ILACE_NONE) ? "none/progressive" :
 	  (i->interlace == Y4M_ILACE_TOP_FIRST) ? "top-field-first" :
 	  (i->interlace == Y4M_ILACE_BOTTOM_FIRST) ? "bottom-field-first" :
 	  "anyone's guess");
   if ((i->sampleaspect.n == 0) && (i->sampleaspect.d == 0))
-    mjpeg_log(level, "%ssample aspect ratio:  ?:?\n", prefix);
+    mjpeg_log(level, "%ssample aspect ratio:  ?:?", prefix);
   else
-    mjpeg_log(level, "%ssample aspect ratio:  %d:%d\n", prefix,
+    mjpeg_log(level, "%ssample aspect ratio:  %d:%d", prefix,
 	      i->sampleaspect.n, i->sampleaspect.d);
 }
 

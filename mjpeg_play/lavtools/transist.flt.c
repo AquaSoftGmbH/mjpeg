@@ -93,21 +93,21 @@ int main (int argc, char *argv[])
       case 'o':
          param_opacity0 = atoi (optarg);
          if (param_opacity0 > 255) {
-            mjpeg_warn( "start opacity > 255\n");
+            mjpeg_warn( "start opacity > 255");
             param_opacity0 = 255;
          }
          break;
       case 'O':
          param_opacity1 = atoi (optarg);
          if (param_opacity1 > 255) {
-            mjpeg_warn( "end opacity > 255\n");
+            mjpeg_warn( "end opacity > 255");
             param_opacity1 = 255;
          }
          break;
       case 'd':
          param_duration = atoi (optarg);
          if (param_duration == 0) {
-            mjpeg_error_exit1( "error: duration = 0 frames\n");
+            mjpeg_error_exit1( "error: duration = 0 frames");
          }
          break;
       case 's':
@@ -125,7 +125,7 @@ int main (int argc, char *argv[])
       exit (1);
    }
    if ((param_skipframes + param_numframes) > param_duration) {
-      mjpeg_error_exit1( "skip + num > duration\n");
+      mjpeg_error_exit1( "skip + num > duration");
    }
 
    (void)mjpeg_default_handler_verbosity(verbose);

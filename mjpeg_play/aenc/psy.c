@@ -127,7 +127,7 @@ double sfreq;        /* to match prototype : float args are always double */
 	 case 48000: 
 		 sfreq_idx = 2; break;
 	 default: 
-		 mjpeg_error_exit1("invalid sampling frequency: %d Hz\n",i);
+		 mjpeg_error_exit1("invalid sampling frequency: %d Hz",i);
      }
 
      read_absthr(absthr, sfreq_idx);
@@ -385,10 +385,10 @@ temp2=r[chn][new][j] * sin((double) phi[j]) - r_prime * sin((double) phi_prime);
      }
      break;
   case 3:
-	  mjpeg_error_exit1("layer 3 is not currently supported\n");
+	  mjpeg_error_exit1("layer 3 is not currently supported");
      break;
   default:
-	  mjpeg_error_exit1("invalid MPEG/audio coding layer: %d\n",lay);
+	  mjpeg_error_exit1("invalid MPEG/audio coding layer: %d",lay);
  }
 
 /* These mem_free() calls must correspond with the mem_alloc() calls     */

@@ -83,7 +83,7 @@ cubic_scale (uint8_t * padded_input, uint8_t * output, unsigned int *in_col,
 #endif
    
    
-   mjpeg_debug ("Start of cubic_scale\n");
+   mjpeg_debug ("Start of cubic_scale");
 
 
    
@@ -393,7 +393,7 @@ cubic_scale (uint8_t * padded_input, uint8_t * output, unsigned int *in_col,
 
 
    /* *INDENT-ON* */
-  mjpeg_debug ("End of cubic_scale\n");
+  mjpeg_debug ("End of cubic_scale");
   return (0);
 }
 
@@ -428,7 +428,7 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom,
   long int value2;
 #endif
 
-   mjpeg_debug ("Start of cubic_scale_interlaced\n");
+   mjpeg_debug ("Start of cubic_scale_interlaced");
 
    /* *INDENT-OFF* */
 #ifdef HAVE_ASM_MMX
@@ -994,7 +994,7 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom,
 
 
 /* *INDENT-ON* */
-  mjpeg_debug ("End of cubic_scale_interlaced\n");
+  mjpeg_debug ("End of cubic_scale_interlaced");
   return (0);
 }
 

@@ -198,8 +198,8 @@ guessright ( uint8_t *frame, int width, int height )
 static void
 print_usage ( void )
 {
-	mjpeg_info ( "\n" );
-	mjpeg_info ( "Usage: %s [OPTION]... [input AVI]... -o [output AVI]\n", APPNAME );
+	mjpeg_info ( "" );
+	mjpeg_info ( "Usage: %s [OPTION]... [input AVI]... -o [output AVI]", APPNAME );
 	exit ( 0 );
 }
 
@@ -232,28 +232,28 @@ print_help ( void )
 static void
 display_license ( void )
 {
- 	mjpeg_info ( "\nThis is %s version %s \n", APPNAME, APPVERSION );
-	mjpeg_info ( "%s", "Copyright (C) Shawn Sulma <lavtools@athos.cx>\n" );
-	mjpeg_info ( "Based on code from Ulricht Hecht and the MJPEG Square. This\n" );
-	mjpeg_info ( "program is distributed in the hope that it will be useful, but\n" );
-	mjpeg_info ( "WITHOUT ANY WARRANTY; without even the implied warranty of\n" );
-	mjpeg_info ( "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n" );
-	mjpeg_info ( "See the GNU General Public License for more information.\n" );
+ 	mjpeg_info ( "This is %s version %s ", APPNAME, APPVERSION );
+	mjpeg_info ( "%s", "Copyright (C) Shawn Sulma <lavtools@athos.cx>" );
+	mjpeg_info ( "Based on code from Ulricht Hecht and the MJPEG Square. This" );
+	mjpeg_info ( "program is distributed in the hope that it will be useful, but" );
+	mjpeg_info ( "WITHOUT ANY WARRANTY; without even the implied warranty of" );
+	mjpeg_info ( "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." );
+	mjpeg_info ( "See the GNU General Public License for more information." );
 	exit ( 0 );
 };
 
 static void
 displayGreeting (  )
 {
-	mjpeg_info ( "===========================================\n" );
-	mjpeg_info ( "%s\n", APPNAME );
-        mjpeg_info ( "-----------------------------\n" );
-	mjpeg_info ( "MJPEGTools version %s\n", VERSION );
-	mjpeg_info ( "%s version %s (%s)\n", APPNAME, APPVERSION, LastChanged );
-	mjpeg_info ( "\n" );
-      	mjpeg_info ( "This utility is development software.  It may eat your\n" );
-	mjpeg_info ( "movies or let the smoke out of your computer.\n" );
-	mjpeg_info ( "-----------------------------\n" );
+	mjpeg_info ( "===========================================" );
+	mjpeg_info ( "%s", APPNAME );
+        mjpeg_info ( "-----------------------------" );
+	mjpeg_info ( "MJPEGTools version %s", VERSION );
+	mjpeg_info ( "%s version %s (%s)", APPNAME, APPVERSION, LastChanged );
+	mjpeg_info ( "" );
+      	mjpeg_info ( "This utility is development software.  It may eat your" );
+	mjpeg_info ( "movies or let the smoke out of your computer." );
+	mjpeg_info ( "-----------------------------" );
 }
 
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
@@ -289,7 +289,7 @@ main ( int argc, char **argv )
 
 	if ( GetAvifileVersion (  ) != AVIFILE_VERSION )
 	{
-		mjpeg_error_exit1 ( "This binary was compiled for Avifile version %s but the library is %s\n"
+		mjpeg_error_exit1 ( "This binary was compiled for Avifile version %s but the library is %s"
 			, AVIFILE_VERSION
 			, GetAvifileVersion (  ) );
 	}
@@ -417,7 +417,7 @@ main ( int argc, char **argv )
 // -f is deprecated.  use -E DIV4 or -E DIV6 for the fastmotion codec.
 //		case 'f':
 //			opt_codec = RIFFINFO_DIV4;
-//			mjpeg_info ( "Using fast codec.\n" );
+//			mjpeg_info ( "Using fast codec." );
 //			break;
 
 		case 'a':
@@ -469,7 +469,7 @@ main ( int argc, char **argv )
 			opt_w = strtol ( arg_geom, &arg_end, 10 );
 			if ( *arg_end != 'x' || opt_w < 100 )
 			{
-				mjpeg_error_exit1 ( "Bad width parameter\n" );
+				mjpeg_error_exit1 ( "Bad width parameter" );
 				// nerr++;
 				break;
 			}
@@ -478,7 +478,7 @@ main ( int argc, char **argv )
 			opt_h = strtol ( arg_geom, &arg_end, 10 );
 			if ( ( *arg_end != '+' && *arg_end != '\0' ) || opt_h < 100 )
 			{
-				mjpeg_error_exit1 ( "Bad height parameter\n" );
+				mjpeg_error_exit1 ( "Bad height parameter" );
 				// nerr++;
 				break;
 			}
@@ -491,7 +491,7 @@ main ( int argc, char **argv )
 			opt_x = strtol ( arg_geom, &arg_end, 10 );
 			if ( ( *arg_end != '+' && *arg_end != '\0' ) || opt_x > 720 )
 			{
-				mjpeg_error_exit1 ( "Bad x parameter\n" );
+				mjpeg_error_exit1 ( "Bad x parameter" );
 				// nerr++;
 				break;
 			}
@@ -500,7 +500,7 @@ main ( int argc, char **argv )
 			opt_y = strtol ( arg_geom, &arg_end, 10 );
 			if ( *arg_end != '\0' || opt_y > 240 )
 			{
-				mjpeg_error_exit1 ( "Bad y parameter\n" );
+				mjpeg_error_exit1 ( "Bad y parameter" );
 				// nerr++;
 				break;
 			}
@@ -521,7 +521,7 @@ main ( int argc, char **argv )
 		case 'E':
 			if ( strlen ( optarg ) != 4 )
 			{
-				mjpeg_error_exit1 ( "encoder argument requires a four character fcc.\n" );
+				mjpeg_error_exit1 ( "encoder argument requires a four character fcc." );
 			}
 			else
 			{
@@ -530,17 +530,17 @@ main ( int argc, char **argv )
 			break;
 
 		case ':':
-			mjpeg_error_exit1 ( "You missed giving something an argument.\n" );
+			mjpeg_error_exit1 ( "You missed giving something an argument." );
 		}
 	}
 
 	opt_codec = mmioFOURCC ( opt_codec_str[0], opt_codec_str[1], opt_codec_str[2], opt_codec_str[3] );
-	mjpeg_info ( "VIDEO: using codec %s for encoding.\n", opt_codec_str );
+	mjpeg_info ( "VIDEO: using codec %s for encoding.", opt_codec_str );
 
 	int numfiles = argc - optind;
 	if ( numfiles <= 0 )
 	{
-		mjpeg_error ( "I count the number of input files as %i.\n I need at least one.\n", numfiles );
+		mjpeg_error ( "I count the number of input files as %i.  I need at least one.", numfiles );
 		print_usage (  );
 		exit ( 1 );
 	}
@@ -562,7 +562,7 @@ main ( int argc, char **argv )
 			tempor = access ( inputfiles[i], R_OK );
 			if ( tempor < 0 )
 			{
-				mjpeg_error_exit1 ( "Sorry there is a problem with file: %s\n", inputfiles[i] );
+				mjpeg_error_exit1 ( "Sorry there is a problem with file: %s", inputfiles[i] );
 			}
 		}
 		++i;
@@ -576,7 +576,7 @@ main ( int argc, char **argv )
 
 	if ( outputfile == NULL )
 	{
-		mjpeg_error_exit1 ( "\nOutput filename IS REQUIRED use -o <filename>\n" );
+		mjpeg_error_exit1 ( "Output filename IS REQUIRED use -o <filename>" );
 		exit ( 1 );
 	}
 
@@ -600,9 +600,9 @@ main ( int argc, char **argv )
 	int origwidth = bh.biWidth = abs ( el.video_width );
 	int origheight = bh.biHeight = abs ( el.video_height );
 
-	mjpeg_info ( "VIDEO: input height: %i\n", el.video_height );
-	mjpeg_info ( "VIDEO: input width: %i\n", el.video_width );
-	mjpeg_info ( "VIDEO: frames per second %.5f\n", framespersec );
+	mjpeg_info ( "VIDEO: input height: %i", el.video_height );
+	mjpeg_info ( "VIDEO: input width: %i", el.video_width );
+	mjpeg_info ( "VIDEO: frames per second %.5f", framespersec );
 
 	if ( opt_h > 0 )
 	{
@@ -664,13 +664,13 @@ main ( int argc, char **argv )
 
 		audio_sampsperframe = ( int ) ( ( ( double ) audio_rate ) / ( framespersec ) );
 
-	 	mjpeg_info ( "AUDIO: FormatTag = %i\n", format.wFormatTag );
-		mjpeg_info ( "AUDIO: Channels = %i\n", format.nChannels );
-		mjpeg_info ( "AUDIO: Samples per Sec = %i\n", format.nSamplesPerSec );
-	 	mjpeg_info ( "AUDIO: Block Align = %i\n", format.nBlockAlign );
-		mjpeg_info ( "AUDIO: Avg Bytes per Sec = %i\n", format.nAvgBytesPerSec );
-		mjpeg_info ( "AUDIO: Bits Per Sample = %i\n", format.wBitsPerSample );
-		mjpeg_info ( "AUDIO: cbSize = %i\n", format.cbSize );
+	 	mjpeg_info ( "AUDIO: FormatTag = %i", format.wFormatTag );
+		mjpeg_info ( "AUDIO: Channels = %i", format.nChannels );
+		mjpeg_info ( "AUDIO: Samples per Sec = %i", format.nSamplesPerSec );
+	 	mjpeg_info ( "AUDIO: Block Align = %i", format.nBlockAlign );
+		mjpeg_info ( "AUDIO: Avg Bytes per Sec = %i", format.nAvgBytesPerSec );
+		mjpeg_info ( "AUDIO: Bits Per Sample = %i", format.wBitsPerSample );
+		mjpeg_info ( "AUDIO: cbSize = %i", format.cbSize );
 
 	        audio_buffer = ( uint8_t * ) malloc ( audio_sampsperframe * format.nBlockAlign * 2);
 
@@ -685,7 +685,7 @@ main ( int argc, char **argv )
 	const CodecInfo *codecInfo = CodecInfo::match ( fccHandler );
 	if (codecInfo == NULL)
 	{
-         	mjpeg_error_exit1 ( "Avifile could not find codec '%s'\n", opt_codec_str );
+         	mjpeg_error_exit1 ( "Avifile could not find codec '%s'", opt_codec_str );
 	}
 	Creators::SetCodecAttr ( *codecInfo, "BitRate", opt_divxbitrate );
 	Creators::SetCodecAttr ( *codecInfo, "Crispness", opt_crispness );
@@ -718,12 +718,12 @@ main ( int argc, char **argv )
 				break;
 			default:
 				opt_mp3bitrate = 16 * audio_chan;
-				mjpeg_warn ( "No mp3 bitrate available for audio rate %d, defaulting to %d\n"
+				mjpeg_warn ( "No mp3 bitrate available for audio rate %d, defaulting to %d"
 					, audio_rate
 					, opt_mp3bitrate );
 			}
 		}
-		mjpeg_info ( "AUDIO: MP3 rate: %i kilobits/second, %i Bytes/second\n"
+		mjpeg_info ( "AUDIO: MP3 rate: %i kilobits/second, %i Bytes/second"
 			, opt_mp3bitrate
 			, ( opt_mp3bitrate / 125 ) );
 		astream = avifile->AddAudioStream ( 0x55, &format, ( opt_mp3bitrate * 1000 ) / 8 );
@@ -762,7 +762,7 @@ main ( int argc, char **argv )
 	if ( ( opt_x > 0 ) || ( opt_y > 0 ) || ( opt_h > 0 ) || ( opt_w > 0 ) )
 	{
 		asis = 1;
-		mjpeg_info ( "VIDEO: output cropped to: top: %i, left: %i, height: %i, width: %i\n"
+		mjpeg_info ( "VIDEO: output cropped to: top: %i, left: %i, height: %i, width: %i"
 			, opt_x, opt_y, opt_h, opt_w );
 	}
 
@@ -784,7 +784,7 @@ main ( int argc, char **argv )
 			fps = currentframe / ( ( tv.tv_sec + tv.tv_usec / 1000000.0 ) - ( startsec + startusec / 1000000.0 ) );
 			oldtime = tv.tv_sec;
 			secsleft = ( ( double ) ( opt_endframe - currentframe ) ) / fps;
-			mjpeg_info ( "Encoding frame %i of %i, %.1f frames per sec, %.1f seconds left.    \r"
+			mjpeg_info ( "Encoding frame %i of %i, %.1f frames per sec, %.1f seconds left.    "
 				, currentframe
 				, opt_endframe
 				, fps
@@ -889,8 +889,8 @@ main ( int argc, char **argv )
 	stream->Stop (  );
 	delete avifile;
 
-	mjpeg_info ( "\n");
-	mjpeg_info ( "Done.\n" );
+	mjpeg_info ( "");
+	mjpeg_info ( "Done." );
 
 	if ( opt_guess )
 	{
@@ -901,17 +901,17 @@ main ( int argc, char **argv )
 
 		avgright = (avgright==0) ? bh.biWidth : avgright;
 		avgbottom = (avgbottom==0) ? bh.biHeight : avgbottom;
-	 	mjpeg_info ( "avg top border: %i\n", avgtop );
-	 	mjpeg_info ( "avg bottom border: %i\n", avgbottom );
-	 	mjpeg_info ( "avg left border: %i\n", avgleft );
-	 	mjpeg_info ( "avg right border: %i\n", avgright );
+	 	mjpeg_info ( "avg top border: %i", avgtop );
+	 	mjpeg_info ( "avg bottom border: %i", avgbottom );
+	 	mjpeg_info ( "avg left border: %i", avgleft );
+	 	mjpeg_info ( "avg right border: %i", avgright );
 
 		// cropping window only like multiples of four in each direction.
 		avgtop += avgtop % 4;
 		avgbottom -= avgbottom % 4;
 		avgleft += avgleft % 4;
 		avgright -= avgright % 4;
-		mjpeg_info ( "suggested options: -c %dx%d+%d+%d\n"
+		mjpeg_info ( "suggested options: -c %dx%d+%d+%d"
 		        , ( avgright - avgleft )
 		        , ( avgbottom - avgtop )
 		        , avgleft

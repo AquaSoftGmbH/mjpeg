@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
   /* open input stream */
   if ((errno = y4m_read_stream_header (fd_in, &streaminfo)) != Y4M_OK)
     {
-      mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!\n", y4m_strerr (errno));
+      mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!", y4m_strerr (errno));
       exit (1);
     }
   denoiser.frame.w         = y4m_si_get_width(&streaminfo);
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
     
   /* did stream end unexpectedly ? */
   if(errno != Y4M_ERR_EOF )
-          mjpeg_error_exit1( "%s\n", y4m_strerr( errno ) );
+          mjpeg_error_exit1( "%s", y4m_strerr( errno ) );
   
   /* just as name says... free them... */
   free_buffers();
@@ -189,7 +189,7 @@ static uint8_t *bufalloc(size_t size)
 {
   uint8_t *ret = (uint8_t *)malloc(size);
   if( ret == NULL )
-    mjpeg_error_exit1( "Out of memory: could not allocate buffer\n" );
+    mjpeg_error_exit1( "Out of memory: could not allocate buffer" );
   return ret;
 }
 
@@ -284,10 +284,10 @@ void free_buffers(void)
 void
 display_greeting (void)
 {
-  mjpeg_log (LOG_INFO, " ======================================================== \n");
-  mjpeg_log (LOG_INFO, "         Y4M2 Motion-Compensating-YCrCb-Denoiser          \n");
-  mjpeg_log (LOG_INFO, " ======================================================== \n");
-  mjpeg_log (LOG_INFO, " Version: MjpegTools %s\n", VERSION);
+  mjpeg_log (LOG_INFO, " ======================================================== ");
+  mjpeg_log (LOG_INFO, "         Y4M2 Motion-Compensating-YCrCb-Denoiser          ");
+  mjpeg_log (LOG_INFO, " ======================================================== ");
+  mjpeg_log (LOG_INFO, " Version: MjpegTools %s", VERSION);
 }
 
 
@@ -332,11 +332,11 @@ process_commandline(int argc, char *argv[])
         if(denoiser.radius<8)
         {
           denoiser.radius=8;
-  	      mjpeg_log (LOG_WARN, "Minimum allowed search radius is 8 pixel.\n");
+  	      mjpeg_log (LOG_WARN, "Minimum allowed search radius is 8 pixel.");
         }
         if(denoiser.radius>24)
         {
-  	      mjpeg_log (LOG_WARN, "Maximum suggested search radius is 24 pixel.\n");
+  	      mjpeg_log (LOG_WARN, "Maximum suggested search radius is 24 pixel.");
         }
         break;
       }
@@ -381,11 +381,11 @@ process_commandline(int argc, char *argv[])
         if(denoiser.delay<1)
         {
           denoiser.delay=1;
-  	      mjpeg_log (LOG_WARN, "Minimum allowed frame delay is 1.\n");
+  	      mjpeg_log (LOG_WARN, "Minimum allowed frame delay is 1.");
         }
         if(denoiser.delay>8)
         {
-  	      mjpeg_log (LOG_WARN, "Maximum suggested frame delay is 8.\n");
+  	      mjpeg_log (LOG_WARN, "Maximum suggested frame delay is 8.");
         }
         break;
       }
@@ -397,23 +397,23 @@ process_commandline(int argc, char *argv[])
 
 void print_settings(void)
 {
-  mjpeg_log (LOG_INFO, "\n");
-  mjpeg_log (LOG_INFO, " Denoiser - Settings:\n");
-  mjpeg_log (LOG_INFO, " --------------------\n");
-  mjpeg_log (LOG_INFO, "\n");
-  mjpeg_log (LOG_INFO, " Mode             : %s\n",
+  mjpeg_log (LOG_INFO, " ");
+  mjpeg_log (LOG_INFO, " Denoiser - Settings:");
+  mjpeg_log (LOG_INFO, " --------------------");
+  mjpeg_log (LOG_INFO, " ");
+  mjpeg_log (LOG_INFO, " Mode             : %s",
     (denoiser.mode==0)? "Progressive frames" : (denoiser.mode==1)? "Interlaced frames": "PASS II only");
-  mjpeg_log (LOG_INFO, " Deinterlacer     : %s\n",(denoiser.deinterlace==0)? "Off":"On");
-  mjpeg_log (LOG_INFO, " Postprocessing   : %s\n",(denoiser.postprocess==0)? "Off":"On");
-  mjpeg_log (LOG_INFO, " Frame border     : x:%3i y:%3i w:%3i h:%3i\n",denoiser.border.x,denoiser.border.y,denoiser.border.w,denoiser.border.h);
-  mjpeg_log (LOG_INFO, " Search radius    : %3i\n",denoiser.radius);
-  mjpeg_log (LOG_INFO, " Filter delay     : %3i\n",denoiser.delay);
-  mjpeg_log (LOG_INFO, " Filter threshold : %3i\n",denoiser.threshold);
-  mjpeg_log (LOG_INFO, " Pass 2 threshold : %3i\n",denoiser.pp_threshold);
-  mjpeg_log (LOG_INFO, " Y - contrast     : %3i %%\n",denoiser.luma_contrast);
-  mjpeg_log (LOG_INFO, " Cr/Cb - contrast : %3i %%\n",denoiser.chroma_contrast);
-  mjpeg_log (LOG_INFO, " Sharpen          : %3i %%\n",denoiser.sharpen);  
-  mjpeg_log (LOG_INFO, "\n");
+  mjpeg_log (LOG_INFO, " Deinterlacer     : %s",(denoiser.deinterlace==0)? "Off":"On");
+  mjpeg_log (LOG_INFO, " Postprocessing   : %s",(denoiser.postprocess==0)? "Off":"On");
+  mjpeg_log (LOG_INFO, " Frame border     : x:%3i y:%3i w:%3i h:%3i",denoiser.border.x,denoiser.border.y,denoiser.border.w,denoiser.border.h);
+  mjpeg_log (LOG_INFO, " Search radius    : %3i",denoiser.radius);
+  mjpeg_log (LOG_INFO, " Filter delay     : %3i",denoiser.delay);
+  mjpeg_log (LOG_INFO, " Filter threshold : %3i",denoiser.threshold);
+  mjpeg_log (LOG_INFO, " Pass 2 threshold : %3i",denoiser.pp_threshold);
+  mjpeg_log (LOG_INFO, " Y - contrast     : %3i %%",denoiser.luma_contrast);
+  mjpeg_log (LOG_INFO, " Cr/Cb - contrast : %3i %%",denoiser.chroma_contrast);
+  mjpeg_log (LOG_INFO, " Sharpen          : %3i %%",denoiser.sharpen);  
+  mjpeg_log (LOG_INFO, " ");
 
 }
 
@@ -430,7 +430,7 @@ void turn_on_accels(void)
     calc_SAD_uv = &calc_SAD_uv_mmxe;
     calc_SAD_half = &calc_SAD_half_mmxe;
     deinterlace = &deinterlace_mmx;
-    mjpeg_log (LOG_INFO, "Using extended MMX SIMD optimisations.\n");
+    mjpeg_log (LOG_INFO, "Using extended MMX SIMD optimisations.");
   }
   else
     if( (CPU_CAP & ACCEL_X86_MMX)!=0 ) /* MMX */
@@ -439,7 +439,7 @@ void turn_on_accels(void)
       calc_SAD_uv = &calc_SAD_uv_mmx;
       calc_SAD_half = &calc_SAD_half_mmx;
       deinterlace = &deinterlace_mmx;
-      mjpeg_log (LOG_INFO, "Using MMX SIMD optimisations.\n");
+      mjpeg_log (LOG_INFO, "Using MMX SIMD optimisations.");
     }
     else
 #endif
@@ -448,7 +448,7 @@ void turn_on_accels(void)
       calc_SAD_uv = &calc_SAD_uv_noaccel;
       calc_SAD_half = &calc_SAD_half_noaccel;
       deinterlace = &deinterlace_noaccel;
-      mjpeg_log (LOG_INFO, "Sorry, no SIMD optimisations available.\n");
+      mjpeg_log (LOG_INFO, "Sorry, no SIMD optimisations available.");
     }
 }
 

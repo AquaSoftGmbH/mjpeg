@@ -47,7 +47,7 @@ static void usage (void) {
 }
 
 static void sigint_handler (int signal) {
-   mjpeg_warn("Caught SIGINT, exiting...\n");
+   mjpeg_warn("Caught SIGINT, exiting...");
    got_sigint = 1;
 }
 
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
             break;
          case 's':
             if (sscanf(optarg, "%dx%d", &screenwidth, &screenheight) != 2) {
-               mjpeg_error_exit1( "-s option needs two arguments: -s 10x10\n");
+               mjpeg_error_exit1( "-s option needs two arguments: -s 10x10");
                exit(1);
             }
             break;
@@ -99,12 +99,12 @@ int main(int argc, char *argv[])
 	  case 'f':
 		  frame_rate = atof(optarg);
 		  if( frame_rate <= 0.0 || frame_rate > 200.0 )
-			  mjpeg_error_exit1( "-f option needs argument > 0.0 and < 200.0\n");
+			  mjpeg_error_exit1( "-f option needs argument > 0.0 and < 200.0");
 		  break;
           case 'v':
 	    verbosity = atoi(optarg);
 	    if ((verbosity < 0) || (verbosity > 2))
-	      mjpeg_error_exit1("-v needs argument from {0, 1, 2} (not %d)\n",
+	      mjpeg_error_exit1("-v needs argument from {0, 1, 2} (not %d)",
 				verbosity);
 	    break;
 	  case 'h':
@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
    y4m_init_stream_info(&streaminfo);
    y4m_init_frame_info(&frameinfo);
    if ((n = y4m_read_stream_header(in_fd, &streaminfo)) != Y4M_OK) {
-      mjpeg_error("Couldn't read YUV4MPEG2 header: %s!\n",
+      mjpeg_error("Couldn't read YUV4MPEG2 header: %s!",
          y4m_strerr(n));
       exit (1);
    }
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
 
    /* Initialize the SDL library */
    if( SDL_Init(SDL_INIT_VIDEO) < 0 ) {
-      mjpeg_error("Couldn't initialize SDL: %s\n", SDL_GetError());
+      mjpeg_error("Couldn't initialize SDL: %s", SDL_GetError());
       exit(1);
    }
 
@@ -169,12 +169,12 @@ int main(int argc, char *argv[])
 
    screen = SDL_SetVideoMode(screenwidth, screenheight, 0, SDL_SWSURFACE);
    if ( screen == NULL ) {
-      mjpeg_error("SDL: Couldn't set %dx%d: %s\n",
+      mjpeg_error("SDL: Couldn't set %dx%d: %s",
 		  screenwidth, screenheight, SDL_GetError());
       exit(1);
    }
    else {
-      mjpeg_debug("SDL: Set %dx%d @ %d bpp\n",
+      mjpeg_debug("SDL: Set %dx%d @ %d bpp",
 		  screenwidth, screenheight, screen->format->BitsPerPixel);
    }
 
@@ -188,12 +188,12 @@ int main(int argc, char *argv[])
 				      SDL_YV12_OVERLAY,
 				      screen);
    if ( yuv_overlay == NULL ) {
-      mjpeg_error("SDL: Couldn't create SDL_yuv_overlay: %s\n",
+      mjpeg_error("SDL: Couldn't create SDL_yuv_overlay: %s",
 		      SDL_GetError());
       exit(1);
    }
    if ( yuv_overlay->hw_overlay ) 
-     mjpeg_debug("SDL: Using hardware overlay.\n");
+     mjpeg_debug("SDL: Using hardware overlay.");
 
    rect.x = 0;
    rect.y = 0;
@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
    {
 	   /* frame rate has not been set from command-line... */
 	   if (Y4M_RATIO_EQL(y4m_fps_UNKNOWN, y4m_si_get_framerate(&streaminfo))) {
-	     mjpeg_info("Frame-rate undefined in stream... assuming 25Hz!\n" );
+	     mjpeg_info("Frame-rate undefined in stream... assuming 25Hz!" );
 	     frame_rate = 25.0;
 	   } else {
 	     frame_rate = Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo));
@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
 
       /* Show, baby, show! */
       SDL_DisplayYUVOverlay(yuv_overlay, &rect);
-      mjpeg_info("Playing frame %4.4d - %s\n",
+      mjpeg_info("Playing frame %4.4d - %s",
 		 frame, print_status(frame, frame_rate));
 
       if (wait_for_sync)
@@ -253,13 +253,13 @@ int main(int argc, char *argv[])
    }
 
    if ((n != Y4M_OK) && (n != Y4M_ERR_EOF))
-      mjpeg_error("Couldn't read frame: %s\n", y4m_strerr(n));
+      mjpeg_error("Couldn't read frame: %s", y4m_strerr(n));
 
    for (n=0; n<3; n++) {
       free(yuv[n]);
    }
 
-   mjpeg_info("Played %4.4d frames (%s)\n",
+   mjpeg_info("Played %4.4d frames (%s)",
 	      frame, print_status(frame, frame_rate));
 
    SDL_FreeYUVOverlay(yuv_overlay);

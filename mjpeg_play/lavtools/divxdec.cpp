@@ -240,7 +240,7 @@ readyDestination ( 	IAviReadStream *instream
 
 	if ( instream->GetDecoder ()->SetDestFmt(16, fmt) < 0 )
 	{
-		mjpeg_warn ( "Decoder didn't like dest format\n");
+		mjpeg_warn ( "Decoder didn't like dest format");
 	}
 	if ( flip )
 	{
@@ -476,8 +476,8 @@ error ( char *text )
 static void
 print_usage ( void )
 {
-	mjpeg_info ( "\n" );
-	mjpeg_info ( "Usage: %s [OPTION]... [input AVI]\n", APPNAME );
+	mjpeg_info ( "" );
+	mjpeg_info ( "Usage: %s [OPTION]... [input AVI]", APPNAME );
 	exit ( 0 );
 }
 
@@ -508,28 +508,28 @@ print_help ( void )
 static void
 display_license ( void )
 {
-	mjpeg_info ( "This is %s version %s \n", APPNAME, APPVERSION );
-	mjpeg_info ( "%s", "Copyright (C) Shawn Sulma <lavtools@athos.cx>\n" );
-	mjpeg_info ( "Part of the MJPEG Square utilities (mjpeg.sourceforge.net). This\n" );
-	mjpeg_info ( "program is distributed in the hope that it will be useful, but\n" );
-	mjpeg_info ( "WITHOUT ANY WARRANTY; without even the implied warranty of\n" );
-	mjpeg_info ( "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n" );
-	mjpeg_info ( "See the GNU General Public License for more information.\n" );
+	mjpeg_info ( "This is %s version %s ", APPNAME, APPVERSION );
+	mjpeg_info ( "%s", "Copyright (C) Shawn Sulma <lavtools@athos.cx>" );
+	mjpeg_info ( "Part of the MJPEG Square utilities (mjpeg.sourceforge.net). This" );
+	mjpeg_info ( "program is distributed in the hope that it will be useful, but" );
+	mjpeg_info ( "WITHOUT ANY WARRANTY; without even the implied warranty of" );
+	mjpeg_info ( "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." );
+	mjpeg_info ( "See the GNU General Public License for more information." );
 	exit ( 0 );
 }
 
 static void
 displayGreeting (  )
 {
-	mjpeg_info ( "===========================================\n" );
-	mjpeg_info ( "%s\n", APPNAME );
-	mjpeg_info ( "-----------------------------\n" );
-	mjpeg_info ( "MJPEGTools version %s\n", VERSION );
-	mjpeg_info ( "%s version %s (%s)\n", APPNAME, APPVERSION, LastChanged );
-	mjpeg_info ( "\n" );
-	mjpeg_info ( "This utility is development software.  It may eat your\n" );
-	mjpeg_info ( "movies or let the smoke out of your computer.\n" );
-	mjpeg_info ( "-----------------------------\n" );
+	mjpeg_info ( "===========================================" );
+	mjpeg_info ( "%s", APPNAME );
+	mjpeg_info ( "-----------------------------" );
+	mjpeg_info ( "MJPEGTools version %s", VERSION );
+	mjpeg_info ( "%s version %s (%s)", APPNAME, APPVERSION, LastChanged );
+	mjpeg_info ( "" );
+	mjpeg_info ( "This utility is development software.  It may eat your" );
+	mjpeg_info ( "movies or let the smoke out of your computer." );
+	mjpeg_info ( "-----------------------------" );
 }
 
 static void
@@ -537,7 +537,7 @@ nextLavFile ( )
 {
 	if ( output.fdLAV > 0 )
 	{
-		mjpeg_debug ( "Closing LAV output file\n" );
+		mjpeg_debug ( "Closing LAV output file" );
 		lav_close ( output.fdLAV );
 	}
 
@@ -546,7 +546,7 @@ nextLavFile ( )
 
 	snprintf ( thisfile, thisfile_size, output.filenameLAV, output.currentLAVFile++ );
 
-	mjpeg_debug ( "Opening LAV output file %s\n", thisfile );
+	mjpeg_debug ( "Opening LAV output file %s", thisfile );
 	output.fdLAV = lav_open_output_file ( thisfile
 			, output.lavFormat
 			, output.width + output.borderWidth 
@@ -572,7 +572,7 @@ drawProgress ()
 				/ ( 	( input.tv.tv_sec + input.tv.tv_usec / 1000000.0 ) 
 					- ( input.startTime_Sec + input.startTime_uSec / 1000000.0 ) );
 		currentFrame.prevFrameDecodedTime = input.tv.tv_sec;
-		mjpeg_info ("Decoding frame %u, %.1f frames per second, %.1f seconds left.\r"
+		mjpeg_info ("Decoding frame %u, %.1f frames per second, %.1f seconds left."
 				, output.processedFrames
 				, fps
 				, ( ( double ) ( output.endFrame - output.beginFrame - output.processedFrames ) / fps ) );
@@ -652,7 +652,7 @@ readInputFrame ()
 		unsigned char *currentAudio;
 #ifdef DEBUG_DIVXDEC
 		int samplesSoFar = 0 ;
-		mjpeg_debug ("read %i, as-ao %i, left %i, eof %i\n", readSoFar, currentFrame.audioSize - currentFrame.audioOffset, leftToGo, input.inastream->Eof() );
+		mjpeg_debug ("read %i, as-ao %i, left %i, eof %i", readSoFar, currentFrame.audioSize - currentFrame.audioOffset, leftToGo, input.inastream->Eof() );
 #endif
 		while ( ( readSoFar < ( currentFrame.audioSize - currentFrame.audioOffset ) ) // room in the buffer
 				&& ( leftToGo > 0 ) // still want more bytes
@@ -677,7 +677,7 @@ readInputFrame ()
 		currentFrame.audioBytes = readSoFar + currentFrame.audioOffset;
 #ifdef DEBUG_DIVXDEC
 		input.readAudioSamples += samplesSoFar ;
-		mjpeg_debug ( "Available: %i, readSoFar: %i, samples: %i (total %i), offset: %i, total: %i\n"
+		mjpeg_debug ( "Available: %i, readSoFar: %i, samples: %i (total %i), offset: %i, total: %i"
 				, currentFrame.audioBytes
 				, readSoFar
 				, samplesSoFar
@@ -687,7 +687,7 @@ readInputFrame ()
 				);
 		if ( ( currentFrame.audioBytes % input.audioBlockAlign ) != 0 )
 		{
-			mjpeg_debug ( "audio read is not block aligned\n" );
+			mjpeg_debug ( "audio read is not block aligned" );
 		}
 #endif
 	}
@@ -823,8 +823,8 @@ writeOutputFrame()
 					);
 			if ( currentFrame.jpegSize < 0 )
 			{
-				mjpeg_error ( "\n" );
-				mjpeg_error ( "Error converting YUV to JPEG.\n" );
+				mjpeg_error ( "" );
+				mjpeg_error ( "Error converting YUV to JPEG." );
 				errCode = 1;
 				return 0;
 			}
@@ -834,8 +834,8 @@ writeOutputFrame()
 				int lavwrite = lav_write_frame ( output.fdLAV, currentFrame.jpegFrame, currentFrame.jpegSize, 1) ;
 				if ( lavwrite != 0 )
 				{
-					mjpeg_error ( "\n" );
-					mjpeg_error ( "Error writing LAV frame: %s\n", lav_strerror () );
+					mjpeg_error ( "" );
+					mjpeg_error ( "Error writing LAV frame: %s", lav_strerror () );
 					errCode = 1;
 					return 0;
 				}
@@ -869,8 +869,8 @@ writeOutputFrame()
 						);
 			if ( res != 0 )
 			{
-				mjpeg_error ( "\n" ); // break out of progress line.
-				mjpeg_error ( "Error writing audio to LAV.\n" );
+				mjpeg_error ( "" ); // break out of progress line.
+				mjpeg_error ( "Error writing audio to LAV." );
 				errCode = 1;
 				return 0;
 			}
@@ -941,9 +941,9 @@ nextFile ()
 					, input.files[input.currentFile].inputCodec );
 		char sFourCC[5];
 		fourCCToString ( input.files[input.currentFile].inputCodec, sFourCC ) ;
-		mjpeg_debug ( "VIDEO: Using decoder %s\n", sFourCC );
+		mjpeg_debug ( "VIDEO: Using decoder %s", sFourCC );
 		fourCCToString ( input.files[input.currentFile].outputCodec, sFourCC );
-		mjpeg_debug ( "VIDEO: Using interim YUV format %s\n", sFourCC );
+		mjpeg_debug ( "VIDEO: Using interim YUV format %s", sFourCC );
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 		input.files[input.currentFile].frames = input.invstream->GetLength ();
 #else
@@ -991,7 +991,7 @@ nextFile ()
 		}
 		else if ( input.processAudio )
 		{
-			mjpeg_error_exit1 ( "specifying start frame in audio-only output not yet supported\n" );
+			mjpeg_error_exit1 ( "specifying start frame in audio-only output not yet supported" );
 		}
 		input.currentFrame = output.beginFrame;
 	}
@@ -1026,7 +1026,7 @@ nextFrame ()
 		nextLavFile ();
 		if ( output.fdLAV == NULL )
 		{
-			mjpeg_error ( "Could not open LAV output file.  Aborting.\n" );
+			mjpeg_error ( "Could not open LAV output file.  Aborting." );
 			return 0;
 		}
 	}
@@ -1043,17 +1043,17 @@ void lavplayMessage(int type, char *message)
 	switch (type)
 	{
 	case LAVPLAY_MSG_ERROR:
-		mjpeg_error ( "%s\n", message );
+		mjpeg_error ( "%s", message );
 		break;
 	case LAVPLAY_MSG_WARNING:
-		mjpeg_warn ( "%s\n", message );
+		mjpeg_warn ( "%s", message );
 		break;
 	case LAVPLAY_MSG_INFO:
-		mjpeg_info ( "%s\n", message );
+		mjpeg_info ( "%s", message );
 		break;
 	case LAVPLAY_MSG_DEBUG:
 #ifdef DEBUG_DIVX
-		mjpeg_debug ( "%s\n", message );
+		mjpeg_debug ( "%s", message );
 #endif
 		break;
 	}
@@ -1090,14 +1090,14 @@ void lavplayStateChanged(int newState)
 	switch ( newState )
 	{
 	case LAVPLAY_STATE_PLAYING:
-		mjpeg_debug ( "Changed to PLAYING\n" );
+		mjpeg_debug ( "Changed to PLAYING" );
 		break;
 	case LAVPLAY_STATE_STOP:
-		mjpeg_debug ( "Changed to STOP\n" );
+		mjpeg_debug ( "Changed to STOP" );
 		interrupted = 1;
 		break;
 	case LAVPLAY_STATE_PAUSED:
-		mjpeg_debug ( "Changed to PAUSED\n" );
+		mjpeg_debug ( "Changed to PAUSED" );
 		break;
 	}
 }
@@ -1126,7 +1126,7 @@ lavplayGetVideoFrame(uint8_t *buffer, int *len, long num)
 	{
 		*(len) = currentFrame.jpegSize ;
 #ifdef DEBUG_DIVXDEC
-		mjpeg_debug ( "VIDEO: frame %d, actually %i of %i (done %i).  %i bytes sent\n"
+		mjpeg_debug ( "VIDEO: frame %d, actually %i of %i (done %i).  %i bytes sent"
 				, num
 				, output.currentLavplayVideoFrame
 				, output.endFrame
@@ -1160,7 +1160,7 @@ lavplayGetAudioSamples(uint8_t *buffer, int *samps, long num)
 	{
 		*(samps) = currentFrame.lavplayAudioBytes;
 #ifdef DEBUG_DIVXDEC
-		mjpeg_debug ( "AUDIO: frame %d, actually %i of %i (done %i).  %i bytes sent\n"
+		mjpeg_debug ( "AUDIO: frame %d, actually %i of %i (done %i).  %i bytes sent"
 				, num
 				, output.currentLavplayAudioFrame
 				, output.endFrame
@@ -1262,7 +1262,7 @@ sigint_handler ( int signal )
 {
 	if ( ! interrupted )
 	{
-		mjpeg_warn ( "Caught SIGINT, exiting...\n" );
+		mjpeg_warn ( "Caught SIGINT, exiting..." );
 		interrupted = 1;
 		if ( ( output.toPLAY ) && ( output.lavplayInfo != 0 ) )
 		{
@@ -1274,7 +1274,7 @@ sigint_handler ( int signal )
 static void
 sigkill_handler ( int signal )
 {
-	mjpeg_warn ( "Caught SIGKILL, exiting...\n" );
+	mjpeg_warn ( "Caught SIGKILL, exiting..." );
 	if ( ( ! interrupted ) && ( output.toPLAY ) && ( output.lavplayInfo != 0 ) )
 	{
 		lavplay_stop( output.lavplayInfo );
@@ -1316,7 +1316,7 @@ main (int argc, char **argv)
 
 	if ( GetAvifileVersion (  ) != AVIFILE_VERSION )
 	{
-		mjpeg_error_exit1 ( "This binary was compiled for Avifile version %.2f but the library is %.2f\n"
+		mjpeg_error_exit1 ( "This binary was compiled for Avifile version %.2f but the library is %.2f"
 				, AVIFILE_VERSION
 				, GetAvifileVersion () );
 	}
@@ -1342,7 +1342,7 @@ main (int argc, char **argv)
 	int optAllowInterlace = false;
 	output.lavFileSizeLimit = 1536;  // default
 	
-	mjpeg_debug ("Started\n");
+	mjpeg_debug ("Started");
 	
 	while (1)
 	{
@@ -1415,7 +1415,7 @@ main (int argc, char **argv)
 			// lav output format
 			if ( strlen (optarg) < 1 )
 			{
-				mjpeg_error_exit1 ( "Lav format option requires an argument\n" );
+				mjpeg_error_exit1 ( "Lav format option requires an argument" );
 			}
 			output.lavFormat = optarg[0];
 			switch ( output.lavFormat )
@@ -1432,21 +1432,21 @@ main (int argc, char **argv)
 					output.lavFormat = 'q';
 					break;
 				default:
-					mjpeg_error_exit1 ( "Lav format must be one of 'm', 'q', 'A', 'a'\n" );
+					mjpeg_error_exit1 ( "Lav format must be one of 'm', 'q', 'A', 'a'" );
 			}
 			break;
 		case 'e':
 			output.endFrame = atoi ( optarg );
 			if ( output.endFrame  < 1 )
 			{
-				mjpeg_error_exit1 ( "Invalid endframe specified.\n" );
+				mjpeg_error_exit1 ( "Invalid endframe specified." );
 			}
 			break;
 		case 'b':
 			output.beginFrame = atoi ( optarg );
 			if ( output.beginFrame  < 1 )
 			{
-				mjpeg_error_exit1 ( "Invalid beginframe specified.\n" );
+				mjpeg_error_exit1 ( "Invalid beginframe specified." );
 			}
 			break;
 		case 'V':
@@ -1456,14 +1456,14 @@ main (int argc, char **argv)
 			optVerbosity = atoi( optarg );
 			if (optVerbosity < 0 || optVerbosity > 2)
 			{
-				mjpeg_error_exit1 ( "-v option requires arg 0, 1, or 2\n" );
+				mjpeg_error_exit1 ( "-v option requires arg 0, 1, or 2" );
 			}
 			break;
 		case 'q':
 			output.lavQuality = atoi ( optarg );
 			if ( ( output.lavQuality < 24 ) || ( output.lavQuality > 100 ) )
 			{
-				mjpeg_error_exit1 ( "quality parameter (%d) out of range [24..100]\n", output.lavQuality);
+				mjpeg_error_exit1 ( "quality parameter (%d) out of range [24..100]", output.lavQuality);
 			}
 			break;
 		case 'n':
@@ -1475,7 +1475,7 @@ main (int argc, char **argv)
 					break;
 				}
 			}
-			mjpeg_error_exit1 ( "Specify 'n' for NTSC or 'p' for PAL with -n\n" );
+			mjpeg_error_exit1 ( "Specify 'n' for NTSC or 'p' for PAL with -n" );
 		case 'p':
 			if ( strlen ( optarg ) > 0 )
 			{
@@ -1491,12 +1491,12 @@ main (int argc, char **argv)
 #endif
 						break;
 					default:
-						mjpeg_error_exit1 ( "Unknown playback mode: %c\n", optLavplayDestination );
+						mjpeg_error_exit1 ( "Unknown playback mode: %c", optLavplayDestination );
 				}
 			}
 			else
 			{
-				mjpeg_error_exit1 ( "You must specify an argument for -p.\n" );
+				mjpeg_error_exit1 ( "You must specify an argument for -p." );
 			}
 			break;
 		case 'I':
@@ -1509,7 +1509,7 @@ main (int argc, char **argv)
 			output.lavFileSizeLimit = atoi ( optarg );
 			if ( output.lavFileSizeLimit < 1 )
 			{
-				mjpeg_error_exit1 ( "maxfilesize cannot be negative\n" );
+				mjpeg_error_exit1 ( "maxfilesize cannot be negative" );
 			}
 			break;
 		case 'F':
@@ -1530,17 +1530,17 @@ main (int argc, char **argv)
 
 	if ( input.numFiles < 1 )
 	{
-		mjpeg_error_exit1 ( "You need specify at least one input file.\n" );
+		mjpeg_error_exit1 ( "You need specify at least one input file." );
 	}
 
 	if ( ( filenameWAVE != NULL ) 
 			&& ( filenameYUV != NULL ) 
 			&& ( 0 == strcmp ( filenameWAVE, filenameYUV ) ) )
 	{
-		mjpeg_error_exit1 ( "You cannot send both video and audio to the same file (or stdout).\n" );
+		mjpeg_error_exit1 ( "You cannot send both video and audio to the same file (or stdout)." );
 	}
 
-	// mjpeg_debug ( "allocating variables\n" );
+	// mjpeg_debug ( "allocating variables" );
 	BITMAPINFOHEADER bmpHeader;
 	WAVEFORMATEX waveHeader;
 	int i = 0;
@@ -1561,27 +1561,27 @@ main (int argc, char **argv)
 		FileData *fileData = new FileData;
 		input.files.push_back( *fileData );
 		input.files[i].filename = argv[optind];
-		mjpeg_debug ( "Checking file %s\n", input.files[i].filename );
+		mjpeg_debug ( "Checking file %s", input.files[i].filename );
 		tempfile = access ( input.files[i].filename, R_OK );
 		if ( tempfile < 0 )
 		{
-			mjpeg_error ( "Could not open %s.\n", input.files[i].filename );
+			mjpeg_error ( "Could not open %s.", input.files[i].filename );
 			errCode = EXIT_FAILURE;
 			break;
 		}
 		try
 		{
-			mjpeg_debug ( "about to read from %s\n", input.files[i].filename );
+			mjpeg_debug ( "about to read from %s", input.files[i].filename );
 			file = CreateIAviReadFile ( input.files[i].filename );
 			// always need to look at the video stream at this point.
 			invstream = file->GetStream ( 0, AviStream::Video );
 			invstream->StartStreaming ();
-			mjpeg_debug ( "VIDEO stream queried\n" );
+			mjpeg_debug ( "VIDEO stream queried" );
 
 			if ( input.processAudio )
 			{
 				inastream = file->GetStream ( 0, AviStream::Audio );
-				mjpeg_debug ( "AUDIO stream queried\n" );
+				mjpeg_debug ( "AUDIO stream queried" );
 			}
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 			input.files[i].frames = invstream->GetLength();
@@ -1597,13 +1597,13 @@ main (int argc, char **argv)
 				input.frameRate = 1.0 / input.frameTime;
 				if ( input.processVideo )
 				{
-					mjpeg_debug ( "VIDEO: framesize: %i\n", invstream->GetFrameSize ());
-					mjpeg_debug ( "VIDEO: width x height: %i x %i\n", bmpHeader.biWidth, bmpHeader.biHeight );
+					mjpeg_debug ( "VIDEO: framesize: %i", invstream->GetFrameSize ());
+					mjpeg_debug ( "VIDEO: width x height: %i x %i", bmpHeader.biWidth, bmpHeader.biHeight );
 					// not needed as it's just used as a pointer into CImage
 					// currentFrame.inputBuffer = new unsigned char [invstream->GetFrameSize ()];
 					input.yPelsPerMetre = bmpHeader.biYPelsPerMeter ;
 					input.xPelsPerMetre = bmpHeader.biXPelsPerMeter;
-					mjpeg_debug ( "VIDEO: aspect ratio: %i:%i\n", input.xPelsPerMetre, input.yPelsPerMetre );
+					mjpeg_debug ( "VIDEO: aspect ratio: %i:%i", input.xPelsPerMetre, input.yPelsPerMetre );
 				}							
 				if ( input.processAudio )
 				{
@@ -1625,12 +1625,12 @@ main (int argc, char **argv)
 						input.audioTotalBytes = ( int ) ( input.totalFrames 
 										* input.dAudioBytesPerFrame
 										);
-						mjpeg_debug ( "AUDIO length of file: %i\n", input.audioTotalBytes );
+						mjpeg_debug ( "AUDIO length of file: %i", input.audioTotalBytes );
 						
 					}
 					else
 					{
-						mjpeg_warn ( "Audio not present in first file. Ignoring all audio.\n" );
+						mjpeg_warn ( "Audio not present in first file. Ignoring all audio." );
 						input.processAudio = 0 ;
 					}
 				}
@@ -1645,11 +1645,11 @@ main (int argc, char **argv)
 					if ( ( bmpHeader.biWidth != this_bh.biWidth )
 						 || ( bmpHeader.biHeight != this_bh.biHeight ) )
 					{
-						mjpeg_error_exit1 ( "Width and Height of all files must be the same.\n" );
+						mjpeg_error_exit1 ( "Width and Height of all files must be the same." );
 					}
 					if ( invstream->GetFrameTime() != input.frameTime )
 					{
-						mjpeg_error_exit1 ( "Frame rate of all files must be the same.\n" );
+						mjpeg_error_exit1 ( "Frame rate of all files must be the same." );
 					}
 				}
 
@@ -1657,7 +1657,7 @@ main (int argc, char **argv)
 				{
 					if ( inastream == NULL )
 					{
-						mjpeg_error_exit1 ( "Audio does not exist for all files.\n" );
+						mjpeg_error_exit1 ( "Audio does not exist for all files." );
 					}
 					inastream->StartStreaming ();
 					inastream->GetOutputFormat ( &this_fmt, sizeof this_fmt );
@@ -1670,7 +1670,7 @@ main (int argc, char **argv)
 					   ||  ( waveHeader.nBlockAlign != this_fmt.nBlockAlign )
 					   )
 					{
-						mjpeg_error_exit1 ( "Audio format of file '%s' incompatible.\n", input.files[i].filename );
+						mjpeg_error_exit1 ( "Audio format of file '%s' incompatible.", input.files[i].filename );
 					}
 				}
 			}
@@ -1682,24 +1682,24 @@ main (int argc, char **argv)
 			{
 #ifdef DEBUG_DIVXDEC
 				StreamInfo *si = inastream->GetStreamInfo();
-				mjpeg_debug ( "AUDIO: stream->bps: %f\n", si->GetBps () );
-				mjpeg_debug ( "AUDIO: stream->fps: %f\n", si->GetFps () );
-				mjpeg_debug ( "AUDIO: stream->lt: %f\n", si->GetLengthTime () );
-				mjpeg_debug ( "AUDIO: stream->ss: %i\n", si->GetStreamSize () );
-				mjpeg_debug ( "AUDIO: stream->sf: %u\n", si->GetStreamFrames () );
-				mjpeg_debug ( "AUDIO: samples per frame->%f\n", (double) si->GetStreamSize() / (double) si->GetStreamFrames() );
-				mjpeg_debug ( "AUDIO: stream->vbr: %i\n", si->IsAudioVbr() );
+				mjpeg_debug ( "AUDIO: stream->bps: %f", si->GetBps () );
+				mjpeg_debug ( "AUDIO: stream->fps: %f", si->GetFps () );
+				mjpeg_debug ( "AUDIO: stream->lt: %f", si->GetLengthTime () );
+				mjpeg_debug ( "AUDIO: stream->ss: %i", si->GetStreamSize () );
+				mjpeg_debug ( "AUDIO: stream->sf: %u", si->GetStreamFrames () );
+				mjpeg_debug ( "AUDIO: samples per frame->%f", (double) si->GetStreamSize() / (double) si->GetStreamFrames() );
+				mjpeg_debug ( "AUDIO: stream->vbr: %i", si->IsAudioVbr() );
 				// cerr << "*********" << si->GetString() << "\n" ;
 				delete si;
 #endif
 				delete inastream ;
 			}
 			//delete file ;
-			mjpeg_debug ( "Frames found so far: %u\n", input.totalFrames );
+			mjpeg_debug ( "Frames found so far: %u", input.totalFrames );
 		}
 		catch ( FatalError &error )
 		{
-			mjpeg_error ( "An error occurred checking %s\n", input.files[i].filename );
+			mjpeg_error ( "An error occurred checking %s", input.files[i].filename );
 			error.PrintAll ();
 			exit ( 1 );
 		}
@@ -1708,7 +1708,7 @@ main (int argc, char **argv)
 		i++;
 	}
 
-	mjpeg_debug ( "All input files checked.\n" );
+	mjpeg_debug ( "All input files checked." );
 
 	if ( input.processVideo )
 	{
@@ -1717,8 +1717,8 @@ main (int argc, char **argv)
 		currentFrame.lumaPlaneSize = input.width * input.height ;
 		currentFrame.chromaPlaneSize = currentFrame.lumaPlaneSize / 4;
 
-		mjpeg_debug ( "VIDEO: framerate: %.5f\n", input.frameRate );
-		mjpeg_debug ( "VIDEO: Total frames: %i\n", input.totalFrames );
+		mjpeg_debug ( "VIDEO: framerate: %.5f", input.frameRate );
+		mjpeg_debug ( "VIDEO: Total frames: %i", input.totalFrames );
 
 		currentFrame.frameYUV[0] = new unsigned char [currentFrame.lumaPlaneSize];
 		currentFrame.frameYUV[1] = new unsigned char [currentFrame.chromaPlaneSize];
@@ -1737,12 +1737,12 @@ main (int argc, char **argv)
 		}
 		else
 		{
-			mjpeg_debug ("VIDEO: YUV output file: %s\n", filenameYUV );
+			mjpeg_debug ("VIDEO: YUV output file: %s", filenameYUV );
 			output.fdYUV = open ( filenameYUV, O_WRONLY | O_CREAT | O_TRUNC);
 		}
 		if ( output.fdYUV < 1 )
 		{
-			mjpeg_error_exit1 ( "Could not open output YUV file.\n" );
+			mjpeg_error_exit1 ( "Could not open output YUV file." );
 		}
 
 		y4m_init_stream_info(&output.y4m_info);
@@ -1757,7 +1757,7 @@ main (int argc, char **argv)
 		// preliminary investigation there is no way from the AVI
 		// stream header information available in the file to
 		// determine this. :(
-		mjpeg_warn ( "Cannot detect interlacing in avi files.\n" );
+		mjpeg_warn ( "Cannot detect interlacing in avi files." );
 		y4m_si_set_interlace ( &output.y4m_info, Y4M_ILACE_NONE );
 
 		y4m_ratio_t y4m_framerate;
@@ -1781,11 +1781,11 @@ main (int argc, char **argv)
 			y4m_ratio_t y4m_aspect = y4m_guess_sar ( input.width, input.height, y4m_dar_4_3 );
 			if ( ( y4m_aspect.n == 0 ) || ( y4m_aspect.d == 0 ) )
 			{
-				mjpeg_warn ( "could not guess aspect ratio\n" );
+				mjpeg_warn ( "could not guess aspect ratio" );
 			}
 			else
 			{
-				mjpeg_warn ( "no aspect ratio... guessing %i:%i\n", y4m_aspect.n, y4m_aspect.d );
+				mjpeg_warn ( "no aspect ratio... guessing %i:%i", y4m_aspect.n, y4m_aspect.d );
 			}
 			y4m_si_set_sampleaspect ( &output.y4m_info, y4m_aspect );
 		}
@@ -1795,8 +1795,8 @@ main (int argc, char **argv)
 	
 	if ( input.processAudio )
 	{
-		mjpeg_debug ( "AUDIO: Number of channels: %i\n", waveHeader.nChannels );
-		mjpeg_debug ( "AUDIO: Detected samples per second: %i\n", waveHeader.nSamplesPerSec );
+		mjpeg_debug ( "AUDIO: Number of channels: %i", waveHeader.nChannels );
+		mjpeg_debug ( "AUDIO: Detected samples per second: %i", waveHeader.nSamplesPerSec );
 		currentFrame.audioSize = input.audioBytesPerFrame * input.audioBlockAlign;
 		currentFrame.audio = new uint8_t [ currentFrame.audioSize ];
 		memset ( currentFrame.audio, 0, currentFrame.audioSize );
@@ -1806,9 +1806,9 @@ main (int argc, char **argv)
 			input.audioTotalBytes = (int) (output.endFrame * input.dAudioBytesPerFrame);
 			input.audioTotalBytes += input.audioBlockAlign - ( input.audioTotalBytes % input.audioBlockAlign );
 		}
-		mjpeg_debug ( "AUDIO: Total audio data: %i bytes.\n", input.audioTotalBytes );
-		mjpeg_debug ( "AUDIO: Audio bytes per frame: %i\n", input.audioBytesPerFrame);
-		mjpeg_debug ( "AUDIO: (but more precisely: %.5f)\n", input.dAudioBytesPerFrame);
+		mjpeg_debug ( "AUDIO: Total audio data: %i bytes.", input.audioTotalBytes );
+		mjpeg_debug ( "AUDIO: Audio bytes per frame: %i", input.audioBytesPerFrame);
+		mjpeg_debug ( "AUDIO: (but more precisely: %.5f)", input.dAudioBytesPerFrame);
 
 
 		if ( output.toWAVE )
@@ -1819,12 +1819,12 @@ main (int argc, char **argv)
 			}
 			else
 			{
-				mjpeg_debug ("AUDIO: WAVE output file: %s\n", filenameWAVE );
+				mjpeg_debug ("AUDIO: WAVE output file: %s", filenameWAVE );
 				output.fdWAVE = open ( filenameWAVE, O_WRONLY | O_CREAT | O_TRUNC );
 			}
 			if ( output.fdWAVE < 1 )
 			{
-				mjpeg_error_exit1 ( "Could not open output WAVE file.\n" );
+				mjpeg_error_exit1 ( "Could not open output WAVE file." );
 			}
 			wave_header wave;
 		
@@ -1855,7 +1855,7 @@ main (int argc, char **argv)
 
 		if ( ! output.lavplayInfo )
 		{
-			mjpeg_error_exit1 ( "Could not initialise lavplay.\n" );
+			mjpeg_error_exit1 ( "Could not initialise lavplay." );
 		}
 		output.lavplayInfo->playback_mode = optLavplayDestination;
 		output.lavplayInfo->msg_callback = lavplayMessage;
@@ -1892,7 +1892,7 @@ main (int argc, char **argv)
 		}
 		else 
 		{
-			mjpeg_error_exit1 ( "Norm could not be guessed, specify with -n [pn]\n" );
+			mjpeg_error_exit1 ( "Norm could not be guessed, specify with -n [pn]" );
 		}
 		editList->video_fps = ( editList->video_norm == NORM_NTSC )
 				? 30000.0 / 1001.0
@@ -1908,7 +1908,7 @@ main (int argc, char **argv)
 			// simple initial version
 			if ( ( input.height + output.borderHeight ) > hwHeight )
 			{
-				mjpeg_error_exit1 ( "Cannot handle an image this tall... yet.\n" );
+				mjpeg_error_exit1 ( "Cannot handle an image this tall... yet." );
 			}
 			if ( ( input.height + output.borderHeight ) > ( hwHeight / 2 ) )
 			{
@@ -1935,7 +1935,7 @@ main (int argc, char **argv)
 					memset (currentFrame.decimateYUV[0], 0, output.height * output.width );
 					memset (currentFrame.decimateYUV[1], 128, output.height * output.width / 4 );
 					memset (currentFrame.decimateYUV[2], 128, output.height * output.width / 4 );
-					mjpeg_debug ( " Lav decimation factor: %i\n", output.lavDecimate );
+					mjpeg_debug ( " Lav decimation factor: %i", output.lavDecimate );
 				}
 			}
 		}
@@ -1958,7 +1958,7 @@ main (int argc, char **argv)
 
 		currentFrame.jpegFrame =  new uint8_t [ input.width * input.height ];
 		output.bordered = ( ( output.borderHeight + output.borderWidth) > 0 );
-		mjpeg_info ( "Original input is %i x %i\n", input.width, input.height );
+		mjpeg_info ( "Original input is %i x %i", input.width, input.height );
 		if ( output.bordered )
 		{
 			int fullluma = ( output.borderHeight + output.height )
@@ -1972,8 +1972,8 @@ main (int argc, char **argv)
 			memset (currentFrame.lavYUV[1], 128, fullchroma);
 			memset (currentFrame.lavYUV[2], 128, fullchroma);
 
-			mjpeg_info ( "Outbound input is %i x %i\n", output.width, output.height );
-			mjpeg_info ( "Adding %i wide and %i high border for lav file/play\n", output.borderWidth, output.borderHeight );
+			mjpeg_info ( "Outbound input is %i x %i", output.width, output.height );
+			mjpeg_info ( "Adding %i wide and %i high border for lav file/play", output.borderWidth, output.borderHeight );
 		}
 	}
 
@@ -1983,7 +1983,7 @@ main (int argc, char **argv)
 		nextLavFile ();
 		if ( output.fdLAV == NULL )
 		{
-			mjpeg_error_exit1 ( "Could not open output LAV file.\n" );
+			mjpeg_error_exit1 ( "Could not open output LAV file." );
 		}
 	}
 
@@ -2044,8 +2044,8 @@ main (int argc, char **argv)
 	std::cout.rdbuf ( real_cout );
 	stdout = real_stdout;
 
-	mjpeg_info ( "\n" );
-	mjpeg_info ( "Done. %i frames\n", output.processedFrames );
+	mjpeg_info ( "" );
+	mjpeg_info ( "Done. %i frames", output.processedFrames );
 
 	return errCode;
 }

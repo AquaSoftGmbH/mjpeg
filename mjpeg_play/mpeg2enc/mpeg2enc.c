@@ -253,7 +253,7 @@ static void set_format_presets(void)
 	switch( param_format  )
 	{
 	case MPEG_FORMAT_MPEG1 :  /* Generic MPEG1 */
-		mjpeg_info( "Selecting generic MPEG1 output profile\n");
+		mjpeg_info( "Selecting generic MPEG1 output profile");
 		if( param_video_buffer_size == 0 )
 			param_video_buffer_size = 46;
 		if( param_bitrate == 0 )
@@ -267,10 +267,10 @@ static void set_format_presets(void)
         param_preserve_B = true;
         param_min_GOP_size = 9;
 		param_max_GOP_size = param_norm == 'n' ? 18 : 15;
-		mjpeg_info("VCD default options selected\n");
+		mjpeg_info("VCD default options selected");
 		
 	case MPEG_FORMAT_VCD_NSR : /* VCD format, non-standard rate */
-		mjpeg_info( "Selecting VCD output profile\n");
+		mjpeg_info( "Selecting VCD output profile");
 		param_mpeg = 1;
 		param_svcd_scan_data = 0;
 		param_seq_hdr_every_gop = 1;
@@ -282,7 +282,7 @@ static void set_format_presets(void)
 		
 	case  MPEG_FORMAT_MPEG2 : 
 		param_mpeg = 2;
-		mjpeg_info( "Selecting generic MPEG2 output profile\n");
+		mjpeg_info( "Selecting generic MPEG2 output profile");
 		param_mpeg = 2;
 		if( param_fieldenc == -1 )
 			param_fieldenc = 1;
@@ -291,13 +291,13 @@ static void set_format_presets(void)
 		break;
 
 	case MPEG_FORMAT_SVCD :
-		mjpeg_info("SVCD standard settings selected\n");
+		mjpeg_info("SVCD standard settings selected");
 		param_bitrate = 2500000;
 		param_max_GOP_size = param_norm == 'n' ? 18 : 15;
 		param_video_buffer_size = 230;
 
 	case  MPEG_FORMAT_SVCD_NSR :		/* Non-standard data-rate */
-		mjpeg_info( "Selecting SVCD output profile\n");
+		mjpeg_info( "Selecting SVCD output profile");
 		param_mpeg = 2;
 		if( param_fieldenc == -1 )
 			param_fieldenc = 1;
@@ -311,7 +311,7 @@ static void set_format_presets(void)
         break;
 
 	case MPEG_FORMAT_VCD_STILL :
-		mjpeg_info( "Selecting VCD Stills output profile\n");
+		mjpeg_info( "Selecting VCD Stills output profile");
 		param_mpeg = 1;
 		/* We choose a generous nominal bit-rate as its VBR anyway
 		   there's only one frame per sequence ;-). It *is* too small
@@ -331,7 +331,7 @@ static void set_format_presets(void)
 				param_still_size = 30*1024;
 			if( param_still_size < 20*1024 || param_still_size > 42*1024 )
 			{
-				mjpeg_error_exit1( "VCD normal-resolution stills must be >= 20KB and <= 42KB each\n");
+				mjpeg_error_exit1( "VCD normal-resolution stills must be >= 20KB and <= 42KB each");
 			}
 			/* VBV delay encoded normally */
 			param_vbv_buffer_still_size = 46*1024;
@@ -348,7 +348,7 @@ static void set_format_presets(void)
 				param_still_size = 125*1024;
 			if( param_still_size < 46*1024 || param_still_size > 220*1024 )
 			{
-				mjpeg_error_exit1( "VCD normal-resolution stills should be >= 46KB and <= 220KB each\n");
+				mjpeg_error_exit1( "VCD normal-resolution stills should be >= 46KB and <= 220KB each");
 			}
 			param_vbv_buffer_still_size = param_still_size;
 			param_video_buffer_size = 224;
@@ -356,8 +356,8 @@ static void set_format_presets(void)
 		}
 		else
 		{
-			mjpeg_error("VCD normal resolution stills must be 352x288 (PAL) or 352x240 (NTSC)\n");
-			mjpeg_error_exit1( "VCD high resolution stills must be 704x576 (PAL) or 704x480 (NTSC)\n");
+			mjpeg_error("VCD normal resolution stills must be 352x288 (PAL) or 352x240 (NTSC)");
+			mjpeg_error_exit1( "VCD high resolution stills must be 704x576 (PAL) or 704x480 (NTSC)");
 		}
 		param_quant = 0;		/* We want to try and hit our size target */
 		
@@ -368,7 +368,7 @@ static void set_format_presets(void)
 		break;
 
 	case MPEG_FORMAT_SVCD_STILL :
-		mjpeg_info( "Selecting SVCD Stills output profile\n");
+		mjpeg_info( "Selecting SVCD Stills output profile");
 		param_mpeg = 2;
 		if( param_fieldenc == -1 )
 			param_fieldenc = 1;
@@ -389,21 +389,21 @@ static void set_format_presets(void)
 		if( opt_horizontal_size == 480 && 
 			(opt_vertical_size == 480 || opt_vertical_size == 576 ) )
 		{
-			mjpeg_info( "SVCD normal-resolution stills selected.\n" );
+			mjpeg_info( "SVCD normal-resolution stills selected." );
 		}
 		else if( opt_horizontal_size == 704 &&
 				 (opt_vertical_size == 480 || opt_vertical_size == 576) )
 		{
-			mjpeg_info( "SVCD high-resolution stills selected.\n" );
+			mjpeg_info( "SVCD high-resolution stills selected." );
 		}
 		else
 		{
-			mjpeg_error("SVCD normal resolution stills must be 480x576 (PAL) or 480x480 (NTSC)\n");
-			mjpeg_error_exit1( "SVCD high resolution stills must be 704x576 (PAL) or 704x480 (NTSC)\n");
+			mjpeg_error("SVCD normal resolution stills must be 480x576 (PAL) or 480x480 (NTSC)");
+			mjpeg_error_exit1( "SVCD high resolution stills must be 704x576 (PAL) or 704x480 (NTSC)");
 		}
 		if( param_still_size < 30*1024 || param_still_size > 200*1024 )
 		{
-			mjpeg_error_exit1( "SVCD resolution stills must be >= 30KB and <= 200KB each\n");
+			mjpeg_error_exit1( "SVCD resolution stills must be >= 30KB and <= 200KB each");
 		}
 
 
@@ -415,7 +415,7 @@ static void set_format_presets(void)
 
 
 	case MPEG_FORMAT_DVD :
-		mjpeg_info( "Selecting DVD output profile\n");
+		mjpeg_info( "Selecting DVD output profile");
 		
 		if( param_bitrate == 0 )
 			param_bitrate = 7500000;
@@ -483,7 +483,7 @@ static int infer_default_params(void)
 	{
 		if(strm_frame_rate_code<1 || strm_frame_rate_code>8)
 		{
-			mjpeg_error("Input stream with unknown frame-rate and no frame-rate specified with -a!\n");
+			mjpeg_error("Input stream with unknown frame-rate and no frame-rate specified with -a!");
 			++nerr;
 		}
 		else
@@ -492,12 +492,12 @@ static int infer_default_params(void)
 
 	if( param_norm == 0 && (strm_frame_rate_code==3 || strm_frame_rate_code == 2) )
 	{
-		mjpeg_info("Assuming norm PAL\n");
+		mjpeg_info("Assuming norm PAL");
 		param_norm = 'p';
 	}
 	if( param_norm == 0 && (strm_frame_rate_code==4 || strm_frame_rate_code == 1) )
 	{
-		mjpeg_info("Assuming norm NTSC\n");
+		mjpeg_info("Assuming norm NTSC");
 		param_norm = 'n';
 	}
 
@@ -511,9 +511,9 @@ static int infer_default_params(void)
 			strm_frame_rate_code > 0 && 
 			strm_frame_rate_code < mpeg_num_framerates )
 		{
-			mjpeg_warn( "Specified display frame-rate %3.2f will over-ride\n", 
+			mjpeg_warn( "Specified display frame-rate %3.2f will over-ride", 
 						Y4M_RATIO_DBL(mpeg_framerate(param_frame_rate)));
-			mjpeg_warn( "(different!) frame-rate %3.2f of the input stream\n",
+			mjpeg_warn( "(different!) frame-rate %3.2f of the input stream",
 						Y4M_RATIO_DBL(mpeg_framerate(strm_frame_rate_code)));
 		}
 		opt_frame_rate_code = param_frame_rate;
@@ -526,7 +526,7 @@ static int infer_default_params(void)
 
 	if( param_aspect_ratio == 0 )
 	{
-		mjpeg_warn( "No aspect ratio specifed and no guess possible: assuming 4:3 display aspect!\n");
+		mjpeg_warn( "No aspect ratio specifed and no guess possible: assuming 4:3 display aspect!");
 		param_aspect_ratio = 2;
 	}
 
@@ -546,29 +546,29 @@ static int check_param_constraints(void)
 	if( param_32_pulldown )
 	{
 		if( param_mpeg == 1 )
-			mjpeg_error_exit1( "MPEG-1 cannot encode 3:2 pulldown (for transcoding to VCD set 24fps)!\n" );
+			mjpeg_error_exit1( "MPEG-1 cannot encode 3:2 pulldown (for transcoding to VCD set 24fps)!" );
 
 		if( param_frame_rate != 4 && param_frame_rate != 5  )
 		{
 			if( param_frame_rate == 1 || param_frame_rate == 2 )
 			{
 				param_frame_rate += 3;
-				mjpeg_warn("3:2 movie pulldown with frame rate set to decode rate not display rate\n");
-				mjpeg_warn("3:2 Setting frame rate code to display rate = %d (%2.3f fps)\n", 
+				mjpeg_warn("3:2 movie pulldown with frame rate set to decode rate not display rate");
+				mjpeg_warn("3:2 Setting frame rate code to display rate = %d (%2.3f fps)", 
 						   param_frame_rate,
 						   Y4M_RATIO_DBL(mpeg_framerate(param_frame_rate)));
 
 			}
 			else
 			{
-				mjpeg_error( "3:2 movie pulldown not sensible for %2.3f fps dispay rate\n",
+				mjpeg_error( "3:2 movie pulldown not sensible for %2.3f fps dispay rate",
 							Y4M_RATIO_DBL(mpeg_framerate(param_frame_rate)));
 				++nerr;
 			}
 		}
 		if( param_fieldenc != 0 )
 		{
-			mjpeg_error( "3:2 pulldown only possible for frame pictures (-I 0)\n");
+			mjpeg_error( "3:2 pulldown only possible for frame pictures (-I 0)");
 			++nerr;
 		}
 	}
@@ -577,7 +577,7 @@ static int check_param_constraints(void)
 
 	if(  param_aspect_ratio > mpeg_num_aspect_ratios[param_mpeg-1] ) 
 	{
-		mjpeg_error("For MPEG-%d aspect ratio code  %d > %d illegal\n", 
+		mjpeg_error("For MPEG-%d aspect ratio code  %d > %d illegal", 
 					param_mpeg, param_aspect_ratio, 
 					mpeg_num_aspect_ratios[param_mpeg-1]);
 		++nerr;
@@ -587,7 +587,7 @@ static int check_param_constraints(void)
 
 	if( param_min_GOP_size > param_max_GOP_size )
 	{
-		mjpeg_error( "Min GOP size must be <= Max GOP size\n" );
+		mjpeg_error( "Min GOP size must be <= Max GOP size" );
 		++nerr;
 	}
 
@@ -596,8 +596,8 @@ static int check_param_constraints(void)
 		  param_max_GOP_size % param_Bgrp_size != 0 )
 		)
 	{
-		mjpeg_error("Preserving I/P frame spacing is impossible if min and max GOP sizes are\n" );
-		mjpeg_error_exit1("Not both divisible by %d\n", param_Bgrp_size );
+		mjpeg_error("Preserving I/P frame spacing is impossible if min and max GOP sizes are" );
+		mjpeg_error_exit1("Not both divisible by %d", param_Bgrp_size );
 	}
 
 	if(	( param_format != MPEG_FORMAT_VCD_STILL &&
@@ -621,11 +621,11 @@ static int check_param_constraints(void)
 	case MPEG_FORMAT_SVCD_NSR :
 	case MPEG_FORMAT_SVCD : 
 		if( param_aspect_ratio != 2 && param_aspect_ratio != 3 )
-			mjpeg_error_exit1("SVCD only supports 4:3 and 16:9 aspect ratios\n");
+			mjpeg_error_exit1("SVCD only supports 4:3 and 16:9 aspect ratios");
 		if( param_svcd_scan_data )
 		{
-			mjpeg_warn( "Generating dummy SVCD scan-data offsets to be filled in by \"vcdimager\"\n");
-			mjpeg_warn( "If you're not using vcdimager you may wish to turn this off using -d\n");
+			mjpeg_warn( "Generating dummy SVCD scan-data offsets to be filled in by \"vcdimager\"");
+			mjpeg_warn( "If you're not using vcdimager you may wish to turn this off using -d");
 		}
 		break;
 	}
@@ -698,7 +698,7 @@ static struct option long_options[]={
 			param_still_size = atoi(optarg)*1024;
 			if( param_still_size < 20*1024 || param_still_size > 500*1024 )
 			{
-				mjpeg_error( "-T requires arg 20..500\n" );
+				mjpeg_error( "-T requires arg 20..500" );
 				++nerr;
 			}
 			break;
@@ -707,7 +707,7 @@ static struct option long_options[]={
 			param_nonvid_bitrate = atoi(optarg);
 			if( param_nonvid_bitrate < 0 )
 			{
-				mjpeg_error("-B requires arg > 0\n");
+				mjpeg_error("-B requires arg > 0");
 				++nerr;
 			}
 			break;
@@ -716,7 +716,7 @@ static struct option long_options[]={
             param_mpeg2_dc_prec = atoi(optarg)-8;
             if( param_mpeg2_dc_prec < 0 || param_mpeg2_dc_prec > 2 )
             {
-                mjpeg_error( "-D requires arg [8..10]\n" );
+                mjpeg_error( "-D requires arg [8..10]" );
                 ++nerr;
             }
             break;
@@ -728,7 +728,7 @@ static struct option long_options[]={
 			param_quant = atoi(optarg);
 			if(param_quant<1 || param_quant>32)
 			{
-				mjpeg_error("-q option requires arg 1 .. 32\n");
+				mjpeg_error("-q option requires arg 1 .. 32");
 				++nerr;
 			}
 			break;
@@ -740,7 +740,7 @@ static struct option long_options[]={
 			/* Checking has to come later once MPEG 1/2 has been selected...*/
 			if( param_aspect_ratio < 0 )
 			{
-				mjpeg_error( "-a option must be positive\n");
+				mjpeg_error( "-a option must be positive");
 				++nerr;
 			}
 			break;
@@ -752,7 +752,7 @@ static struct option long_options[]={
 			if( param_frame_rate < 0 || 
 				param_frame_rate >= mpeg_num_framerates)
 			{
-				mjpeg_error( "-F option must be [0..%d]\n", 
+				mjpeg_error( "-F option must be [0..%d]", 
 						 mpeg_num_framerates-1);
 				++nerr;
 			}
@@ -766,7 +766,7 @@ static struct option long_options[]={
 			param_fieldenc = atoi(optarg);
 			if( param_fieldenc < 0 || param_fieldenc > 2 )
 			{
-				mjpeg_error("-I option requires 0,1 or 2\n");
+				mjpeg_error("-I option requires 0,1 or 2");
 				++nerr;
 			}
 			break;
@@ -775,7 +775,7 @@ static struct option long_options[]={
 			param_searchrad = atoi(optarg);
 			if(param_searchrad<0 || param_searchrad>32)
 			{
-				mjpeg_error("-r option requires arg 0 .. 32\n");
+				mjpeg_error("-r option requires arg 0 .. 32");
 				++nerr;
 			}
 			break;
@@ -784,7 +784,7 @@ static struct option long_options[]={
 			param_num_cpus = atoi(optarg);
 			if(param_num_cpus<0 || param_num_cpus>32)
 			{
-				mjpeg_error("-M option requires arg 0..32\n");
+				mjpeg_error("-M option requires arg 0..32");
 				++nerr;
 			}
 			break;
@@ -793,7 +793,7 @@ static struct option long_options[]={
 			param_44_red = atoi(optarg);
 			if(param_44_red<0 || param_44_red>4)
 			{
-				mjpeg_error("-4 option requires arg 0..4\n");
+				mjpeg_error("-4 option requires arg 0..4");
 				++nerr;
 			}
 			break;
@@ -802,7 +802,7 @@ static struct option long_options[]={
 			param_22_red = atoi(optarg);
 			if(param_22_red<0 || param_22_red>4)
 			{
-				mjpeg_error("-2 option requires arg 0..4\n");
+				mjpeg_error("-2 option requires arg 0..4");
 				++nerr;
 			}
 			break;
@@ -816,7 +816,7 @@ static struct option long_options[]={
 			param_video_buffer_size = atoi(optarg);
 			if(param_video_buffer_size<20 || param_video_buffer_size>4000)
 			{
-				mjpeg_error("-v option requires arg 20..4000\n");
+				mjpeg_error("-v option requires arg 20..4000");
 				++nerr;
 			}
 			break;
@@ -825,7 +825,7 @@ static struct option long_options[]={
 			param_seq_length_limit = atoi(optarg);
 			if(param_seq_length_limit<1 )
 			{
-				mjpeg_error("-S option requires arg > 1\n");
+				mjpeg_error("-S option requires arg > 1");
 				++nerr;
 			}
 			break;
@@ -836,7 +836,7 @@ static struct option long_options[]={
 		case 'z' :
 			if( strlen(optarg) != 1 || (optarg[0] != 't' && optarg[0] != 'b' ) )
 			{
-				mjpeg_error("-z option requires arg b or t\n" );
+				mjpeg_error("-z option requires arg b or t" );
 				++nerr;
 			}
 			else if( optarg[0] == 't' )
@@ -866,7 +866,7 @@ static struct option long_options[]={
 				param_norm = optarg[0];
 				break;
 			default :
-				mjpeg_error("-n option requires arg n or p, or s.\n");
+				mjpeg_error("-n option requires arg n or p, or s.");
 				++nerr;
 			}
 			break;
@@ -895,12 +895,12 @@ static struct option long_options[]={
 			param_act_boost = atof(optarg);
 			if( param_act_boost <0.0 || param_act_boost > 10.0)
 			{
-				mjpeg_error( "-q option requires arg 0.1 .. 10.0\n");
+				mjpeg_error( "-q option requires arg 0.1 .. 10.0");
 				++nerr;
 			}
 			break;
 		case ':' :
-			mjpeg_error( "Missing parameter to option!\n" );
+			mjpeg_error( "Missing parameter to option!" );
 		case '?':
 		default:
 			++nerr;
@@ -940,12 +940,12 @@ static struct option long_options[]={
 	
 	if(opt_horizontal_size<=0)
 	{
-		mjpeg_error("Horizontal size from input stream illegal\n");
+		mjpeg_error("Horizontal size from input stream illegal");
 		++nerr;
 	}
 	if(opt_vertical_size<=0)
 	{
-		mjpeg_error("Vertical size from input stream illegal\n");
+		mjpeg_error("Vertical size from input stream illegal");
 		++nerr;
 	}
 
@@ -954,7 +954,7 @@ static struct option long_options[]={
 
 	if(!outfilename)
 	{
-		mjpeg_error("Output file name (-o option) is required!\n");
+		mjpeg_error("Output file name (-o option) is required!");
 		++nerr;
 	}
 
@@ -972,35 +972,35 @@ static struct option long_options[]={
 	}
 
 
-	mjpeg_info("Encoding MPEG-%d video to %s\n",param_mpeg,outfilename);
-	mjpeg_info("Horizontal size: %d pel\n",opt_horizontal_size);
-	mjpeg_info("Vertical size: %d pel\n",opt_vertical_size);
-	mjpeg_info("Aspect ratio code: %d = %s\n", 
+	mjpeg_info("Encoding MPEG-%d video to %s",param_mpeg,outfilename);
+	mjpeg_info("Horizontal size: %d pel",opt_horizontal_size);
+	mjpeg_info("Vertical size: %d pel",opt_vertical_size);
+	mjpeg_info("Aspect ratio code: %d = %s", 
 			param_aspect_ratio,
 			mpeg_aspect_code_definition(param_mpeg,param_aspect_ratio));
-	mjpeg_info("Frame rate code:   %d = %s\n",
+	mjpeg_info("Frame rate code:   %d = %s",
 			param_frame_rate,
 			mpeg_framerate_code_definition(param_frame_rate));
 
 	if(param_bitrate) 
-		mjpeg_info("Bitrate: %d KBit/s\n",param_bitrate/1000);
+		mjpeg_info("Bitrate: %d KBit/s",param_bitrate/1000);
 	else
-		mjpeg_info( "Bitrate: VCD\n");
+		mjpeg_info( "Bitrate: VCD");
 	if(param_quant) 
-		mjpeg_info("Quality factor: %d (1=best, 31=worst)\n",param_quant);
+		mjpeg_info("Quality factor: %d (1=best, 31=worst)",param_quant);
 
-	mjpeg_info("Field order for input: %s\n", 
+	mjpeg_info("Field order for input: %s", 
 			   mpeg_interlace_code_definition(param_input_interlacing) );
 
 	if( param_seq_length_limit )
 	{
-		mjpeg_info( "New Sequence every %d Mbytes\n", param_seq_length_limit );
-		mjpeg_info( "Assuming non-video stream of %d Kbps\n", param_nonvid_bitrate );
+		mjpeg_info( "New Sequence every %d Mbytes", param_seq_length_limit );
+		mjpeg_info( "Assuming non-video stream of %d Kbps", param_nonvid_bitrate );
 	}
 	else
-		mjpeg_info( "Sequence unlimited length\n" );
+		mjpeg_info( "Sequence unlimited length" );
 
-	mjpeg_info("Search radius: %d\n",param_searchrad);
+	mjpeg_info("Search radius: %d",param_searchrad);
 
 	/* set params */
 	init_mpeg_parms();
@@ -1041,7 +1041,7 @@ uint8_t *bufalloc( size_t size )
 
 	if( buf == NULL )
 	{
-		mjpeg_error_exit1("malloc failed\n");
+		mjpeg_error_exit1("malloc failed");
 	}
 	adjust = BUFFER_ALIGN-((unsigned long)buf)%BUFFER_ALIGN;
 	if( adjust == BUFFER_ALIGN )
@@ -1131,7 +1131,7 @@ static void init_encoder(void)
 
 	/* clip table */
 	if (!(clp_0_255 = (uint8_t *)malloc(1024)))
-		mjpeg_error_exit1("malloc failed\n");
+		mjpeg_error_exit1("malloc failed");
 	clp_0_255 += 384;
 	for (i=-384; i<640; i++)
 		clp_0_255[i] = (i<0) ? 0 : ((i>255) ? 255 : i);
@@ -1181,7 +1181,7 @@ static void init_mpeg_parms(void)
 
 	ctl_N_min = param_min_GOP_size;      /* I frame distance */
 	ctl_N_max = param_max_GOP_size;
-	mjpeg_info( "GOP SIZE RANGE %d TO %d\n", ctl_N_min, ctl_N_max );
+	mjpeg_info( "GOP SIZE RANGE %d TO %d", ctl_N_min, ctl_N_max );
 	ctl_M = param_Bgrp_size;             /* I or P frame distance */
 	ctl_M_min = param_preserve_B ? ctl_M : 1;
 	if( ctl_M >= ctl_N_min )
@@ -1213,7 +1213,7 @@ static void init_mpeg_parms(void)
 
 	if( param_bitrate == 0 )
 	{
-		mjpeg_error_exit1( "Generic format - must specify bit-rate!\n" );
+		mjpeg_error_exit1( "Generic format - must specify bit-rate!" );
 	}
 
 	opt_still_size = 0;
@@ -1288,7 +1288,7 @@ static void init_mpeg_parms(void)
         msg = "unspecified";
 		break;
 	}
-    mjpeg_info( "Setting colour/gamma parameters to \"%s\"\n", msg);
+    mjpeg_info( "Setting colour/gamma parameters to \"%s\"", msg);
 
 	switch( param_format )
 	{
@@ -1324,7 +1324,7 @@ static void init_mpeg_parms(void)
 		int fieldorder;
 		if( param_force_interlacing != Y4M_UNKNOWN ) 
 		{
-			mjpeg_info( "Forcing playback video to be: %s\n",
+			mjpeg_info( "Forcing playback video to be: %s",
 						mpeg_interlace_code_definition(	param_force_interlacing ) );	
 			fieldorder = param_force_interlacing;
 		}
@@ -1342,7 +1342,7 @@ static void init_mpeg_parms(void)
 		= opt_frame_pred_dct_tab[2] 
         = (param_mpeg == 1 || param_fieldenc == 0) ? 1 : 0;
 
-    mjpeg_info( "Progressive format frames = %d\n", 	opt_frame_pred_dct_tab[0] );
+    mjpeg_info( "Progressive format frames = %d", 	opt_frame_pred_dct_tab[0] );
 	opt_qscale_tab[0] 
 		= opt_qscale_tab[1] 
 		= opt_qscale_tab[2] 
@@ -1366,7 +1366,7 @@ static void init_mpeg_parms(void)
 	if(param_searchrad*ctl_M>127)
 	{
 		param_searchrad = 127/ctl_M;
-		mjpeg_warn("Search radius reduced to %d\n",param_searchrad);
+		mjpeg_warn("Search radius reduced to %d",param_searchrad);
 	}
 	
 	{ 
@@ -1378,7 +1378,7 @@ static void init_mpeg_parms(void)
 
 		opt_motion_data = (struct motion_data *)malloc(ctl_M*sizeof(struct motion_data));
 		if (!opt_motion_data)
-			mjpeg_error_exit1("malloc failed\n");
+			mjpeg_error_exit1("malloc failed");
 
 		for (i=0; i<ctl_M; i++)
 		{
@@ -1431,7 +1431,7 @@ static void init_mpeg_parms(void)
 	if( param_32_pulldown )
 	{
 		ctl_decode_frame_rate = opt_frame_rate * (2.0 + 2.0) / (3.0 + 2.0);
-		mjpeg_info( "3:2 Pulldown selected frame decode rate = %3.3f fps\n", 
+		mjpeg_info( "3:2 Pulldown selected frame decode rate = %3.3f fps", 
 					ctl_decode_frame_rate);
 	}
 	else
@@ -1452,7 +1452,7 @@ static void init_mpeg_parms(void)
 				|| ((opt_horizontal_size+15)/16)*((opt_vertical_size+15)/16)*opt_frame_rate>396*25.0
 				|| opt_frame_rate>30.0)
 			{
-				mjpeg_info( "size - setting constrained_parameters_flag = 0\n");
+				mjpeg_info( "size - setting constrained_parameters_flag = 0");
 				opt_constrparms = 0;
 			}
 		}
@@ -1463,14 +1463,14 @@ static void init_mpeg_parms(void)
 			{
 				if (opt_motion_data[i].forw_hor_f_code>4)
 				{
-					mjpeg_info("Hor. motion search forces constrained_parameters_flag = 0\n");
+					mjpeg_info("Hor. motion search forces constrained_parameters_flag = 0");
 					opt_constrparms = 0;
 					break;
 				}
 
 				if (opt_motion_data[i].forw_vert_f_code>4)
 				{
-					mjpeg_info("Ver. motion search forces constrained_parameters_flag = 0\n");
+					mjpeg_info("Ver. motion search forces constrained_parameters_flag = 0");
 					opt_constrparms = 0;
 					break;
 				}
@@ -1479,14 +1479,14 @@ static void init_mpeg_parms(void)
 				{
 					if (opt_motion_data[i].back_hor_f_code>4)
 					{
-						mjpeg_info("Hor. motion search setting constrained_parameters_flag = 0\n");
+						mjpeg_info("Hor. motion search setting constrained_parameters_flag = 0");
 						opt_constrparms = 0;
 						break;
 					}
 
 					if (opt_motion_data[i].back_vert_f_code>4)
 					{
-						mjpeg_info("Ver. motion search setting constrained_parameters_flag = 0\n");
+						mjpeg_info("Ver. motion search setting constrained_parameters_flag = 0");
 						opt_constrparms = 0;
 						break;
 					}
@@ -1500,47 +1500,47 @@ static void init_mpeg_parms(void)
 	{
 		if (!opt_prog_seq)
 		{
-			mjpeg_warn("opt_mpeg1 specified - setting progressive_sequence = 1\n");
+			mjpeg_warn("opt_mpeg1 specified - setting progressive_sequence = 1");
 			opt_prog_seq = 1;
 		}
 
 		if (opt_chroma_format!=CHROMA420)
 		{
-			mjpeg_info("mpeg1 - forcing chroma_format = 1 (4:2:0) - others not supported\n");
+			mjpeg_info("mpeg1 - forcing chroma_format = 1 (4:2:0) - others not supported");
 			opt_chroma_format = CHROMA420;
 		}
 
 		if (opt_dc_prec!=0)
 		{
-			mjpeg_info("mpeg1 - setting intra_dc_precision = 0\n");
+			mjpeg_info("mpeg1 - setting intra_dc_precision = 0");
 			opt_dc_prec = 0;
 		}
 
 		for (i=0; i<3; i++)
 			if (opt_qscale_tab[i])
 			{
-				mjpeg_info("mpeg1 - setting qscale_tab[%d] = 0\n",i);
+				mjpeg_info("mpeg1 - setting qscale_tab[%d] = 0",i);
 				opt_qscale_tab[i] = 0;
 			}
 
 		for (i=0; i<3; i++)
 			if (opt_intravlc_tab[i])
 			{
-				mjpeg_info("mpeg1 - setting intravlc_tab[%d] = 0\n",i);
+				mjpeg_info("mpeg1 - setting intravlc_tab[%d] = 0",i);
 				opt_intravlc_tab[i] = 0;
 			}
 
 		for (i=0; i<3; i++)
 			if (opt_altscan_tab[i])
 			{
-				mjpeg_info("mpeg1 - setting altscan_tab[%d] = 0\n",i);
+				mjpeg_info("mpeg1 - setting altscan_tab[%d] = 0",i);
 				opt_altscan_tab[i] = 0;
 			}
 	}
 
 	if ( !opt_mpeg1 && opt_constrparms)
 	{
-		mjpeg_info("not mpeg1 - setting constrained_parameters_flag = 0\n");
+		mjpeg_info("not mpeg1 - setting constrained_parameters_flag = 0");
 		opt_constrparms = 0;
 	}
 
@@ -1548,8 +1548,8 @@ static void init_mpeg_parms(void)
 	if( (!opt_prog_seq || opt_fieldpic != 0 ) &&
 		( (opt_vertical_size+15) / 16)%2 != 0 )
 	{
-		mjpeg_warn( "Frame height won't split into two equal field pictures...\n");
-		mjpeg_warn( "forcing encoding as progressive video\n");
+		mjpeg_warn( "Frame height won't split into two equal field pictures...");
+		mjpeg_warn( "forcing encoding as progressive video");
 		opt_prog_seq = 1;
 		opt_fieldpic = 0;
 	}
@@ -1557,14 +1557,14 @@ static void init_mpeg_parms(void)
 
 	if (opt_prog_seq && opt_fieldpic != 0)
 	{
-		mjpeg_info("prog sequence - forcing progressive frame encoding\n");
+		mjpeg_info("prog sequence - forcing progressive frame encoding");
 		opt_fieldpic = 0;
 	}
 
 
 	if (opt_prog_seq && opt_topfirst)
 	{
-		mjpeg_info("prog sequence setting top_field_first = 0\n");
+		mjpeg_info("prog sequence setting top_field_first = 0");
 		opt_topfirst = 0;
 	}
 
@@ -1641,7 +1641,7 @@ static void init_quantmat(void)
 	if( param_hf_quant == 2)
 	{
 		opt_load_iquant |= 1;
-		mjpeg_info( "Setting hi-res intra Quantisation matrix\n" );
+		mjpeg_info( "Setting hi-res intra Quantisation matrix" );
 		for (i=0; i<64; i++)
 		{
 			opt_intra_q[i] = hires_intra_quantizer_matrix[i];
@@ -1667,7 +1667,7 @@ static void init_quantmat(void)
 	*/
 	if( param_hf_quant == 2 )
 	{
-		mjpeg_info( "Setting hi-res non-intra quantiser matrix\n" );
+		mjpeg_info( "Setting hi-res non-intra quantiser matrix" );
 		for (i=0; i<64; i++)
 		{
 			opt_inter_q[i] = hires_nonintra_quantizer_matrix[i];

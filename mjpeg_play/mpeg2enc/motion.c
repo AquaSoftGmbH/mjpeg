@@ -340,7 +340,7 @@ void init_motion()
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
 	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
 	{
-		mjpeg_info( "SETTING EXTENDED MMX for MOTION!\n");
+		mjpeg_info( "SETTING EXTENDED MMX for MOTION!");
 		pdist22 = dist22_mmxe;
 		pdist44 = dist44_mmxe;
 		pdist1_00 = dist1_00_mmxe;
@@ -360,7 +360,7 @@ void init_motion()
 	}
 	else if(cpucap & ACCEL_X86_MMX) /* Ordinary MMX CPU */
 	{
-		mjpeg_info( "SETTING MMX for MOTION!\n");
+		mjpeg_info( "SETTING MMX for MOTION!");
 		pdist22 = dist22_mmx;
 		pdist44 = dist44_mmx;
 		pdist1_00 = dist1_00_mmx;

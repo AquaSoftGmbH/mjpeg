@@ -167,7 +167,7 @@ static int jsb_table[3][4] =  { { 4, 8, 12, 16 }, { 4, 8, 12, 16},
                                 { 0, 4, 8, 16} };  /* lay+m_e -> jsbound */
 
     if(lay<1 || lay >3 || m_ext<0 || m_ext>3) {
-		mjpeg_error_exit1("js_bound bad layer/modext (%d/%d)\n", lay, m_ext);
+		mjpeg_error_exit1("js_bound bad layer/modext (%d/%d)", lay, m_ext);
     }
     return(jsb_table[lay-1][m_ext]);
 }

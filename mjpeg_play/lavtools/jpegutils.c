@@ -202,7 +202,7 @@ static void init_destination (j_compress_ptr cinfo)
 static boolean empty_output_buffer (j_compress_ptr cinfo)
 {
    /*FIXME: */
-   mjpeg_error( "Given jpeg buffer was too small!\n");
+   mjpeg_error( "Given jpeg buffer was too small!");
    ERREXIT (cinfo, JERR_BUFFER_SIZE);	/* shouldn't be FILE_WRITE but BUFFER_OVERRUN! */
    return TRUE;
 }
@@ -320,7 +320,7 @@ static void add_huff_table (j_decompress_ptr dinfo,
   for (len = 1; len <= 16; len++)
     nsymbols += bits[len];
   if (nsymbols < 1 || nsymbols > 256)
-    mjpeg_error_exit1("jpegutils.c:  add_huff_table failed badly. \n");
+    mjpeg_error_exit1("jpegutils.c:  add_huff_table failed badly. ");
 
   memcpy((*htblptr)->huffval, val, nsymbols * sizeof(UINT8));
 }
@@ -409,7 +409,7 @@ static void guarantee_huff_tables(j_decompress_ptr dinfo)
        (dinfo->dc_huff_tbl_ptrs[1] == NULL) &&
        (dinfo->ac_huff_tbl_ptrs[0] == NULL) &&
        (dinfo->ac_huff_tbl_ptrs[1] == NULL) ) {
-    mjpeg_debug( "Generating standard Huffman tables for this frame.\n");
+    mjpeg_debug( "Generating standard Huffman tables for this frame.");
     std_huff_tables(dinfo);
   }
 }
@@ -478,7 +478,7 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
    jpeg_start_decompress (&dinfo);
 
    if (dinfo.output_components != 3) {
-      mjpeg_error( "Output components of JPEG image = %d, must be 3\n",
+      mjpeg_error( "Output components of JPEG image = %d, must be 3",
                dinfo.output_components);
       goto ERR_EXIT;
    }
@@ -510,7 +510,7 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
    /* Width is more flexible */
 
    if (dinfo.output_width > MAX_LUMA_WIDTH) {
-      mjpeg_error( "Image width of %d exceeds max\n",
+      mjpeg_error( "Image width of %d exceeds max",
                dinfo.output_width);
       goto ERR_EXIT;
    }
@@ -729,11 +729,11 @@ int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
 
 
    if ((width>4096)||(height>4096)) {
-      mjpeg_error( "Image dimensions (%dx%d) exceed lavtools' max (4096x4096)\n", width, height);
+      mjpeg_error( "Image dimensions (%dx%d) exceed lavtools' max (4096x4096)", width, height);
       goto ERR_EXIT;
    }
    if ((width%16)||(height%16)) {
-      mjpeg_error( "Image dimensions (%dx%d) not multiples of 16\n", width, height);
+      mjpeg_error( "Image dimensions (%dx%d) not multiples of 16", width, height);
       goto ERR_EXIT;
    }
    cinfo.image_width = width;
@@ -745,7 +745,7 @@ int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
    default:
       numfields = 1;
       if (height > 2048) {
-         mjpeg_error( "Image height (%d) exceeds lavtools max for non-interlaced frames\n", height);
+         mjpeg_error( "Image height (%d) exceeds lavtools max for non-interlaced frames", height);
          goto ERR_EXIT;
       }
    }

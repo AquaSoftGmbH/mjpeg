@@ -51,8 +51,8 @@ average_coeff (unsigned int input_length, unsigned int output_length,
   if ((output_length > input_length) || (input_length == 0)
       || (output_length == 0) || (coeff == NULL))
     {
-      mjpeg_error ("Function average_coeff : arguments are wrong\n");
-      mjpeg_error ("input length = %d, output length = %d, input = %p\n",
+      mjpeg_error ("Function average_coeff : arguments are wrong");
+      mjpeg_error ("input length = %d, output length = %d, input = %p",
 		   input_length, output_length, coeff);
       exit (1);
     }
@@ -92,7 +92,7 @@ average_coeff (unsigned int input_length, unsigned int output_length,
 	    }
 	  nb = (still_to_go / output_length);
 #ifdef DEBUG
-	  mjpeg_debug ("in=%d,nb=%d,stgo=%d ol=%d\n", in, nb, still_to_go,
+	  mjpeg_debug ("in=%d,nb=%d,stgo=%d ol=%d", in, nb, still_to_go,
 		       output_length);
 #endif
 	  for (out = 0; out < nb; out++)
@@ -107,7 +107,7 @@ average_coeff (unsigned int input_length, unsigned int output_length,
 	    {
 	      *pointer = last_coeff;
 #ifdef DEBUG
-	      mjpeg_debug ("non_zero=%d,last_coeff=%d\n", non_zero,
+	      mjpeg_debug ("non_zero=%d,last_coeff=%d", non_zero,
 			   last_coeff);
 #endif
 	      pointer++;	// now pointer points onto the next number-of-non_zero-coefficients
@@ -141,7 +141,7 @@ average_coeff (unsigned int input_length, unsigned int output_length,
       int i, j;
       for (i = 0; i < output_length; i++)
 	{
-	  mjpeg_debug ("line=%d\n", i);
+	  mjpeg_debug ("line=%d", i);
 	  non_zero = *coeff;
 	  coeff++;
 	  mjpeg_debug (" ");
@@ -185,13 +185,13 @@ average (uint8_t * input, uint8_t * output, unsigned int *height_coeff,
   unsigned long int value = 0;
 
   //Init
-  mjpeg_debug ("Start of average\n");
+  mjpeg_debug ("Start of average");
   //End of INIT
 
   if ((output_interlaced == Y4M_ILACE_NONE)
       || (input_interlaced == Y4M_ILACE_NONE))
     {
-      mjpeg_debug ("Non-interlaced downscaling\n");
+      mjpeg_debug ("Non-interlaced downscaling");
       // output frames are not interlaced => averaging will generate output lines is growing order, 
       // output_height_slice lines per output_height_slice lines. 
 
@@ -273,7 +273,7 @@ average (uint8_t * input, uint8_t * output, unsigned int *height_coeff,
       // So, we have to calculate the even and odd part of out_line_slice. 
       // If the odd part is naturally out_line_slice % 2, the even part is (out_line_slice/2)*2. For speed reason, 
       // the even part will be xritten as out_line_slice & ~(unsigned int) 1
-      mjpeg_debug ("Interlaced downscaling\n");
+      mjpeg_debug ("Interlaced downscaling");
       for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
 	   out_line_slice++)
 	{
@@ -344,7 +344,7 @@ average (uint8_t * input, uint8_t * output, unsigned int *height_coeff,
 	    }
 	}
     }
-  mjpeg_debug ("End of average\n");
+  mjpeg_debug ("End of average");
   return (0);
 }
 
@@ -390,7 +390,7 @@ average_specific (uint8_t * input, uint8_t * output,
   uint8_t *output_line_p[output_height_slice];
 
   //Init
-  mjpeg_debug ("Start of average_specific %u\n", specific);
+  mjpeg_debug ("Start of average_specific %u", specific);
   //End of INIT
 
   if (specific == 1)
@@ -435,7 +435,7 @@ average_specific (uint8_t * input, uint8_t * output,
       if ((output_interlaced == Y4M_ILACE_NONE)
 	  || (input_interlaced == Y4M_ILACE_NONE))
 	{
-	  mjpeg_debug ("Non-interlaced downscaling\n");
+	  mjpeg_debug ("Non-interlaced downscaling");
 	  for (out_line = 0; out_line < local_output_active_height;
 	       out_line++)
 	    {
@@ -462,7 +462,7 @@ average_specific (uint8_t * input, uint8_t * output,
 	}
       else
 	{
-	  mjpeg_debug ("Interlaced downscaling\n");
+	  mjpeg_debug ("Interlaced downscaling");
 	  for (line_index = 0; line_index < local_output_active_height;
 	       line_index++)
 	    {
@@ -502,7 +502,7 @@ average_specific (uint8_t * input, uint8_t * output,
       if ((output_interlaced == Y4M_ILACE_NONE)
 	  || (input_interlaced == Y4M_ILACE_NONE))
 	{
-	  mjpeg_debug ("Non-interlaced downscaling\n");
+	  mjpeg_debug ("Non-interlaced downscaling");
 	  for (out_line = 0; out_line < local_output_active_height;
 	       out_line++)
 	    {
@@ -535,7 +535,7 @@ average_specific (uint8_t * input, uint8_t * output,
 	}
       else
 	{
-	  mjpeg_debug ("Interlaced downscaling\n");
+	  mjpeg_debug ("Interlaced downscaling");
 	  for (line_index = 0; line_index < local_output_active_height;
 	       line_index++)
 	    {
@@ -576,7 +576,7 @@ average_specific (uint8_t * input, uint8_t * output,
     {
       // just a copy: we copy line per line (warning! these lines are output_width long BUT we only copy output_active_width length of them)
       treatment = 4;
-      mjpeg_debug ("Non-interlaced or interlaced downscaling\n");
+      mjpeg_debug ("Non-interlaced or interlaced downscaling");
       for (line_index = 0; line_index < local_output_active_height;
 	   line_index++)
 //       ;
@@ -592,7 +592,7 @@ average_specific (uint8_t * input, uint8_t * output,
       if ((output_interlaced == Y4M_ILACE_NONE)
 	  || (input_interlaced == Y4M_ILACE_NONE))
 	{
-	  mjpeg_debug ("Non-interlaced downscaling\n");
+	  mjpeg_debug ("Non-interlaced downscaling");
 	  for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
 	       out_line_slice++)
 	    {
@@ -638,7 +638,7 @@ average_specific (uint8_t * input, uint8_t * output,
 	}
       else
 	{
-	  mjpeg_debug ("Interlaced downscaling\n");
+	  mjpeg_debug ("Interlaced downscaling");
 	  for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
 	       out_line_slice++)
 	    {
@@ -719,7 +719,7 @@ average_specific (uint8_t * input, uint8_t * output,
       if ((output_interlaced == Y4M_ILACE_NONE)
 	  || (input_interlaced == Y4M_ILACE_NONE))
 	{
-	  mjpeg_debug ("Non-interlaced downscaling\n");
+	  mjpeg_debug ("Non-interlaced downscaling");
 	  for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
 	       out_line_slice++)
 	    {
@@ -749,7 +749,7 @@ average_specific (uint8_t * input, uint8_t * output,
 	}
       else
 	{
-	  mjpeg_debug ("Interlaced downscaling\n");
+	  mjpeg_debug ("Interlaced downscaling");
 	  for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
 	       out_line_slice++)
 	    {
@@ -798,7 +798,7 @@ average_specific (uint8_t * input, uint8_t * output,
       if ((output_interlaced == Y4M_ILACE_NONE)
 	  || (input_interlaced == Y4M_ILACE_NONE))
 	{
-	  mjpeg_debug ("Non-interlaced downscaling\n");
+	  mjpeg_debug ("Non-interlaced downscaling");
 	  for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
 	       out_line_slice++)
 	    {
@@ -856,7 +856,7 @@ average_specific (uint8_t * input, uint8_t * output,
 	}
       else
 	{
-	  mjpeg_debug ("Interlaced downscaling\n");
+	  mjpeg_debug ("Interlaced downscaling");
 	  for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
 	       out_line_slice++)
 	    {
@@ -916,7 +916,7 @@ average_specific (uint8_t * input, uint8_t * output,
       if ((output_interlaced == Y4M_ILACE_NONE)
 	  || (input_interlaced == Y4M_ILACE_NONE))
 	{
-	  mjpeg_debug ("Non-interlaced downscaling\n");
+	  mjpeg_debug ("Non-interlaced downscaling");
 	  // input frames are not interlaced, as are output frames.
 	  // So, we average input_height_slice following lines into output_height_slice lines
 	  for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
@@ -992,7 +992,7 @@ average_specific (uint8_t * input, uint8_t * output,
 	}
       else
 	{
-	  mjpeg_debug ("Interlaced downscaling\n");
+	  mjpeg_debug ("Interlaced downscaling");
 	  for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
 	       out_line_slice++)
 	    {
@@ -1071,10 +1071,10 @@ average_specific (uint8_t * input, uint8_t * output,
 
 
   if (treatment == 0)
-    mjpeg_error_exit1 ("Unknown specific downscaling treatment %u\n",
+    mjpeg_error_exit1 ("Unknown specific downscaling treatment %u",
 		       specific);
 
-  mjpeg_debug ("End of average_specific\n");
+  mjpeg_debug ("End of average_specific");
   return (0);
 }
 

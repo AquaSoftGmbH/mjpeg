@@ -431,16 +431,16 @@ static void input(int type, char *message)
   switch (type)
   {
     case LAVREC_MSG_ERROR:
-      mjpeg_error("%s\n", message);
+      mjpeg_error("%s", message);
       break;
     case LAVREC_MSG_WARNING:
-      mjpeg_warn("%s\n", message);
+      mjpeg_warn("%s", message);
       break;
     case LAVREC_MSG_INFO:
-      mjpeg_info("%s\n", message);
+      mjpeg_info("%s", message);
       break;
     case LAVREC_MSG_DEBUG:
-      mjpeg_debug("%s\n", message);
+      mjpeg_debug("%s", message);
       break;
   }
 }
@@ -635,8 +635,8 @@ static int set_option(const char *name, char *value)
 			info->horizontal_decimation != 4) || (info->vertical_decimation != 1 &&
 			info->vertical_decimation != 2 && info->vertical_decimation != 4) )
 		{
-			mjpeg_error("decimation (-d/--decimation) = %d invalid\n",i);
-			mjpeg_error("   must be one of 1,2,4,11,12,14,21,22,24,41,42,44\n");
+			mjpeg_error("decimation (-d/--decimation) = %d invalid",i);
+			mjpeg_error("   must be one of 1,2,4,11,12,14,21,22,24,41,42,44");
 			nerr++;
 		}
 	}
@@ -649,7 +649,7 @@ static int set_option(const char *name, char *value)
 		info->quality = atoi(value);
 		if(info->quality<0 || info->quality>100)
 		{
-			mjpeg_error("quality (-q/--quality) = %d invalid (must be 0 ... 100)\n",info->quality);
+			mjpeg_error("quality (-q/--quality) = %d invalid (must be 0 ... 100)",info->quality);
 			nerr++;
 		}
 	}
@@ -663,7 +663,7 @@ static int set_option(const char *name, char *value)
 		info->record_time = atoi(value);
 		if(info->record_time<=0)
 		{
-			mjpeg_error("record_time (-t/--time) = %d invalid\n",info->record_time);
+			mjpeg_error("record_time (-t/--time) = %d invalid",info->record_time);
 			nerr++;
 		}
 	}
@@ -704,7 +704,7 @@ static int set_option(const char *name, char *value)
 		info->audio_rate = atoi(value);
 		if(info->audio_rate<=0)
 		{
-			mjpeg_error("audio_rate (-r/--audio-bitrate) = %d invalid\n",info->audio_rate);
+			mjpeg_error("audio_rate (-r/--audio-bitrate) = %d invalid",info->audio_rate);
 			nerr++;
 		}
 	}
@@ -768,7 +768,7 @@ static int set_option(const char *name, char *value)
 		while ( value[colin] && value[colin]!=':') colin++;
 		if (value[colin]==0) /* didn't find the colin */
 		{
-			mjpeg_error("malformed channel parameter (-C/--channel) - example: -C europe-west:SE20\n");
+			mjpeg_error("malformed channel parameter (-C/--channel) - example: -C europe-west:SE20");
 			nerr++;
 		}
 
@@ -779,7 +779,7 @@ static int set_option(const char *name, char *value)
 			  /* madmac debug: printf("Searching for channel list: chlist = %d, value=%s\n", chlist, value); */
 			  if (chanlists[chlist].name==NULL)
 			    {
-			      mjpeg_error("bad frequency map\n");
+			      mjpeg_error("bad frequency map");
 			      nerr++;
 			      break; /* bail out */
 			    }
@@ -794,7 +794,7 @@ static int set_option(const char *name, char *value)
 			
 			if (chan > (chanlists[chlist].count))
 			  {
-			    mjpeg_error("bad channel spec (see e g xawtv, channel editor, for channel spec)\n");
+			    mjpeg_error("bad channel spec (see e g xawtv, channel editor, for channel spec)");
 			    nerr++; 
 			    break;
 			  }
@@ -807,7 +807,7 @@ static int set_option(const char *name, char *value)
 			{
 				if ((chanlists[chlist].list)[chan++].name==NULL)
 				{
-					mjpeg_error("bad channel spec\n");
+					mjpeg_error("bad channel spec");
 					nerr++;
 				}
 			}
@@ -982,8 +982,8 @@ static void check_command_line_options(int argc, char *argv[])
 static void lavrec_print_properties(void)
 {
 	const char *source;
-	mjpeg_info("Recording parameters:\n\n");
-	mjpeg_info("Output format:      %s\n",info->video_format=='q'?"Quicktime":
+	mjpeg_info("Recording parameters:");
+	mjpeg_info("Output format:      %s",info->video_format=='q'?"Quicktime":
 		(info->video_format=='m'?"Movtar":(info->video_format=='j'?"JPEG":"AVI")));
 	switch(input_source)
 	{
@@ -998,52 +998,52 @@ static void lavrec_print_properties(void)
 		case 'f': source = info->software_encoding?"BT8x8 3rd input PAL\n":"SECAM TV-tuner\n"; break;
 		default:  source = "Auto detect\n";
 	}
-	mjpeg_info("Input Source:       %s\n", source);
+	mjpeg_info("Input Source:       %s", source);
 
 	if(info->horizontal_decimation == info->vertical_decimation)
-		mjpeg_info("Decimation:         %d\n",
+		mjpeg_info("Decimation:         %d",
 			info->horizontal_decimation);
 	else
-		mjpeg_info("Decimation:         %d (hor) x %d (ver)\n",
+		mjpeg_info("Decimation:         %d (hor) x %d (ver)",
 			info->horizontal_decimation, info->vertical_decimation);
 	
-	mjpeg_info("Quality:            %d\n",info->quality);
-	mjpeg_info("Recording time:     %d sec\n",info->record_time);
+	mjpeg_info("Quality:            %d",info->quality);
+	mjpeg_info("Recording time:     %d sec",info->record_time);
 	if(info->time_lapse>1)
-		mjpeg_info("Time lapse factor:  %d\n",info->time_lapse);
+		mjpeg_info("Time lapse factor:  %d",info->time_lapse);
 	
-	mjpeg_info("\n");
-	mjpeg_info("MJPEG buffer size:  %d KB\n",info->MJPG_bufsize);
-	mjpeg_info("# of MJPEG buffers: %d\n",info->MJPG_numbufs);
+	mjpeg_info("");
+	mjpeg_info("MJPEG buffer size:  %d KB",info->MJPG_bufsize);
+	mjpeg_info("# of MJPEG buffers: %d",info->MJPG_numbufs);
 	if(info->audio_size)
 	{
-		mjpeg_info("Audio parameters:\n\n");
-		mjpeg_info("Audio sample size:           %d bit\n",info->audio_size);
-		mjpeg_info("Audio sampling rate:         %d Hz\n",info->audio_rate);
-		mjpeg_info("Audio is %s\n",info->stereo ? "STEREO" : "MONO");
+		mjpeg_info("Audio parameters:");
+		mjpeg_info("Audio sample size:           %d bit",info->audio_size);
+		mjpeg_info("Audio sampling rate:         %d Hz",info->audio_rate);
+		mjpeg_info("Audio is %s",info->stereo ? "STEREO" : "MONO");
 		if(info->audio_level!=-1)
 		{
-			mjpeg_info("Audio input recording level: %d%%\n",
+			mjpeg_info("Audio input recording level: %d%%",
 				info->audio_level);
-			mjpeg_info("%s audio output during recording\n",
+			mjpeg_info("%s audio output during recording",
 					   info->mute?"Mute":"Don\'t mute");
-			mjpeg_info("Recording source: %c\n",info->audio_src);
+			mjpeg_info("Recording source: %c",info->audio_src);
 		}
 			else
-				mjpeg_info("Audio input recording level: Use mixer setting\n");
-		mjpeg_info("Level of correction for Audio/Video synchronization:\n");
+				mjpeg_info("Audio input recording level: Use mixer setting");
+		mjpeg_info("Level of correction for Audio/Video synchronization:");
 		switch(info->sync_correction)
 		{
-		case 0: mjpeg_info("No lost frame compensation, No frame drop/insert\n");
+		case 0: mjpeg_info("No lost frame compensation, No frame drop/insert");
 			break;
-		case 1: mjpeg_info("Lost frame compensation, No frame drop/insert\n"); 
+		case 1: mjpeg_info("Lost frame compensation, No frame drop/insert"); 
 			break;
-		case 2: mjpeg_info("Lost frame compensation and frame drop/insert\n"); 
+		case 2: mjpeg_info("Lost frame compensation and frame drop/insert"); 
 			break;
 		}
 	}
 	else
-		mjpeg_info("Audio disabled\n\n");
+		mjpeg_info("Audio disabled");
 }
 
 static void print_summary(void)
@@ -1105,7 +1105,7 @@ int main(int argc, char **argv)
   {
     if (setfsuid(getuid()) < 0)
     {
-      mjpeg_error("Failed to set filesystem user ID: %s\n",
+      mjpeg_error("Failed to set filesystem user ID: %s",
         sys_errlist[errno]);
       return 0;
     }

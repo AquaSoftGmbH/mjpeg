@@ -208,16 +208,16 @@ static void input(int type, char *message)
   switch (type)
   {
     case LAVPLAY_MSG_ERROR:
-      mjpeg_error("%s\n", message);
+      mjpeg_error("%s", message);
       break;
     case LAVPLAY_MSG_WARNING:
-      mjpeg_warn("%s\n", message);
+      mjpeg_warn("%s", message);
       break;
     case LAVPLAY_MSG_INFO:
-      mjpeg_info("%s\n", message);
+      mjpeg_info("%s", message);
       break;
     case LAVPLAY_MSG_DEBUG:
-      mjpeg_debug("%s\n", message);
+      mjpeg_debug("%s", message);
       break;
   }
 }
@@ -415,7 +415,7 @@ static int set_option(const char *name, char *value)
             info->playback_mode = value[0];
             break;
          default:
-            mjpeg_error("Unknown playback mode: \'%c\'\n", value[0]);
+            mjpeg_error("Unknown playback mode: \'%c\'", value[0]);
             nerr++;
             break;
       }
@@ -424,7 +424,7 @@ static int set_option(const char *name, char *value)
    {
       if (sscanf(value, "%dx%d", &info->sdl_width, &info->sdl_height)!=2)
       {
-         mjpeg_error( "--size parameter requires NxN argument\n");
+         mjpeg_error( "--size parameter requires NxN argument");
          nerr++;
       }
    }

@@ -113,7 +113,7 @@ void init_quantizer(void)
 			pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
 			piquant_non_intra_m1 = iquant_non_intra_m1_mmx;
 		}
-		mjpeg_info( "SETTING %s %s for QUANTIZER!\n", opt_type1, opt_type2);
+		mjpeg_info( "SETTING %s %s for QUANTIZER!", opt_type1, opt_type2);
 	}
   else
 #endif

@@ -252,7 +252,7 @@ my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
 	{
 	  if ((err = y4m_read (fd, buf, buflen)) != Y4M_OK)
 	    {
-	      mjpeg_info ("Couldn't read FRAME content: %s!\n",
+	      mjpeg_info ("Couldn't read FRAME content: %s!",
 			  y4m_strerr (err));
 	      return (err);
 	    }
@@ -307,10 +307,10 @@ my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
   else
     {
       if (err != Y4M_ERR_EOF)
-	mjpeg_info ("Couldn't read FRAME header: %s!\n",
+	mjpeg_info ("Couldn't read FRAME header: %s!",
 		    y4m_strerr (err));
       else
-	mjpeg_info ("End of stream!\n");
+	mjpeg_info ("End of stream!");
       return (err);
     }
   return Y4M_OK;
@@ -702,7 +702,7 @@ handle_args_global (int argc, char *argv[])
 	  verbose = atoi (optarg);
 	  if (verbose < 0 || verbose > 2)
 	    {
-	      mjpeg_error_exit1 ("Verbose level must be [0..2]\n");
+	      mjpeg_error_exit1 ("Verbose level must be [0..2]");
 	    }
 	  break;
 
@@ -718,7 +718,7 @@ handle_args_global (int argc, char *argv[])
 	      norm = 1;
 	      break;
 	    default:
-	      mjpeg_error_exit1 ("Illegal norm letter specified: %c\n",
+	      mjpeg_error_exit1 ("Illegal norm letter specified: %c",
 				 *optarg);
 	    }
 	  break;
@@ -837,7 +837,7 @@ handle_args_dependent (int argc, char *argv[])
 		  // A second check will eventually be done when output interlacing is finally known
 		}
 	      else
-		mjpeg_error_exit1 ("Uncorrect SIZE keyword: %s\n",
+		mjpeg_error_exit1 ("Uncorrect SIZE keyword: %s",
 				   optarg);
 	    }
 	  if (strcmp (optarg, TOP_FIRST) == 0)
@@ -866,7 +866,7 @@ handle_args_dependent (int argc, char *argv[])
 	    }
 
 	  if (output == 0)
-	    mjpeg_error_exit1 ("Uncorrect output keyword: %s\n",
+	    mjpeg_error_exit1 ("Uncorrect output keyword: %s",
 			       optarg);
 	  break;
 
@@ -1024,7 +1024,7 @@ handle_args_dependent (int argc, char *argv[])
 	    }
 
 	  if (mode == 0)
-	    mjpeg_error_exit1 ("Uncorrect mode keyword: %s\n",
+	    mjpeg_error_exit1 ("Uncorrect mode keyword: %s",
 			       optarg);
 	  break;
 
@@ -1134,7 +1134,7 @@ handle_args_dependent (int argc, char *argv[])
 		  ("Uncorrect input flag argument: %s\n", optarg);
 	    }
 	  if (input == 0)
-	    mjpeg_error_exit1 ("Uncorrect input keyword: %s\n",
+	    mjpeg_error_exit1 ("Uncorrect input keyword: %s",
 			       optarg);
 	  break;
 
@@ -1381,8 +1381,8 @@ main (int argc, char *argv[])
   // Information output
   mjpeg_info ("yuvscaler (version " YUVSCALER_VERSION
 	      ") is a general scaling utility for yuv frames\n");
-  mjpeg_info ("(C) 2001 Xavier Biquard <xbiquard@free.fr>\n");
-  mjpeg_info ("yuvscaler -h for help, or man yuvscaler\n");
+  mjpeg_info ("(C) 2001 Xavier Biquard <xbiquard@free.fr>");
+  mjpeg_info ("yuvscaler -h for help, or man yuvscaler");
 
   // Initialisation of global variables that are independent of the input stream, input_file in particular
   handle_args_global (argc, argv);
@@ -1402,7 +1402,7 @@ main (int argc, char *argv[])
     {
       // INPUT comes from stdin, we check for a correct file header
       if (y4m_read_stream_header (0, &in_streaminfo) != Y4M_OK)
-	mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!\n");
+	mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
       input_width = y4m_si_get_width (&in_streaminfo);
       input_height = y4m_si_get_height (&in_streaminfo);
       frame_rate = y4m_si_get_framerate (&in_streaminfo);
@@ -1474,28 +1474,28 @@ main (int argc, char *argv[])
   switch (input_interlaced)
     {
     case Y4M_ILACE_NONE:
-      mjpeg_info ("from %ux%u, take %ux%u+%u+%u, %s/%s\n",
+      mjpeg_info ("from %ux%u, take %ux%u+%u+%u, %s/%s",
 		  input_width, input_height,
 		  input_useful_width, input_useful_height,
 		  input_discard_col_left, input_discard_line_above,
 		  NOT_INTER, PROGRESSIVE);
       break;
     case Y4M_ILACE_TOP_FIRST:
-      mjpeg_info ("from %ux%u, take %ux%u+%u+%u, %s\n",
+      mjpeg_info ("from %ux%u, take %ux%u+%u+%u, %s",
 		  input_width, input_height,
 		  input_useful_width, input_useful_height,
 		  input_discard_col_left, input_discard_line_above,
 		  TOP_FIRST);
       break;
     case Y4M_ILACE_BOTTOM_FIRST:
-      mjpeg_info ("from %ux%u, take %ux%u+%u+%u, %s\n",
+      mjpeg_info ("from %ux%u, take %ux%u+%u+%u, %s",
 		  input_width, input_height,
 		  input_useful_width, input_useful_height,
 		  input_discard_col_left, input_discard_line_above,
 		  BOT_FIRST);
       break;
     default:
-      mjpeg_info ("from %ux%u, take %ux%u+%u+%u\n",
+      mjpeg_info ("from %ux%u, take %ux%u+%u+%u",
 		  input_width, input_height,
 		  input_useful_width, input_useful_height,
 		  input_discard_col_left, input_discard_line_above);
@@ -1503,11 +1503,11 @@ main (int argc, char *argv[])
     }
   if (input_black == 1)
     {
-      mjpeg_info ("with %u and %u black line above and under\n",
+      mjpeg_info ("with %u and %u black line above and under",
 		  input_black_line_above, input_black_line_under);
-      mjpeg_info ("and %u and %u black col left and right\n",
+      mjpeg_info ("and %u and %u black col left and right",
 		  input_black_col_left, input_black_col_right);
-      mjpeg_info ("%u %u\n", input_active_width,
+      mjpeg_info ("%u %u", input_active_width,
 		  input_active_height);
     }
 
@@ -1515,22 +1515,22 @@ main (int argc, char *argv[])
   switch (output_interlaced)
     {
     case Y4M_ILACE_NONE:
-      mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s/%s\n",
+      mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s/%s",
 		  output_active_width, output_active_height, display_width,
 		  display_height, NOT_INTER, PROGRESSIVE);
       break;
     case Y4M_ILACE_TOP_FIRST:
-      mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s\n",
+      mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s",
 		  output_active_width, output_active_height, display_width,
 		  display_height, TOP_FIRST);
       break;
     case Y4M_ILACE_BOTTOM_FIRST:
-      mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s\n",
+      mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s",
 		  output_active_width, output_active_height, display_width,
 		  display_height, BOT_FIRST);
       break;
     default:
-      mjpeg_info ("scale to %ux%u, %ux%u being displayed\n",
+      mjpeg_info ("scale to %ux%u, %ux%u being displayed",
 		  output_active_width, output_active_height, display_width,
 		  display_height);
     }
@@ -1544,7 +1544,7 @@ main (int argc, char *argv[])
       mjpeg_info ("Scaling uses the %s algorithm, ", BICUBIC);
       break;
     default:
-      mjpeg_error_exit1 ("Unknown algorithm %d\n", algorithm);
+      mjpeg_error_exit1 ("Unknown algorithm %d", algorithm);
     }
 
   switch (line_switching)
@@ -1556,42 +1556,42 @@ main (int argc, char *argv[])
       mjpeg_info ("with line switching, ");
       break;
     default:
-      mjpeg_error_exit1 ("Unknown line switching status: %d\n",
+      mjpeg_error_exit1 ("Unknown line switching status: %d",
 			 line_switching);
     }
 
   switch (field_move)
     {
     case 0:
-      mjpeg_info ("without time forwarding.\n");
+      mjpeg_info ("without time forwarding.");
       break;
     case 1:
-      mjpeg_info ("with bottom field one frame forward.\n");
+      mjpeg_info ("with bottom field one frame forward.");
       break;
     case -1:
-      mjpeg_info ("with top field one frame forward.\n");
+      mjpeg_info ("with top field one frame forward.");
       break;
     default:
-      mjpeg_error_exit1 ("Unknown time reordering  status: %d\n",
+      mjpeg_error_exit1 ("Unknown time reordering  status: %d",
 			 field_move);
     }
 
 
   if (black == 1)
     {
-      mjpeg_info ("black lines: %u above and %u under\n",
+      mjpeg_info ("black lines: %u above and %u under",
 		  output_black_line_above, output_black_line_under);
-      mjpeg_info ("black columns: %u left and %u right\n",
+      mjpeg_info ("black columns: %u left and %u right",
 		  output_black_col_left, output_black_col_right);
     }
   if (skip == 1)
     {
-      mjpeg_info ("skipped lines: %u above and %u under\n",
+      mjpeg_info ("skipped lines: %u above and %u under",
 		  output_skip_line_above, output_skip_line_under);
-      mjpeg_info ("skipped columns: %u left and %u right\n",
+      mjpeg_info ("skipped columns: %u left and %u right",
 		  output_skip_col_left, output_skip_col_right);
     }
-  mjpeg_info ("frame rate: %.3f fps\n",
+  mjpeg_info ("frame rate: %.3f fps",
 	      Y4M_RATIO_DBL (frame_rate));
 
 
@@ -1599,7 +1599,7 @@ main (int argc, char *argv[])
   input_width_slice = input_useful_width / divider;
   output_width_slice = output_active_width / divider;
 #ifdef DEBUG
-  mjpeg_debug ("divider,i_w_s,o_w_s = %d,%d,%d\n",
+  mjpeg_debug ("divider,i_w_s,o_w_s = %d,%d,%d",
 	       divider, input_width_slice, output_width_slice);
 #endif
 
@@ -1607,18 +1607,18 @@ main (int argc, char *argv[])
   input_height_slice = input_useful_height / divider;
   output_height_slice = output_active_height / divider;
 #ifdef DEBUG
-  mjpeg_debug ("divider,i_w_s,o_w_s = %d,%d,%d\n",
+  mjpeg_debug ("divider,i_w_s,o_w_s = %d,%d,%d",
 	       divider, input_height_slice, output_height_slice);
 #endif
 
   diviseur = input_height_slice * input_width_slice;
 #ifdef DEBUG
-  mjpeg_debug ("Diviseur=%ld\n", diviseur);
+  mjpeg_debug ("Diviseur=%ld", diviseur);
 #endif
 
-  mjpeg_info ("Scaling ratio for width is %u to %u\n",
+  mjpeg_info ("Scaling ratio for width is %u to %u",
 	      input_width_slice, output_width_slice);
-  mjpeg_info ("and is %u to %u for height\n", input_height_slice,
+  mjpeg_info ("and is %u to %u for height", input_height_slice,
 	      output_height_slice);
 
 
@@ -1711,33 +1711,33 @@ main (int argc, char *argv[])
       // USER'S INFORMATION OUTPUT
 
 //  y4m_print_stream_info(output_fd,streaminfo);
-      mjpeg_info (" --- Newly speed optimized parameters ---\n");
+      mjpeg_info (" --- Newly speed optimized parameters ---");
 
       switch (input_interlaced)
 	{
 	case Y4M_ILACE_NONE:
-	  mjpeg_info ("from %ux%u, take %ux%u+%u+%u, %s/%s\n",
+	  mjpeg_info ("from %ux%u, take %ux%u+%u+%u, %s/%s",
 		      input_width, input_height,
 		      input_useful_width, input_useful_height,
 		      input_discard_col_left, input_discard_line_above,
 		      NOT_INTER, PROGRESSIVE);
 	  break;
 	case Y4M_ILACE_TOP_FIRST:
-	  mjpeg_info ("from %ux%u, take %ux%u+%u+%u, %s\n",
+	  mjpeg_info ("from %ux%u, take %ux%u+%u+%u, %s",
 		      input_width, input_height,
 		      input_useful_width, input_useful_height,
 		      input_discard_col_left, input_discard_line_above,
 		      TOP_FIRST);
 	  break;
 	case Y4M_ILACE_BOTTOM_FIRST:
-	  mjpeg_info ("from %ux%u, take %ux%u+%u+%u, %s\n",
+	  mjpeg_info ("from %ux%u, take %ux%u+%u+%u, %s",
 		      input_width, input_height,
 		      input_useful_width, input_useful_height,
 		      input_discard_col_left, input_discard_line_above,
 		      BOT_FIRST);
 	  break;
 	default:
-	  mjpeg_info ("from %ux%u, take %ux%u+%u+%u\n",
+	  mjpeg_info ("from %ux%u, take %ux%u+%u+%u",
 		      input_width, input_height,
 		      input_useful_width, input_useful_height,
 		      input_discard_col_left, input_discard_line_above);
@@ -1748,9 +1748,9 @@ main (int argc, char *argv[])
 	  mjpeg_info
 	    ("with %u and %u black line above and under\n",
 	     input_black_line_above, input_black_line_under);
-	  mjpeg_info ("and %u and %u black col left and right\n",
+	  mjpeg_info ("and %u and %u black col left and right",
 		      input_black_col_left, input_black_col_right);
-	  mjpeg_info ("%u %u\n", input_active_width,
+	  mjpeg_info ("%u %u", input_active_width,
 		      input_active_height);
 	}
 
@@ -1776,7 +1776,7 @@ main (int argc, char *argv[])
 	     display_height, BOT_FIRST);
 	  break;
 	default:
-	  mjpeg_info ("scale to %ux%u, %ux%u being displayed\n",
+	  mjpeg_info ("scale to %ux%u, %ux%u being displayed",
 		      output_active_width, output_active_height,
 		      display_width, display_height);
 	}
@@ -1790,7 +1790,7 @@ main (int argc, char *argv[])
 	  mjpeg_info ("Scaling uses the %s algorithm, ", BICUBIC);
 	  break;
 	default:
-	  mjpeg_error_exit1 ("Unknown algorithm %d\n", algorithm);
+	  mjpeg_error_exit1 ("Unknown algorithm %d", algorithm);
 	}
 
       switch (line_switching)
@@ -1802,20 +1802,20 @@ main (int argc, char *argv[])
 	  mjpeg_info ("with line switching, ");
 	  break;
 	default:
-	  mjpeg_error_exit1 ("Unknown line switching status: %d\n",
+	  mjpeg_error_exit1 ("Unknown line switching status: %d",
 			     line_switching);
 	}
 
       switch (field_move)
 	{
 	case 0:
-	  mjpeg_info ("without time forwarding.\n");
+	  mjpeg_info ("without time forwarding.");
 	  break;
 	case 1:
-	  mjpeg_info ("with bottom field one frame forward.\n");
+	  mjpeg_info ("with bottom field one frame forward.");
 	  break;
 	case -1:
-	  mjpeg_info ("with top field one frame forward.\n");
+	  mjpeg_info ("with top field one frame forward.");
 	  break;
 	default:
 	  mjpeg_error_exit1
@@ -1826,19 +1826,19 @@ main (int argc, char *argv[])
 
       if (black == 1)
 	{
-	  mjpeg_info ("black lines: %u above and %u under\n",
+	  mjpeg_info ("black lines: %u above and %u under",
 		      output_black_line_above, output_black_line_under);
-	  mjpeg_info ("black columns: %u left and %u right\n",
+	  mjpeg_info ("black columns: %u left and %u right",
 		      output_black_col_left, output_black_col_right);
 	}
       if (skip == 1)
 	{
-	  mjpeg_info ("skipped lines: %u above and %u under\n",
+	  mjpeg_info ("skipped lines: %u above and %u under",
 		      output_skip_line_above, output_skip_line_under);
-	  mjpeg_info ("skipped columns: %u left and %u right\n",
+	  mjpeg_info ("skipped columns: %u left and %u right",
 		      output_skip_col_left, output_skip_col_right);
 	}
-      mjpeg_info ("frame rate: %.3f fps\n",
+      mjpeg_info ("frame rate: %.3f fps",
 		  Y4M_RATIO_DBL (frame_rate));
     }
 
@@ -1873,7 +1873,7 @@ main (int argc, char *argv[])
 	  && (input_width_slice == 2) && (output_width_slice == 1))
 	specific = 8;
       if (specific)
-	mjpeg_info ("Specific downscaling routing number %u\n",
+	mjpeg_info ("Specific downscaling routing number %u",
 		    specific);
 
       // To speed up downscaling, we tabulate the integral part of the division by "diviseur" which is inside [0;255]
@@ -1900,7 +1900,7 @@ main (int argc, char *argv[])
 	  *(u_c_p++) =
 	    (uint8_t) floor (((double) i + (double) diviseur / 2.0)
 			     / diviseur);
-	  //      mjpeg_error("%ld: %d\r",i,(unsigned short int)(i/diviseur));
+	  //      mjpeg_error("%ld: %d",i,(unsigned short int)(i/diviseur));
 	}
 
       // Calculate averaging coefficient
@@ -1957,7 +1957,7 @@ main (int argc, char *argv[])
 	}
       if (specific)
 	{
-	  mjpeg_info ("Specific downscaling routing number %u\n",
+	  mjpeg_info ("Specific downscaling routing number %u",
 		      specific);
 	  if (!
 	      (divide =
@@ -1989,7 +1989,7 @@ main (int argc, char *argv[])
 	    }
 	}
 
-/*       mjpeg_info("Specific routing for BICUBIC desactivated!!!!!!\n");       
+/*       mjpeg_info("Specific routing for BICUBIC desactivated!!!!!!");       
        specific = 0;
        bicubic_div_height=FLOAT2INTEGER;
        bicubic_div_width=FLOAT2INTEGER;
@@ -2007,9 +2007,9 @@ main (int argc, char *argv[])
 	mjpeg_error_exit1
 	  ("Could not allocate memory for mmx registers. STOP!\n");
 
-      mjpeg_info ("Before alignement\n");
-      mjpeg_info ("%p %p %p\n", mmx_padded, mmx_cubic, mmx_res);
-      mjpeg_info ("%u %u %u\n", (unsigned int) mmx_padded,
+      mjpeg_info ("Before alignement");
+      mjpeg_info ("%p %p %p", mmx_padded, mmx_cubic, mmx_res);
+      mjpeg_info ("%u %u %u", (unsigned int) mmx_padded,
 		  (unsigned int) mmx_cubic, (unsigned int) mmx_res);
 
       // alignement instructions
@@ -2026,9 +2026,9 @@ main (int argc, char *argv[])
 	  (int32_t *) ((((unsigned int) mmx_res / ALIGNEMENT) + 1) *
 		       ALIGNEMENT);
 
-      mjpeg_info ("After Alignement\n");
-      mjpeg_info ("%p %p %p\n", mmx_padded, mmx_cubic, mmx_res);
-      mjpeg_info ("%u %u %u\n", (unsigned int) mmx_padded,
+      mjpeg_info ("After Alignement");
+      mjpeg_info ("%p %p %p", mmx_padded, mmx_cubic, mmx_res);
+      mjpeg_info ("%u %u %u", (unsigned int) mmx_padded,
 		  (unsigned int) mmx_cubic, (unsigned int) mmx_res);
 
 #endif
@@ -2300,7 +2300,7 @@ main (int argc, char *argv[])
     }
 
   nb_pixels = (input_width * input_height * 3) / 2;
-  mjpeg_debug ("End of Initialisation\n");
+  mjpeg_debug ("End of Initialisation");
   // END OF INITIALISATION
 
   // Output file header
@@ -2332,7 +2332,7 @@ main (int argc, char *argv[])
       while ((err = my_y4m_read_frame
 	      (0, &frameinfo, nb_pixels, input, line_switching)) == Y4M_OK)
 	{
-	  mjpeg_info ("Frame number %ld\r", frame_num);
+	  mjpeg_info ("Frame number %ld", frame_num);
 
 	  // PREPROCESSING
 	  if (field_move != 0)
@@ -2348,7 +2348,7 @@ main (int argc, char *argv[])
 			   line_switching) != Y4M_OK)
 			exit (1);
 		      frame_num++;
-		      mjpeg_info ("Frame number %ld\r", frame_num);
+		      mjpeg_info ("Frame number %ld", frame_num);
 		    }
 		  bottom_field_storage (input, frame_num, field1, field2);
 		  bottom_field_replace (input, frame_num, field1, field2);
@@ -2364,7 +2364,7 @@ main (int argc, char *argv[])
 			   line_switching) != Y4M_OK)
 			exit (1);
 		      frame_num++;
-		      mjpeg_info ("Frame number %ld\r", frame_num);
+		      mjpeg_info ("Frame number %ld", frame_num);
 		    }
 		  top_field_storage (input, frame_num, field1, field2);
 		  top_field_replace (input, frame_num, field1, field2);
@@ -2485,7 +2485,7 @@ main (int argc, char *argv[])
 	  if (skip == 0)
 	    {
 	      // Here, display=output_active 
-//            mjpeg_debug("1\n");
+//            mjpeg_debug("1");
 	      if (y4m_write
 		  (output_fd, output,
 		   (display_width * display_height * 3) / 2) != Y4M_OK)
@@ -2541,10 +2541,10 @@ main (int argc, char *argv[])
 	}
       // End of master loop
       if (err != Y4M_ERR_EOF)
-	mjpeg_info ("Couldn't read FRAME number %ld!\n",
+	mjpeg_info ("Couldn't read FRAME number %ld!",
 		    frame_num);
       else
-	mjpeg_info ("End of stream with FRAME number %ld!\n",
+	mjpeg_info ("End of stream with FRAME number %ld!",
 		    frame_num);
     }
   else
@@ -2564,9 +2564,9 @@ main (int argc, char *argv[])
 				chroma_format, input_width, input_height,
 				input_y_infile, input_u_infile,
 				input_v_infile)))
-	    mjpeg_error_exit1 ("Frame %ld read failed\n",
+	    mjpeg_error_exit1 ("Frame %ld read failed",
 			       frame_num);
-	  mjpeg_info ("Frame number %ld\r", frame_num);
+	  mjpeg_info ("Frame number %ld", frame_num);
 
 	  // Line switch if necessary
 	  if (line_switching)
@@ -2592,7 +2592,7 @@ main (int argc, char *argv[])
 		      // Line switch if necessary
 		      if (line_switching)
 			line_switch (input, line);
-		      mjpeg_info ("Frame number %ld\r", frame_num);
+		      mjpeg_info ("Frame number %ld", frame_num);
 		    }
 		  bottom_field_storage (input, frame_num, field1, field2);
 		  bottom_field_replace (input, frame_num, field1, field2);
@@ -2615,7 +2615,7 @@ main (int argc, char *argv[])
 		      // Line switch if necessary
 		      if (line_switching)
 			line_switch (input, line);
-		      mjpeg_info ("Frame number %ld\r", frame_num);
+		      mjpeg_info ("Frame number %ld", frame_num);
 		    }
 		  top_field_storage (input, frame_num, field1, field2);
 		  top_field_replace (input, frame_num, field1, field2);
@@ -2786,7 +2786,7 @@ main (int argc, char *argv[])
 		    }
 		}
 	    }
-	  mjpeg_debug ("Frame number %ld\r", frame_num);
+	  mjpeg_debug ("Frame number %ld", frame_num);
 	}
       // End of master loop
     }
@@ -2796,7 +2796,7 @@ main (int argc, char *argv[])
   return 0;
 
 out_error:
-  mjpeg_error_exit1 ("Unable to write to output - aborting!\n");
+  mjpeg_error_exit1 ("Unable to write to output - aborting!");
   return 1;
 }
 

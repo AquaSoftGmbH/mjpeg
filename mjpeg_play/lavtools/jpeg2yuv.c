@@ -167,19 +167,19 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
 	param->interlace = Y4M_ILACE_BOTTOM_FIRST;
 	break;
       default:
-	mjpeg_error_exit1 ("-I option requires arg p, t, or b\n");
+	mjpeg_error_exit1 ("-I option requires arg p, t, or b");
       }
       break;
     case 'L':
       param->interleave = atoi(optarg);
       if ((param->interleave != 0) &&
 	  (param->interleave != 1)) 
-	mjpeg_error_exit1 ("-L option requires arg 0 or 1\n");
+	mjpeg_error_exit1 ("-L option requires arg 0 or 1");
       break;
     case 'v':
       param->verbose = atoi(optarg);
       if (param->verbose < 0 || param->verbose > 2) 
-	mjpeg_error_exit1( "-v option requires arg 0, 1, or 2\n");    
+	mjpeg_error_exit1( "-v option requires arg 0, 1, or 2");    
       break;     
     case 'h':
     default:
@@ -188,13 +188,13 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
     }
   }
   if (param->jpegformatstr == NULL) { 
-    mjpeg_error("%s:  input format string not specified. (Use -j option.)\n\n",
+    mjpeg_error("%s:  input format string not specified. (Use -j option.)",
 		argv[0]); 
     usage(argv[0]); 
     exit(1);
   }
   if (Y4M_RATIO_EQL(param->framerate, y4m_fps_UNKNOWN)) {
-    mjpeg_error("%s:  framerate not specified.  (Use -f option)\n\n",
+    mjpeg_error("%s:  framerate not specified.  (Use -f option)",
 		argv[0]); 
     usage(argv[0]); 
     exit(1);
@@ -217,11 +217,11 @@ static int init_parse_files(parameters_t *param)
   
   snprintf(jpegname, sizeof(jpegname), 
 	   param->jpegformatstr, param->begin);
-  mjpeg_debug("Analyzing %s to get the right pic params\n", jpegname);
+  mjpeg_debug("Analyzing %s to get the right pic params", jpegname);
   jpegfile = fopen(jpegname, "rb");
   
   if (jpegfile == NULL)
-    mjpeg_error_exit1("System error while opening: \"%s\": %s\n",
+    mjpeg_error_exit1("System error while opening: \"%s\": %s",
 		      jpegname, strerror(errno));
 
   /* Now open this JPEG file, and examine its header to retrieve the 
@@ -234,10 +234,10 @@ static int init_parse_files(parameters_t *param)
   jpeg_start_decompress(&dinfo);
   
   if (dinfo.output_components != 3)
-    mjpeg_error_exit1("Output components of JPEG image = %d, must be 3.\n",
+    mjpeg_error_exit1("Output components of JPEG image = %d, must be 3.",
 		      dinfo.output_components);
   
-  mjpeg_info("Image dimensions are %dx%d\n",
+  mjpeg_info("Image dimensions are %dx%d",
 	     dinfo.image_width, dinfo.image_height);
   param->width = dinfo.image_width;
   param->height = dinfo.image_height;
@@ -245,32 +245,32 @@ static int init_parse_files(parameters_t *param)
   jpeg_destroy_decompress(&dinfo);
   fclose(jpegfile);
 
-  mjpeg_info("Movie frame rate is:  %f frames/second\n",
+  mjpeg_info("Movie frame rate is:  %f frames/second",
 	     Y4M_RATIO_DBL(param->framerate));
 
   switch (param->interlace) {
   case Y4M_ILACE_NONE:
-    mjpeg_info("Non-interlaced/progressive frames.\n");
+    mjpeg_info("Non-interlaced/progressive frames.");
     break;
   case Y4M_ILACE_BOTTOM_FIRST:
-    mjpeg_info("Interlaced frames, bottom field first.\n");      
+    mjpeg_info("Interlaced frames, bottom field first.");      
     break;
   case Y4M_ILACE_TOP_FIRST:
-    mjpeg_info("Interlaced frames, top field first.\n");      
+    mjpeg_info("Interlaced frames, top field first.");      
     break;
   default:
-    mjpeg_error_exit1("Interlace has not been specified (use -I option)\n");
+    mjpeg_error_exit1("Interlace has not been specified (use -I option)");
     break;
   }
 
   if ((param->interlace != Y4M_ILACE_NONE) && (param->interleave == -1))
-    mjpeg_error_exit1("Interleave has not been specified (use -L option)\n");
+    mjpeg_error_exit1("Interleave has not been specified (use -L option)");
 
   if (!(param->interleave) && (param->interlace != Y4M_ILACE_NONE)) {
     param->height *= 2;
-    mjpeg_info("Non-interleaved fields (image height doubled)\n");
+    mjpeg_info("Non-interleaved fields (image height doubled)");
   }
-  mjpeg_info("Frame size:  %d x %d\n", param->width, param->height);
+  mjpeg_info("Frame size:  %d x %d", param->width, param->height);
 
   return 0;
 }
@@ -288,7 +288,7 @@ static int generate_YUV4MPEG(parameters_t *param)
   y4m_stream_info_t streaminfo;
   y4m_frame_info_t frameinfo;
 
-  mjpeg_info("Now generating YUV4MPEG stream.\n");
+  mjpeg_info("Now generating YUV4MPEG stream.");
   y4m_init_stream_info(&streaminfo);
   y4m_init_frame_info(&frameinfo);
 
@@ -311,15 +311,15 @@ static int generate_YUV4MPEG(parameters_t *param)
     jpegfile = fopen(jpegname, "rb");
     
     if (jpegfile == NULL) { 
-      mjpeg_info("Read from '%s' failed:  %s\n", jpegname, strerror(errno));
+      mjpeg_info("Read from '%s' failed:  %s", jpegname, strerror(errno));
       if (param->numframes == -1) {
-	mjpeg_info("No more frames.  Stopping.\n");
+	mjpeg_info("No more frames.  Stopping.");
 	break;  /* we are done; leave 'while' loop */
       } else {
-	mjpeg_info("Rewriting latest frame instead.\n");
+	mjpeg_info("Rewriting latest frame instead.");
       }
     } else {
-      mjpeg_debug("Preparing frame\n");
+      mjpeg_debug("Preparing frame");
       
       jpegsize = fread(jpegdata, sizeof(unsigned char), MAXPIXELS, jpegfile); 
       fclose(jpegfile);
@@ -340,7 +340,7 @@ static int generate_YUV4MPEG(parameters_t *param)
        */
 
       if ((param->interlace == Y4M_ILACE_NONE) || (param->interleave == 1)) {
-	mjpeg_info("Processing non-interlaced/interleaved %s, size %ld.\n", 
+	mjpeg_info("Processing non-interlaced/interleaved %s, size %ld.", 
 		   jpegname, jpegsize);
 	decode_jpeg_raw(jpegdata, jpegsize,
 			0, 420, param->width, param->height,
@@ -348,7 +348,7 @@ static int generate_YUV4MPEG(parameters_t *param)
       } else {
 	switch (param->interlace) {
 	case Y4M_ILACE_TOP_FIRST:
-	  mjpeg_info("Processing interlaced, top-first %s, size %ld.\n",
+	  mjpeg_info("Processing interlaced, top-first %s, size %ld.",
 		     jpegname, jpegsize);
 	  decode_jpeg_raw(jpegdata, jpegsize,
 			  LAV_INTER_TOP_FIRST,
@@ -356,7 +356,7 @@ static int generate_YUV4MPEG(parameters_t *param)
 			  yuv[0], yuv[1], yuv[2]);
 	  break;
 	case Y4M_ILACE_BOTTOM_FIRST:
-	  mjpeg_info("Processing interlaced, bottom-first %s, size %ld.\n", 
+	  mjpeg_info("Processing interlaced, bottom-first %s, size %ld.", 
 		     jpegname, jpegsize);
 	  decode_jpeg_raw(jpegdata, jpegsize,
 			  LAV_INTER_BOTTOM_FIRST,
@@ -364,11 +364,11 @@ static int generate_YUV4MPEG(parameters_t *param)
 			  yuv[0], yuv[1], yuv[2]);
 	  break;
 	default:
-	  mjpeg_error_exit1("FATAL logic error?!?\n");
+	  mjpeg_error_exit1("FATAL logic error?!?");
 	  break;
 	}
       }
-      mjpeg_debug("Frame decoded, now writing to output stream.\n");
+      mjpeg_debug("Frame decoded, now writing to output stream.");
     }
 
     y4m_write_frame(STDOUT_FILENO, &streaminfo, &frameinfo, yuv);
@@ -396,13 +396,13 @@ int main(int argc, char ** argv)
   parse_commandline(argc, argv, &param);
   mjpeg_default_handler_verbosity(param.verbose);
 
-  mjpeg_info("Parsing & checking input files.\n");
+  mjpeg_info("Parsing & checking input files.");
   if (init_parse_files(&param)) {
-    mjpeg_error_exit1("* Error processing the JPEG input.\n");
+    mjpeg_error_exit1("* Error processing the JPEG input.");
   }
 
   if (generate_YUV4MPEG(&param)) { 
-    mjpeg_error_exit1("* Error processing the input files.\n");
+    mjpeg_error_exit1("* Error processing the input files.");
   }
 
   return 0;

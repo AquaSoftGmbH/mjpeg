@@ -106,15 +106,15 @@ main(int argc, char *argv[])
 
 	i = y4m_read_stream_header(input_fd, &istream);
 	if (i != Y4M_OK)
-		mjpeg_error_exit1("Input stream error: %s\n", y4m_strerr(i));
+		mjpeg_error_exit1("Input stream error: %s", y4m_strerr(i));
 
 	if( interlace && istream.height % 2 != 0 )
 	{
-		mjpeg_error_exit1("Input images have odd number of lines - can't treats as interlaced!\n" );
+		mjpeg_error_exit1("Input images have odd number of lines - can't treats as interlaced!" );
 	}
 	horz = istream.width;
 	vert = istream.height;
-	mjpeg_debug( "width=%d height=%d\n", horz, vert);
+	mjpeg_debug( "width=%d height=%d", horz, vert);
 
 	y4m_copy_stream_info(&ostream, &istream);
 
@@ -140,9 +140,9 @@ main(int argc, char *argv[])
 	for (avg=0, i=0; i < 64; i++)
 		avg += avg_replace[i];
 
-	mjpeg_info("\nframes=%d avg=%d replaced=%d\n", avg, chg_replace, ovr_replace);
+	mjpeg_info("frames=%d avg=%d replaced=%d", avg, chg_replace, ovr_replace);
 	for (i=0; i < 64; i++) {
-		mjpeg_debug( "%02d: %6.2f\n", i,
+		mjpeg_debug( "%02d: %6.2f", i,
 			(((double)avg_replace[i]) * 100.0)/(double)(avg));
 	}
 	y4m_fini_stream_info(&istream);
