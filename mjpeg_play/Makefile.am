@@ -2,6 +2,8 @@
 
 SUBDIRS    = utils lavtools aenc mplex mpeg2enc	scripts docs yuvdenoise mjpegtools yuvfilters
 
+bin_SCRIPTS = mjpegtools-config
+
 #
 # Add any non autoconf'd files here, extra readmes and other misc 
 # info to be copied into the dist

@@ -714,7 +714,7 @@ AM_CONDITIONAL(USE_MEDIA_GST,   test x"$USE_MEDIA_GST"   = x"1")
 AM_CONDITIONAL(USE_DLFCN_H,     test x"$USE_DLFCN_H"     = x"1")
 
 dnl **********************************************************************
-dnl Output a Makefile or two
+dnl Output a Makefile or two and the lib/header descriptor script
 dnl
 AC_OUTPUT([
 Makefile
@@ -727,7 +727,9 @@ aenc/Makefile
 mplex/Makefile
 scripts/Makefile
 mjpegtools/Makefile
-utils/Makefile])
+utils/Makefile
+mjpegtools-config
+])
 
 AC_DEFINE(VERSION, ${VERSION})
 
