@@ -523,15 +523,16 @@ main (int argc, char *argv[])
 	if (!deinterlace_only)
 	{
 	    /* main denoise processing */
-	    deflicker();
+	    //deflicker();
 	    denoise_frame (yuv);
-	    denoise2();
+	    //denoise2();
 	}
 
-      generate_black_border(BX0,BY0,BX1,BY1,avrg2);
+//    generate_black_border(BX0,BY0,BX1,BY1,avrg2);
 
       /* write the frame */
-      y4m_write_frame (fd_out, &streaminfo, &frameinfo, avrg2);
+//    y4m_write_frame (fd_out, &streaminfo, &frameinfo, avrg2);
+      y4m_write_frame (fd_out, &streaminfo, &frameinfo, avrg);
     }
 
   if(  errnr !=  Y4M_ERR_EOF )
@@ -1998,7 +1999,7 @@ mb_search_44 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
     int i=0;
     int qy, qx;
     int dx, dy,dr,dr_uv;
-    int dt; //,dt_uv;
+    int32_t dt; //,dt_uv;
     uint32_t d=0;
     //uint32_t d_uv=0;
     uint32_t SAD = 3*(256 * BLOCKSIZE * BLOCKSIZE);
@@ -2006,8 +2007,10 @@ mb_search_44 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
   /* search_radius has to be devided by 2 as radius is given in */
   /* half-pixels ...                                            */
 
-  dx=x-BLOCKOFFSET;
-  dy=y-BLOCKOFFSET;
+//  dx=x-BLOCKOFFSET;
+//  dy=y-BLOCKOFFSET;
+    dx=x;
+    dy=y;
   dr=(dx>>2) + (dy>>2) * width;
   dr_uv=(dx>>3) + (dy>>3) * uv_width;
 
@@ -2835,38 +2838,53 @@ void denoise2(void)
 {
     int x,y;
     int difference;
-    int t=2;
+    int t;
+    static int mean=0;
+    int sum=0;
+    static int framenr;
+    
+    framenr++;
+    t=4;
 
     for(y=0;y<height;y++)
 	for(x=0;x<width;x++)
 	{
+#if 1
 	    *( avrg2[0]+x+y*width )=
 		(
 		    *( avrg2[0]+x+y*width ) * 4 +
 		    *( yuv[0]+x+y*width )
 		)/5;
+#endif
 
 	    difference=*( avrg2[0]+x+y*width )-*( yuv[0]+x+y*width );
+	    difference+=*( avrg2[0]+x+y*width+1 )-*( yuv[0]+x+y*width+1 );
+	    difference/=2;
+
 	    difference=(difference<0)? -difference:difference;
+	    sum+=(difference>12)? 12:difference;
 
 	    if(difference>t)
 		*( avrg2[0]+x+y*width )=
 		    *( yuv[0]+x+y*width );
 	}
+    sum/=width*height;
+    mean=sum*2;
 
     for(y=0;y<uv_height;y++)
 	for(x=0;x<uv_width;x++)
 	{
+#if 0
 	    *( avrg2[1]+x+y*uv_width )=
 		(
 		    *( avrg2[1]+x+y*uv_width ) * 4 +
 		    *( yuv[1]+x+y*uv_width )
 		)/5;
-
+#endif
 	    difference=*( avrg2[1]+x+y*uv_width )-*( yuv[1]+x+y*uv_width );
 	    difference=(difference<0)? -difference:difference;
 
-	    if(difference>t)
+	    if(difference>(t/2))
 		*( avrg2[1]+x+y*uv_width )=
 		    *( yuv[1]+x+y*uv_width );
 
@@ -2875,16 +2893,17 @@ void denoise2(void)
     for(y=0;y<uv_height;y++)
 	for(x=0;x<uv_width;x++)
 	{
+#if 0
 	    *( avrg2[2]+x+y*uv_width )=
 		(
 		    *( avrg2[2]+x+y*uv_width ) * 4 +
 		    *( yuv[2]+x+y*uv_width )
 		)/5;
-
+#endif
 	    difference=*( avrg2[2]+x+y*uv_width )-*( yuv[2]+x+y*uv_width );
 	    difference=(difference<0)? -difference:difference;
 
-	    if(difference>t)
+	    if(difference>(t/2))
 		*( avrg2[2]+x+y*uv_width )=
 		    *( yuv[2]+x+y*uv_width );
 
