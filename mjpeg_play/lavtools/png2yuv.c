@@ -302,6 +302,8 @@ Reads one PNG file.
 */
 int decode_png(const char *pngname, int process, parameters_t *param)
 {
+  int num_pass = 1;
+  int bit_depth, color_type;
   FILE *pngfile;
   //png_byte hdptr[8];
 
@@ -360,8 +362,6 @@ int decode_png(const char *pngname, int process, parameters_t *param)
     png_set_read_user_transform_fn(png_ptr, png_separation);
   png_read_png(png_ptr, info_ptr, PNG_TRANSFORM_STRIP_16 | PNG_TRANSFORM_STRIP_ALPHA, NULL);
   
-  int num_pass = 1;
-  int bit_depth, color_type;
   if (png_get_IHDR(png_ptr, info_ptr, &param->width, &param->height, &bit_depth,
 		       //   &color_type, &interlace_type, &compression_type, &filter_type))
 		   &color_type, NULL, NULL, NULL))	
@@ -373,7 +373,6 @@ int decode_png(const char *pngname, int process, parameters_t *param)
   png_read_info(png_ptr, info_ptr);
   mjpeg_info("Done...\n");
   
-  int bit_depth, color_type;
   if (png_get_IHDR(png_ptr, info_ptr, &param->width, &param->height, &bit_depth,
 		       //   &color_type, &interlace_type, &compression_type, &filter_type))
 		   &color_type, NULL, NULL, NULL))	
