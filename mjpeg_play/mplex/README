@@ -1,0 +1,104 @@
+/*************************************************************************
+*  mplex - MPEG1/SYSTEMS multiplexer                                     *
+*                                                                        *
+*  Copyright (C) 1994 1995 Christoph Moar                                *
+*  Research at Siemens ZFE ST SN 11 / T SN 6                             *
+*                                                                        *
+*  TECHNICAL UNIVERSITY OF MUNICH, GERMANY                               *
+*                                                                        *
+*  moar@informatik.tu-muenchen.de                                        *
+*       (Christoph Moar)                                                 *
+*                                                                        *
+*  This program is free software; you can redistribute it and/or modify  *
+*  it under the terms of the GNU General Public License as published by  *
+*  the Free Software Foundation; either version 2 of the License, or     *
+*  (at your option) any later version.                                   *
+*                                                                        *
+*  This program is distributed in the hope that it will be useful,       *
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+*  GNU General Public License in the file COPYING for more details.      *
+*                                                                        *
+*  You should have received a copy of the GNU General Public License     *
+*  along with this program; if not, write to the Free Software           *
+*  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.             *
+*************************************************************************/
+
+
+This is the README file of the MPEG multiplexer 'mplex'.
+Besides this file, you should now own a copy of the following files:
+
+  COPYING		the GNU General Public License
+  Makefile              a makefile
+
+and the source files
+
+  inits.c         
+  interact.c   
+  multplex.c     
+  timecode.c
+  buffer.c        
+  inptstrm.c   
+  main.c          
+  systems.c
+
+  main.h
+
+
+  bitstrm.c		quick cut from the common.c file from
+			the MPEG/audio software simulation group
+			and the bit_stream.c package by
+			Jean-Georges Fritsch, C-Cube Microsystems
+
+  bitstrm.h		quick cut from the common.h file from
+			the MPEG/audio software simulation group
+			and the bit_stream.c package by
+			Jean-Georges Fritsch, C-Cube Microsystems
+
+
+  bitstrm.c and bitstrm.h are excerpts from the source files
+  common.c and common.h by the MPEG/audio software simulation group
+  as found in their MPEG/audio (de)coding software package on many
+  FTP servers, for example in the IUMA directory of sunsite.unc.edu.
+
+=========================================================================
+
+RESEARCH DONE AT & THANKS TO
+   SIEMENS ZFE ST SN 11 / T SN 6
+   TECHNICAL UNIVERSITY OF MUNICH, LEHRSTUHL PROF. SCHLICHTER
+
+=========================================================================
+
+
+Enjoy multiplexing,
+
+Christoph.
+
+moar@heaven.zfe.siemens.de
++---------------------------------------+--------------------------------+
+| http://www.informatik.tu-muenchen.de/ |                 Christoph Moar |
+| cgi-bin/nph-gateway/hphalle6/~moar/   |                Kaulbachstr.29a |
+| index.html                            |                   80539 Munich |
+| email:moar@informatik.tu-muenchen.de  |   voice: ++49 - 89 -  23862874 |
++---------------------------------------+--------------------------------+
+
+MODIFICATIONS TO ORIGINAL
+
+July 2000 Andrew Stevens
+	 Trivial modifications to support catenated audio stremas and
+	  non-intractive use.
+
+
+Usage: ./mplex [params] [<input stream1> [<input stream2>] <output system stream
+>
+                                                                                  where possible params are:
+ -q      Quiet mode for unattended batch usage
+ -i      Interactive mode for user intervention
+ -b num  Specify decoder buffers size in kB. (default: 46) [ 20...1000]
+ -r num  Specify data rate of output stream in kbit/sec (default 0=Compute from
+source streams)
+ -v num  Specify a video timestamp offset in mSec
+ -a num  Specify an audio timestamp offset in mSec
+ -s num  Specify sector size in bytes (default: 2324) [256..16384]
+
+Defaults all correspond to VCD data streams.

@@ -1,0 +1,94 @@
+#!/bin/bash
+
+function tidy_exit ()
+{
+	rm -f $tidyfile
+	exit 0
+}
+
+scale=0
+kind=avi
+stereo=1
+quality=""
+search=15
+noise=""
+bitdrop=""
+MPEGENC=mpeg2enc
+
+while getopts ":s:q:n:d:maeQMSTN" opt
+do
+case $opt in
+s) scale=$OPTARG
+  echo Setting scaling option to $OPTARG
+;;
+m) kind=mov
+  echo Setting kind to $kind
+;;
+e) kind=eli
+  echo Setting kind to $kind
+;;
+a) kind=avi
+  echo Setting kind to $kind
+;;
+q) quality=$OPTARG
+  echo Setting quality factor to $quality
+;;
+Q) quality="-b 2000"
+  echo "Setting high-quality (2000Kbps) mode"
+;;
+S) echo "Using SSE encoder"
+MPEGENC="mpeg2enc.sse"
+;;
+M) echo "Using MMX encoder"
+MPEGENC="mpeg2enc.mmx"
+;;
+T) echo "Using test encoder"
+MPEGENC="mpeg2enc.test"
+;;
+n) echo "Setting noise filter $OPTARG"
+noise="-n $OPTARG"
+;;
+d) echo "Setting bit-drop to $OPTARG"
+bitdrop="-d $OPTARG"
+;;
+?)
+  echo Usage: avi2mpeg [-s num] [-d num] [-n num] [-S][-Q][-M][-m][-a] srcrootname dstdir
+;;
+esac
+done
+
+
+if [ $stereo = 1 ]
+then
+   aencbpr=224
+else
+  aencbpr=112
+fi
+
+shift $[$OPTIND-1]
+
+trap tidy_exit SIGINT
+trap tidy_exit SIGHUP
+
+src=$1
+dst=$2
+echo FILES: ${src}*.${kind}
+for f in ${src}*.${kind}
+do
+  fname=${f##*/}
+  r=${dst}/${fname%%.${kind}}
+  if [ ! -f ${r}.mpv ]
+  then
+    tidyfile=${r}.mpv
+    nice -n 15 $MPEGENC -m 1 ${quality} ${noise} ${bitdrop} -r ${search} -s ${scale} $f -o ${r}.mpv
+    if [ ! -f ${r}.mpa ]
+    then
+      tidyfile=${r}.mpa
+      nice -n 15 aenc -b ${aencbpr} $f -o ${r}.mpa
+    fi
+    #mplex -r 0 ${r}.mpv ${r}.mpa ${mpgfile} 
+    #rm -f ${r}.mpa ${r}.mpv
+    sleep 2
+  fi
+done
+
