@@ -51,14 +51,15 @@ int  use_bicubic;               /* Use bicubic algorithmus for the scaling */
 #define SHORTOPT 2
 #define LONGOPT 25
 struct encodingoptions{ char notblacksize[LONGOPT];  /* lav2yuv options */
+                        int  outputformat;           
+                        int  droplsb;
+                        int  noisefilter;
+                        char interlacecorr[LONGOPT];
                         char input_use[LONGOPT];     /* yuvscaler options */
                         char output_size[LONGOPT];
                         char mode_keyword[LONGOPT];
                         char ininterlace_type[LONGOPT];
                         int  addoutputnorm;
-                        int  outputformat;           /* lav2yuv options */
-                        int  droplsb;
-                        int  noisefilter;
                         int  audiobitrate;           /* audio options */
                         int  outputbitrate;
                         char forcestereo[SHORTOPT];
