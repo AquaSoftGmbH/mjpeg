@@ -22,12 +22,22 @@ EXTRA_DIST = \
  mjpeg_howto.txt\
  mjpegtools.spec\
  autogen.sh\
+ depcomp\
  .cvsignore
 
+DISTCLEANFILES = \
+ confdefs.h \
+ config.cache \
+ config.status \
+ config.log
+
 MAINTAINERCLEANFILES = \
+ depcomp \
+ install-sh \
+ missing \
+ mkinstalldirs \
  Makefile.in \
  aclocal.m4 \
- confdefs.h \
  config.guess \
  config.h.in \
  config.sub \
@@ -45,6 +55,4 @@ deb:
 	mkdir debian/tmp
 	dpkg-buildpackage -rfakeroot
 	rm -r debian/tmp
-
-
 
