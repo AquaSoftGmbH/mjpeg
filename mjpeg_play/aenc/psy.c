@@ -66,7 +66,7 @@ double sfreq;        /* to match prototype : float args are always double */
 /* overflow errors that otherwise would have occurred at compile time     */
 /* on the Macintosh computer.                                             */
 
- FLOAT          *grouped_c, *grouped_e, *nb, *cb, *ecb, *bc;
+ static FLOAT          *grouped_c, *grouped_e, *nb, *cb, *ecb, *bc;
  FLOAT          *wsamp_r, *wsamp_i, *phi, *energy;
  FLOAT          *c, *fthr;
  F32            *snrtmp;
