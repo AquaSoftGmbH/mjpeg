@@ -5,7 +5,7 @@ AM_INIT_AUTOMAKE(libmovtar,0.1.1)
 
 AM_MAINTAINER_MODE
 
-prefix=/usr/local
+ac_default_prefix=/usr/local
 
 dnl Check for GLib
 AM_PATH_GLIB(1.2.0, , AC_MSG_ERROR("You need to install GLib - you can find it on http://www.gtk.org"))
@@ -31,13 +31,59 @@ AC_SUBST(MOVTAR_PLAY)
 dnl Check for SDL
 AM_PATH_SDL(1.1.3, have_SDL="yes" SDL="-lSDL -lpthread" MOVTAR_PLAY="movtar_play")
 
-AC_SUBST(JPEG)
-JPEG=""
-if test "$enable_jpeg" != "no"; then
-    AC_CHECK_LIB(jpeg, jpeg_start_compress,AC_DEFINE(HAVE_LIBJPEG) JPEG="-ljpeg" have_jpeg="yes",,)
+AC_SUBST(M4DATADIR)
+AC_ARG_WITH(m4data-prefix, [  --with-m4data-prefix=PFX  Where to put the libmovtar.m4 for autoconf [/usr/share/aclocal] ], 
+    M4DATADIR="$withval/aclocal", 
+    M4DATADIR="/usr/share/aclocal")
+
+dnl No jpeg yet... try for a local jpeg-mmx first!
+dnl -- Quicktime checks --
+
+if test -r ../jpeg-mmx
+then
+  DEFAULT_JPEGDIR=`pwd`/../jpeg-mmx
 else
-    echo "*** jpeg disabled"
-    have_jpeg="no"
+  if test -r /usr/local/src/jpeg-mmx
+    then
+      DEFAULT_JPEGDIR=/usr/local/src/jpeg-mmx
+    else
+      DEFAULT_JPEGDIR=/usr/local/src/quicktime4linux-1.2
+    fi
+fi
+
+AC_ARG_WITH(jpeg-mmx, [  --with-jpeg-mmx=PFX  Where to find the jpeg-mmx source dir [../jpeg-mmx:/usr/local/src/jpeg-mmx] ], 
+    JPEGDIR="$withval", 
+    JPEGDIR="$DEFAULT_JPEGDIR")
+
+OLDLIBS="$LIBS"
+LIBS="-L $JPEGDIR $LIBS"
+AC_SUBST(JPEG_INCLUDE)
+
+AC_CHECK_LIB( jpeg-mmx, jpeg_start_compress,
+             	[	 
+  			   		have_jpeg="yes"
+					LIBS="$LIBS -ljpeg-mmx"
+					JPEG_INCLUDE="-I $JPEGDIR"
+ 		     	],
+             	[
+             		have_jpeg="no"
+					LIBS=$OLDLIBS
+					JPEG_INCLUDE=""
+		     	]
+			)
+
+dnl If that can't be found fall back to the system jpeg lib...
+if test ${have_jpeg} = "no"
+then
+AC_CHECK_LIB( jpeg, jpeg_start_compress,
+             	[	 
+  			   		have_jpeg="yes"
+					LIBS="$LIBS -ljpeg"
+ 		     	],
+             	[
+             		have_jpeg="no"
+		     	]
+			)
 fi
 
 AC_OUTPUT(Makefile

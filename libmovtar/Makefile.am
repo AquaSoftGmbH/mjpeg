@@ -3,7 +3,7 @@ bin_PROGRAMS = @MOVTAR_PLAY@ movtar_split movtar_unify movtar_index movtar_setin
 bin_SCRIPTS = movtar-config
 lib_LIBRARIES = libmovtar.a
 libmovtar_a_SOURCES = movtar.c tar.c
-INCLUDES = @GLIB_CFLAGS@ -I ../jpeg-mmx
+INCLUDES = @GLIB_CFLAGS@ @JPEG_INCLUDE@
 include_HEADERS = movtar.h
 
 movtar_play_LDFLAGS = -lSDL -lpthread -ljpeg
@@ -15,7 +15,7 @@ LDADD = ./libmovtar.a
 
 EXTRA_DIST = README.movtar.implement movtar.m4
 
-m4datadir = /usr/share/aclocal
+m4datadir = @M4DATADIR@
 m4data_DATA = movtar.m4
 
 
