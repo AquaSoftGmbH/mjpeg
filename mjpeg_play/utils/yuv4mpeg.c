@@ -612,7 +612,7 @@ int y4m_read_frame(int fd, const y4m_stream_info_t *si,
 
 
 int y4m_write_frame(int fd, const y4m_stream_info_t *si, 
-		    const y4m_frame_info_t *fi, const uint8_t *yuv[3])
+		    const y4m_frame_info_t *fi, uint8_t *yuv[3])
 {
   int err;
   int w = si->width;
@@ -671,8 +671,8 @@ int y4m_read_fields(int fd, const y4m_stream_info_t *si, y4m_frame_info_t *fi,
 
 int y4m_write_fields(int fd, const y4m_stream_info_t *si,
 		     const y4m_frame_info_t *fi,
-                     const uint8_t *upper_field[3], 
-                     const uint8_t *lower_field[3])
+                     uint8_t *upper_field[3], 
+                     uint8_t *lower_field[3])
 {
   int i, y, err;
   int width = si->width;
@@ -682,8 +682,8 @@ int y4m_write_fields(int fd, const y4m_stream_info_t *si,
   if ((err = y4m_write_frame_header(fd, fi)) != Y4M_OK) return err;
   /* Write Y', Cb, and Cr planes */
   for (i = 0; i < 3; i++) {
-    const uint8_t *srctop = upper_field[i];
-    const uint8_t *srcbot = lower_field[i];
+    uint8_t *srctop = upper_field[i];
+    uint8_t *srcbot = lower_field[i];
     /* alternately write one line from each */
     for (y = 0; y < height; y += 2) {
       if (y4m_write(fd, srctop, width)) return Y4M_ERR_SYSTEM;
