@@ -5,7 +5,7 @@
 img2mpg \- MPEG portfolio images multiplexer
 .SH "SYNTAX"
 .LP 
-img2mpg [\fIoptions\fP] \fB\-o\fR <\fIoutput MPEG file\fP> \fB\-i\fR <\fIinput image files\fP>
+img2mpg [\fI options \fP] \fB\-o\fR <\fIoutput MPEG file\fP> \fB\-i\fR <\fIinput image files\fP>
 .SH "REQUIREMENTS"
 .LP 
 This script use this packages :
@@ -81,12 +81,26 @@ XVCD :
   DVD player compatibility : medium.
   Image restitution : excelent.
 
-Note : \- The XVCD resolution is the same of DVD !
+Note : The XVCD resolution is the same of DVD !
 .SH "OPTIONS"
 .LP 
 \fB\-v\fR <\fInum\fP> : verbose level on the console. The possible values are  '0' for none (default), '1' for informations and warnings, or '2' for debug messages.
 
 \fB\-t\fR <\fInum\fP> : enable transition between images with a specific speed. The possible speed values are '1' for slow, '2', '4', '5', '10', or '20' for fast. When you enable this option, the script make with ImageMagick package a beautiful merging transition between images. Warning : it's a long calculating process.
+
+The transitions durations are :
+
+Speed  '1' : PAL/SECAM (25 f/s) = 4000 ms | NTSC (30 f/s) = 3333 ms.
+.br 
+Speed  '2' : PAL/SECAM (25 f/s) = 2000 ms | NTSC (30 f/s) = 1666 ms.
+.br 
+Speed  '4' : PAL/SECAM (25 f/s) = 1000 ms | NTSC (30 f/s) = 0833 ms.
+.br 
+Speed  '5' : PAL/SECAM (25 f/s) = 0800 ms | NTSC (30 f/s) = 0666 ms.
+.br 
+Speed '10' : PAL/SECAM (25 f/s) = 0400 ms | NTSC (30 f/s) = 0333 ms.
+.br 
+Speed '20' : PAL/SECAM (25 f/s) = 0200 ms | NTSC (30 f/s) = 0166 ms.
 
 \fB\-f\fR <\fIVideo format\fP> : MPEG video format. The possible values are 'XVCD' (default), 'SVCD', or 'VCD'. See the DESCRIPTION section for more details.
 
@@ -107,6 +121,8 @@ Note : \- The XVCD resolution is the same of DVD !
 \fB\-i\fR <\fIinput images files\fP> : images files name to merge in MPEG.
 
 \fB\-h | \-\-help\fR : output help information and exit.
+
+Note : The \fB\-i\fR option must be the last option in the command line.
 .SH "RETURN VALUES"
 .LP 
 0 \-> Process finish succefuly.
@@ -114,7 +130,7 @@ Note : \- The XVCD resolution is the same of DVD !
 1 \-> Error.
 .SH "EXAMPLES"
 .LP 
-#./img2mpg \-f SVCD \-d 15 \-w Music.wav \-o MyPortfolio.mpg \-i 01.jpg 02.jpg 03.jpg 04.jpg
+\fB# img2mpg \-f SVCD \-d 15 \-w Music.wav \-o MyPortfolio.mpg \-i 01.jpg 02.jpg 03.jpg 04.jpg\fR
 
 Build PAL (default) SVCD MPEG file with the 'Music.wav' sound file and this image files sequence :
 
@@ -126,7 +142,7 @@ Build PAL (default) SVCD MPEG file with the 'Music.wav' sound file and this imag
 For each image on the portfolio, the screen show duration is 15 seconds. The output file is 'MyPortfolio.mpg'.
 There isn't transition between images.
 .LP 
-#./img2mpg \-n NTSC \-t 2 \-o MyPortfolio.mpg \-i *.png
+\fB# img2mpg \-n NTSC \-t 2 \-o MyPortfolio.mpg \-i *.png\fR
 
 Build XVCD (default) NTSC MPEG file with a transition between images (speed 2) with  all local PNG image files.
 The image files sequence use the local filesystem sort.
