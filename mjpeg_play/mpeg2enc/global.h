@@ -123,13 +123,13 @@ void putcbp _ANSI_ARGS_((int cbp));
 void quant_intra (	pict_data_s *picture,
 					short *src, short *dst, 
 					int mquant, int *nonsat_mquant);
-int quant_non_intra (	pict_data_s *picture,
-						short *src, short *dst,
-						int mquant, int *nonsat_mquant);
 void iquant_intra ( short *src, short *dst, int dc_prec, int mquant);
 void iquant_non_intra (short *src, short *dst, int mquant);
 void init_quantizer();
 int  next_larger_quant( pict_data_s *picture, int quant );
+
+extern int (*pquant_non_intra)(pict_data_s *picture, int16_t *src, int16_t *dst,
+						int mquant, int *nonsat_mquant);
 
 extern int (*pquant_weight_coeff_sum)(short *blk, unsigned short*i_quant_mat );
 

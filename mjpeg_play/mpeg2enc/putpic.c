@@ -234,7 +234,7 @@ void putpict(pict_data_s *picture, short (*quant_blocks)[64] )
 			}
 			else
 			{
-				cbp = quant_non_intra(picture,
+				cbp = (*pquant_non_intra)(picture,
 									  picture->blocks[cur_mb_blocks],
 									  quant_blocks[cur_mb_blocks],
 									  cur_mb->mquant,

@@ -43,25 +43,20 @@ static inline int samesign(int x, int y)
 	return (y+(signmask(x) & -(y<<1)));
 }
 
-#ifdef X86_CPU
-int    use_simd_quantizer;
-int    (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
-static int (*psimd_inter_quant)( int16_t *dst, int16_t *src, int16_t *quant_mat, 
-						   int16_t *i_quant_mat, 
-						   int imquant, int mquant, int sat_limit);
-static void (*piquant_non_intra_m1)(int16_t *src, int16_t *dst, 
-									uint16_t *quant_mat);
-#endif
+/* Global function pointers for SIMD-dependent functions */
+int (*pquant_non_intra)(pict_data_s *picture, int16_t *src, int16_t *dst,
+						int mquant, int *nonsat_mquant);
+int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
 
-static void iquant_non_intra_m1(int16_t *src, int16_t *dst, 
-								uint16_t *quant_mat);
+/* Local functions pointers for SIMD-dependent functions */
+
+static void (*piquant_non_intra_m1)(int16_t *src, int16_t *dst,  uint16_t *quant_mat);
+
+
 static int quant_weight_coeff_sum( int16_t *blk, uint16_t * i_quant_mat );
-
-int quant_non_intra(
-	pict_data_s *picture,
-	int16_t *src, int16_t *dst,
-	int mquant,
-	int *nonsat_mquant);
+static void iquant_non_intra_m1(int16_t *src, int16_t *dst, uint16_t *quant_mat);
+static int quant_non_intra(pict_data_s *picture, int16_t *src, int16_t *dst,int mquant,
+							int *nonsat_mquant);
 
 /*
   Initialise quantization routines.
@@ -75,19 +70,17 @@ void init_quantizer()
 #ifdef X86_CPU
   if( (flags & ACCEL_X86_MMX) != 0 ) /* MMX CPU */
 	{
-		if(  (flags & ACCEL_X86_MMXEXT) )
+		if( flags & ACCEL_X86_3DNOW )
 		{
-			fprintf( stderr, "SETTING EXTENDED MMX for QUANTIZER!\n");
-			use_simd_quantizer = 1;
-			psimd_inter_quant =  quantize_ni_mmx;
+			fprintf( stderr, "SETTING 3DNOW for QUANTIZER!\n");
+			pquant_non_intra = quant_non_intra_3dnow;
 			pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
-			piquant_non_intra_m1 = iquant_non_intra_m1_mmx;
+			piquant_non_intra_m1 = iquant_non_intra_m1_mmx;		
 		}
 		else
 		{
 			fprintf( stderr, "SETTING MMX for QUANTIZER!\n");
-			use_simd_quantizer = 1;
-			psimd_inter_quant =  quantize_ni_mmx;
+			pquant_non_intra = quant_non_intra_mmx;
 			pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
 			piquant_non_intra_m1 = iquant_non_intra_m1_sse;
 		}
@@ -95,7 +88,7 @@ void init_quantizer()
   else
 #endif
 	{
-	  use_simd_quantizer = 0;
+	  pquant_non_intra = quant_non_intra;	  
 	  pquant_weight_coeff_sum = quant_weight_coeff_sum;
 	  piquant_non_intra_m1 = iquant_non_intra_m1;
 	}
@@ -242,13 +235,20 @@ int quant_weight_coeff_sum( int16_t *blk, uint16_t * i_quant_mat )
  * this quantizer has a bias of 1/8 stepsize towards zero
  * (except for the DC coefficient)
  *
+ * A.Stevens 2000: The above comment is nonsense.  Only the intra quantiser does
+ * this.  This one just truncates with a modest bias of 1/(4*quant_matrix_scale)
+ * to 1.
+ *
  *	PRECONDITION: src dst point to *disinct* memory buffers...
  *	              of block_count *adjacent* int16_t[64] arrays...
  *
- * RETURN: 1 If non-zero coefficients left after quantisaiont 0 otherwise
+ * RETURN: A bit-mask of block_count bits indicating non-zero blocks (a 1).
+ *
+ * TODO: A candidate for use of efficient abs and "samesign". If only gcc understood
+ * PPro conditional moves...
  */
 																							     											     
-int quant_non_intra_mmx(
+int quant_non_intra(
 	pict_data_s *picture,
 	int16_t *src, int16_t *dst,
 	int mquant,
@@ -262,117 +262,50 @@ int quant_non_intra_mmx(
 	int flags = 0;
 	int saturated = 0;
 	uint16_t *quant_mat = inter_q;
-	int comp;
-	uint16_t *i_quant_mat = i_inter_q;
-	int imquant;
-	int16_t *psrc, *pdst;
+	
+	coeff_count = 64*block_count;
+	flags = 0;
+	nzflag = 0;
+	for (i=0; i<coeff_count; ++i)
+	{
+		if( (i%64) == 0 )
+		{
+			nzflag = (nzflag<<1) | !!flags;
+			flags = 0;
+			  
+		}
+		/* RJ: save one divide operation */
 
-	/* If available use the fast MMX quantiser.  It returns
-	   flags to signal if coefficients are outside its limited range or
-	   saturation would occur with the specified quantisation
-	   factor
-	   Top 16 bits - non zero quantised coefficient present
-	   Bits 8-15   - Saturation occurred
-	   Bits 0-7    - Coefficient out of range.
-	*/
+		x = (src[i] >= 0 ? src[i] : -src[i]);
+		d = (int)quant_mat[(i&63)]; 
+		y = (32*x + (d>>1))/(d*2*mquant);
+		if ( y > clipvalue )
+		{
+			if( saturated )
+			{
+				y = clipvalue;
+			}
+			else
+			{
+				int new_mquant = next_larger_quant( picture, mquant );
+				if( new_mquant != mquant )
+					mquant = new_mquant;
+				else
+				{
+					saturated = 1;
+				}
+				i=0;
+				nzflag =0;
+				continue;
+			}
+		}
+		dst[i] = (src[i] >= 0 ? y : -y);
+		flags |= dst[i];
+	}
+	nzflag = (nzflag<<1) | !!flags;
 
-  if(  use_simd_quantizer )
-  {
-	  nzflag = 0;
-	  pdst = dst;
-	  psrc = src;
-	  comp = 0; 
-	  do
-	  {
-		  imquant = (IQUANT_SCALE/mquant);
-		  flags = (*psimd_inter_quant)( pdst, psrc, quant_mat, i_quant_mat, 
-										imquant, mquant, clipvalue );
-		  nzflag = (nzflag << 1) |( !!(flags & 0xffff0000));
-		  
-		  /* If we're saturating simply bump up quantization and start
-		     from scratch...  if we can't avoid saturation by
-		     quantising then we're hosed and we fall back to
-		     saturation using the old C code.  */
-		  
-		  if( (flags & 0xff00) != 0 )
-		  {
-			  int new_mquant = next_larger_quant( picture, mquant );
-			  if( new_mquant != mquant )
-			  {
-				  mquant = new_mquant;
-			  }
-			  else
-			  {
-				  saturated = 1;
-				  break;
-			  }
-
-			  comp = 0; 
-			  nzflag = 0;
-			  pdst = dst;
-			  psrc = src;
-		  }
-		  else
-		  {
-			  ++comp;
-			  pdst += 64;
-			  psrc +=64;
-		  }
-		  /* Fall back to 32-bit(or better - if some hero(ine) made this work on
-			 non 32-bit int machines ;-)) if out of dynamic range for MMX...
-		  */
-	  }
-	  while( comp < block_count  && (flags & 0xff) == 0 );
-  }
-
-  
-  /* Coefficient out of range or can't avoid saturation:
-	 fall back to the original 32-bit int version: this is rare */
-  if(  (flags & 0xff) != 0 || saturated)
-  {
-	  coeff_count = 64*block_count;
-	  flags = 0;
-	  nzflag = 0;
-	  for (i=0; i<coeff_count; ++i)
-	  {
-		  if( (i%64) == 0 )
-		  {
-			  nzflag = (nzflag<<1) | !!flags;
-			  flags = 0;
-				  
-		  }
-		  /* RJ: save one divide operation */
-
-		  x = (src[i] >= 0 ? src[i] : -src[i]);
-		  d = (int)quant_mat[(i&63)]; 
-		  y = (32*x + (d>>1))/(d*2*mquant);
-		  if ( y > clipvalue )
-		  {
-			  if( saturated )
-			  {
-				  y = clipvalue;
-			  }
-			  else
-			  {
-				  int new_mquant = next_larger_quant( picture, mquant );
-				  if( new_mquant != mquant )
-					  mquant = new_mquant;
-				  else
-				  {
-					  saturated = 1;
-				  }
-				  i=0;
-				  nzflag =0;
-				  continue;
-			  }
-		  }
-		  dst[i] = (src[i] >= 0 ? y : -y);
-		  flags |= dst[i];
-	  }
-	  nzflag = (nzflag<<1) | !!flags;
-  }
-  *nonsat_mquant = mquant;
-  return nzflag;
+    *nonsat_mquant = mquant;
+    return nzflag;
 }
 
 /* MPEG-1 inverse quantization */

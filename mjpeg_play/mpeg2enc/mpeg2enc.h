@@ -167,8 +167,8 @@ struct pict_data
 	int pict_struct;			/* picture structure (frame, top / bottom) */
 	int topfirst;				/* display top field first */
 	int frame_pred_dct;			/* Use only frame prediction... */
-	int q_scale_type;			/* Quantisation linear/non-lin */
 	int intravlc;				/* Intra VLC format */
+	int q_scale_type;			/* Quantiser scale... */
 	int altscan;				/* Alternate scan  */
 	int repeatfirst;			/* repeat first field after second field */
 	int prog_frame;				/* progressive frame */

@@ -32,6 +32,8 @@
 
 #include <stdint.h>
 
+struct pict_data;
+
 #ifdef X86_CPU
 
 struct mc_result
@@ -63,6 +65,11 @@ int qblock_near_dist_mmx( uint8_t *blk,  uint8_t *ref,
 					  int threshold,
 					  int h, int rowstride, mc_result_s *resvec);
 
+int quant_non_intra_3dnow(	struct pict_data *picture,int16_t *src, int16_t *dst,
+							int mquant, int *nonsat_mquant);
+int quant_non_intra_mmx(	struct pict_data *picture,int16_t *src, int16_t *dst,
+							int mquant, int *nonsat_mquant);
+							
 int quantize_ni_mmx(short *dst, short *src, short *quant_mat, 
 						   short *i_quant_mat, 
 						   int imquant, int mquant, int sat_limit);

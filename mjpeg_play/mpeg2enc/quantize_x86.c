@@ -47,8 +47,35 @@
 #include "attributes.h"
 #include "mmx.h"
 
-int dudctr = 0;
-int quant_non_intra(
+/* 
+ * Quantisation for non-intra blocks 
+ *
+ * Various versions for various SIMD instruction sets.  Not all of them
+ * bother to implement the test model 5 quantisation of the reference source
+ * (this has a bias of 1/8 stepsize towards zero - except for the DC coefficient).
+ *
+ * Actually, as far as I can tell even the reference source doesn't quite do it
+ * for non-intra (though it *does* for intra).
+ * 
+ * Careful analysis of the code also suggests what it actually does is truncate
+ * with a modest bias towards 1 (the d>>2 factor)
+ *
+ *	PRECONDITION: src dst point to *disinct* memory buffers...
+ *	              of block_count *adjacent* int16_t[64] arrays...
+ *
+ *RETURN: A bit-mask of block_count bits indicating non-zero blocks (a 1).
+ */
+	
+
+/*
+ * 3D-Now version: simply truncates to zero, however, the tables have a 2% bias
+ * upwards which partly compensates.
+ * Currently doesn't bother to adjust quantisation in the event of saturation.
+ * though this would be pretty easy to do. I want to wait and see what the implications
+ * for quality are.
+ */
+ 
+int quant_non_intra_3dnow(	
 	pict_data_s *picture,
 	int16_t *src, int16_t *dst,
 	int mquant,
@@ -61,9 +88,6 @@ int quant_non_intra(
 	int16_t *psrc, *pdst;
 	float *piqf;
 	int i;
-/*	float ir[4];
-	short is[4];
-	int32_t id[4];*/
 	uint32_t tmp;
 
 	/* Initialise zero block flags */
@@ -94,8 +118,6 @@ int quant_non_intra(
 		movq_r2r( mm2, mm3 );
 		punpcklwd_r2r( mm7, mm2 ); /* Unpack with sign extensions */
 		punpckhwd_r2r( mm7, mm3);
-
-
 
 		/* Multiply by sixteen... */
 		pslld_i2r( 4, mm2 );
@@ -191,3 +213,138 @@ int quant_non_intra(
 	nzflag = (nzflag<<1) | (!!flags);
 	return nzflag;
 }
+
+
+/*
+ * The ordinary MMX version.  Due to the limited dynamic range afforded by working
+ * with 16-bit int's it (a) has to jump through some gory fudge-factor hoops
+ * (b) give up in tough cases and fall back on the reference code. Fortunately, the
+ * latter happens *very* rarely.
+ *
+ */
+																							     											     
+int quant_non_intra_mmx(
+	pict_data_s *picture,
+	int16_t *src, int16_t *dst,
+	int mquant,
+	int *nonsat_mquant)
+{
+	int i;
+	int x, y, d;
+	int nzflag;
+	int coeff_count;
+	int clipvalue  = mpeg1 ? 255 : 2047;
+	int flags = 0;
+	int saturated = 0;
+	uint16_t *quant_mat = inter_q;
+	int comp;
+	uint16_t *i_quant_mat = i_inter_q;
+	int imquant;
+	int16_t *psrc, *pdst;
+
+	/* If available use the fast MMX quantiser.  It returns
+	   flags to signal if coefficients are outside its limited range or
+	   saturation would occur with the specified quantisation
+	   factor
+	   Top 16 bits - non zero quantised coefficient present
+	   Bits 8-15   - Saturation occurred
+	   Bits 0-7    - Coefficient out of range.
+	*/
+
+	nzflag = 0;
+	pdst = dst;
+	psrc = src;
+	comp = 0; 
+	do
+	{
+		imquant = (IQUANT_SCALE/mquant);
+		flags = quantize_ni_mmx( pdst, psrc, quant_mat, i_quant_mat, 
+										imquant, mquant, clipvalue );
+		nzflag = (nzflag << 1) |( !!(flags & 0xffff0000));
+  
+		/* If we're saturating simply bump up quantization and start
+			from scratch...  if we can't avoid saturation by
+			quantising then we're hosed and we fall back to
+			saturation using the old C code.  */
+  
+		if( (flags & 0xff00) != 0 )
+		{
+			int new_mquant = next_larger_quant( picture, mquant );
+			if( new_mquant != mquant )
+			{
+				mquant = new_mquant;
+			}
+			else
+			{
+				saturated = 1;
+				break;
+			}
+
+			comp = 0; 
+			nzflag = 0;
+			pdst = dst;
+			psrc = src;
+		}
+		else
+		{
+			++comp;
+			pdst += 64;
+			psrc +=64;
+		}
+		/* Fall back to 32-bit(or better - if some hero(ine) made this work on
+			non 32-bit int machines ;-)) if out of dynamic range for MMX...
+		*/
+	}
+	while( comp < block_count  && (flags & 0xff) == 0 );
+
+
+
+	/* Coefficient out of range or can't avoid saturation:
+	fall back to the original 32-bit int version: this is rare */
+	if(  (flags & 0xff) != 0 || saturated)
+	{
+	coeff_count = 64*block_count;
+	flags = 0;
+	nzflag = 0;
+	for (i=0; i<coeff_count; ++i)
+	{
+		if( (i%64) == 0 )
+		{
+			nzflag = (nzflag<<1) | !!flags;
+			flags = 0;
+			  
+		}
+		/* RJ: save one divide operation */
+
+		x = (src[i] >= 0 ? src[i] : -src[i]);
+		d = (int)quant_mat[(i&63)]; 
+		y = (32*x + (d>>1))/(d*2*mquant);
+		if ( y > clipvalue )
+		{
+			if( saturated )
+			{
+				y = clipvalue;
+			}
+			else
+			{
+				int new_mquant = next_larger_quant( picture, mquant );
+				if( new_mquant != mquant )
+					mquant = new_mquant;
+				else
+				{
+					saturated = 1;
+				}
+				i=0;
+				nzflag =0;
+				continue;
+			}
+		}
+		dst[i] = (src[i] >= 0 ? y : -y);
+		flags |= dst[i];
+	}
+	nzflag = (nzflag<<1) | !!flags;
+	}
+	*nonsat_mquant = mquant;
+	return nzflag;
+}
+

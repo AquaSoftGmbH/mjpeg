@@ -186,8 +186,7 @@ void putseq()
 		}
 
 		cur_picture.temp_ref = f - f0;
-		cur_picture.frame_pred_dct = 
-			frame_pred_dct_tab[cur_picture.pict_type-1];
+		cur_picture.frame_pred_dct = frame_pred_dct_tab[cur_picture.pict_type-1];
 		cur_picture.q_scale_type = qscale_tab[cur_picture.pict_type-1];
 		cur_picture.intravlc = intravlc_tab[cur_picture.pict_type-1];
 		cur_picture.altscan = altscan_tab[cur_picture.pict_type-1];
