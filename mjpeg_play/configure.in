@@ -112,15 +112,7 @@ AC_SUBST(MOVTAR_CFLAGS)
 AC_SUBST(MOVTAR_LIBS)
 have_movtar=false
 
-dnl Special case for building .deb...
-if test -d ../libmovtar ; then
-  AC_DEFINE(HAVE_LIBMOVTAR)
-  MOVTAR_CFLAGS="-I`pwd`/../libmovtar `bash ../libmovtar/movtar-config --cflags`"
-  MOVTAR_LIBS="-L`pwd`/../libmovtar `bash ../libmovtar/movtar-config --libs`"
-  have_movtar=true
-else
-  AM_PATH_MOVTAR(0.0.2, [ AC_DEFINE(HAVE_LIBMOVTAR) have_movtar=true],,)
-fi
+AM_PATH_MOVTAR(0.0.2, [ AC_DEFINE(HAVE_LIBMOVTAR) have_movtar=true],,)
 
 
 dnl *********************************************************************
@@ -136,13 +128,7 @@ if test x$with_quicktime = xyes ; then
 *** A directory must be specified for the --with-quicktime option.])
 elif test x$with_quicktime = x ; then
 
-  dnl Special case for debian building...
-  if test -d ../quicktime4linux
-  then
-      with_quicktime=`pwd`/../quicktime4linux
-  else
       with_quicktime=/usr/local/src/quicktime4linux-1.3
-  fi
 fi
 
 have_quicktime=false
