@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 function usage ()
@@ -45,21 +46,18 @@ MPEGOPTS="$MPEGOPTS -h"
 ;;
 X)
 echo Using test encoder max speed
-MPEG2OPTS="$MPEG2OPTS -4 1 -2 1"
+MPEGOPTS="$MPEGOPTS -4 1 -2 1"
 ;;
 V)
 echo Generating VCD stream
-MPEGOPTS="-r 16 "
+MPEGOPTS="$MPEGOPTS -r 16 "
 decode="YUVh"
 ;;
 S)
 echo Generating SVCD stream
-MPEGOPTS="-m 2 -F 3 -q 9 -V 200"
+MPEGOPTS="$MPEGOPTS -m 2 -q 9 -V 200"
 bitrate="-b 2500"
 decode="YUVs"
-;;
-l)
-lavargs=$OPTARG
 ;;
 ?) usage
 ;;
@@ -74,10 +72,11 @@ shift $[$OPTIND-1]
 sleep $[$sleep*60]
 
 cat $* | mpeg2dec -s -o $decode | \
-	${MPEG2ENC} ${MPEGOPTS} $bitrate -o $outfile.m1v
+        ${MPEG2ENC} -F 4 ${MPEGOPTS} $bitrate -o $outfile.m1v
 
 cat $* | extract_ac3 - -s | ac3dec -m wav | \
-	sox -t wav /dev/stdin -t wav -r 44100 /dev/stdout | 
-	toolame -p 2 -b 224 /dev/stdin $outfile.mp2
+        sox -t wav /dev/stdin -t wav -r 44100 /dev/stdout | \
+        toolame -p 2 -b 224 /dev/stdin $outfile.mp2
 
 # Eventually mux-ing goes here!
+
