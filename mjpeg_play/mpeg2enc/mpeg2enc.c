@@ -97,6 +97,7 @@ void Usage(char *str)
 	printf("               0 = progressive output (no field pictures)\n");
 	printf("               1 = field pictures, bottom field first\n");
 	printf("               2 = field pictures, top field first\n");
+	printf("               3 = progressive output, field MC and MDCT\n");
 	printf("   -r num     Search radius [0..32] (default 0: don\'t search at all)\n");
 	printf("   -4 num     (default: 2)\n");
 	printf("   			  Population halving passes 4*4-pel subsampled motion compensation\n" );
@@ -596,9 +597,9 @@ static void readparmfile()
 	opt_dc_prec         = 0;  /* 8 bits */
 	opt_topfirst        = (param_fieldpic==2);
 
-	frame_pred_dct_tab[0] = mpeg1 ? 1 : (param_fieldpic == 3);
-	frame_pred_dct_tab[1] = mpeg1 ? 1 : (param_fieldpic == 3);
-	frame_pred_dct_tab[2] = mpeg1 ? 1 : (param_fieldpic == 3);
+	frame_pred_dct_tab[0] = mpeg1 ? 1 : (param_fieldpic == 0);
+	frame_pred_dct_tab[1] = mpeg1 ? 1 : (param_fieldpic == 0);
+	frame_pred_dct_tab[2] = mpeg1 ? 1 : (param_fieldpic == 0);
 
 	conceal_tab[0]  = 0; /* not implemented */
 	conceal_tab[1]  = 0;

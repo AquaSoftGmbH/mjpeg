@@ -350,7 +350,7 @@ void putpict(pict_data_s *picture )
 
 			putmbtype(picture->pict_type,mb_type); /* macroblock type */
 
-			if (mb_type & (MB_FORWARD|MB_BACKWARD) && !picture->frame_pred_dct)
+			if ( (mb_type & (MB_FORWARD|MB_BACKWARD)) && !picture->frame_pred_dct)
 				putbits(cur_mb->motion_type,2);
 
 			if (picture->pict_struct==FRAME_PICTURE 

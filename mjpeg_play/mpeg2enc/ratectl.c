@@ -99,6 +99,7 @@ static int gop_undershoot = 0;
 */
 static double actsum;
 static double actcovered;
+double sum_avg_act = 0.0;
 double avg_act;
 double peak_act;
 
@@ -340,6 +341,7 @@ void rc_init_pict(pict_data_s *picture)
 
 	actsum =  calc_actj(picture );
 	avg_act = (double)actsum/(double)(mb_per_pict);
+	sum_avg_act += avg_act;
 	actcovered = 0.0;
 
 	/* Allocate target bits for frame based on frames numbers in GOP
@@ -395,7 +397,8 @@ void rc_init_pict(pict_data_s *picture)
 #ifdef DEBUG
 	if( !quiet )
 	{
-		printf( "AA=%3.4f T=%6.0f K=%.1f ",avg_act, (double)T, avg_K  );
+		/* printf( "AA=%3.4f T=%6.0f K=%.1f ",avg_act, (double)T, avg_K  ); */
+		printf( "AA=%3.4f SA==%3.4f ",avg_act, sum_avg_act  ); 
 	}
 #endif	
 	

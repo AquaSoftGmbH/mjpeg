@@ -44,6 +44,10 @@ nonetheless significantly time-consuming functions.
 Andrew Stevens added a new much faster MMX / 3Dnow / ISSE 
 based quantization routines.
 
+Andrew Stevens replaced the use of SAD with variance for selecting
+field-based motion compensation. Slightly more expensive but produces
+*markedly* better results.  
+
 In case you're wondering: the upshot of this disclaimer is that the
 functionality is exactly as per the original but the software now runs
 around 12 times as fast with sensible (search radius 15) motion compensation

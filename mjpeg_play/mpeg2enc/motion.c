@@ -431,11 +431,11 @@ static void frame_ME(pict_data_s *picture,
 	mb_motion_s botfldb_mc;
 
 	int var,v0;
-	int dmc,dmcf,dmcr,dmci,vmc,vmcf,vmcr,vmci;
-	int dmcfield,dmcfieldf,dmcfieldr,dmcfieldi;
+	int vmc,vmcf,vmcr,vmci;
+	int vmcfieldf,vmcfieldr,vmcfieldi;
 	subsampled_mb_s ssmb;
 	int imins[2][2],jmins[2][2];
-	int imindmv,jmindmv,dmc_dp,vmc_dp;
+	int imindmv,jmindmv,vmc_dp;
 	
 
 	/* A.Stevens fast motion estimation data is appended to actual
@@ -457,8 +457,7 @@ static void frame_ME(pict_data_s *picture,
 			fullsearch(mc->oldorg,mc->oldref,&ssmb,
 					   width,i,j,mc->sxf,mc->syf,16,width,height,
 					    &framef_mc);
-			dmc = framef_mc.sad;
-			vmc = unidir_pred_var( &framef_mc, ssmb.mb, width, 16);
+			vmc = framef_mc.var;
 			mbi->motion_type = MC_FRAME;
 		}
 		else
@@ -469,36 +468,33 @@ static void frame_ME(pict_data_s *picture,
 						   &topfldf_mc,
 						   &botfldf_mc,
 						   imins,jmins);
-			dmc = framef_mc.sad;
-			dmcfield = topfldf_mc.sad + botfldf_mc.sad;
-			
-			if (0 && M==1)
+			vmcf = framef_mc.var;
+			vmcfieldf = topfldf_mc.var + botfldf_mc.var;
+			/* DEBUG DP currently disabled... */
+			if ( M==1)
 			{
 				dpframe_estimate(picture,mc->oldref,&ssmb,
 								 i,j>>1,imins,jmins,
 								 &dualpf_mc,
 								 &imindmv,&jmindmv, &vmc_dp);
-				dmc_dp = dualpf_mc.sad;
 			}
 
+			/* NOTE: Typically M =3 so DP actually disabled... */
 			/* select between dual prime, frame and field prediction */
-			if (M==1 && dmc_dp<dmc && dmc_dp<dmcfield)
+			if ( M==1 && vmc_dp<vmcf && vmc_dp<vmcfieldf)
 			{
 				mbi->motion_type = MC_DMV;
-				dmc = dmc_dp;
 				vmc = vmc_dp;
 			}
-			else if ( dmc<=dmcfield)
+			else if ( vmcf < vmcfieldf)
 			{
 				mbi->motion_type = MC_FRAME;
-				vmc = unidir_pred_var( &framef_mc, ssmb.mb, width,16);
+				vmc = vmcf;
 			}
 			else
 			{
 				mbi->motion_type = MC_FIELD;
-				dmc = dmcfield;
-				vmc =  unidir_pred_var( &topfldf_mc, ssmb.mb, width<<1, 8);
-				vmc += unidir_pred_var( &botfldf_mc, ssmb.mb, width<<1, 8);
+				vmc = vmcfieldf;
 			}
 		}
 
@@ -591,16 +587,14 @@ static void frame_ME(pict_data_s *picture,
 					   16,width,height,
 					   &framef_mc
 					   );
-			dmcf = framef_mc.sad;
-			vmcf = unidir_pred_var( &framef_mc, ssmb.mb, width, 16);
+			vmcf = framef_mc.var;
 
 			/* backward */
 			fullsearch(mc->neworg,mc->newref,&ssmb,
 					   width,i,j,mc->sxb,mc->syb,
 					   16,width,height,
 					   &frameb_mc);
-			dmcr = frameb_mc.sad;
-			vmcr = unidir_pred_var( &frameb_mc, ssmb.mb, width, 16 );
+			vmcr = frameb_mc.var;
 
 			/* interpolated (bidirectional) */
 
@@ -640,8 +634,7 @@ static void frame_ME(pict_data_s *picture,
 						   &botfldf_mc,
 						   imins,jmins);
 
-			dmcf = framef_mc.sad;
-			dmcfieldf = topfldf_mc.sad + botfldf_mc.sad;
+
 			/* backward prediction */
 			frame_estimate(mc->neworg,mc->newref,&ssmb,
 						   i,j,mc->sxb,mc->syb,
@@ -649,68 +642,65 @@ static void frame_ME(pict_data_s *picture,
 						   &topfldb_mc,
 						   &botfldb_mc,
 						   imins,jmins);
-			dmcr = frameb_mc.sad;
-			dmcfieldr = topfldb_mc.sad + botfldb_mc.sad;
 
-			/* calculate interpolated distance */
-			/* frame */
-			dmci = bidir_pred_sad( &framef_mc, &frameb_mc, ssmb.mb, width, 16);
-			/* top and bottom fields */
-			dmcfieldi = bidir_pred_sad( &topfldf_mc, &topfldb_mc, ssmb.mb, 
-										width<<1, 8);
-			dmcfieldi+= bidir_pred_sad( &botfldf_mc, &botfldb_mc, ssmb.mb, 
+			vmcf = framef_mc.var;
+			vmcr = frameb_mc.var;
+			vmci = bidir_pred_var( &framef_mc, &frameb_mc, ssmb.mb, width, 16 );
+
+			vmcfieldf = topfldf_mc.var + botfldf_mc.var;
+			vmcfieldr = topfldb_mc.var + botfldb_mc.var;
+			vmcfieldi = bidir_pred_var( &topfldf_mc, &topfldb_mc, ssmb.mb, 
+										width<<1, 8) +
+				        bidir_pred_var( &botfldf_mc, &botfldb_mc, ssmb.mb, 
 										width<<1, 8);
 
 			/* select prediction type of minimum distance from the
 			 * six candidates (field/frame * forward/backward/interpolated)
 			 */
-			if (dmci<dmcfieldi && dmci<dmcf && dmci<dmcfieldf
-				&& dmci<dmcr && dmci<dmcfieldr)
+			if (vmci<vmcfieldi && vmci<vmcf && vmci<vmcfieldf
+				  && vmci<vmcr && vmci<vmcfieldr)
 			{
 				/* frame, interpolated */
 				mbi->mb_type = MB_FORWARD|MB_BACKWARD;
 				mbi->motion_type = MC_FRAME;
-				vmc = bidir_pred_var( &framef_mc, &frameb_mc, ssmb.mb, width, 16);
+				vmc = vmci;
 			}
-			else if (dmcfieldi<dmcf && dmcfieldi<dmcfieldf
-					 && dmcfieldi<dmcr && dmcfieldi<dmcfieldr)
+			else if ( vmcfieldi<vmcf && vmcfieldi<vmcfieldf
+					   && vmcfieldi<vmcr && vmcfieldi<vmcfieldr)
 			{
 				/* field, interpolated */
 				mbi->mb_type = MB_FORWARD|MB_BACKWARD;
 				mbi->motion_type = MC_FIELD;
-				vmc =  bidir_pred_var( &topfldf_mc, &topfldb_mc, ssmb.mb, width<<1, 8);
-				vmc += bidir_pred_var( &botfldf_mc, &botfldb_mc, ssmb.mb, width<<1, 8);
+				vmc = vmcfieldi;
 			}
-			else if (dmcf<dmcfieldf && dmcf<dmcr && dmcf<dmcfieldr)
+			else if (vmcf<vmcfieldf && vmcf<vmcr && vmcf<vmcfieldr)
 			{
 				/* frame, forward */
 				mbi->mb_type = MB_FORWARD;
 				mbi->motion_type = MC_FRAME;
-				vmc = unidir_pred_var( &framef_mc, ssmb.mb, width, 16);
+				vmc = vmcf;
+
 			}
-			else if (dmcfieldf<dmcr && dmcfieldf<dmcfieldr)
+			else if ( vmcfieldf<vmcr && vmcfieldf<vmcfieldr)
 			{
 				/* field, forward */
 				mbi->mb_type = MB_FORWARD;
 				mbi->motion_type = MC_FIELD;
-				vmc =  unidir_pred_var( &topfldf_mc, ssmb.mb, width<<1, 8);
-				vmc += unidir_pred_var( &botfldf_mc, ssmb.mb, width<<1, 8);
-
+				vmc = vmcfieldf;
 			}
-			else if (dmcr<dmcfieldr)
+			else if (vmcr<vmcfieldr)
 			{
 				/* frame, backward */
 				mbi->mb_type = MB_BACKWARD;
 				mbi->motion_type = MC_FRAME;
-				vmc = unidir_pred_var( &frameb_mc, ssmb.mb, width, 16);
+				vmc = vmcr;
 			}
 			else
 			{
 				/* field, backward */
 				mbi->mb_type = MB_BACKWARD;
 				mbi->motion_type = MC_FIELD;
-				vmc =  unidir_pred_var( &topfldb_mc, ssmb.mb, width<<1, 8);
-				vmc += unidir_pred_var( &botfldb_mc, ssmb.mb, width<<1, 8);
+				vmc = vmcfieldr;
 
 			}
 		}
@@ -1478,6 +1468,7 @@ static void dpframe_estimate (
 		}
 	}
 
+	/* TODO: This is now likely to be obsolete... */
 	/* Compute L1 error for decision purposes */
 	local_dist = (*pbdist1)(
 		ref + (imins>>1) + (width<<1)*(jmins>>1),
@@ -2209,7 +2200,7 @@ static void fullsearch(
 			}
 		}
 	}
-
+	best.var = (*pdist2)(best.blk, ssblk->mb, lx, best.hx, best.hy, h);
 	*res = best;
 }
 
