@@ -383,7 +383,7 @@ void rc_init_pict(pict_data_s *picture)
 		T =  R/(Np+Nb*Kp*Xb/(Kb*Sp)) + 0.5;
 		break;
 	case B_TYPE:
-		d = d0pb;            // I and P frame share ratectl virtual buffer
+		d = d0pb;            // B and P frame share ratectl virtual buffer
 		avg_K = avg_KB;
 		Sb = Xb /* + avg_K * actsum) / 2.0 */;
 		T =  R/(Nb+Np*Kb*Xp/(Kp*Sb));

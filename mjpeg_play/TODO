@@ -1,5 +1,10 @@
 Fix all the BUGS (see BUGS) of course!
 
+IMMEDIATE
+
+Finish tidying up mplex so it meshes correctly with the sequence splitting
+support in mpeg2enc.
+
 TASKS OUTSTANDING
 
 Minor
