@@ -37,7 +37,7 @@
 static void print_usage() 
 {
   fprintf (stderr,
-	   "usage: yuvfps -r [NewFpsNum:NewFpsDen] [-s [InputFpsNum:InputFpsDen]] [-c] [-v -h]\n"
+	   "usage: yuvfps -r [NewFpsNum:NewFpsDen] [-s [InputFpsNum:InputFpsDen]] [-c] [-n] [-v -h]\n"
 	   "yuvfps resamples a yuv video stream read from stdin to a new stream, identical\n"
            "to the source with frames repeated/copied/removed written to stdout.\n"
            "\n"
@@ -167,31 +167,6 @@ int main (int argc, char *argv[])
 
   const static char *legal_flags = "r:s:cnv:h";
   int c ;
-
-  y4m_accept_extensions(1);
-
-  /* mjpeg tools global initialisations */
-  mjpeg_default_handler_verbosity (verbose);
-
-  /* Initialize input streams */
-  y4m_init_stream_info (&in_streaminfo);
-  y4m_init_stream_info (&out_streaminfo);
-
-  // ***************************************************************
-  // Get video stream informations (size, framerate, interlacing, aspect ratio).
-  // The streaminfo structure is filled in
-  // ***************************************************************
-  // INPUT comes from stdin, we check for a correct file header
-  if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
-    mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
-
-  if (y4m_si_get_plane_count(&in_streaminfo) != 3)
-     mjpeg_error_exit1("Only 3 plane formats supported");
-
-  /* Prepare output stream */
-  src_frame_rate = y4m_si_get_framerate( &in_streaminfo );
-  frame_rate = src_frame_rate ;
-  y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
   
   while ((c = getopt (argc, argv, legal_flags)) != -1) {
         switch (c)
@@ -226,6 +201,29 @@ int main (int argc, char *argv[])
           break;
         }
   }
+
+  y4m_accept_extensions(1);
+
+  /* mjpeg tools global initialisations */
+  mjpeg_default_handler_verbosity (verbose);
+
+  /* Initialize input streams */
+  y4m_init_stream_info (&in_streaminfo);
+  y4m_init_stream_info (&out_streaminfo);
+
+  // ***************************************************************
+  // Get video stream informations (size, framerate, interlacing, aspect ratio).
+  // The streaminfo structure is filled in
+  // ***************************************************************
+  // INPUT comes from stdin, we check for a correct file header
+  if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
+    mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
+  if (y4m_si_get_plane_count(&in_streaminfo) != 3)
+     mjpeg_error_exit1("Only 3 plane formats supported");
+
+  /* Prepare output stream */
+  src_frame_rate = y4m_si_get_framerate( &in_streaminfo );
+  y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
   
   /* Information output */
   mjpeg_info ("yuv2fps (version " YUVFPS_VERSION
