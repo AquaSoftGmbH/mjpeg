@@ -14,7 +14,8 @@ libavio_a_SOURCES = editlist.c lav_io.c avilib.c
 
 bin_PROGRAMS = \
 	lavplay   lavrec   lav2wav  lav2yuv lav2dfilter  lavaddwav \
-	lavvideo  lavtrans xlav  ypipe yuv2lav testrec v4l-conf
+	lavvideo  lavtrans xlav  ypipe yuv2lav testrec v4l-conf \
+	transist.flt
 
 lav_headers = lav_io.h editlist.h xlav.h avilib.h yuv4mpeg.h jpegutils.h
 
@@ -24,6 +25,9 @@ ypipe_LDADD =
 yuv2lav_SOURCES = yuv2lav.c jpegutils.c yuv4mpeg.c $(lav_headers)
 yuv2lav_LDADD = -L$(top_builddir)/lavtools -lavio $(MOVTAR_LIBS) \
        $(QUICKTIME_LIBS) $(JPEG_LIBS) 
+
+transist_flt_SOURCES = transist.flt.c yuv4mpeg.c ${lav_headers}
+transist_flt_LDADD =
 
 lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c  $(lav_headers)
 lavplay_LDADD = -L$(top_builddir)/mjpeg -lmjpeg $(PTHREAD_LIBS) \
