@@ -9,8 +9,6 @@ MJPEG_MICRO_VERSION=0
 MJPEG_VERSION=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION.$MJPEG_MICRO_VERSION
 
 AC_CONFIG_HEADERS([config.h])
-dnl Create an installable config header
-AX_CONFIG_PREFIXED_HEADER([mjpegtools-config.h], [MJPEGTOOLS], [config.h])
 
 AC_CANONICAL_HOST
 dnl CANONICAL-TARGET is only there because SDL's sdl.m4 is broken.  bleah.

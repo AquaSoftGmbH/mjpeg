@@ -14,7 +14,6 @@ config.sub
 confdefs.h
 ltmain.sh
 libtool
-mjpegtools-config.h
 mjpegtools*.tar.gz
 *mjpegtools*.deb
 mjpegtools_*.asc
@@ -29,5 +28,4 @@ mkinstalldirs
 compile
 mjpegtools.spec
 autom4te.cache
-autom4te-2.53.cache
 *-stamp
