@@ -33,7 +33,7 @@
 #include "yuv4mpeg.h"
 
 #define LUMA 16
-#define CROMA 128
+#define CHROMA 128
 
 /* some defintions */
 extern char *__progname;
@@ -46,15 +46,18 @@ struct area_s {
 
 struct color_yuv {
       int luma;       /**< the luma to use */
-      int croma_b;    /**< the croma Cb to use */
-      int croma_r;    /**< the croma Cr to use */
+      int chroma_b;    /**< the chroma Cb to use */
+      int chroma_r;    /**< the chroma Cr to use */
          };
 
 int verbose = 1;
 
 /* protoypes */
 static void print_usage();
+void process_commandline(int argc, char *argv[], struct area_s *inarea, 
+                   int *darker, int *copy_pixel, struct color_yuv *coloryuv);
 void fillarea(char area[20], struct area_s *inarea);
+void set_darker(struct area_s inarea, int horz, int vert, uint8_t *frame[], int darker);
 void set_inactive(struct area_s inarea, int horz, int vert, uint8_t *frame[], struct color_yuv *coloryuv);
 void set_yuvcolor(char area[20], struct color_yuv *coloryuv);
 
@@ -67,11 +70,82 @@ static void print_usage()
   fprintf(stderr, " -h -H            - print out this help\n");
   fprintf(stderr, " -i X+Y+XOFF+YOFF - the area which will be set inactive, from top left\n");
   fprintf(stderr, "                  - X=Width, Y=Height, XOFF=VerticalOffset, YOFF=HorizonalOffset\n");
-  fprintf(stderr, " -s luma,Cb,Cr    - set the filling color in yuv format");
+  fprintf(stderr, " -s luma,Cb,Cr    - set the filling color in yuv format\n");
+  fprintf(stderr, " -d num [1-100]   - set how much darker the area will be, in percent\n");
+  fprintf(stderr, " -c num           - copy num sourrounding lines into the area\n");
   fprintf(stderr, "\n");
   exit(1);
 }
 
+/** Here we process the command line options */
+void process_commandline(int argc, char *argv[], struct area_s *inarea, 
+                   int *darker, int *copy_pixel, struct color_yuv *coloryuv)
+{
+int c;
+char area [20];
+
+while ((c = getopt(argc, argv, "Hhv:i:s:d:c:")) != -1)
+  {
+  switch (c)
+    {
+       case 'v':
+         verbose = atoi(optarg);
+         if ( verbose < 0 || verbose > 2)
+           print_usage();
+         if (verbose == 2)
+           mjpeg_info("Set Verbose = %i", verbose);
+         break;
+       case 'i':
+         strncpy(area, optarg, 20); /* This part shows how to process */
+         fillarea(area, inarea);   /* command line options */
+         break;
+       case 's':
+         strncpy(area, optarg, 20); 
+         set_yuvcolor(area, coloryuv);
+         break;
+       case 'd':
+         *darker = atoi(optarg);
+         break;
+       case 'c':
+         *copy_pixel = atoi(optarg);
+         break;
+       case 'H':
+       case 'h':
+         print_usage();
+    }
+  }
+
+/* Checking if we have used the -i option */
+if ( ((*inarea).height == 0) && ((*inarea).width == 0) )
+  mjpeg_error_exit1("You have to use the -i option");
+
+/* Checking the range of the darker -d option */
+if ( (*darker < 0) || (*darker > 100) )
+  mjpeg_error_exit1("You can only make the area 1-100 percent darker");
+else
+  mjpeg_info("Setting the area %i percent darker", *darker);
+
+/* Checking the copy pixel option */
+if (*copy_pixel != 0)
+  {
+  if ( ((*inarea).height/2) < *copy_pixel)
+    {
+       mjpeg_error("You can only copy half of the height into the area"); 
+       mjpeg_error_exit1("lower the copy pixel value below: %i ", 
+                   ((*inarea).height/2));
+    }
+
+  if ( (*copy_pixel % 2) != 0)
+    mjpeg_error_exit1("you have to use a even number of lines to copy into the field");
+
+  if ( ((*inarea).height % *copy_pixel) != 0)  
+    mjpeg_error_exit1("the height has to be a multiply of the copy pixel value"); 
+
+  mjpeg_info("Number of rows using for coping into the area %i", *copy_pixel);
+  }
+
+}
+  
 /** Here we set the color to use for filling the area */
 void set_yuvcolor(char area[20], struct color_yuv *coloryuv)
 {
@@ -83,20 +157,20 @@ unsigned int u1, u2, u3;
   if ( 3 == i )
     {
       (*coloryuv).luma    = u1;
-      (*coloryuv).croma_b = u2;
-      (*coloryuv).croma_r = u3;
+      (*coloryuv).chroma_b = u2;
+      (*coloryuv).chroma_r = u3;
       if ( ((*coloryuv).luma > 235) || ((*coloryuv).luma < 16) )
         mjpeg_error_exit1("out of range value for luma given: %i, \n"
                           " allowed values 16-235", (*coloryuv).luma);
-      if ( ((*coloryuv).croma_b > 240) || ((*coloryuv).croma_b < 16) )
+      if ( ((*coloryuv).chroma_b > 240) || ((*coloryuv).chroma_b < 16) )
         mjpeg_error_exit1("out of range value for Cb given: %i, \n"
-                          " allowed values 16-240", (*coloryuv).croma_b);
-      if ( ((*coloryuv).croma_r > 240) || ((*coloryuv).croma_r < 16) )
+                          " allowed values 16-240", (*coloryuv).chroma_b);
+      if ( ((*coloryuv).chroma_r > 240) || ((*coloryuv).chroma_r < 16) )
         mjpeg_error_exit1("out of range value for Cr given: %i, \n"
-                          " allowed values 16-240", (*coloryuv).croma_r);
+                          " allowed values 16-240", (*coloryuv).chroma_r);
 
        mjpeg_info("got luma %i, Cb %i, Cr %i ", 
-                 (*coloryuv).luma, (*coloryuv).croma_b, (*coloryuv).croma_r );
+                 (*coloryuv).luma, (*coloryuv).chroma_b, (*coloryuv).chroma_r );
     }
   else 
     mjpeg_error_exit1("Wrong number of colors given, %s", area);
@@ -115,15 +189,145 @@ unsigned int u1, u2, u3, u4;
     {
        (*inarea).width = u1;
        (*inarea).height = u2;
-       (*inarea).voffset = u3;
-       (*inarea).hoffset = u4;
+       (*inarea).hoffset = u3;
+       (*inarea).voffset = u4;
+
+      if ( (((*inarea).width % 2) != 0) || (((*inarea).height % 2) != 0) ||
+           (((*inarea).hoffset% 2)!= 0) || (((*inarea).voffset% 2) != 0)   )
+        mjpeg_error_exit1("At least one argument no even number");
+
       if (verbose >= 1)
          mjpeg_info("got the area : W %i, H %i, Xoff %i, Yoff %i",
-         (*inarea).width,(*inarea).height,(*inarea).voffset,(*inarea).hoffset); 
+         (*inarea).width,(*inarea).height,(*inarea).hoffset,(*inarea).voffset); 
     }
   else 
     mjpeg_error_exit1("Wrong inactive sting given: %s", area);
 
+}
+
+/** Here we copy the surrounding information into the area */
+void copy_area(struct area_s inarea, int horz, int vert, uint8_t *frame[], 
+               int copy_pixel)
+{
+uint8_t *plane_l, *plane_cb, *plane_cr;
+unsigned char *temp_pix_l, *temp_pix_cb, *temp_pix_cr;
+int i,j, offset_pix, copy_offset_pix, chroma_lines;
+
+temp_pix_l  = (unsigned char *)malloc(inarea.width);
+temp_pix_cb = (unsigned char *)malloc(inarea.width/2);
+temp_pix_cr = (unsigned char *)malloc(inarea.width/2);
+
+plane_l  = frame[0];
+plane_cb = frame[1];
+plane_cr = frame[2];
+
+/* In the first step we copy the luma data*/
+offset_pix = (horz * inarea.voffset) + inarea.hoffset;
+i=0;
+while (i < (inarea.height/2)) /* copying lins from the top down */
+  {
+  copy_offset_pix = (horz * (inarea.voffset - copy_pixel) + inarea.hoffset);
+
+  for (j = 0; j < copy_pixel; j++)
+    {
+       memcpy(temp_pix_l, (plane_l+copy_offset_pix+(j*horz)), inarea.width);
+       memcpy((plane_l+offset_pix), temp_pix_l, inarea.width);
+       offset_pix += horz;
+    } 
+    i += copy_pixel; /* we copy more lines in one step */
+  }
+
+while (i < inarea.height) /* copying lines from the bottom up */
+  {
+  copy_offset_pix = (horz * (inarea.voffset + inarea.height) + inarea.hoffset);
+
+  for (j = 0; j < copy_pixel; j++)
+    {
+       memcpy(temp_pix_l, (plane_l+copy_offset_pix+(j*horz)), inarea.width);
+       memcpy((plane_l+offset_pix), temp_pix_l, inarea.width);
+       offset_pix += horz;
+    } 
+    i += copy_pixel; /* we copy more lines in one step */
+  }
+
+/* In the 2nd step we copy the chroma data */
+offset_pix = (horz * inarea.voffset)/4 + (inarea.hoffset/2);
+
+if ((inarea.height%4) != 0)
+    chroma_lines = ((inarea.height/2 -1) /2);
+else 
+    chroma_lines = inarea.height /4;
+
+i=0;
+while ( i < chroma_lines)
+  {
+  copy_offset_pix = ((horz/2) * (inarea.voffset/2 + inarea.height/2)
+                    + inarea.hoffset/2);
+                                                                                
+  for (j = 0; j < (copy_pixel/2); j++)
+    {
+       memcpy(temp_pix_cb,(plane_cb+copy_offset_pix+(j*horz)),(inarea.width/2));
+       memcpy((plane_cb+offset_pix), temp_pix_cb, (inarea.width/2));
+       memcpy(temp_pix_cr,(plane_cr+copy_offset_pix+(j*horz)),(inarea.width/2));
+       memcpy((plane_cr+offset_pix), temp_pix_cr, (inarea.width/2));
+       offset_pix += (horz/2);
+    }
+    i += (copy_pixel/2); /* we copy more lines in one step */
+  }
+while ( i < (inarea.height/2))
+  {
+  copy_offset_pix = ((horz/2) * (inarea.voffset/2 + inarea.height/2)
+                    + inarea.hoffset/2);
+                                                                                
+  for (j = 0; j < (copy_pixel/2); j++)
+    {
+       memcpy(temp_pix_cb,(plane_cb+copy_offset_pix+(j*horz)),(inarea.width/2));       memcpy((plane_cb+offset_pix), temp_pix_cb, (inarea.width/2));
+       memcpy(temp_pix_cr,(plane_cr+copy_offset_pix+(j*horz)),(inarea.width/2));       memcpy((plane_cr+offset_pix), temp_pix_cr, (inarea.width/2));
+       offset_pix += (horz/2);
+    }
+    i += (copy_pixel/2); /* we copy more lines in one step */
+  }
+
+free(temp_pix_l);
+temp_pix_l = NULL;
+free(temp_pix_cb);
+temp_pix_cb = NULL;
+free(temp_pix_cr);
+temp_pix_cr = NULL;
+}
+
+/** Here we set the area darker, only touching luma */
+void set_darker(struct area_s inarea, int horz, int vert, uint8_t *frame[],
+                int darker)
+{
+int i, n, hoffset_pix; 
+uint8_t *plane_l;
+unsigned char *temp_pix;
+float dark;
+
+dark  = 1 - (darker* 0.01);
+
+temp_pix = (unsigned char *)malloc(1);
+*temp_pix=0;
+
+plane_l  = frame[0];
+
+hoffset_pix = (horz * inarea.voffset) + inarea.hoffset;
+
+for (i = 0; i < inarea.height; i++)
+  {
+    for (n = 0; n < inarea.width; n++)
+      {
+         memcpy( temp_pix, (plane_l+hoffset_pix), 1);
+         *temp_pix = (int)((*temp_pix - 16) * dark + 16);
+         memset( (plane_l + hoffset_pix), *temp_pix, 1);
+         hoffset_pix++;
+      }
+    hoffset_pix += (horz - inarea.width) ;
+  }
+
+free(temp_pix);
+temp_pix=NULL;
 }
 
 /** Here is the first stage of setting the stream to black */
@@ -137,23 +341,23 @@ plane_l = frame[0];
 plane_cb= frame[1];
 plane_cr= frame[2];
 
-/* Number of pixles for the luma */
-hoffset_pix = (horz * (inarea.hoffset) ) + inarea.voffset;
+/* Number of pixels for the luma */
+hoffset_pix = (horz * inarea.voffset) + inarea.hoffset;
 
-for (i = 0; i < (inarea.height); i++) /* Setting the Luma */
+for (i = 0; i < inarea.height; i++) /* Setting the Luma */
   {
     memset( (plane_l + hoffset_pix), (*coloryuv).luma , (inarea.width) );
-    hoffset_pix = hoffset_pix + horz;
-  }
+    hoffset_pix += horz;
+  } 
 
-/* Number of pixles croma */
-hoffset_pix = ((horz / 2)  * (inarea.hoffset/2) ) + (inarea.voffset / 2 );
+/* Number of pixels chroma */
+hoffset_pix = ((horz / 2)  * (inarea.voffset/2) ) + (inarea.hoffset / 2 );
 
-for (i = 0; i < ((inarea.height/2)); i++) /*Setting the croma */
+for (i = 0; i < (inarea.height/2); i++) /*Setting the chroma */
   {
-    memset( (plane_cb + hoffset_pix), (*coloryuv).croma_b, (inarea.width/2) );
-    memset( (plane_cr + hoffset_pix), (*coloryuv).croma_r, (inarea.width/2) );
-    hoffset_pix = hoffset_pix + (horz/2);
+    memset( (plane_cb + hoffset_pix), (*coloryuv).chroma_b, (inarea.width/2) );
+    memset( (plane_cr + hoffset_pix), (*coloryuv).chroma_r, (inarea.width/2) );
+    hoffset_pix += (horz/2);
   }
 
 }
@@ -161,53 +365,28 @@ for (i = 0; i < ((inarea.height/2)); i++) /*Setting the croma */
 /** MAIN */
 int main( int argc, char **argv)
 {
-int c,i, frame_count;
+int i, frame_count;
 int horz, vert;      /* width and height of the frame */
 uint8_t *frame[3];  /*pointer to the 3 color planes of the input frame */
-char area [20];
 struct area_s inarea;
 struct color_yuv coloryuv;
 int input_fd = 0;    /* std in */
 int output_fd = 1;   /* std out */
+int darker = 0;  /* how much darker should the image be */
+int copy_pixel = 0; /* how much pixels we should use for filling up the area */
 y4m_stream_info_t istream, ostream;
 y4m_frame_info_t iframe;
 
 inarea.width=0; inarea.height=0; inarea.voffset=0; inarea.hoffset=0;
 
 coloryuv.luma    = LUMA;  /*Setting the luma to black */
-coloryuv.croma_b = CROMA; /*Setting the croma to center, means white */
-coloryuv.croma_r = CROMA; /*Setting the croma to center, means white */
+coloryuv.chroma_b = CHROMA; /*Setting the chroma to center, means white */
+coloryuv.chroma_r = CHROMA; /*Setting the chroma to center, means white */
 
 (void)mjpeg_default_handler_verbosity(verbose);
 
-  while ((c = getopt(argc, argv, "Hhv:i:s:")) != -1)
-    {
-    switch (c)
-      {
-         case 'v':
-           verbose = atoi(optarg);
-           if ( verbose < 0 || verbose > 2)
-             print_usage();
-           if (verbose == 2)
-             mjpeg_info("Set Verbose = %i", verbose);
-           break;
-         case 'i':
-           strncpy(area, optarg, 20); /* This part shows how to process */
-           fillarea(area, &inarea);   /* command line options */
-           break;
-         case 's':
-           strncpy(area, optarg, 20); 
-           set_yuvcolor(area, &coloryuv);
-           break;
-         case 'H':
-         case 'h':
-           print_usage();
-      }
-    }
-
-  /* Checking if we have used the -i option */
-  if ( (inarea.height == 0) && (inarea.width == 0) )
-    mjpeg_error_exit1("You have to use the -i option");
+  /* processing commandline */
+  process_commandline(argc, argv, &inarea, &darker, &copy_pixel, &coloryuv);
 
   y4m_init_stream_info(&istream);
   y4m_init_stream_info(&ostream);
@@ -226,11 +405,8 @@ coloryuv.croma_r = CROMA; /*Setting the croma to center, means white */
       /* Here we write the new output header to the output fd */
       y4m_write_stream_header(output_fd, &ostream);
 
-      horz = istream.width;   /* get the width of the frame */
-      vert = istream.height;  /* get the height of the frame */
-
-      mjpeg_info("\nWidth %i \n", inarea.width );
-      mjpeg_info("\nheight %i \n", inarea.height );
+      horz = y4m_si_get_width(&istream);   /* get the width of the frame */
+      vert = y4m_si_get_height(&istream);  /* get the height of the frame */
 
       if ( (inarea.width + inarea.voffset) > horz)
       mjpeg_error_exit1("Input width and offset larger than framewidth,exit");
@@ -256,13 +432,18 @@ coloryuv.croma_r = CROMA; /*Setting the croma to center, means white */
            frame_count++; 
 
            /* You can do something usefull here */
-           set_inactive(inarea, horz, vert, frame, &coloryuv);
+           if (darker != 0)
+             set_darker(inarea, horz, vert, frame, darker);
+           else if (copy_pixel != 0)
+             copy_area(inarea, horz, vert, frame, copy_pixel);
+           else
+             set_inactive(inarea, horz, vert, frame, &coloryuv);
 
            /* Now we put out the read frame */
            y4m_write_frame(output_fd, &ostream, &iframe, frame);
         }
 
-      /* Writing the headers that show other programs that the stream ends */
+      /* Cleaning up the data structures */
       y4m_fini_stream_info(&istream);
       y4m_fini_stream_info(&ostream);
       y4m_fini_frame_info(&iframe);
