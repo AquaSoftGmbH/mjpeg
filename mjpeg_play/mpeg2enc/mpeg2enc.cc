@@ -270,7 +270,7 @@ void MPEG2EncCmdLineOptions::Usage()
 "    the --bitrate value sets an *upper-bound* video data-rate\n"
 "--output|-o pathname\n"
 "    Pathname of output file or fifo (REQUIRED!!!)\n"
-"--vcd-still-size|-T size\n"
+"--target-still-size|-T size\n"
 "    Size in KB of VCD stills\n"
 "--interlace-mode|-I num\n"
 "    Sets MPEG 2 motion estimation and encoding modes:\n"
