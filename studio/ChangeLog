@@ -1,5 +1,13 @@
-Updates from 0.1.6 to current
+Updates from 0.1.7 to current
 -----------------------------
+
+Updates from 0.1.6 to 0.1.7
+---------------------------
+* some GList related preferences save bugfixes
+* bugfixes where the extension of a file (.mp2, .m1v) precedes the filename,
+  but that path doesn't exist
+* removed the last pointers to 1.4.x versions 
+* fixed a error for the LAV* env variables
 * some GList related preferences save bugfixes
 * bugfixes where the extension of a file (.mp2, .m1v) precedes the filename,
   but that path doesn't exist
