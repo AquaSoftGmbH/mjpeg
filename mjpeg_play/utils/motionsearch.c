@@ -51,7 +51,7 @@ void variance(uint8_t *,int ,int, unsigned int *,unsigned int *);
 
 
 
-#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
+#if defined(HAVE_ASM_MMX)
 #include "mmxsse/mmxsse_motion.h"
 #endif
 
