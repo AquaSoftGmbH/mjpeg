@@ -963,6 +963,7 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
 {
    video_playback_setup *settings = (video_playback_setup *)info->settings;
    //EditList *editlist = info->editlist;
+   struct video_capability vc;
   
 #ifdef HAVE_V4L
    if (info->playback_mode == 'H') /* only when doing on-screen (hardware-decoded) output */
@@ -977,11 +978,69 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
          lavplay_msg(LAVPLAY_MSG_ERROR, info, "Can't open X11 display %s\n", info->display);
          return 0;
       }
+      if (ioctl(settings->video_fd, VIDIOCGCAP, &vc) < 0)
+      {
+         lavplay_msg(LAVPLAY_MSG_ERROR, info,
+            "Error getting device capabilities: %s",
+            sys_errlist[errno]);
+         return 0;
+      }
+      /* hack for wrong return value of marvel cards..... */
+      if (vc.maxwidth!=640 && vc.maxwidth!=768)
+         vc.maxwidth=720;
       XGetWindowAttributes(dpy, DefaultRootWindow(dpy), &wts);
-      vw.x = info->soft_full_screen ? 0: (wts.width-704)/2;
+      vw.x = info->soft_full_screen ? 0: (wts.width-vc.maxwidth)/2;
+      if (info->vertical_offset != VALUE_NOT_FILLED && !info->soft_full_screen)
+      {
+         if (info->vertical_offset < 0 ||
+             info->vertical_offset > 2*vw.y)
+         {
+            lavplay_msg(LAVPLAY_MSG_ERROR, info,
+               "Y-offset (%d) is out of range",
+               info->vertical_offset);
+            return 0;
+         }
+         vw.y = info->vertical_offset;
+      }
+      if (info->horizontal_offset != VALUE_NOT_FILLED && !info->soft_full_screen)
+      {
+         if (info->horizontal_offset < 0 ||
+             info->horizontal_offset > 2*vw.x)
+         {
+            lavplay_msg(LAVPLAY_MSG_ERROR, info,
+               "X-offset (%d) is out of range",
+               info->horizontal_offset);
+            return 0;
+         }
+         vw.x = info->horizontal_offset;
+      }
       vw.y = info->soft_full_screen ? 0: (wts.height-((bp->norm == 0) ? 576 : 480))/2;
-      vw.width = info->soft_full_screen ? 1024 : 704;
-      vw.height = info->soft_full_screen ? 768 : (bp->norm == 0) ? 576 : 480;
+      vw.width = info->soft_full_screen ? wts.width : vc.maxwidth;
+      if (info->sdl_width && !info->soft_full_screen)
+      {
+         if (info->sdl_width < 0 ||
+             info->sdl_width > wts.width)
+         {
+            lavplay_msg(LAVPLAY_MSG_ERROR, info,
+               "Screen width (%d) out of range",
+               info->sdl_width);
+            return 0;
+         }
+         vw.width = info->sdl_width;
+      }
+      vw.height = info->soft_full_screen ? wts.height : ((bp->norm == 0) ? 576 : 480);
+      if (info->sdl_height && !info->soft_full_screen)
+      {
+         if (info->sdl_height < 0 ||
+             info->sdl_height > wts.height)
+         {
+            lavplay_msg(LAVPLAY_MSG_ERROR, info,
+               "Screen height (%d) out of range",
+               info->sdl_height);
+            return 0;
+         }
+         vw.height = info->sdl_height;
+      }
       vw.clips = NULL;
       vw.clipcount = 0;
       vw.chromakey = -1;
