@@ -72,6 +72,7 @@ void print_machine_data(char section[LONGOPT], struct machine *pointm);
 void do_preset_mpeg2(struct encodingoptions *point);
 void do_preset_vcd(struct encodingoptions *point);
 void do_preset_svcd(struct encodingoptions *point);
+void do_preset_dvd(struct encodingoptions *point);
 void do_preset_divx(struct encodingoptions *point);
 void do_preset_yuv2lav(struct encodingoptions *point);
 void change_four(GtkAdjustment *adjust_scale);
@@ -151,7 +152,7 @@ int i;
 
   (*point).addoutputnorm  = 0;
   (*point).audiobitrate   = 224;
-  (*point).outputbitrate  = 0;
+  (*point).outputbitrate  = 441;
   (*point).use_yuvdenoise = 0;
   (*point).deinterlace    = 0;
   (*point).sharpness      = 125;
@@ -171,7 +172,8 @@ int i;
   sprintf((*point).output_size,"as is");
 }
 
-/* Set the machine struct to a predefines value */
+/** Set the machine struct to a predefines value 
+ @param point points to the struct to set to the defaults */
 void set_machine_default(struct machine *point)
 {
   (*point).lav2wav   = 0;
@@ -184,7 +186,7 @@ void set_machine_default(struct machine *point)
   (*point).yuv2lav   = 0;
 }
 
-/* Set up the default values for the distributed encoding */
+/** Set up the default values for the distributed encoding */
 void set_distributed()
 {
 struct machine *point;
@@ -193,9 +195,13 @@ struct machine *point;
   set_machine_default(point);  /* set struct to the defaults */
   point = &machine4mpeg2;
   set_machine_default(point);  /* set struct to the defaults */
+  point = &machine4generic;
+  set_machine_default(point);  /* set struct to the defaults */
   point = &machine4vcd;
   set_machine_default(point);  /* set struct to the defaults */
   point = &machine4svcd;
+  set_machine_default(point);  /* set struct to the defaults */
+  point = &machine4dvd;
   set_machine_default(point);  /* set struct to the defaults */
   point = &machine4divx;
   set_machine_default(point);  /* set struct to the defaults */
@@ -204,7 +210,7 @@ struct machine *point;
 
 }
 
-/* Set the defaults for the scripting */
+/** Set the defaults values for the scripting */
 void set_scripting_defaults (void)
 {
 int i; 
@@ -216,27 +222,32 @@ for (i=0; i < FILELEN; i++)
 
   script.mpeg1   = 0;
   script.mpeg2   = 0;
+  script.generic = 0;
   script.vcd     = 0;
   script.svcd    = 0;
+  script.dvd     = 0;
   script.divx    = 0;
   script.yuv2lav = 0;
 }
 
-/* set some mpeg2 specific options */
+/** set some mpeg2 specific options
+ @param point points to the struct we use */
 void do_preset_mpeg2(struct encodingoptions *point)
 {
   (*point).muxformat = 3;
   (*point).bitrate = 2500;
 }
 
-/* set some VCD specific options */
+/** set some VCD specific options
+ @param point points to the struct we use */
 void do_preset_vcd(struct encodingoptions *point)
 {
   (*point).muxformat   = 1;
   sprintf((*point).forcevcd,"-V");
 }
 
-/* set some SVCD specific options */
+/** set some SVCD specific options
+ @param point points to the struct we use */
 void do_preset_svcd(struct encodingoptions *point)
 {
   (*point).muxformat = 4;
@@ -245,7 +256,16 @@ void do_preset_svcd(struct encodingoptions *point)
   (*point).bitrate = 2500;
 }
 
-/* set some divx specific options */
+/** set some DVD specific options
+ @param point points to the struct we use */
+void do_preset_dvd(struct encodingoptions *point)
+{
+  (*point).outputbitrate = 480;
+  (*point).muxformat = 8;
+}
+
+/** set some divx specific options
+ @param point points to the struct we use */
 void do_preset_divx(struct encodingoptions *point)
 {
   (*point).audiobitrate = 0;
@@ -253,7 +273,8 @@ void do_preset_divx(struct encodingoptions *point)
   sprintf((*point).codec,"DIV3");
 }
 
-/* set some yuv2lav specific options */
+/** set some yuv2lav specific options
+ @param point points to the struct we use */
 void do_preset_yuv2lav(struct encodingoptions *point)
 {
   (*point).qualityfactor = 80;
@@ -450,8 +471,6 @@ int i;
 
   if (-1 != (i = cfg_get_int(section,"Encode_Outputbitrate")))
         (*point).outputbitrate = i;
-  else
-        (*point).outputbitrate = 441;
 
   if (NULL != (val = cfg_get_str(section,"Encode_Force_Stereo")))
     if ( 0 != strcmp(val,"as is"))
@@ -507,7 +526,7 @@ int i;
         (*point).muxformat = i;
 
   if (NULL != (val = cfg_get_str(section,"Encode_Mux_VBR")))
-    if ( 0 != strcmp(val,"as is"))
+    if ( 0 != strcmp(val,"from stream"))
       sprintf((*point).muxvbr, val);
 
   if (-1 != (i = cfg_get_int(section,"Encode_Stream_Datarate")))
@@ -543,6 +562,10 @@ char *val;
     if ( i >= 0 || i <= 8)
       script.mpeg2 = i;;
 
+  if ( -1 != (i = cfg_get_int("Scriptdata","Script_GENERIC")))
+    if ( i >= 0 || i <= 8)
+      script.generic = i;;
+
   if ( -1 != (i = cfg_get_int("Scriptdata","Script_VCD")))
     if ( i >= 0 || i <= 8)
       script.vcd = i;;
@@ -550,6 +573,10 @@ char *val;
   if ( -1 != (i = cfg_get_int("Scriptdata","Script_SVCD")))
     if ( i >= 0 || i <= 8)
       script.svcd = i;;
+
+  if ( -1 != (i = cfg_get_int("Scriptdata","Script_DVD")))
+    if ( i >= 0 || i <= 8)
+      script.dvd = i;;
 
   if ( -1 != (i = cfg_get_int("Scriptdata","Script_DIVX")))
     if ( i >= 0 || i <= 8)
@@ -676,6 +703,10 @@ int have_config;
   set_structs_default(point);  /* set struct to the defaults */
   do_preset_mpeg2(point);     /* set some mpeg2 specific options */
 
+  point = &encoding_gmpeg;
+  set_structs_default(point);  /* set struct to the defaults */
+  do_preset_mpeg2(point);     /* set some mpeg2 specific options */
+
   point = &encoding_vcd;
   set_structs_default(point);  /* set struct to the defaults */
   do_preset_vcd(point);     /* set some VCD specific options */
@@ -683,6 +714,10 @@ int have_config;
   point = &encoding_svcd;
   set_structs_default(point);  /* set struct to the defaults */
   do_preset_svcd(point);     /* set some SVCD specific options */
+
+  point = &encoding_dvd;
+  set_structs_default(point);  /* set struct to the defaults */
+  do_preset_dvd(point);     /* set some DVD specific options */
 
   point = &encoding_divx;
   set_structs_default(point);  /* set struct to the defaults */
@@ -715,6 +750,12 @@ int have_config;
   if (verbose)
     print_encoding_options(section,point);
 
+  strncpy(section,"GENERIC",LONGOPT);
+  point = &encoding_gmpeg; 
+  load_section(section,point);
+  if (verbose)
+    print_encoding_options(section,point);
+
   strncpy(section,"VCD",LONGOPT);
   point = &encoding_vcd; 
   load_section(section,point);
@@ -723,6 +764,12 @@ int have_config;
 
   strncpy(section,"SVCD",LONGOPT);
   point = &encoding_svcd; 
+  load_section(section,point);
+  if (verbose)
+    print_encoding_options(section,point);
+
+  strncpy(section,"DVD",LONGOPT);
+  point = &encoding_dvd; 
   load_section(section,point);
   if (verbose)
     print_encoding_options(section,point);
@@ -755,6 +802,12 @@ int have_config;
   if (verbose)
     print_machine_data(section,pointm);
 
+  strncpy(section,"Machines4GENERIC",LONGOPT);
+  pointm = &machine4mpeg2; 
+  load_machine_data(section, pointm);
+  if (verbose)
+    print_machine_data(section,pointm);
+
   strncpy(section,"Machines4VCD",LONGOPT);
   pointm = &machine4vcd; 
   load_machine_data(section, pointm);
@@ -762,6 +815,12 @@ int have_config;
     print_machine_data(section,pointm);
 
   strncpy(section,"Machines4SVCD",LONGOPT);
+  pointm = &machine4svcd; 
+  load_machine_data(section, pointm);
+  if (verbose)
+    print_machine_data(section,pointm);
+
+  strncpy(section,"Machines4DVD",LONGOPT);
   pointm = &machine4svcd; 
   load_machine_data(section, pointm);
   if (verbose)
@@ -929,10 +988,14 @@ char test[50];
   save_machine_section(fp,point,"Machines4MPEG1");
   point = &machine4mpeg2;
   save_machine_section(fp,point,"Machines4MPEG2");
+  point = &machine4generic;
+  save_machine_section(fp,point,"Machines4GENERIC");
   point = &machine4vcd;
   save_machine_section(fp,point,"Machines4VCD");
   point = &machine4svcd;
   save_machine_section(fp,point,"Machines4SVCD");
+  point = &machine4dvd;
+  save_machine_section(fp,point,"Machines4DVD");
   point = &machine4divx;
   save_machine_section(fp,point,"Machines4DIVX");
   point = &machine4yuv2lav;
@@ -950,8 +1013,10 @@ void save_script_data(FILE *fp, char section[LONGOPT])
   fprintf(fp, "Script_distributed = %i\n", script_use_distributed);
   fprintf(fp, "Script_MPEG1 = %i\n", script.mpeg1);
   fprintf(fp, "Script_MPEG2 = %i\n", script.mpeg2);
+  fprintf(fp, "Script_GENERIC = %i\n", script.generic);
   fprintf(fp, "Script_VCD = %i\n", script.vcd);
   fprintf(fp, "Script_SVCD = %i\n", script.svcd);
+  fprintf(fp, "Script_DVD = %i\n", script.dvd);
   fprintf(fp, "Script_DIVX = %i\n", script.divx);
   fprintf(fp, "Script_YUV2LAV = %i\n", script.yuv2lav);
 
@@ -993,11 +1058,17 @@ FILE *fp;
   point = &encoding2; 
   save_section(fp,point,"MPEG2");
  
+  point = &encoding_gmpeg; 
+  save_section(fp,point,"GENERIC");
+ 
   point = &encoding_vcd; 
   save_section(fp,point,"VCD");
  
   point = &encoding_svcd; 
   save_section(fp,point,"SVCD");
+ 
+  point = &encoding_dvd; 
+  save_section(fp,point,"DVD");
  
   point = &encoding_divx; 
   save_section(fp,point,"DIVX");

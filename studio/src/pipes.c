@@ -17,6 +17,7 @@
  */
 
 #ifdef HAVE_CONFIG_H
+#define HAVE_STDINT_H
 #include "config.h"
 #endif
 

@@ -124,7 +124,8 @@ GtkWidget *combo_entry_thhold, *combo_entry_average;
 /* =============================================================== */
 /* Start of the code */
 
-/* Set the tempenco struct to defined values */
+/** Set the tempenco struct to defined values, the struct
+    holds the temporal values */
 void init_tempenco(gpointer task)
 {
   sprintf(tempenco.notblacksize,"%s",(*point).notblacksize);
@@ -231,7 +232,10 @@ void show_data_mpeg2enc(gpointer task)
 {
 char val[LONGOPT];
 
-  sprintf(val,"%i",tempenco.bitrate);
+  if (tempenco.bitrate == 0)
+    sprintf(val,"default");
+  else 
+    sprintf(val,"%i",tempenco.bitrate);
   gtk_entry_set_text(GTK_ENTRY(combo_entry_videobitrate),val);
 
   if (tempenco.qualityfactor != 0)
@@ -607,17 +611,10 @@ void set_scalerstrings (GtkWidget *widget, gpointer data)
 
   if (data == "SCALEROUTPUT")
   {
-    if (strcmp(test,"as is") != 0 )
-      {
-      if ( strcmp(test,"VCD") == 0)
-      sprintf(tempenco.output_size,"%s", test);
-    else if ( strcmp(test,"SVCD") == 0)
-      sprintf(tempenco.output_size,"%s", test);
-    else if ( strncmp(test,"INTERLACED_",11) == 0)
-      sprintf(tempenco.output_size,"%s", test);
+    if (strcmp(test,"as is") == 0 )
+      sprintf(tempenco.output_size,"as is");
     else
-      sprintf(tempenco.output_size,"SIZE_%s", test);
-      }
+      sprintf(tempenco.output_size,"%s", test);
 
     if (verbose)
       printf(" selected yuvscaler output size: %s \n", tempenco.output_size);
@@ -633,7 +630,7 @@ i=0;
 
   test = gtk_entry_get_text(GTK_ENTRY(widget));
 
-  if ( strcmp(test, "disabled") == 0 )
+  if ( strcmp(test, "default") == 0 )
     tempenco.bitrate = 0;
   else
     tempenco.bitrate = atoi ( test );
@@ -1500,7 +1497,7 @@ GList *qualityfactors = NULL;
 GList *minGop = NULL;
 GList *maxGop = NULL;
 
-   vbitrate = g_list_append (vbitrate, "disabled");
+   vbitrate = g_list_append (vbitrate, "default");
    vbitrate = g_list_append (vbitrate, "1152");
    vbitrate = g_list_append (vbitrate, "1300");
    vbitrate = g_list_append (vbitrate, "1500");
@@ -1982,10 +1979,14 @@ if (g_list_length (yuv2lav_interlace) == 0)
     point = &encoding;
   else if (strcmp ((char*)data,"MPEG2") == 0)
     point = &encoding2;
+  else if (strcmp ((char*)data,"GENERIC") == 0)
+    point = &encoding_gmpeg;
   else if (strcmp ((char*)data,"VCD") == 0)
     point = &encoding_vcd;
   else if (strcmp ((char*)data,"SVCD") == 0)
     point = &encoding_svcd;
+  else if (strcmp ((char*)data,"DVD") == 0)
+    point = &encoding_dvd;
   else if (strcmp ((char*)data,"DivX") == 0)
     point = &encoding_divx;
   else if (strcmp ((char*)data,"MJPEG") == 0)

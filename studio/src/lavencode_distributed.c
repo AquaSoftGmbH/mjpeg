@@ -824,10 +824,14 @@ int i;
     point = &machine4mpeg1;
   if ((strcmp((char*)data,"MPEG2") == 0) && (enhanced_settings == 1))
     point = &machine4mpeg2;
+  if ((strcmp((char*)data,"GENERIC") == 0) && (enhanced_settings == 1))
+    point = &machine4mpeg2;
   if ((strcmp((char*)data,"VCD") == 0)   && (enhanced_settings == 1))
     point = &machine4vcd;
   if ((strcmp((char*)data,"SVCD") == 0)  && (enhanced_settings == 1))
     point = &machine4svcd;
+  if ((strcmp((char*)data,"DVD") == 0)  && (enhanced_settings == 1))
+    point = &machine4dvd;
   if ((strcmp((char*)data,"DivX") == 0)  && (enhanced_settings == 1))
     point = &machine4divx;
   if ((strcmp((char*)data,"MJPEG") == 0) && (enhanced_settings == 1))

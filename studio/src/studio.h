@@ -89,11 +89,13 @@ struct encodingoptions{
              /* for the other options needed for divx, other fields are used */
                       };
 /************************* END *********************/
-struct encodingoptions encoding;  /* for mpeg1 */
-struct encodingoptions encoding2; /* for mpeg2 */
-struct encodingoptions encoding_vcd; /* for mpeg2 */
-struct encodingoptions encoding_svcd; /* for mpeg2 */
-struct encodingoptions encoding_divx; /* for divx */
+struct encodingoptions encoding;         /* for mpeg1 */
+struct encodingoptions encoding2;        /* for mpeg2 */
+struct encodingoptions encoding_gmpeg;   /* for general mpeg */
+struct encodingoptions encoding_vcd;     /* for vcd */
+struct encodingoptions encoding_svcd;    /* for svcd */
+struct encodingoptions encoding_dvd;     /* for dvd */
+struct encodingoptions encoding_divx;    /* for divx */
 struct encodingoptions encoding_yuv2lav; /* for yuv2lav */
 
 /* Struct that holds the machine that thas to do the task */
@@ -109,8 +111,10 @@ struct machine {  int lav2wav;
 /************************* END *********************/
 struct machine machine4mpeg1;
 struct machine machine4mpeg2;
+struct machine machine4generic;
 struct machine machine4vcd;
 struct machine machine4svcd;
+struct machine machine4dvd;
 struct machine machine4divx;
 struct machine machine4yuv2lav;
 
@@ -121,8 +125,10 @@ int enhanced_settings; /*use a different set of machines for every task (rsh)*/
 struct f_script {
                 int mpeg1;    /* Bit 0 (1) = Audio */
                 int mpeg2;    /* Bit 1 (2) = Video */
-                int vcd;      /* Bit 2 (4) = Mplex */
-                int svcd;     /* Bit 3 (8) = Full  */
+                int generic;  /* Bit 2 (4) = Mplex */
+                int vcd;      /* Bit 3 (8) = Full  */  
+                int svcd;
+                int dvd;
                 int divx;
                 int yuv2lav;
               };
