@@ -89,7 +89,7 @@ static int param_searchrad  = 16;
 static int param_mpeg       = 1;
 static int param_aspect_ratio = 0;
 static int param_frame_rate  = 0;
-static int param_fieldenc   = 0;  /* 0: progressive, 1: bottom first, 2: top first, 3 = progressive seq, interlace frames with field MC and DCT in picture */
+static int param_fieldenc   = -1; /* 0: progressive, 1: bottom first, 2: top first, 3 = progressive seq, interlace frames with field MC and DCT in picture */
 static int param_norm       = 0;  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
 static int param_44_red	= 2;
 static int param_22_red	= 3;	
@@ -117,6 +117,7 @@ static int param_input_interlacing;
    set encoding options */
 
 static mpeg_aspect_code_t strm_aspect_ratio;
+static int strm_frame_rate_code;
 
 /* reserved: for later use */
 int param_422 = 0;
@@ -243,7 +244,8 @@ static void set_format_presets()
 	case  MPEG_FORMAT_SVCD_NSR :		/* Non-standard data-rate */
 		mjpeg_info( "Selecting SVCD output profile\n");
 		param_mpeg = 2;
-		param_fieldenc = 3;
+		if( param_fieldenc == -1 )
+			param_fieldenc = 3;
 		if( param_quant == 0 )
 			param_quant = 12;
 		param_svcd_scan_data = 1;
@@ -302,7 +304,8 @@ static void set_format_presets()
 	case MPEG_FORMAT_SVCD_STILL :
 		mjpeg_info( "Selecting SVCD Stills output profile\n");
 		param_mpeg = 2;
-		param_fieldenc = 3;
+		if( param_fieldenc == -1 )
+			param_fieldenc = 3;
 		/* We choose a generous nominal bit-rate as its VBR anyway
 		   there's only one frame per sequence ;-). It *is* too small
 		   to fill the frame-buffer in less than one PAL/NTSC frame
@@ -344,6 +347,8 @@ static void set_format_presets()
 		param_max_GOP_size = 1;
 		break;
 	}
+	if( param_fieldenc == -1 )
+		param_fieldenc = 0;
 }
 
 static int infer_mpeg1_aspect_code( char norm, mpeg_aspect_code_t mpeg2_code )
@@ -377,28 +382,42 @@ static int infer_default_params()
 
 
 	/* Infer norm, aspect ratios and frame_rate if not specified */
+	if( param_frame_rate == 0 )
+	{
+		if(strm_frame_rate_code<1 || strm_frame_rate_code>8)
+		{
+			mjpeg_error("Input stream with unknown frame-rate and no frame-rate specified with -a!\n");
+			++nerr;
+		}
+		else
+			param_frame_rate = strm_frame_rate_code;
+	}
 
-	if( param_norm == 0 && (opt_frame_rate_code==3 || opt_frame_rate_code == 2) )
+	if( param_norm == 0 && (strm_frame_rate_code==3 || strm_frame_rate_code == 2) )
 	{
 		mjpeg_warn("Assuming norm PAL\n");
 		param_norm = 'p';
 	}
-	if( param_norm == 0 && (opt_frame_rate_code==4 || opt_frame_rate_code == 1) )
+	if( param_norm == 0 && (strm_frame_rate_code==4 || strm_frame_rate_code == 1) )
 	{
 		mjpeg_warn("Assuming norm NTSC\n");
 		param_norm = 'n';
 	}
 
+
+
+
+
 	if( param_frame_rate != 0 )
 	{
-		if( opt_frame_rate_code != param_frame_rate && 
-			opt_frame_rate_code > 0 && 
-			opt_frame_rate_code < mpeg_num_framerates )
+		if( strm_frame_rate_code != param_frame_rate && 
+			strm_frame_rate_code > 0 && 
+			strm_frame_rate_code < mpeg_num_framerates )
 		{
 			mjpeg_warn( "Specified display frame-rate %3.2f will over-ride\n", 
 						Y4M_RATIO_DBL(mpeg_framerate(param_frame_rate)));
 			mjpeg_warn( "(different!) frame-rate %3.2f of the input stream\n",
-						Y4M_RATIO_DBL(mpeg_framerate(opt_frame_rate_code)));
+						Y4M_RATIO_DBL(mpeg_framerate(strm_frame_rate_code)));
 		}
 		opt_frame_rate_code = param_frame_rate;
 	}
@@ -429,9 +448,21 @@ static int check_param_constraints()
 	int nerr = 0;
 	if( param_32_pulldown )
 	{
-		if( opt_frame_rate_code != 4 && opt_frame_rate_code != 5  )
+		
+		if( param_frame_rate != 4 && param_frame_rate != 5  )
 		{
-			mjpeg_error( "3:2 movie pulldown only sensible for 30000/1001 or 30fps output stream\n" );
+			if( param_frame_rate == 1 || param_frame_rate == 2 )
+			{
+				param_frame_rate += 2;
+				mjpeg_warn("3:2 movie pulldown with frame rate set to decode rate not display rate\n");
+				mjpeg_warn("3:2 Setting frame rate code to display rate = %d (%2.3f fps)\n", 
+						   param_frame_rate,
+						   Y4M_RATIO_DBL(mpeg_framerate(param_frame_rate)));
+
+			}
+			else
+				mjpeg_warn( "3:2 movie pulldown not sensible for %2.3f fps dispay rate\n",
+							Y4M_RATIO_DBL(mpeg_framerate(param_frame_rate)));
 			++nerr;
 		}
 		if( param_fieldenc != 0 && param_fieldenc != 3 )
@@ -503,7 +534,7 @@ int main(argc,argv)
 	char *outfilename=0;
 	int nerr = 0;
 	int n;
-	
+
 	/* Set up error logging.  The initial handling level is LOG_INFO
 	 */
 	
@@ -737,7 +768,7 @@ int main(argc,argv)
 
 	/* Read parameters inferred from input stream */
 	read_stream_params( &opt_horizontal_size, &opt_vertical_size, 
-						&opt_frame_rate_code, &param_input_interlacing,
+						&strm_frame_rate_code, &param_input_interlacing,
 						&strm_aspect_ratio
 						);
 	
@@ -761,17 +792,7 @@ int main(argc,argv)
 		++nerr;
 	}
 
-	if(opt_frame_rate_code<1 || opt_frame_rate_code>8)
-	{
-		if( param_frame_rate == 0 )
-		{
-			mjpeg_error("Input stream with unknown frame-rate and no frame-rate specified with -a!\n");
-			++nerr;
-		}
-		else
-			opt_frame_rate_code = param_frame_rate;
-	}
-
+	
 
 	set_format_presets();
 
@@ -793,8 +814,8 @@ int main(argc,argv)
 			param_aspect_ratio,
 			mpeg_aspect_code_definition(param_mpeg,param_aspect_ratio));
 	mjpeg_info("Frame rate code:   %d = %s\n",
-			opt_frame_rate_code,
-			mpeg_framerate_code_definition(opt_frame_rate_code));
+			param_frame_rate,
+			mpeg_framerate_code_definition(param_frame_rate));
 
 	if(param_bitrate) 
 		mjpeg_info("Bitrate: %d KBit/s\n",param_bitrate/1000);
@@ -1005,6 +1026,7 @@ static void init_mpeg_parms(void)
 	opt_pulldown_32     = param_32_pulldown;
 
 	opt_aspectratio     = param_aspect_ratio;
+	opt_frame_rate_code = param_frame_rate;
 	opt_dctsatlim		= opt_mpeg1 ? 255 : 2047;
 
 	/* If we're using a non standard (VCD?) profile bit-rate adjust	the vbv

@@ -286,7 +286,7 @@ void VideoStream::Close()
 
     comp_bit_rate = (unsigned int)
 		(
-			(((double)stream_length) / ((double) num_pictures)) 
+			(((double)stream_length) / ((double)fields_presented)) * 2.0
 			* ((double)frame_rate)  + 25.0
 			) / 50;
 	
