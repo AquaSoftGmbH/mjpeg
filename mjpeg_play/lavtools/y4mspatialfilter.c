@@ -261,16 +261,17 @@ static void convolve2D(u_char *src,u_char *tmp,int w,int h,int interlace,float *
 {
     int n;
 
+    if (interlace ) {
+        for( n=0; n<w*2; n++ )
+            convolve1D(tmp+n,h/2,w*2,ytap,numy,src+n);
+    } else {
+        for( n=0; n<w; n++ )
+            convolve1D(tmp+n,h,w,ytap,numy,src+n);
+    }
+
     for( n=0; n<h; n++ )
         convolve1D(src+n*w,w,1,xtap,numx,tmp+n*w);
 
-    if (interlace ) {
-        w<<=1;
-        h>>=1;
-    }
-
-    for( n=0; n<w; n++ )
-        convolve1D(tmp+n,h,w,ytap,numy,src+n);
 }
 
 static void usage(void)
