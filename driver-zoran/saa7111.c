@@ -51,7 +51,7 @@
 
 #include <linux/video_decoder.h>
 
-#define DEBUG(x)       /* Debug driver */   
+#define DEBUG(x)     /* Debug driver */   
 
 /* ----------------------------------------------------------------------- */
 
@@ -218,7 +218,7 @@ static int saa7111_command(struct i2c_device * device, unsigned int cmd, void * 
          for (i = 0; i < 32; i += 16) {
             int j;
 
-            printk("KERN_DEBUG %s: %03x", device->name, i);
+            printk(KERN_DEBUG "%s: %03x", device->name, i);
             for (j = 0; j < 16; ++j) {
                printk(" %02x", saa7111_read(decoder, i + j));
             }
@@ -250,6 +250,7 @@ static int saa7111_command(struct i2c_device * device, unsigned int cmd, void * 
          int res;
 
          status = saa7111_read(decoder, 0x1f);
+         DEBUG(printk(KERN_DEBUG "%s status: 0x%02x\n", device->name, status));
          res = 0;
          if ((status & (1 << 6)) == 0) {
             res |= DECODER_STATUS_GOOD;
@@ -260,6 +261,9 @@ static int saa7111_command(struct i2c_device * device, unsigned int cmd, void * 
             break;
          case VIDEO_MODE_PAL:
             res |= DECODER_STATUS_PAL;
+            break;
+         case VIDEO_MODE_SECAM:
+            res |= DECODER_STATUS_SECAM;
             break;
          default:
          case VIDEO_MODE_AUTO:
