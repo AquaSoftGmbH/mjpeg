@@ -115,6 +115,7 @@ struct machine machine4divx;
 struct machine machine4yuv2lav;
 
 GList *machine_names;
+int enhanced_settings;
 
 char *record_dir;
 int scene_detection_width_decimation;

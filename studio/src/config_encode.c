@@ -118,6 +118,8 @@ twopelmotion  = 3;
 use_bicubic   = 0;
 saveonexit    = 1;
 
+enhanced_settings = 0; /* used in the distributed setup */
+
 }
 
 /* set the structs to default values */
@@ -390,6 +392,9 @@ int i;
   
   if (-1 != (i = cfg_get_int("Studio","Encoding_save_on_exit")))
     saveonexit = i;
+  
+  if (-1 != (i = cfg_get_int("Studio","Encoding_dist_enhanced_settings")))
+    enhanced_settings = i;
 }
 
 void load_section(char section[LONGOPT],struct encodingoptions *point)
@@ -592,6 +597,8 @@ void show_common()
   printf("Encoding 4*4-pel motion compensation :\'%i\' \n",fourpelmotion);
   printf("Encoding 2*2-pel motion compensation :\'%i\' \n",twopelmotion);
   printf("Encoding save on exit :\'%i\' \n",saveonexit);
+  printf("Encoding distributed enhanced settings :\'%i\' \n",enhanced_settings);
+
 }
 
 void load_config_encode()
@@ -746,6 +753,8 @@ void save_common(FILE *fp)
   if (saveonexit == 2)
     saveonexit = 0;  /* part 2 of the workaround, take a look accept_options */
   fprintf(fp,"Encoding_save_on_exit = %i\n",saveonexit);
+
+  fprintf(fp,"Encoding_dist_enhanced_settings = %i\n",enhanced_settings);
 
 }
 

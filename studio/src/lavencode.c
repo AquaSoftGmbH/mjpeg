@@ -57,6 +57,7 @@ GtkWidget *progress_bar;
 int progress_encoding = 0;
 int num_frames = -1;
 char standard;
+char text_task[LONGOPT]; /* the name of the selected task */
 GtkObject *progress_adj;
 int go_all_the_way = 0; /* if 1, it will do audio/video/mplex, else only 1 of them */
 int use_yuvdenoise_pipe; /* tells us whether to use yuvdenoise or not */
@@ -67,6 +68,8 @@ GtkWidget *tv_preview;
 int error = 0;
 int studio_enc_format;  /* tells what the desired output format is */
 struct encodingoptions *pointenc;    /* points to the encoding struct to be encodet */
+
+struct machine *pointdist; /* points to the distributed struct needed */
 
 /*-------------------------------------------------------------*/
 
@@ -115,6 +118,7 @@ void check_mpegname(gpointer data);
 void create_command_mpeg2enc(char *mpeg2enc_command[256]);
 void create_command_yuv2divx(char *mpeg2enc_command[256]);
 void create_command_yuv2lav(char *yuv2lav_command[256]);
+void set_enhanced (GtkWidget *widget, gpointer data);
 
 /*************************** Programm starts here **************************/
 
@@ -446,6 +450,13 @@ void audio_convert()
    if (progress_label) gtk_label_set_text(GTK_LABEL(progress_label),
       "Encoding audio: lav2wav | mp2enc");
 
+   if (machine4mpeg1.mp2enc != 0)
+     {
+       lav2wav_command[n] = "rsh"; n++;
+       lav2wav_command[n] = (char*) 
+                 g_list_nth_data(machine_names, machine4mpeg1.mp2enc); n++;
+     }
+
    mp2enc_command[n] = app_name(MP2ENC); n++;
    mp2enc_command[n] = "-v 2"; n++;
    if ((*pointenc).forcevcd[0] == '-')
@@ -479,6 +490,16 @@ void audio_convert()
    start_pipe_command(mp2enc_command, MP2ENC); /* mp2enc */
 
    n = 0;
+
+   printf("\n test lav2wav %i \n",  machine4mpeg1.lav2wav);
+
+   if (machine4mpeg1.lav2wav != 0)
+     {
+       lav2wav_command[n] = "rsh"; n++;
+       lav2wav_command[n] = (char*) 
+                 g_list_nth_data(machine_names, machine4mpeg1.lav2wav); n++;
+     }
+
    lav2wav_command[n] = app_name(LAV2WAV); n++;
    lav2wav_command[n] = enc_inputfile; n++;
    lav2wav_command[n] = NULL;
@@ -990,6 +1011,15 @@ progress_encoding = 3;
    show_executing(command);
 }
 
+/* Set the variable for the enhanced options */
+void set_enhanced (GtkWidget *widget, gpointer data)
+{
+  if (GTK_TOGGLE_BUTTON (widget)->active)
+    enhanced_settings = 1;
+  else
+    enhanced_settings = 0;
+}
+
 /* set the default options */
 void do_defaults(GtkWidget *widget, gpointer data)
 {
@@ -1392,13 +1422,22 @@ void create_buttons2 (GtkWidget *hbox1)
 /* Create the 3rd line iwth the distributed encoding and batch buttons */
 void create_buttons3 (GtkWidget *hbox1)
 {
-GtkWidget *distribute;
+GtkWidget *distribute, *enhanced_options;
 
   distribute = gtk_button_new_with_label ("Distributed encoding setup");
   gtk_signal_connect (GTK_OBJECT (distribute), "clicked",
-		  GTK_SIGNAL_FUNC (open_distributed_window), NULL);
+		  GTK_SIGNAL_FUNC (open_distributed_window), text_task);
   gtk_box_pack_start (GTK_BOX (hbox1), distribute, TRUE, TRUE, 0);
   gtk_widget_show(distribute);
+
+  enhanced_options = gtk_check_button_new_with_label
+                                  ("Different settings for every task");
+  gtk_signal_connect (GTK_OBJECT (enhanced_options), "toggled",
+		  GTK_SIGNAL_FUNC (set_enhanced), NULL);
+  gtk_box_pack_start(GTK_BOX(hbox1), enhanced_options, FALSE, FALSE,0);
+  gtk_widget_show (enhanced_options);
+
+
 }
 
 /* Here some parts of status layout are done */
@@ -1438,6 +1477,8 @@ GtkWidget *button_option;
   gtk_table_attach_defaults (GTK_TABLE (table), button_option, 
                                     encx, encx+1, ency, ency+1);
   gtk_widget_show(button_option);
+
+  sprintf(text_task,"%s",task);
 
 }
 
@@ -1497,26 +1538,31 @@ for (i = 0; i < 3; i++)
   if      (strcmp ((char*)data,"MPEG1") == 0)
    {
       pointenc = &encoding;
+      pointdist = &machine4mpeg1;
       check_mpegname(data);
    }
   else if (strcmp ((char*)data,"MPEG2") == 0)
    {
       pointenc = &encoding2;
+      pointdist = &machine4mpeg2;
       check_mpegname(data);
    }
   else if (strcmp ((char*)data,"VCD")   == 0)
    {
       pointenc = &encoding_vcd;
+      pointdist = &machine4vcd;
       check_mpegname(data);
    }
   else if (strcmp ((char*)data,"SVCD")  == 0)
    {
       pointenc = &encoding_svcd;
+      pointdist = &machine4svcd;
       check_mpegname(data);
    }
   else if (strcmp ((char*)data,"DivX")  == 0)
    {
       pointenc = &encoding_divx;
+      pointdist = &machine4divx;
       gtk_widget_set_sensitive(create_sound, FALSE); 
       gtk_widget_set_sensitive(do_video, FALSE); 
       gtk_widget_set_sensitive(mplex_only, FALSE);
@@ -1542,6 +1588,7 @@ for (i = 0; i < 3; i++)
   else if (strcmp ((char*)data,"MJPEG")  == 0)
    {
       pointenc = &encoding_yuv2lav;
+      pointdist = &machine4yuv2lav;
       gtk_widget_set_sensitive(create_sound, FALSE); 
       gtk_widget_set_sensitive(do_video, FALSE); 
       gtk_widget_set_sensitive(mplex_only, FALSE);
@@ -1653,6 +1700,7 @@ int enc_x,enc_y;
   enc_x=0;
   enc_y=0; 
   pointenc = &encoding; /* Needed for startup if the task is not selected */
+  pointdist = &machine4mpeg1;
   studio_enc_format = STUDIO_ENC_FORMAT_MPEG;
 
   /* main box (with borders) */
@@ -1674,6 +1722,10 @@ int enc_x,enc_y;
   create_buttons2 (hbox1);
   gtk_box_pack_start (GTK_BOX (vbox), hbox1, TRUE, TRUE, 0);
   gtk_widget_show (hbox1);
+
+  separator = gtk_hseparator_new ();
+  gtk_box_pack_start (GTK_BOX (vbox), separator, FALSE, TRUE, 5);
+  gtk_widget_show (separator);
 
   /* 3rd Line with the dirtibuted encoding, and batchlayout */
   hbox1 = gtk_hbox_new (TRUE, 20);
