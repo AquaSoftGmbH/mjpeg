@@ -734,13 +734,6 @@ void SeqEncoder::Encode()
         printf( "Mark incomplete: %d %08x prev = %08x ref = %08x\n", index, cur_picture, cur_picture->ref_frame, cur_picture->prev_frame );
 #endif
 		sync_guard_update( &cur_picture->completion, 0 );
-        mjpeg_info( "Fetch base %d+%d : %d %d %2d -> %d",  
-                    ss.gop_start_frame,
-                    cur_picture->temp_ref,
-                    ss.bigrp_length,
-                    ss.b,
-                    ss.g,
-                    cur_picture->temp_ref+ss.gop_start_frame );
 		reader.ReadFrame( cur_picture->temp_ref+ss.gop_start_frame,
                           cur_picture->curorg );
 
