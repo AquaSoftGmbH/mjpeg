@@ -806,6 +806,7 @@ GtkWidget *create_video_sliders()
    for (i=0;i<4;i++)
    {
       vbox = gtk_vbox_new (FALSE, 0);
+      gtk_object_ref(GTK_OBJECT(adj[i]));
       gtk_signal_connect(GTK_OBJECT(adj[i]), "value_changed",
          GTK_SIGNAL_FUNC(video_slider_changed), names[i]);
       scrollbar = gtk_vscale_new(adj[i]);
