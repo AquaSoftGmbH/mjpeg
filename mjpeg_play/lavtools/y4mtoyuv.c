@@ -83,6 +83,11 @@ main(int argc, char **argv)
 			ss_h = 2;
 			ss_v = 2;
 			}
+		else if	(!strcmp(tag, "422"))
+			{
+			ss_h = 2;
+			ss_v = 1;
+			}
 		else if	(!strcmp(tag, "444"))
 			{
 			ss_h = 1;
