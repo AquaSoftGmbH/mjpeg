@@ -145,6 +145,7 @@ class Table(Pmw.MegaWidget):
 
 	def scrollBothNow(self):
 		self.scrollTimer = None
+
 		self.scrollRecurse = self.scrollRecurse + 1
 		self.update_idletasks()
 		self.scrollRecurse = self.scrollRecurse - 1
@@ -164,8 +165,8 @@ class Table(Pmw.MegaWidget):
 		self.vertScrollbarNeeded = (yview != (0.0, 1.0))
 
 		if (self['hscrollmode'] == self['vscrollmode'] == 'dynamic' and
-			self.horizScrollbarNeeded != self.horizScrollBarOn and
-			self.vertScrollbarNeeded != self.vertScrollBarOn and
+			self.horizScrollbarNeeded != self.horizScrollbarOn and
+			self.vertScrollbarNeeded != self.vertScrollbarOn and
 			self.vertScrollbarOn != self.horizScrollbarOn):
 			if self.horizScrollbarOn:
 				self.toggleHorizScrollbar()
@@ -174,11 +175,11 @@ class Table(Pmw.MegaWidget):
 			return
 
 		if self['hscrollmode'] == 'dynamic':
-			if self.horizScrollbarNeeded != self.horizScrollbaron:
+			if self.horizScrollbarNeeded != self.horizScrollbarOn:
 				self.toggleHorizScrollbar()
 
 		if self['vscrollmode'] == 'dynamic':
-			if self.vertScrollbarNeeded != self.vertScrollbaron:
+			if self.vertScrollbarNeeded != self.vertScrollbarOn:
 				self.toggleVertScrollbar()
 
 	def toggleHorizScrollbar(self):
@@ -192,7 +193,7 @@ class Table(Pmw.MegaWidget):
 			self.horizScrollbar.grid_forget()
 			interior.grid_rowconfigure(1, minsize = 0)
 
-	def togglevertScrollbar(self):
+	def toggleVertScrollbar(self):
 		self.vertScrollbarOn = not self.vertScrollbarOn
 
 		interior = self.origInterior
@@ -210,7 +211,7 @@ class Table(Pmw.MegaWidget):
 
 		if mode == 'moveto':
 			self.startX = string.atof(value)
-			if self.startX < 0:
+			if self.startX < 0.0:
 				self.startX = 0.0
 		else:
 			print "not moveto"
@@ -225,7 +226,7 @@ class Table(Pmw.MegaWidget):
 
 		if mode == 'moveto':
 			self.startY = string.atof(value)
-			if self.startY < 0:
+			if self.startY < 0.0:
 				self.startY = 0.0
 		else:
 			print "not moveto"
@@ -265,8 +266,6 @@ class Table(Pmw.MegaWidget):
 			self.maxY = row
 
 	def display(self):
-		print "column=", float(self.maxX-self['fixedcol'] + 1) * self.startX
-
 		column = int(float(self.maxX-self['fixedcol'] + 1) * self.startX)
 		row = int(float(self.maxY-self['fixedrow'] + 1) * self.startY)
 
@@ -282,8 +281,6 @@ class Table(Pmw.MegaWidget):
 			widget.grid_forget()
 
 
-		print "display column=%d row=%d" % (column, row)
-
 		for pos in list:
 			widget, widget_column, widget_row, widget_span = \
 				self.widgets[pos]
@@ -291,16 +288,18 @@ class Table(Pmw.MegaWidget):
 			if widget_row < self["fixedrow"]:
 				if widget_column >= self["fixedcol"]:
 					widget_column = widget_column - column
+					if widget_column < self["fixedcol"]:
+						continue
 				if widget_column < 0:
 					continue
 				if widget_column >= self['displaycol']:
 					continue
 				widget.grid(column=widget_column, 
-				row=widget_row,
-				columnspan=widget_span,
-				sticky="NSEW")
+					row=widget_row,
+					columnspan=widget_span,
+					sticky="NSEW")
 				continue
-	
+
 			if widget_column < self["fixedcol"]:
 				widget_row = widget_row - row
 				if widget_row < self["fixedrow"]:
@@ -308,16 +307,26 @@ class Table(Pmw.MegaWidget):
 				if widget_row >= self['displayrow']:
 					continue
 				widget.grid(column=widget_column, 
-				row=widget_row,
-				columnspan=widget_span,
-				sticky="NSEW")
+					row=widget_row,
+					columnspan=widget_span,
+					sticky="NSEW")
 				continue
 
-			widget_column = widget_column - column
+			col = widget_column - column
 			widget_row = widget_row - row
 
-			if widget_column >= self['displaycol']:
+			if col >= self['displaycol']:
 				continue
+
+			if col + widget_span > self['displaycol']:
+				widget_span = self['displaycol'] - col
+
+			if col + widget_span <= self["fixedcol"]:
+				continue
+
+			if col < self['fixedcol']:
+				widget_span = widget_span - (self["fixedcol"] - col)
+				col = self["fixedcol"]
 
 			if widget_row >= self['displayrow']:
 				continue
@@ -325,10 +334,7 @@ class Table(Pmw.MegaWidget):
 			if widget_row < self["fixedrow"]:
 				continue
 
-			if widget_column < self["fixedcol"]:
-				continue
-
-			widget.grid(column=widget_column, 
+			widget.grid(column=col, 
 				row=widget_row,
 				columnspan=widget_span,
 				sticky="NSEW")

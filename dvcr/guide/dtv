@@ -21,7 +21,6 @@ import guide
 
 guide = guide.Guide()
 #listing = mktime(2000,12,27,12,30,0, 0, 360, -1)
-#listing = localtime(time())
 listing = time()
 guide.display_guide(0, 0, 640, 480, listing)
 

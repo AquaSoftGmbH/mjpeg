@@ -20,7 +20,7 @@ from Tkinter import *
 import marshal 
 import ConfigParser
 import Pmw
-import table
+from table import *
 
 class GuideCmd:
 	def __init__(self, func, *args, **kw):
@@ -38,7 +38,6 @@ def print_data(data):
 
 def set_weight(grid, start_row=0, start_column=0):
 	columns, rows = grid.grid_size()
-	print "cols=%d rows=%d" % (columns, rows)
 
 	column = start_column
 	while column < columns:
@@ -113,15 +112,12 @@ class Guide:
 		if end > -1:
 			station_id = station_id[end + 1:]
 
-		print localtime(list_time)
 		list_time = list_time - self.zone_offset
-		print gmtime(list_time)
 		key_time = list_time - (list_time % 1800)
 		zero_time = list_time - 3600 * 5
 
 		while key_time > zero_time:
 			key = strftime("%d%H%M", gmtime(key_time)) + station_id
-			print "searching key=%s" % key
 			if self.list_dict.has_key(key):
 				return self.list_dict[key]
 			key_time = key_time - 1800
@@ -192,14 +188,14 @@ class Guide:
 		if end > -1:
 			station_id = station_id[:end]
 
+		print "startion id = %s", station_id, "    row=",row
+
 		label = Button(self.listing_frame, 
 			text=station_id, 
 			command=GuideCmd(print_data, station_id))
 		self.listing_widget.add(label, 
 			row=row, 
 			column=0)
-		if len(station_id) > self.station_width:
-			self.station_width = len(station_id)
 		return label
 
 	def listing_button(self,list_time, station_id, row, col, command):
@@ -217,8 +213,8 @@ class Guide:
 		if span < 1:
 			span = 1
 
-		if span + col  > self.columns:
-			span = self.columns - col + 1
+#		if span + col  > self.columns:
+#			span = self.columns - col + 1
 
 		end = find(station_id, ":")
 		if end > -1:
@@ -238,16 +234,23 @@ class Guide:
 
 	def display_guide(self, x, y, width, height, seconds):
 		station_list = self.config_list("display", "stations")
+		seconds = (seconds/(24 * 60 * 60)) * (24 * 60 * 60)
+		year, month, day, hour, min, sec, weekday, julday, saving = localtime(seconds)
+		seconds = mktime(year, month, day, 0, 0, 0, weekday, julday, saving)
 		date_string = strftime("%m/%d/%Y %I:%M %p", localtime(seconds))
+		print date_string
 		self.root = Tk()
 		self.root.title("Program Listings for " + date_string)
 
 		self.load(seconds)
 
+		
 		self.info_frame = Frame(self.root, background="green")
-		self.listing_widget = table.Table(self.root, 
+		self.listing_widget = Table(self.root,
 			fixedcol=1,
-			fixedrow=1)
+			fixedrow=1,
+			displayrow=5,
+			displaycol=4)
 		self.listing_frame = self.listing_widget.component("table")
 
 		year, month, day, hour, min, sec, weekday, julday, saving = localtime(seconds)
@@ -263,14 +266,20 @@ class Guide:
 		Label(self.info_frame, background="red",text="Info frame").grid(row=0,column=0,stick='NSEW')
 		set_weight(self.info_frame)
 
+		col = 1
+		while col <= 48:
+			self.time_button(col-1, col)
+			col = col + 1
+
 		current_row = 1
 		for station in station_list:
 			self.station_button(station, current_row)
 			col = 1
-			while col <= self.columns:
+			while col <= 48:
 				span = self.listing_button(seconds + (col-1)
 					* 1800, station, current_row,col, "")
-				print "col = %d span = %d " % (col, span)
+				if span < 1:
+					span = 1
 				col = col + span
 			current_row = current_row + 1
 
