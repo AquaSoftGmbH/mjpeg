@@ -36,78 +36,6 @@
 
 #include "yuv4mpeg.h"
 
-static char **parse_cmdline (char *cmdline)
-{
-  char **argv;
-  char *p = cmdline;
-  int i, argc = 0;
-  
-  if (!p) return 0;
-  if (!*p) return 0;
-  
-  while (*p) {    
-    while (!isspace(*p)) {
-      p++;
-      if (!*p) {
-	argc++;
-	goto EOL_HANDLE;
-      }
-    }
-    argc++;     
-    while (isspace(*p)) {
-      p++;
-      if (!*p) goto EOL_HANDLE;
-    }
-  }
-
- EOL_HANDLE:
-  argv = malloc((argc + 1) * sizeof(argv[0]));
-  for (p = cmdline, i = 0; i < argc; i++) {
-    argv[i] = p;
-    while (!isspace(*(++p)));
-    p[0] = '\0';
-    while (isspace(*(++p)))
-      if (!p[0]) break;
-  }
-  argv[argc] = NULL;
-  
-  return argv;
-}
-
-
-static int fork_child (char *child) {
-
-   int n;
-   int pid;
-   int mypipe[2];
-   char **myargv;
-
-   if (pipe (mypipe)) {
-      mjpeg_error( "Couldn't create pipe to %s", child);
-      exit (1);
-   }
-   if ((pid = fork ())<0) {
-      mjpeg_error( "Couldn't fork %s", child);
-      exit (1);
-   }
-   
-   if (pid) {
-      /* child redirects stdout to pipe */
-      close (mypipe[0]);
-      close(1);
-      n = dup(mypipe[1]);
-      if(n!=1) exit(1);
-      myargv = parse_cmdline (child);
-      execvp (myargv[0], myargv);
-      return -1;
-   } else {
-      /* parent */
-      close (mypipe[1]);
-   /* fcntl (mypipe[0], F_SETFL, O_NONBLOCK); */
-      return mypipe[0];
-   }
-}
-
 static void usage( char *name )
 {
 	fprintf( stderr, "Usage: %s [-v num] <input1> <input2>\n", name);
@@ -119,6 +47,7 @@ static void usage( char *name )
 
 int main (int argc, char *argv[])
 {
+  FILE *sfp0, *sfp1;
   int stream0;   /* read from input 1 */
   int stream1;   /* read from input 2 */
   int outstream = 1;  /* output to stdout */
@@ -158,14 +87,18 @@ int main (int argc, char *argv[])
   command0 = strdup(argv[fstarg]);
   command1 = strdup(argv[fstarg + 1]);
    
-  mjpeg_info("0 Trying to create pipe to '%s'", command0);
-  stream0 = fork_child(command0);
-  mjpeg_info("1 Trying to create pipe to '%s'", command1);
-  stream1 = fork_child(command1);
+  sfp0 = popen(command0, "r");
+  if (!sfp0)
+     mjpeg_error_exit1("popen(%s) failed", command0);
+  sfp1 = popen(command1, "r");
+  if (!sfp1)
+     mjpeg_error_exit1("popen(%s) failed", command1);
+  stream0 = fileno(sfp0);
+  stream1 = fileno(sfp1);
 
   if ((err = y4m_read_stream_header(stream0, &sinfo0)) != Y4M_OK)
-    mjpeg_error_exit1("Failed to read first stream header:  %s",
-		      y4m_strerr(err));
+    mjpeg_error_exit1("Failed to read first stream header:  %s errno=%d",
+		      y4m_strerr(err), errno);
   if ((err = y4m_read_stream_header(stream1, &sinfo1)) != Y4M_OK)
     mjpeg_error_exit1("Failed to read second stream header:  %s",
 		      y4m_strerr(err));
@@ -217,4 +150,3 @@ int main (int argc, char *argv[])
   y4m_fini_frame_info(&finfo1);
   return 0;
 }
-
