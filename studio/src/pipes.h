@@ -18,10 +18,11 @@
 #define YUV2LAV 14      /* for the effects notebook page in lavedit_effects.c */
 #define YUVDENOISE 15   /* video encoding, lavencode.c */
 #define YUV2DIVX 16     /* for divx encoding, lavencode.c */
-#define NUM 17          /* total number of pipes */
-#define LAV2YUV_DATA 18 /* a special case for lav2yuv-data-processing */
-#define LAVADDWAV 19    /* non-pipe command but needed for app_name/location() */
-#define LAVTRANS 20     /* non-pipe command but needed for app_name/location() */
+#define YUV2LAV_E 17    /* yuv2lav for encoding part */
+#define NUM 18          /* total number of pipes */
+#define LAV2YUV_DATA 19 /* a special case for lav2yuv-data-processing */
+#define LAVADDWAV 20    /* non-pipe command but needed for app_name/location() */
+#define LAVTRANS 21     /* non-pipe command but needed for app_name/location() */
 
 /* Here we define some nice names for the encoding */ 
 #define STUDIO_ENC_FORMAT_MPEG 1 /* use mpeg2enc */

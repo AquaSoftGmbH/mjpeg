@@ -187,40 +187,48 @@ void process_lavplay_input(char *msg)
 
 	if(strncmp(msg, "--DEBUG:    ", 12) == 0)
 	{
-		if (strncmp(msg+12, "frames: ", 8)==0)
+		/* trim the strim */
+		while (msg[0]!=':' && msg[0]!='\0') msg++;
+		if (msg[2]=='[') while (msg[0]!=']' && msg[0]!='\0') msg++;
+		if (msg[0]!='\0') msg++; /* get past the ':' or ']' */
+		while (msg[0]==' ') msg++;
+
+		if (strncmp(msg, "frames: ", 8)==0)
 		{
-			sscanf(msg+12,"frames: %d",&total_frames);
+			sscanf(msg,"frames: %d",&total_frames);
 		}
-		else if (strncmp(msg+12, "width: ", 7)==0)
+		else if (strncmp(msg, "width: ", 7)==0)
 		{
-			sscanf(msg+12,"width: %d",&lavplay_sizew);
+			sscanf(msg,"width: %d",&lavplay_sizew);
 		}
-		else if (strncmp(msg+12, "height: ", 8)==0)
+		else if (strncmp(msg, "height: ", 8)==0)
 		{
-			sscanf(msg+12,"height: %d",&lavplay_sizeh);
+			sscanf(msg,"height: %d",&lavplay_sizeh);
 		}
-		else if (strncmp(msg+12, "frames/sec: ", 12)==0)
+		else if (strncmp(msg, "frames/sec: ", 12)==0)
 		{
-			sscanf(msg+12,"frames/sec: %d",&lavplay_fps);
+			sscanf(msg,"frames/sec: %d",&lavplay_fps);
 		}
-		else if (strncmp(msg+12, "audio chans: ", 13)==0)
+		else if (strncmp(msg, "audio chans: ", 13)==0)
 		{
-			sscanf(msg+12,"audio chans: %d",&lavplay_chans);
+			sscanf(msg,"audio chans: %d",&lavplay_chans);
 		}
-		else if (strncmp(msg+12, "audio bits: ", 12)==0)
+		else if (strncmp(msg, "audio bits: ", 12)==0)
 		{
-			sscanf(msg+12,"audio bits: %d",&lavplay_absize);
+			sscanf(msg,"audio bits: %d",&lavplay_absize);
 		}
-		else if (strncmp(msg+12, "audio rate: ", 12)==0)
+		else if (strncmp(msg, "audio rate: ", 12)==0)
 		{
-			sscanf(msg+12,"audio rate: %d",&lavplay_abrate);
+			sscanf(msg,"audio rate: %d",&lavplay_abrate);
 		}
 		return;
 	}
 
-	if (strncmp(msg, "   INFO: Output norm: ",22) == 0)
+	if ((msg=strstr(msg, "Output norm: "))!=NULL)
 	{
-		if (msg[23] == 'N')
+		char norm;
+		sscanf(msg, "Output norm: %c", &norm);
+		if (norm == 'N')
 			lavplay_norm = 'n';
 		else
 			lavplay_norm = 'p';

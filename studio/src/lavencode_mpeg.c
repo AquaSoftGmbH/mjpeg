@@ -1554,7 +1554,7 @@ GtkWidget *combo_maxfilesize;
 GList *yuv2lav_quality = NULL;
 GList *yuv2lav_filesize = NULL;
 
-  yuv2lav_quality = g_list_append (yuv2lav_quality, "defaut");
+  yuv2lav_quality = g_list_append (yuv2lav_quality, "default");
   yuv2lav_quality = g_list_append (yuv2lav_quality, "50");
   yuv2lav_quality = g_list_append (yuv2lav_quality, "70");
   yuv2lav_quality = g_list_append (yuv2lav_quality, "100");
@@ -1780,7 +1780,7 @@ ty = 9;
   tx = 0;
   ty = 0;
 
-  label = gtk_label_new (" DIVx Encoding options: ");
+  label = gtk_label_new (" DivX Encoding options: ");
   gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+1, ty, ty+1);
   gtk_widget_show(label);
   ty++;
@@ -1808,7 +1808,7 @@ ty = 9;
   tx = 0;
   ty = 0;
 
-  label = gtk_label_new (" yuv2lav options: ");
+  label = gtk_label_new (" MJPEG options: ");
   gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+1, ty, ty+1);
   gtk_widget_show(label);
   ty++;
@@ -1919,9 +1919,9 @@ if (g_list_length (yuv2lav_interlace) == 0)
     point = &encoding_vcd;
   else if (strcmp ((char*)data,"SVCD") == 0)
     point = &encoding_svcd;
-  else if (strcmp ((char*)data,"DIVx") == 0)
+  else if (strcmp ((char*)data,"DivX") == 0)
     point = &encoding_divx;
-  else if (strcmp ((char*)data,"yuv2lav") == 0)
+  else if (strcmp ((char*)data,"MJPEG") == 0)
     point = &encoding_yuv2lav;
   else 
     point = &encoding; /* fallback should never be used ;) */
@@ -1933,7 +1933,7 @@ if (g_list_length (yuv2lav_interlace) == 0)
   hbox = gtk_hbox_new (FALSE, 10);
   vbox = gtk_vbox_new (FALSE, 10);
 
-  if ( strcmp(data,"DIVx") == 0)
+  if ( strcmp(data,"DivX") == 0)
     {
       create_divx_options(hbox);
 
@@ -1941,7 +1941,7 @@ if (g_list_length (yuv2lav_interlace) == 0)
       show_data_yuvtools (data);
       show_data_divx     (data);
     }
-  else if ( strcmp(data,"yuv2lav") == 0)
+  else if ( strcmp(data,"MJPEG") == 0)
     {
       create_yuv2lav_options(hbox);
 

@@ -144,6 +144,7 @@ static int num_to_name(int number)
       case LAVPIPE:
         return LAVPIPE_APP;
       case YUV2LAV:
+      case YUV2LAV_E:
         return YUV2LAV_APP;
       case YUVDENOISE:
         return YUVDENOISE_APP;
@@ -225,7 +226,7 @@ static int read_lav2yuv_data(gint source)
                   n = pipe_out[YUV2DIVX];
                   break;
                case STUDIO_ENC_FORMAT_MJPEG:
-                  /* TODO */
+                  n = pipe_out[YUV2LAV_E];
                   break;
             }
          }
@@ -275,7 +276,7 @@ static int read_lav2yuv_data(gint source)
                   n = pipe_out[YUV2DIVX];
                   break;
                case STUDIO_ENC_FORMAT_MJPEG:
-                  /* TODO */
+                  n = pipe_out[YUV2LAV_E];
                   break;
             }
          }
@@ -342,7 +343,8 @@ static void callback_pipes(gpointer data, gint source,
       /* close pipes/app */
       close(pipe_in[number]);
       if (number != MP2ENC && number != MPEG2ENC && number != YUVSCALER && number != YUVPLAY &&
-         number != YUVPLAY_E && number != YUV2LAV && number != YUVDENOISE && number != YUV2DIVX) {
+         number != YUVPLAY_E && number != YUV2LAV && number != YUVDENOISE && number != YUV2DIVX &&
+         number != YUV2LAV_E) {
          close(pipe_out[number]);
       }
       close_pipe(number);
@@ -367,7 +369,7 @@ static void callback_pipes(gpointer data, gint source,
                   close(pipe_out[YUV2DIVX]);
                   break;
                case STUDIO_ENC_FORMAT_MJPEG:
-                  /* TODO */
+                  close(pipe_out[YUV2LAV_E]);
                   break;
             }
          }
@@ -390,7 +392,7 @@ static void callback_pipes(gpointer data, gint source,
                   close(pipe_out[YUV2DIVX]);
                   break;
                case STUDIO_ENC_FORMAT_MJPEG:
-                  /* TODO */
+                  close(pipe_out[YUV2LAV_E]);
                   break;
             }
          }
@@ -406,7 +408,7 @@ static void callback_pipes(gpointer data, gint source,
                close(pipe_out[YUV2DIVX]);
                break;
             case STUDIO_ENC_FORMAT_MJPEG:
-               /* TODO */
+               close(pipe_out[YUV2LAV_E]);
                break;
          }
       }
@@ -418,7 +420,8 @@ static void callback_pipes(gpointer data, gint source,
       }
 
       /* trigger callback function for each specific app */
-      if (number == MPEG2ENC || number == MP2ENC || number == MPLEX || number == YUV2DIVX) {
+      if (number == MPEG2ENC || number == MP2ENC || number == MPLEX || number == YUV2DIVX ||
+          number == YUV2LAV) {
          continue_encoding();
       }
       else if (number == LAV2YUV_S) {
@@ -490,6 +493,7 @@ static void callback_pipes(gpointer data, gint source,
                case YUVSCALER:
                case YUVPLAY:
                case YUV2DIVX:
+               case YUV2LAV_E:
                   lavencode_callback(number, temp);
                   break;
                case LAV2YUV_S:
@@ -615,7 +619,7 @@ void start_pipe_command(char *command[], int number)
                   n = dup2(pipe_out[YUV2DIVX],1); /* writes yuvscaler directly to yuv2divx */
                   break;
                case STUDIO_ENC_FORMAT_MJPEG:
-                  /* TODO */
+                  n = dup2(pipe_out[YUV2LAV_E],1); /* writes yuvscaler directly to yuv2lav */
                   break;
             }
          }
@@ -634,7 +638,7 @@ void start_pipe_command(char *command[], int number)
                     n = dup2(pipe_out[YUV2DIVX],1); /* writes yuvdenoise directly to yuv2divx */
                     break;
                  case STUDIO_ENC_FORMAT_MJPEG:
-                    /* TODO */
+                    n = dup2(pipe_out[YUV2LAV_E],1); /* writes yuvdenoise directly to yuv2lav */
                     break;
               }
            }

@@ -208,11 +208,14 @@ void effects_callback(int number, char *msg)
 		if (number == YUV2LAV)
 		{
 			int framenum;
-			sscanf(msg, "frame %d", &framenum);
-			if (render_progress_adj)
-				gtk_adjustment_set_value(GTK_ADJUSTMENT(render_progress_adj), framenum);
-			if (render_progress_status_label)
-				gtk_label_set_text(GTK_LABEL(render_progress_status_label), msg);
+			if ((msg=strstr(msg, "frame"))!=NULL)
+			{
+				sscanf(msg, "frame %d", &framenum);
+				if (render_progress_adj)
+					gtk_adjustment_set_value(GTK_ADJUSTMENT(render_progress_adj), framenum);
+				if (render_progress_status_label)
+					gtk_label_set_text(GTK_LABEL(render_progress_status_label), msg);
+			}
 		}
 	}
 	else

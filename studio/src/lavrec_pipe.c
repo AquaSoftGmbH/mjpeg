@@ -165,14 +165,15 @@ void stop_scene_detection_process(GtkWidget *widget, gpointer data)
 
 void scene_detection_input_cb(char *input)
 {
-	if (strncmp(input, "--DEBUG: frame", 14)==0)
+	if ((input=strstr(input, "frame"))!=NULL)
 	{
 		int n1,n2,n3,n4;
-		sscanf(input, "--DEBUG: frame %d/%d, lum_mean %d, delta_lum %d",
+
+		sscanf(input, "frame %d/%d, lum_mean %d, delta_lum %d",
 			&n1, &n2, &n3, &n4);
 		if (scene_detection_status_label)
 			gtk_label_set_text(GTK_LABEL(scene_detection_status_label),
-			input+9);
+			input);
 		if (scene_detection_bar)
 			gtk_progress_bar_update(GTK_PROGRESS_BAR(scene_detection_bar),
 			((double)n1)/n2);
@@ -394,9 +395,9 @@ void dispatch_input(char *buff)
 		/* Error handling */
 		quit_lavrec_with_error(buff+9);
 	}
-	else if (strncmp(buff, "   INFO: Opening output", 23) == 0)
+	else if ((buff=strstr(buff, "Opening output"))!=NULL)
 	{
-		sscanf(buff, "   INFO: Opening output file %s", buff2);
+		sscanf(buff, "Opening output file %s", buff2);
 		sprintf(buff3, "Recording to %s...\nPress \"Stop\" to stop...", buff2);
 		strcpy(files_recorded[current_file],buff2); current_file++;
 		studio_set_lavrec_label(buff3);

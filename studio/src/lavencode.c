@@ -197,32 +197,49 @@ void lavencode_callback(int number, char *input)
     char c;
     if ((number == MPEG2ENC) && (studio_enc_format == STUDIO_ENC_FORMAT_MPEG))
     {
-      if ( (encoding_syntax_style == 140) && 
-           (sscanf(input, "   INFO: Frame %d %c %d", &n1, &c, &n2)==3) )
+      /* this chops down the string */
+      while(strncmp(input, "Frame start", 11) && input[0]!='\0') input++;
+
+      if (sscanf(input, "Frame start %d %c %d", &n1, &c, &n2) == 3)
       {
-       gtk_label_set_text(GTK_LABEL(progress_status_label), input+9);
-       if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), n1);
-      }
-      
-      if ( (encoding_syntax_style == 150) &&
-////                              INFO: [mpeg2enc] Frame start 976 P 8 978r 1000
-           (sscanf(input, "   INFO: [mpeg2enc] Frame start %d %c %d", &n1, &c, &n2)==3) )
-//           (sscanf(input, "   INFO: Frame start %d %c %d", &n1, &c, &n2)==3) )
-      {
-       gtk_label_set_text(GTK_LABEL(progress_status_label), input+9);
-       if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), n1);
+        gtk_label_set_text(GTK_LABEL(progress_status_label), input);
+        if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), n1);
       }
     }
     if ((number == YUV2DIVX) && (studio_enc_format == STUDIO_ENC_FORMAT_DIVX))
     {
-      sscanf(input, "   INFO: Encoding frame %d, %f frames per second, %f seconds left.", &n1, &f1, &f2);
-       gtk_label_set_text(GTK_LABEL(progress_status_label), input+9);
-       if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), n1);
-    } 
-    else if (number == MP2ENC && sscanf(input, "--DEBUG: %d seconds done", &n1)==1)
+      /* this chops down the string */
+      while(strncmp(input, "Encoding frame", 14) && input[0]!='\0') input++;
+
+      if (sscanf(input, "Encoding frame %d, %f frames per second, %f seconds left.", &n1, &f1, &f2) == 3)
+      {
+        gtk_label_set_text(GTK_LABEL(progress_status_label), input);
+        if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), n1);
+      }
+    }
+    if ((number == YUV2LAV_E) && (studio_enc_format == STUDIO_ENC_FORMAT_MJPEG))
     {
-       gtk_label_set_text(GTK_LABEL(progress_status_label), input+9);
-       if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), standard=='p'?25*n1:30*n1);
+      /* this chops down the string */
+      while(strncmp(input, "frame", 5) && input[0]!='\0') input++;
+
+      if (sscanf(input, "frame %d", &n1) == 1)
+      {
+        gtk_label_set_text(GTK_LABEL(progress_status_label), input);
+        if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), n1);
+      }
+    }
+    else if (number == MP2ENC)
+    {
+      /* this chops down the string */
+      while(input[0]!=':' && input[0]!='\0') input++;
+      if (input[2] == '[') while(input[0]!=']' && input[0]!='\0') input++;
+      input+=2;
+
+      if (sscanf(input, "%d seconds done", &n1) == 1)
+      {
+        gtk_label_set_text(GTK_LABEL(progress_status_label), input);
+        if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), standard=='p'?25*n1:30*n1);
+      }
     }
   }
 
@@ -483,7 +500,7 @@ int n;
 static char temp1[4], temp2[4], temp3[6];
 n=0;
 
-yuv2lav_command[n] = app_name(YUV2LAV); n++;
+yuv2lav_command[n] = app_name(YUV2LAV_E); n++;
 
 if (strlen((*pointenc).codec) > 3)
   {
@@ -699,7 +716,7 @@ void video_convert()
    else if (studio_enc_format == STUDIO_ENC_FORMAT_MJPEG)
      {
        create_command_yuv2lav(yuv2lav_command);
-       start_pipe_command(yuv2lav_command, YUV2LAV);
+       start_pipe_command(yuv2lav_command, YUV2LAV_E);
      }
  
    /* Here, the command for the pipe for yuvscaler may be added */
@@ -1484,7 +1501,7 @@ for (i = 0; i < 3; i++)
       pointenc = &encoding_svcd;
       check_mpegname(data);
    }
-  else if (strcmp ((char*)data,"DIVx")  == 0)
+  else if (strcmp ((char*)data,"DivX")  == 0)
    {
       pointenc = &encoding_divx;
       gtk_widget_set_sensitive(create_sound, FALSE); 
@@ -1509,7 +1526,7 @@ for (i = 0; i < 3; i++)
         }
       gtk_entry_set_text(GTK_ENTRY(output_entry), enc_outputfile);
    }
-  else if (strcmp ((char*)data,"yuv2lav")  == 0)
+  else if (strcmp ((char*)data,"MJPEG")  == 0)
    {
       pointenc = &encoding_yuv2lav;
       gtk_widget_set_sensitive(create_sound, FALSE); 
@@ -1571,7 +1588,7 @@ ency=5;
   create_option_button(task_group, table, "MPEG2", encx+1, ency);
   ency++;
 
-  button_vcd = gtk_radio_button_new_with_label(task_group, " VCD (MPEG-1) ");
+  button_vcd = gtk_radio_button_new_with_label(task_group, "VCD (MPEG-1) ");
   gtk_signal_connect (GTK_OBJECT (button_vcd), "toggled",
                       GTK_SIGNAL_FUNC (set_task), (gpointer) "VCD");
   gtk_table_attach_defaults (GTK_TABLE (table), button_vcd, 
@@ -1591,24 +1608,24 @@ ency=5;
   create_option_button(task_group, table, "SVCD", encx+1, ency);
   ency++;
 
-  button_divx = gtk_radio_button_new_with_label(task_group, "DIVx ");
+  button_divx = gtk_radio_button_new_with_label(task_group, "DivX ");
   gtk_signal_connect (GTK_OBJECT (button_divx), "toggled",
-                      GTK_SIGNAL_FUNC (set_task), (gpointer) "DIVx");
+                      GTK_SIGNAL_FUNC (set_task), (gpointer) "DivX");
   gtk_table_attach_defaults (GTK_TABLE (table), button_divx, 
                                     encx, encx+1, ency, ency+1);
   task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_divx));
   gtk_widget_show (button_divx);
-  create_option_button(task_group, table, "DIVx", encx+1, ency);
+  create_option_button(task_group, table, "DivX", encx+1, ency);
   ency++;
 
-  button_2lav = gtk_radio_button_new_with_label(task_group, "yuv2lav ");
+  button_2lav = gtk_radio_button_new_with_label(task_group, "MJPEG");
   gtk_signal_connect (GTK_OBJECT (button_2lav), "toggled",
-                      GTK_SIGNAL_FUNC (set_task), (gpointer) "yuv2lav");
+                      GTK_SIGNAL_FUNC (set_task), (gpointer) "MJPEG");
   gtk_table_attach_defaults (GTK_TABLE (table), button_2lav, 
                                     encx, encx+1, ency, ency+1);
   task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_2lav));
   gtk_widget_show (button_2lav);
-  create_option_button(task_group, table, "yuv2lav", encx+1, ency);
+  create_option_button(task_group, table, "MJPEG", encx+1, ency);
   ency++;
 
 }
