@@ -1,5 +1,5 @@
 13.7.2001	
-	Friday 13th ... no comment -- Intitial CVS release.
+	Friday 13th ... no comment -- Initial CVS release.
 
 14.7.2001
 	Arghhh,... I should have wait a day. Everything was going wrong
@@ -9,10 +9,19 @@
 	full-pel search ... uhhhh ... That was bad ...
 
 	Several bugs in the block-copy-routines fixed (eg. that neat thing
-	overwriting a correct neighbour-block...)
+	overwriting a correct neighbor-block...)
 
-	Introduced a totaly different method of decideing weather a block
+	Introduced a totally different method of deciding weather a block
 	is good or bad ... still need a better method here ! At least it
 	seems to work, now.
 
-	
+15.7.2001
+	Changed search to 8x8 blocks. (Not really. The search itself
+	remained (for the subsampled passes) at 16x16 and only 8x8 is used
+	for pel and half-pel search as well as for matching against the
+	SQD mean values. One odd thing is this seems to produces less
+	misdetected blocks the other is: *IF* we have visible blocks
+	they're of the same nature I have seen in MPEG4/DivX ... 
+	Despite that it seems to work much better (and much slower).
+	Music keeps me alive ... Thanks to "Das Ich". and to "Jacobs Dröh-
+	nung"
