@@ -462,10 +462,10 @@ AC_CHECK_LIB(Xxf86dga, XF86DGAQueryExtension,
 dnl ********************************************************************
 dnl Check for Gtk+/glib (for glav)
 dnl ********************************************************************
+have_gtk=false
 ifdef([AM_PATH_GTK],
       [ AM_PATH_GTK(1.2.0, [ have_gtk=true
-                           AC_DEFINE(HAVE_GTK)],
-                    have_gtk=false) ])
+                           AC_DEFINE(HAVE_GTK)],,) ])
 
 dnl ********************************************************************
 dnl Check for the SDL library (for software playback)
