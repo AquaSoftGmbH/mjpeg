@@ -519,6 +519,9 @@ void add_new_frames(char *movie, int nc1, int nc2, int dest)
 			el.video_frames = old_n + nc2 - nc1 + 1;
 		}
 
+		if(dest<min_frame_num) min_frame_num+=nc2-nc1+1;
+		if(dest<max_frame_num) max_frame_num+=nc2-nc1+1;
+
 		/* Move frames we want to the dest position */
 		cut_copy_frames(old_n, old_n+nc2-nc1, 'u');
 		paste_frames(dest);
@@ -548,7 +551,12 @@ void cut_copy_frames(int nc1, int nc2, char cut_or_copy)
 		{
 			if(nframe>=nc1 && nframe<=nc2) nframe = nc1-1;
 			if(nframe>nc2) nframe -= k;
-			for(i=nc2+1;i<el.video_frames;i++) el.frame_list[i-k] = el.frame_list[i];
+			for(i=nc2+1;i<el.video_frames;i++)
+			{
+				el.frame_list[i-k] = el.frame_list[i];
+				if(i-k <= min_frame_num) min_frame_num--;
+				if(i-k <= max_frame_num) max_frame_num--;
+			}
 			el.video_frames -= k;
 		}
 		printf("Cut/Copy done ---- !!!!\n");
@@ -571,7 +579,12 @@ void paste_frames(int dest)
 	k = save_list_len;
 	for(i=el.video_frames-1;i>=dest;i--) el.frame_list[i+k] = el.frame_list[i];
 	k = dest;
-	for(i=0;i<save_list_len;i++) el.frame_list[k++] = save_list[i];
+	for(i=0;i<save_list_len;i++)
+	{
+		if(k<min_frame_num) min_frame_num++;
+		if(k<max_frame_num) max_frame_num++;
+		el.frame_list[k++] = save_list[i];
+	}
 	el.video_frames += save_list_len;
 	printf("Paste done ---- !!!!\n");
 
@@ -594,12 +607,11 @@ int main(int argc, char ** argv)
 	double tdiff, tdiff1, tdiff2;
 	char input_buffer[256];
 	long frame_number[256]; /* Must be at least as big as the number of buffers used */
-
 	char *sbuffer;
 	struct mjpeg_params bp;
 	struct mjpeg_sync bs;
 	struct sigaction action, old_action;
-   
+
    /* Output Version information - Used by xlav to check for
 	consistency. 
    */
@@ -621,10 +633,6 @@ int main(int argc, char ** argv)
 
 		case 'h':
             h_offset = atoi(optarg);
-            break;
-
-		case 'w':
-            playback_width = atoi(optarg);
             break;
 
 		case 'v':
@@ -653,6 +661,10 @@ int main(int argc, char ** argv)
 
 		case 'q':
             quit_at_end = 0;
+            break;
+
+		case 'w':
+            playback_width=768;
             break;
 
 		case 'x':
@@ -865,6 +877,7 @@ int main(int argc, char ** argv)
    
 	/* Check dimensions of video, select decimation factors */
 	if (!soft_play && !screen_output)
+	{		
 		if( el.video_width > playback_width || el.video_height > hn )
 		{
 			/* This is definitely too large */
@@ -873,7 +886,8 @@ int main(int argc, char ** argv)
 					el.video_width,el.video_height);
 			lavplay_msg(LAVPLAY_ERROR,infostring,"");
 			exit(1);
-		};
+		}
+	}
        
 	/* if zoom_to_fit is set, HorDcm is independent of interlacing */
        
@@ -1170,7 +1184,12 @@ int main(int argc, char ** argv)
 					k = nc2 - nc1+1;
 					if(nframe>=nc1 && nframe<=nc2) nframe = nc1-1;
 					if(nframe>nc2) nframe -= k;
-					for(i=nc2+1;i<el.video_frames;i++) el.frame_list[i-k] = el.frame_list[i];
+					for(i=nc2+1;i<el.video_frames;i++)
+					{
+						el.frame_list[i-k] = el.frame_list[i];
+						if(i-k <= min_frame_num) min_frame_num--;
+						if(i-k <= max_frame_num) max_frame_num--;
+					}
 					el.video_frames -= k;
 				}
 
