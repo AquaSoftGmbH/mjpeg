@@ -1578,8 +1578,10 @@ static void lavrec_record(lavrec_t *info)
    while (settings->state == LAVREC_STATE_RECORDING)
    {
       /* sync on a frame */
+retry:
       if (!lavrec_sync_buffer(info, &bsync))
       {
+         if (errno==EINTR && info->software_encoding) goto retry; /* BTTV sync got interrupted */
          if (info->files)
             lavrec_close_files_on_error(info);
          lavrec_msg(LAVREC_MSG_ERROR, info,
@@ -1670,9 +1672,9 @@ static void lavrec_record(lavrec_t *info)
             jpegsize = encode_jpeg_raw(settings->MJPG_buff+bsync.frame*settings->breq.size,
                settings->breq.size, info->quality, settings->interlaced,
                CHROMA420, info->geometry->w, info->geometry->h,
-               settings->YUV_buff,
-               settings->YUV_buff+(info->geometry->w*info->geometry->h),
-               settings->YUV_buff+(info->geometry->w*info->geometry->h*5/4));
+               settings->YUV_buff+settings->softreq.offsets[bsync.frame],
+               settings->YUV_buff+settings->softreq.offsets[bsync.frame]+(info->geometry->w*info->geometry->h),
+               settings->YUV_buff+settings->softreq.offsets[bsync.frame]+(info->geometry->w*info->geometry->h*5/4));
             if (jpegsize<0)
             {
                lavrec_msg(LAVREC_MSG_ERROR, info,
