@@ -616,9 +616,17 @@ void outputstream ( char 		*video_file,
 				clean continuation in the next segment).
 				
 				*/
-				if( opt_multifile_segment && 
-					system_file_lim_reached( ostream ) )
+				if( system_file_lim_reached( ostream ) )
+				{
+					if( opt_multifile_segment )
 						ostream = system_next_file( ostream, multi_file );
+					else
+					{
+						next_vau = (Vaunit_struc*)VectorLookAhead(vaunit_info_vec, 1);
+						if( next_vau->type != IFRAME)
+							seg_state = last_vau_segment;
+					}
+				}
 				else if( video_au.end_seq )
 				{
 					next_vau = (Vaunit_struc*)VectorLookAhead(vaunit_info_vec, 1);

@@ -16,7 +16,7 @@ char filename[MAXPATHLEN];
 int system_file_lim_reached( FILE *cur_system_strm )
 {
 	intmax_t written = (intmax_t) ftell( cur_system_strm);
-	return written > max_system_segment_size;
+	return max_system_segment_size != 0 && written > max_system_segment_size;
 }
 
 FILE *system_next_file( FILE *cur_system_strm, const char *filename_pat )

@@ -28,8 +28,8 @@ static void Usage(char *str)
 	fprintf( stderr, " -f fmt  Set pre-defined mux format.\n");
 	fprintf( stderr, "         [0 = Auto MPEG1, 1 = VCD, 2 = Auto MPEG2, 3 = SVCD, 4 = DVD]\n");
 	fprintf( stderr, "         (N.b only 0 .. 3 currently implemented!*)\n" ); 
-	fprintf( stderr, " -S size Maximum size of output file in M bytes (default: 680)\n" );
-	fprintf( stderr, " -M      Generate a *single* multi-file program rather a program per file\n");
+	fprintf( stderr, " -S size Maximum size of output file in M bytes (default: 680) (0 = no limit)\n" );
+	fprintf( stderr, " -M      Generate a *single* multi-file program per sequence rather a program per file\n");
 	fprintf( stderr, "         %%d in the output file name is replaced by a segment counter\n");
 	fprintf( stderr, " -e      Vcdmplex style start-up (debugging tool)\n");
 			
@@ -148,7 +148,7 @@ int intro_and_options(int argc, char *argv[])
 		break;
 	  case 'S' :
 		max_system_segment_size = atoi(optarg);
-		if( max_system_segment_size < 1  )
+		if( max_system_segment_size < 0  )
 		  Usage(argv[0]);
 		   max_system_segment_size *= 1024*1024; 
 		break;
