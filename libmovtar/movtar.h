@@ -202,6 +202,9 @@ int movtar_ignore_data(FILE *tarfile, struct tarinfotype *tarinfoptr);
 */
 //int movtar_ignore_file(movtar_t *tarfile, struct tarinfotype *tarinfoptr);
 
+
+void movtar_show_fake_frames(movtar_t *movtar, int yes);
+
 /* movtar_forward_frames
  * Hops times frames forward in the file. 
  * in: tarfile: The movtar file.
@@ -264,6 +267,8 @@ int movtar_video_tracks(movtar_t *movtar);
 long movtar_video_length(movtar_t *movtar);
 int movtar_video_width(movtar_t *movtar);
 int movtar_video_height(movtar_t *movtar);
+int movtar_video_tracks(movtar_t *movtar);
+int movtar_audio_tracks(movtar_t *movtar);
 float movtar_frame_rate(movtar_t *movtar);
 // int movtar_video_depth(movtar_t *movtar); the movtar lib does NOT decompress video !
 
