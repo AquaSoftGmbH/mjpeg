@@ -109,6 +109,7 @@ stream structure are simply ignored.
 .PP
 .BR -f|--format \ 2 
 	-	User VCD.
+.PP
 As for profile 2 but bit-rate and video buffer size can
 be set to non-standard values. Frame size may also be non-standard.
 Bit-rate and buffer sizes default to those for standard VCD.
@@ -117,7 +118,7 @@ Bit-rate and buffer sizes default to those for standard VCD.
 	-	Generic MPEG2.
 .PP
 
-A basic MPEG-1 profile that lets most parameters be adjusted for
+A basic MPEG-2 profile that lets most parameters be adjusted for
 particular applications using the other flags.  Typical applications
 would be to produce a MPEG-2 stream with big buffers and long GOP's
 for software playback on a computer.
@@ -165,6 +166,7 @@ permitted by the DVD specification.
 .PP
 .BR -f|--format \ 9
 	-	DVD MPEG-2. 
+.PP
 Just a very basic implementation. Useful with DXR2 board and similar
 hardware that can decode MPEG-2 only if it is presented in a DVD like
 form.  Bit-rate defaults to 7500kbps, buffer sizes to the maximum
@@ -176,16 +178,16 @@ permitted by the DVD specification.
 Set verbosity level to num.  0 = warnings and errors only, 1 =
 information as well, 2=really verbose.
 .PP
-.BR  -K|--custom-quant-matrices kvcd|tmpgenc|default|hi-res|file=inputfile|he
-lp
+.BR  -K|--custom-quant-matrices \ kvcd|tmpgenc|default|hi-res|file=inputfile|help
+.PP
 Specify which quantization matrices to use instead of the defaults
 (which can be specified by using "-K default").   Using "-K hi-res" is
-identical to using the -H option.   The value kvcd uses the Kvcd.Net
-matrices from http://www.kvcd.net and the value tmpgenc invokes the
-TMPGEnc matrices from http://www.tmpgenc.net/e_main.html.   On average
-(and it is somewhat source material dependent) the tmpgenc tables reduce
-the average bitrate about 10% and the kvcd tables about 16% compared to
-the default tables.
+identical to using the -H option. The value kvcd uses the Kvcd.Net
+matrices from http://www.kvcd.net/; the value tmpgenc invokes the
+TMPGEnc matrices from http://www.tmpgenc.net/e_main.html. On average
+(this depends on the source material), the tmpgenc tables reduce
+the average bitrate by about 10% and the kvcd tables reduce bitrate
+by about 16% (compared to the default tables).
 .PP
 .BR -?|--help
 .PP
@@ -346,7 +348,7 @@ even if the CPU's are available due to the fairly coarse-grained
 parallelism used.
 
 .PP
-.BR -q|--quantisation\ 2 .. 31
+.BR -q|--quantisation\ 1 .. 31
 .PP
 Minimum quantisation of the output stream.  Quantisation controls the
 precision with which image information is encoded.  The lower the
@@ -422,7 +424,7 @@ that ensure 2 B frames appear between adjacent I/P frames.
 Several common MPEG-1 decoders can't handle streams where less than
 2 B-frames appear between I/P frames.
 .PP
-.BR -Q|--quantisation-reduction\ 0.0 .. 4.0 
+.BR -Q|--quantisation-reduction\ 0.0 .. 5.0 
 .PP
 This flag sets the amount quantisation is reduced for
 blocks containing unusually large amounts of sharp image detail.
