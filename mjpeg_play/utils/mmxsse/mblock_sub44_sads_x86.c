@@ -94,6 +94,10 @@ static __inline__ void init_qblock_sad_mmxe(uint8_t *refblk,uint32_t h,uint32_t 
         movd_m2r(refblk[0],mm7);
         movd_m2r(refblk[rowstride],mm5);
         punpcklbw_r2r(mm5,mm7);
+    } else {
+        pxor_r2r(mm7,mm7);
+        pxor_r2r(mm2,mm2);
+        pxor_r2r(mm3,mm3);
     }
 }
 
@@ -121,13 +125,11 @@ static __inline__ int qblock_sad_mmxe(uint8_t *refblk,
         punpcklbw_r2r(mm1,mm4);
         psadbw_r2r   (mm6,mm4);
 
-	if( h == 4 )
-	{
-            movq_r2r     (mm2,mm5);
-            punpcklbw_r2r(mm3,mm5);
-            psadbw_r2r   (mm7,mm5);
-            paddw_r2r    (mm5,mm4);
-	}
+        movq_r2r     (mm2,mm5);
+        punpcklbw_r2r(mm3,mm5);
+        psadbw_r2r   (mm7,mm5);
+        paddw_r2r    (mm5,mm4);
+
 	movd_r2g      ( mm4, res );
 
 	return res;
