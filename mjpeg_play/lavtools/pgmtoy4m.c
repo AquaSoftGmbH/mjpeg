@@ -32,9 +32,7 @@
 
 #include "yuv4mpeg.h"
 
-extern	char	*__progname;
-
-static	void	usage(void);
+static	void	usage(char *progname);
 static	int	getint(int);
 
 #define	P5MAGIC	(('P' * 256) + '5')
@@ -98,7 +96,7 @@ main(int argc, char **argv)
 						ilace = Y4M_ILACE_BOTTOM_FIRST;
 						break;
 					default:
-						usage();
+						usage(argv[0]);
 					}
 				break;
 			case	'v':
@@ -121,7 +119,7 @@ main(int argc, char **argv)
 			case	'h':
 			case	'?':
 			default:
-				usage();
+				usage(argv[0]);
 				/* NOTREACHED */
 			}
 		}
@@ -255,12 +253,12 @@ main(int argc, char **argv)
 	}
 
 static void
-usage(void)
+usage(char *progname)
 	{
 
 	fprintf(stderr, "%s usage: [-v n] [-i t|b|p] [-a sample aspect] [-r rate]\n",
-		__progname);
-	fprintf(stderr, "%s\taspect and rate in ratio form: -a  10:11 and -r 30000:1001 or -r 25:1 for example\n", __progname);
+		progname);
+	fprintf(stderr, "%s\taspect and rate in ratio form: -a  10:11 and -r 30000:1001 or -r 25:1 for example\n", progname);
 	exit(0);
 	}
 
