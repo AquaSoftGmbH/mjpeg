@@ -110,6 +110,7 @@ void cubic_interpolation (uint8_t * frame[3], int field);
 void mc_interpolation (uint8_t * frame[3], int field);
 void sinc_interpolation (uint8_t * frame[3], int field);
 void aa_interpolation (uint8_t * frame[3], int field);
+void aa_interpolation2 (uint8_t * frame[3], int field);
 
 /***********************************************************
  * Main Loop                                               *
@@ -216,8 +217,8 @@ main (int argc, char *argv[])
 		/* interpolate the other field */
 		if(fast_mode==0)
 		{
-			aa_interpolation (frame10, field_order);
-			aa_interpolation (frame11, 1-field_order);
+			sinc_interpolation (frame10, field_order);
+			sinc_interpolation (frame11, 1-field_order);
 			
 			/* create working copy */
 
@@ -236,7 +237,7 @@ main (int argc, char *argv[])
 		}		
 		else
 		{
-			aa_interpolation (frame10, field_order);
+			aa_interpolation2 (frame10, field_order);
 			y4m_write_frame (fd_out, &streaminfo, &frameinfo, frame10);
 		}
 
@@ -270,57 +271,101 @@ main (int argc, char *argv[])
 void
 blend_fields (void)
 {
+	int mode=0;
 	int x, y;
 	int delta,delta1,delta2,delta3,delta4,delta5;
 
-	float korr;
-	static float mean_korr;
+	float korr1,korr2,korr3;
 	float blend;
 
-	korr = 0;
+	korr1 = 0;
 	for (y = 0; y < height; y++)
 		for (x = 0; x < width; x++)
 		{
-			delta =	*(frame4[0] + x + y * width) -
+			delta =	*(frame20[0] + x + y * width) -
 						*(frame5[0] + x + y * width) ;
 			delta *= delta;
-			korr += delta;
+			korr1 += delta;
 		}
-	korr /= width*height;
-	korr = 1-sqrt(korr)/256;
+	korr1 /= width*height;
+	korr1 = 1-sqrt(korr1)/256;
 
+	korr2 = 0;
+	for (y = 0; y < height; y++)
+		for (x = 0; x < width; x++)
+		{
+			delta =	*(frame20[0] + x + y * width) -
+						*(frame21[0] + x + y * width) ;
+			delta *= delta;
+			korr2 += delta;
+		}
+	korr2 /= width*height;
+	korr2 = 1-sqrt(korr2)/256;
 
-	mjpeg_log(LOG_INFO,"fields match by %3.1f%% (mean %3.1f%%) -- ",korr*100,mean_korr*100);
+	korr3 = 0;
+	for (y = 0; y < height; y++)
+		for (x = 0; x < width; x++)
+		{
+			delta =	*(frame20[0] + x + y * width) -
+						*(frame11[0] + x + y * width) ;
+			delta *= delta;
+			korr3 += delta;
+		}
+	korr3 /= width*height;
+	korr3 = 1-sqrt(korr3)/256;
 
-	if ( korr >= mean_korr-0.05 )
+	if(korr2>=korr1)
 	{
-	mjpeg_log(LOG_INFO,"   using motion-compensated field\n");
+		mjpeg_log(LOG_INFO," %3.1f %3.1f %3.1f -- mode: PROGRESSIVE SCAN",korr1*100,korr2*100,korr3*100);
+		mode=1;
+	}
+	else		
+		if(korr3>=korr1)
+		{
+			mjpeg_log(LOG_INFO," %3.1f %3.1f %3.1f -- mode: TELECINED VIDEO",korr1*100,korr2*100,korr3*100);
+			mode=1;
+		}
+		else		
+		{
+			mjpeg_log(LOG_INFO," %3.1f %3.1f %3.1f -- mode: INTERLACED VIDEO",korr1*100,korr2*100,korr3*100);
+			mode=0;
+		}
 
-	mean_korr = mean_korr * 9 + korr;
-	mean_korr /= 10;
-
+	if(mode==0)
 	for (y = 0; y < height; y++)
 		for (x = 0; x < width; x++)
 		{
 
 			delta1 = 
-				  *(frame4[0] + x + (y+0) * width) +
-				  *(frame4[0] + x + (y+0) * width) /2 ;
-			delta1 = delta1<0? -delta1:delta1;
+				  *(frame4[0] + x + (y+0) * width) -
+				  *(frame5[0] + x + (y+0) * width);
+			delta1 *= delta1;
+			delta1 /= 256;
 
-			blend = delta/256.f;
-			blend = blend>0.5? 0.5:blend;
-			blend = blend + 0.5;
+			blend = (256.f-delta1)/(256.f*2);
 
-			*(frame6[0] + x + y * width) = 
-				*(frame4[0] + x + y * width)*(  blend)+
-				*(frame5[0] + x + y * width)*(1-blend);
+			*(frame6[0] + x + y * width)=
+			*(frame4[0] + x + y * width)*(  blend)+
+			*(frame5[0] + x + y * width)*(1-blend);
 		}
-	}
 	else
-	{
-	mjpeg_log(LOG_INFO,"   Scene-change or fast motion. Using interpolated field");
-	}
+		if(mode==1)
+			for (y = 0; y < height; y++)
+				for (x = 0; x < width; x++)
+				{
+					*(frame6[0] + x + y * width)=
+						*(frame21[0] + x + y * width)*0.5+
+						*(frame20[0] + x + y * width)*0.5;
+				}
+	else
+		if(mode==2)
+			for (y = 0; y < height; y++)
+				for (x = 0; x < width; x++)
+				{
+					*(frame6[0] + x + y * width)=
+						*(frame11[0] + x + y * width)*0.5+
+						*(frame20[0] + x + y * width)*0.5;
+				}
 }
 
 
@@ -368,7 +413,7 @@ motion_compensate_field (void)
 						w / 2, 8, 0);
 			}
 			/* begin the search */
-			for (vy = -r; vy < r; vy++)
+			for (vy = -r; vy < r; vy+=2)
 				for (vx = -r; vx <r; vx++)
 				{
 					/* match luma */
@@ -389,7 +434,7 @@ motion_compensate_field (void)
 							w / 2, 8, 0);
 					}
 
-					if (SAD <= min)
+					if (SAD < min)
 					{
 						min = SAD;
 
@@ -470,10 +515,10 @@ void aa_interpolation( uint8_t * frame[3], int field)
 	int x,y,dx,v1,v2,z,d;
 	uint32_t SSE;
 	uint32_t min;
-	int w=8;
+	int w=24;
 
 	for (y = (field + 2); y < (height - 2); y += 2)
-		for (x = 0; x < width; x++)
+		for (x = 0; x < width; x+=2)
 		{
 			
 			v1=v2=0;
@@ -498,6 +543,89 @@ void aa_interpolation( uint8_t * frame[3], int field)
 					//SSE += z*z/4;
 				}
 				if (SSE<(min*0.5))
+				{
+					min=SSE;
+					v1=dx/2;
+				}
+			}
+
+			d=
+				(	*(frame[0]-v1+(x)+(y-1)*width) +
+					*(frame[0]+v1+(x)+(y+1)*width)	)/2;
+
+			*(frame[0]+(x)+(y)*width) = d;
+		}	
+
+	if(bttv_hack==0)
+	{
+	// Chroma 
+	height /= 2;
+	width /= 2;
+
+	for (y = (field + 2); y < (height - 2); y += 2)
+		for (x = 0; x < width; x++)
+		{
+			float v;
+			v = 0.5 * (float) *(frame[1] + (y - 1) * width + x) +
+				0.5 * (float) *(frame[1] + (y + 1) * width +
+						x);
+
+			v = v > 240 ? 240 : v;
+			v = v < 16 ? 16 : v;
+			*(frame[1] + y * width + x) = v;
+
+			v = 0.5 * (float) *(frame[2] + (y - 1) * width + x) +
+				0.5 * (float) *(frame[2] + (y + 1) * width +
+						x);
+
+			v = v > 240 ? 240 : v;
+			v = v < 16 ? 16 : v;
+			*(frame[2] + y * width + x) = v;
+		}
+
+	height *= 2;
+	width *= 2;
+	}
+}
+
+void aa_interpolation2( uint8_t * frame[3], int field)
+{
+	int x,y,dx,v1,v2,z,d;
+	uint32_t SSE;
+	uint32_t min;
+	int w1=3;
+	int w2=3;
+
+	for (y = (field + 2); y < (height - 2); y += 2)
+		for (x = 0; x < width; x++)
+		{
+			
+			v1=v2=0;
+			min=0;
+			for(z=-w1; z <= w1 ;z++)
+			{
+				d = 	*(frame[0]+z+x     +(y-1)*width) -
+						*(frame[0]+z+x     +(y+1)*width);
+				d *= d;
+				min += d*2;
+			}
+
+			for(dx=-w2 ; dx<=w2 ; dx++)
+			{
+				SSE=0;
+				for(z=-w1; z <= w1 ;z++)
+				{
+					d = 	*(frame[0]+z+x     +(y-1)*width) -
+							*(frame[0]+z+x+dx  +(y+1)*width);
+					d *= d;
+					SSE += d;
+
+					d = 	*(frame[0]+z+x-dx  +(y-1)*width) -
+							*(frame[0]+z+x     +(y+1)*width);
+					d *= d;
+					SSE += d;
+				}
+				if (SSE<min)
 				{
 					min=SSE;
 					v1=dx/2;
