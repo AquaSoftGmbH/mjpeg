@@ -7,6 +7,8 @@ y4mdenoise \- Motion-compensating YUV4MPEG-frame denoiser
 .B y4mdenoise
 .RB [ -v
 .IR verbosity ]
+.RB [ -p
+.IR parallelism ]
 .RB [ -r
 .IR motion-search_radius ]
 .RB [ -R
@@ -23,8 +25,6 @@ y4mdenoise \- Motion-compensating YUV4MPEG-frame denoiser
 .IR match-count_throttle ]
 .RB [ -M
 .IR match-size_throttle ]
-.RB [ -s
-.IR frames_to_skip ]
 .RB [ -f
 .IR reference_frames ]
 .RB [ -B ]
@@ -82,6 +82,16 @@ be set separately.
 0 = none, 1 = normal (per-frame pixel-detection totals), 2=debug.
 
 .TP 4
+.BI \-p " num"
+Controls the level of parallelism.  Since intensity and color are
+denoised separately by design, it's very easy to do each concurrently
+on a multiple-processor machine.  The default value is 1; that reads and
+writes video frames in separate threads.  A value of 2 causes intensity
+and color to be denoised in separate threads.  A value of 0 turns off
+all concurrency, i.e. the program reads a frame, denoises it, then
+writes a frame, and loops until there are no more frames.
+
+.TP 4
 .BI \-r " [4..] search radius"
 The search radius, i.e. the maximum distance that a pixel can move and
 still be found by motion-detection.  The default is 16.
@@ -127,12 +137,6 @@ Default is 10.
 The minimum size of the flood-filled region generated from a match.
 Matches smaller than this are thrown away.  Specified in terms of
 pixel-groups.  Default is 3.
-
-.TP 4
-.BI \-s " num"
-Number of beginning frames to skip.  The first num frames are written
-to stdout unfiltered.  This is useful for resuming an interrupted
-job without having to duplicate work.  Default is 0.
 
 .TP 4
 .BI \-f " num"
