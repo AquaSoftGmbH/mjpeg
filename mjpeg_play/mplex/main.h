@@ -91,7 +91,7 @@ typedef __uint64_t clockticks;
 
 
 #define MPEG2_AFTER_PACKET_LENGTH_MIN    3
-#define MPEG1_AFTER_PACKET_LENGTH_MIN    (0+1+3)
+#define MPEG1_AFTER_PACKET_LENGTH_MIN    (0+1)
 
 #define MPEG2_LAST_SCR_BYTE_IN_PACK  10			/* No of bytes in pack	*/
 #define MPEG1_LAST_SCR_BYTE_IN_PACK   9         /* preceding, and 	*/
@@ -109,12 +109,9 @@ typedef __uint64_t clockticks;
 /* the system layer on a single video or a single audio stream, those   */
 /* values get decreased by 3.                                           */
 
-#define SYS_HEADER_LENGTH	12		/* length of Sys Header	*/
-						/* after start code and	*/
-						/* length field		*/
 
 #define SYS_HEADER_SIZE		18		/* incl. start code and	*/
-						/* length field		*/
+                                    /* length field, 2 streams		*/
 #define MPEG2_PACK_HEADER_SIZE	14
 #define MPEG1_PACK_HEADER_SIZE  12
 
@@ -445,4 +442,6 @@ extern unsigned int which_streams;
 extern int packet_overhead;
 extern int rate_restriction_flag;
 extern int pack_header_size;
+extern int system_header_size;
 extern int sector_size;
+

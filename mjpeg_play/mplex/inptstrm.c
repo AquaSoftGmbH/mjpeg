@@ -182,7 +182,6 @@ void get_info_video (char *video_file,
 					 unsigned int length,
 					 Vector *vid_info_vec)
 {
-    FILE* info_file;
     Bit_stream_struc video_bs;
    	bitcount_t offset_bits=0LL;
     bitcount_t stream_length=0LL; 
@@ -499,7 +498,6 @@ void get_info_audio (
 	)
 
 {
-    FILE* info_file;
     Bit_stream_struc audio_bs;
     bitcount_t offset_bits=0;
 	bitcount_t prev_offset;

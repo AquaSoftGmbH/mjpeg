@@ -11,7 +11,7 @@ int packet_payload( int sys_header, int pack_header, int buffers, int PTSstamp, 
 {
 	int payload = sector_size - PACKET_HEADER_SIZE ;
 	if( sys_header )
-		payload -= SYS_HEADER_SIZE;
+		payload -= system_header_size;
 	if( buffers )
 		payload -=  BUFFERINFO_LENGTH;
 	if( opt_mpeg == 2 )
@@ -105,14 +105,9 @@ void create_sector (Sector_struc 	 *sector,
 
     if (sys_header != NULL)
     {
-	  i = SYS_HEADER_SIZE;
-
-	  /* only one stream? 3 bytes less in sys header */
-	  if (which_streams != STREAMS_BOTH) i -= 3;
-
-	  bcopy (sys_header->buf, index, i);
-	  index += i;
-	  sector->length_of_sector += i;
+	  bcopy (sys_header->buf, index, system_header_size);
+	  index += system_header_size;
+	  sector->length_of_sector += system_header_size;
     }
 
     /* konstante Packet Headerwerte eintragen */
@@ -132,12 +127,6 @@ void create_sector (Sector_struc 	 *sector,
 
 	if( opt_mpeg == 1 )
 	  {
-		/* MPEG 1: 3 stuffing bytes where MPEG-2 puts its top-level
-		   packet syntax flags */
-		*(index++) = STUFFING_BYTE;
-		*(index++) = STUFFING_BYTE;
-		*(index++) = STUFFING_BYTE;
-		
 		/* MPEG-1: buffer information */
 		if (buffers)
 		  {
@@ -225,7 +214,8 @@ void create_sector (Sector_struc 	 *sector,
 	if( target_packet_data_size != packet_payload( sys_header!=0, pack!=0, buffers,
 												   timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS) )
 	{ 
-		printf("Packet size calculation error %d %d %d!\n ", timestamps,
+		printf("\nPacket size calculation error %d S%d P%d B%d %d %d!\n ", timestamps,
+			   sys_header!=0, pack!=0, buffers,
 		target_packet_data_size , 
 		packet_payload( sys_header!=0, pack!=0, buffers,
 					    timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS));
@@ -405,13 +395,8 @@ void create_sys_header (
     *(index++) = (unsigned char)((SYS_HEADER_START & 0x0000ff00)>>8);
     *(index++) = (unsigned char)(SYS_HEADER_START & 0x000000ff);
 
-    if (which_streams == STREAMS_BOTH) {
-	*(index++) = (unsigned char)(SYS_HEADER_LENGTH >> 8);
-	*(index++) = (unsigned char)(SYS_HEADER_LENGTH & 0xff);
-    } else {
-	*(index++) = (unsigned char)((SYS_HEADER_LENGTH-3) >> 8);
-	*(index++) = (unsigned char)((SYS_HEADER_LENGTH-3) & 0xff);
-    }
+	*(index++) = (unsigned char)((system_header_size-6) >> 8);
+	*(index++) = (unsigned char)((system_header_size-6) & 0xff);
 
     *(index++) = (unsigned char)(0x80 | (rate_bound >>15));
     *(index++) = (unsigned char)(0xff & (rate_bound >> 7));

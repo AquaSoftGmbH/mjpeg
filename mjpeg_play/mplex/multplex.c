@@ -17,7 +17,7 @@ extern struct timeval  tp_global_end;
 
 unsigned int    which_streams;
 int pack_header_size;
-
+int system_header_size;
 
 /* 
 		Stream syntax parameters.
@@ -135,6 +135,10 @@ void init_stream_syntax_parameters(	)
 	  pack_header_size = MPEG1_PACK_HEADER_SIZE;
 
  	}
+
+  system_header_size = SYS_HEADER_SIZE;
+  if( which_streams != STREAMS_BOTH )
+	  system_header_size -= 3;
 
   if( always_sys_header_in_pack )
 	min_packet_data -= SYS_HEADER_SIZE;
