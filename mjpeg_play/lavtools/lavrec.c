@@ -984,6 +984,7 @@ int main(int argc, char ** argv)
    unsigned long num_syncs;
    unsigned long num_ins, num_del;
    unsigned long num_aerr;
+   int stats_changed;
    int astat;
    long audio_buffer_size;
    double time;
@@ -1245,6 +1246,13 @@ int main(int argc, char ** argv)
       audio_buffer_size = audio_get_buffer_size();
    }
 
+   /* After we have fired up the audio system (which is assisted if we're
+	  installed setuid root, we want to set the effective user id to the
+	  real user id */
+   if( seteuid( getuid() ) < 0 )
+	   system_error("Can't set effective user-id: ",
+					(char *)sys_errlist[errno]);
+
    /* The audio system needs a exit processing (audio_shutdown()),
       the mixers also should be reset at exit. */
 
@@ -1481,7 +1489,7 @@ int main(int argc, char ** argv)
    /* The video capture loop */
 
    write_frame = 1;
-
+   stats_changed = 0;
    num_syncs  = 0; /* Number of MJPIOC_SYNC ioctls            */
    num_lost   = 0; /* Number of frames lost                   */
    num_frames = 0; /* Number of frames written to file        */
@@ -1556,6 +1564,7 @@ int main(int argc, char ** argv)
          nfout = 1;
          n = bsync.seq - num_syncs - first_lost + 1; /* total lost frames */
          if(sync_corr>0) nfout += n - num_lost; /* lost since last sync */
+		 stats_changed = (num_lost != n);
          num_lost = n;
 
          /* Check if we have to insert/delete frames to stay in sync */
@@ -1566,12 +1575,14 @@ int main(int argc, char ** argv)
             {
                nfout++;
                num_ins++;
+			   stats_changed = 1;
                tdiff1 += spvf;
             }
             if( tdiff1-tdiff2 > spvf)
             {
                nfout--;
                num_del++;
+			   stats_changed = 1;
                tdiff1 -= spvf;
             }
          }
@@ -1596,7 +1607,7 @@ int main(int argc, char ** argv)
    
       /* Output statistics */
 
-      if(!single_frame && output_status<3)
+      if(!single_frame && output_status<3 && (verbose > 1 || stats_changed))
       {
          int nf, ns, nm, nh;
          if(norm==VIDEO_MODE_PAL)
@@ -1617,7 +1628,7 @@ int main(int argc, char ** argv)
                             "audio errs:%3lu tdiff=%10.6f",
                 nh, nm, ns, nf, num_lost, num_ins, num_del, num_aerr, tdiff1-tdiff2);
         lavrec_msg(LAVREC_PROGRESS,infostring,"");
-      
+		stats_changed = 0;
       }
 
 #ifdef	NEVER
@@ -1668,7 +1679,11 @@ time_diff = tdiff1 - tdiff2;
             break;
          }
 
-         if(!astat) num_aerr++;
+         if(!astat) 
+		 {
+			 num_aerr++;
+			 stats_changed = 1;
+		 }
 
          /* Adjust for difference at start */
 

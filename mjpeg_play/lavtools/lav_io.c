@@ -457,7 +457,8 @@ int lav_write_frame(lav_file_t *lav_file, char *buff, long size, long count)
 #endif
       }
    }
-
+   
+   res = 0; /* Silence gcc */
    for(n=0;n<count;n++)
    {
       switch(lav_file->format)

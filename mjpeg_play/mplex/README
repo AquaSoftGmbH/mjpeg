@@ -48,6 +48,7 @@ Novermber 2000 Andrew Stevens
 	Cleaned up packet size calculations to make the code more flexible.
 	Initial MPEG-2 support
 	Support for splitting output streams (not yet completely implemented)
+	Support for multiplexing for VCD.
 
 MANUAL PAGE DRAFT
 

@@ -1,23 +1,15 @@
 1.	mpeg2enc has only been tested cursorarily on MPEG-2 streams.
-	I have no easy way of testing them and they take forever to
-	encode...
+	It was hard enough to make sure the MPEG-1 stuff worked really
+	reliably ;-)
 
+2.  The bit-rate control algorithm in mpeg2enc is relatively new and must
+	therefore be regarded with some suspicion.  It *looks* to have corrected
+	some annoying problems with overshoots in the pre-release version and
+	poor handling of unusually active blocks but I'd want more evidence...
 
-2.      VCD multiplexing is currently subtly broken.  Calculated data-rates
-	in mplex are too tight (probably not leaving enough head-room for
-	the system stream overhead).
+3.	CPU detection is currently somewhat lame and there and no use is made
+	of SSE or 3DNow.
 
-3.	You can't current easily steal your friend's Windows Athlon
-	for your evil purposes 	using cygwin32 as the quicktime lib
-	demands pthreads.
-
-
-4.	Bit-rate control in the encoder is currently a little too loose.
-	The current code is a comprise approximation between compressing
-	un-necessarily hard after a number of frames have under-shot their
-	target and guaranteeing never to exceed the target bit-rate.
-
-	Eventually new code based on monitoring the VBV state will give accurate	results.
-
-	The current problem is compounded by a somewhat naive method of 
-	calculating necessary bit-rate in the multiplexer.
+4.	At least for my install of SDL software playback MJPEG function sizes
+	its window inconsistently with what it claims it is going to do.
+	Playback speed

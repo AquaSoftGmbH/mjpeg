@@ -1,8 +1,5 @@
-IMPORTANT: You are currently required to have Quicktime installed !
-Get the source under http://heroine.linuxave.net/quicktime.html,
-unpack it (e.g. under /usr/src/quicktime, and create a symlink to it
-e.g. cd /usr/src/mjpeg_play; ln -s /usr/src/quicktime ./quicktime
-)
+REMINDER: You are currently required to have Quicktime installed !
+See "REQUIRED_SOFTWARE"...
 
 lavtools: Linux Motion JPEG and MPEG Audio and Video TOOLS
 ==========================================================
@@ -142,9 +139,12 @@ therefore not be played back by the BUZ.
 
 
 
-You reach us by email:
+You reach us by email.
 
-lav* : Rainer@Johanni.de
+Although little bits have been done by everyone the main work was
+roughly as follows:
+
+lav* : Rainer@Johanni.de and Gernot Ziegler <gz@lysator.liu.se>
 mpeg2enc mplex : Andrew.Stevens@comlab.ox.ac.uk
 libmjpeg: Gernot Ziegler <gz@lysator.liu.se>
 

@@ -9,7 +9,7 @@
 
 ## EXTRA-DIST = README PLANS
 INCLUDES = -I../mjpeg -I /usr/X11R6/include @MOVTAR_CFLAGS@  @GLIB_CFLAGS@ @QUICKTIME_INCLUDE@
-CFLAGS=-Wall -Werror -g
+CFLAGS=-Wall -Wno-uninitialized -Werror -O3
 
 ##
 ## TODO: Need to include the mpeg programs in bin_PROGRAMS for installation
@@ -20,15 +20,15 @@ lav_headers = lav_io.h editlist.h xlav.h avilib.h
 
 
 lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c  $(lav_headers)
-lavplay_LDFLAGS = -L../mjpeg/ @GLIB_LIBS@
+lavplay_LDFLAGS = -L../mjpeg/ @GLIB_LIBS@ 
 lavplay_LDADD = @MOVTAR_LIBS@ -lmjpeg
 
 lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c $(lav_headers)
-lavrec_LDFLAGS = -L../mjpeg/ @GLIB_LIBS@
+lavrec_LDFLAGS = -L@LOCAL_JPEG_LIB@ -L../mjpeg/ @GLIB_LIBS@
 lavrec_LDADD = @MOVTAR_LIBS@ -lmjpeg
 
 lav2yuv_SOURCES = lav2yuv.c  jpegutils.c $(lav_headers)
-lav2yuv_LDFLAGS  = -L movtar 
+lav2yuv_LDFLAGS  = -L@LOCAL_JPEG_LIB@ -L movtar 
 lav2yuv_LDADD = editlist.o lav_io.o avilib.o -lmovtar 
 
 

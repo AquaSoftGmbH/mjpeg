@@ -59,7 +59,7 @@ int chroma_format = CHROMA420;
 static int param_drop_lsb   = 0;
 static int param_noise_filt = 0;
 static int param_special = 0;
-
+static int param_mono = 0;
 int output_width, output_height;
 
 int	luma_size;
@@ -121,6 +121,7 @@ void Usage(char *str)
   printf("                 3 create 352 wide output from 720 wide input (for vcd)\n");
   printf("   -d num     Drop lsbs of samples [0..3] (default: 0)\n");
   printf("   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
+  printf("   -m         Force mono-chrome\n");
   exit(0);
 }
 
@@ -199,7 +200,7 @@ static void init()
 
 int readframe(int numframe, unsigned char *frame[])
 {
-   int len, res;
+   int len, i, res;
 
    frame[0] = read_buf[0];
    frame[1] = read_buf[1];
@@ -314,6 +315,14 @@ int readframe(int numframe, unsigned char *frame[])
 	   
 	   
 	 }
+
+   if( param_mono )
+   {
+	   for( i =0; i < chroma_output_width *chroma_output_height; ++i )
+	   {
+		   frame[1][i] = frame[2][i] = 0x80;
+	   }
+   }
    return 0;
 
 }
@@ -549,6 +558,9 @@ char *argv[];
           fprintf(stderr,"-n option requires arg 0..2\n");
           nerr++;
         }
+		break;
+	case 'm' :
+		param_mono = 1;
 		break;
 	default:
 	  nerr++;
