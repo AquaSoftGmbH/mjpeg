@@ -10,7 +10,7 @@ yuvdenoise \- Motion-Compensating-YUV4MPEG-frame-denoiser
 
 .SH DESCRIPTION
 \fByuvdenoise\fP can be used to remove noise from movie images
-in an YUV4MPEG2 stream. This is usefull to reduce the bitrate       
+in an YUV4MPEG2 stream. This is useful to reduce the bitrate       
 needed to encode your captured movies for VCD and SVCD creation.
 
 
@@ -22,7 +22,7 @@ needed to encode your captured movies for VCD and SVCD creation.
 Accept any image-error up to +/- threshold for a single
 pixel to be accepted as valid for the image. If the
 absolute error is greater than this, exchange the pixel
-with the according pixel of the reference image.
+with the corresponding pixel of the reference image.
 (default=5)
 
 .TP 4
@@ -37,12 +37,12 @@ useless. (default=3)
 .TP 4
 .BI \-r " [8..24] search radius"
 Limit the search radius to that value. Usually it will
-not make sense to go higher than 16. Esp. for VCD sizes.
+not make sense to go higher than 16, especially for VCD sizes.
 (default=8)
 
 .TP 4
 .BI \-b " <x>,<y>,<w>,<h> Border Setting"
-If you allready know parts of the image are and remain black all over
+If you already know parts of the image are and remain black all over
 the complete sequence of images, you may use something like this:
 
 yuvdenoise -b 16,16,704,560
@@ -52,11 +52,11 @@ to absolute pure black. The area outside the search window will not go
 into the motion compensation algorithm and therefor you might have a
 speed gain in processing the movie. 
 
-Sometimes it may be usefull to have relative coordinates like this:
+Sometimes it may be useful to have relative coordinates like this:
 
 yuvdenoise -b 16,16,-16,-16
 
-Provided there is a PAL-frame with 720x576 pixels both options will
+Provided there is a PAL-frame with 720x576 pixels, both options will
 turn the same area into black.
 
 .TP 4
@@ -90,6 +90,12 @@ low to very low noise material. (default off)
 Pass II threshold (same as -t). WARNING: If set to values greater than 8 
 you *will* see artifacts...(default=4)
 
+.TP 4
+.BI \-s " num"
+Number of beginning frames to skip.  The first num frames are written
+to stdout unfiltered.  This is useful for resuming an interrupted
+job without having to duplicate work.
+
 
 .SH HOW IT WORKS
 Yuvdenoise works by temporal lowpass filtering. To avoid
@@ -110,7 +116,7 @@ run at full framerate at CIF resolution as you might have wished.
 
 .SH TYPICAL USAGE AND TIPS
 As it is self-adapting to the noise-situation found in the stream you
-normaly just can go without any options set:
+normally just can go without any options set:
 
 lav2yuv my-video.avi | yuvdenoise | mpeg2enc -t 1 -o my-video.m1v
 
@@ -136,7 +142,7 @@ SCART-RGB).
 
 5. If your movie is B&W only, then try the -B switch.
 
-Having that sayed, I normaly use a command-line like this one:
+Having said that, I normally use a command-line like this one:
 
 lav2yuv movie.avi | yuvdenoise -b 8,64,-8,-64 | yuvscaler -O
 SIZE_352x288 | mpeg2enc -f 1 -o movie.m1v
