@@ -40,6 +40,11 @@ EditList el;
 
 static unsigned char jpeg_data[MAX_JPEG_LEN];
 
+int	active_x = 0;
+int	active_y = 0;
+int	active_width = 0;
+int	active_height = 0;
+
 static char roundadj[4] = { 0, 0, 1, 2 };
 
 
@@ -60,10 +65,35 @@ static int param_noise_filt = 0;
 static int param_special = 0;
 
 int output_width, output_height;
-int chrom_width, chrom_height;
+
+int	luma_size;
+int	luma_offset;
+int	luma_top_size;
+int	luma_bottom_size;
+
+int	luma_left_size;
+int	luma_right_size;
+int	luma_right_offset;
+
+
+int	chroma_size;
+int	chroma_offset;
+int	chroma_top_size;
+int	chroma_bottom_size;
+
+int	chroma_output_width;
+int	chroma_output_height;
+int	chroma_height;
+int	chroma_width;
+
+int	chroma_left_size;
+int	chroma_right_size;
+int	chroma_right_offset;
 
 unsigned char *frame_buf[3]; /* YUV... */
 
+unsigned char luma_blank[720 * 480];
+unsigned char chroma_blank[720 * 480];
 
 int	verbose = 2;
 
@@ -85,6 +115,7 @@ void Usage(char *str)
 {
   printf("Usage: %s [params] inputfiles\n",str);
   printf("   where possible params are:\n");
+  printf("   -a widthxhight+x+y\n");
   printf("   -s num     Special output format option:\n");
   printf("                 0 output like input, nothing special\n");
   printf("                 1 create half height/width output from interlaced input\n");
@@ -120,16 +151,45 @@ static unsigned char *bufalloc( size_t size )
 static void init()
 {
 	int size,i;
-	chrom_width = (chroma_format==CHROMA444) ? output_width : output_width/2;
-	chrom_height = (chroma_format!=CHROMA420) ? output_height : output_height/2;
 
+	int	chrom_top;
+	int	chrom_bottom;
+	
+	luma_offset = active_y * output_width;
+	luma_size = output_width * active_height;
+	luma_top_size = active_y * output_width;
+	luma_bottom_size = (output_height - (active_y + active_height)) * output_width;
+
+	luma_left_size = active_x;
+	luma_right_offset = active_x + active_width;
+	luma_right_size = output_width - luma_right_offset;
+
+	chroma_width = (chroma_format==CHROMA444) ? active_width : active_width/2;
+	chroma_height = (chroma_format!=CHROMA420) ? active_height : active_height/2;
+
+	chrom_top = (chroma_format!=CHROMA420) ? active_y : active_y/2;
+	chrom_bottom =(chroma_format!=CHROMA420) ? output_height - (chroma_height + chrom_top) : output_height/2 - (chroma_height + chrom_top);
+
+	chroma_size = (chroma_format!=CHROMA420) ? luma_size : luma_size/4;
+	chroma_offset = (chroma_format!=CHROMA420) ? luma_offset : luma_offset/4;
+	chroma_top_size = (chroma_format!=CHROMA420) ? luma_top_size : luma_top_size/4;
+	chroma_bottom_size = (chroma_format!=CHROMA420) ? luma_bottom_size : luma_bottom_size/4;
+
+	chroma_output_width = (chroma_format==CHROMA444) ? output_width : output_width/2;
+	chroma_output_height = (chroma_format==CHROMA444) ? output_height : output_height/2;
+	chroma_left_size = (chroma_format==CHROMA444) ? active_x : active_x/2;
+	chroma_right_offset = chroma_left_size + chroma_width;
+	chroma_right_size = chroma_output_width - chroma_right_offset;
+
+	memset(luma_blank, 0, sizeof(luma_blank));
+	memset(chroma_blank, 0x80, sizeof(chroma_blank));
 
   for (i=0; i<3; i++)
   {
 	if (i==0)
 		size = (output_width*output_height);
 	else
-		size = chrom_width*chrom_height;
+		size = chroma_output_width*chroma_output_height;
 
     frame_buf[i] = bufalloc(size);
   }
@@ -160,8 +220,6 @@ int readframe(int numframe, unsigned char *frame[])
 	   return 1;
 	 }
    
-   
- 
    if( drop_lsb )
 	 {
 	   int *p, *end, c;
@@ -188,7 +246,7 @@ int readframe(int numframe, unsigned char *frame[])
 			 }
 		   else
 			 {
-			   end = (int *)(frame[c] + chrom_width*chrom_height);
+			   end = (int *)(frame[c] + chroma_output_width *chroma_output_height);
 			 }
 		   while( p++ < end )
 			 {
@@ -271,13 +329,66 @@ void writeoutYUV4MPEGheader()
 
 void writeoutframeinYUV4MPEG(unsigned char *frame[])
 {
-  int n=0;
+  int	n=0;
+  int	i;
+  char	*ptr;
 
   write(1,"FRAME\n",6);
-  n += write(1,frame[0],output_width * output_height);
-  n += write(1,frame[1],chrom_width * chrom_height);
-  n += write(1,frame[2],chrom_width * chrom_height);
+
+	for(i=0; i < active_height; i++) {
+		ptr = &frame[0][luma_offset + (i * output_width)];
+		if (luma_left_size) {
+			memset(ptr, 0x00, luma_left_size);
+		}
+		if (luma_right_size) {
+			memset(&ptr[luma_right_offset], 0x00, luma_right_size);
+		}
+	}
+
+	for(i=0; i < chroma_height; i++) {
+		ptr = &frame[1][chroma_offset + (i * chroma_output_width)];
+		if (chroma_left_size) {
+			memset(ptr, 0x00, chroma_left_size);
+		}
+		if (chroma_right_size) {
+			memset(&ptr[chroma_right_offset], 0x00, chroma_right_size);
+		}
+
+		ptr = &frame[2][chroma_offset + (i * chroma_output_width)];
+		if (chroma_left_size) {
+			memset(ptr, 0x00, chroma_left_size);
+		}
+		if (chroma_right_size) {
+			memset(&ptr[chroma_right_offset], 0x00, chroma_right_size);
+		}
+	}
+
+	if (luma_top_size) {
+		n +=write(1, luma_blank, luma_top_size);
+	}
+	n += write(1, &frame[0][luma_offset], luma_size);
+	if (luma_bottom_size) {
+		n += write(1, luma_blank, luma_bottom_size);
+	}
+
+
+	if (chroma_top_size) {
+		n += write(1, chroma_blank, chroma_top_size);
+	}
+	n += write(1,&frame[1][chroma_offset], chroma_size);
+	if (chroma_bottom_size) {
+		n += write(1, chroma_blank, chroma_bottom_size);
+	}
+
+	if (chroma_top_size) {
+		n += write(1, chroma_blank, chroma_top_size);
+	}
+	n += write(1,&frame[2][chroma_offset], chroma_size);
+	if (chroma_bottom_size) {
+		n += write(1, chroma_blank, chroma_bottom_size);
+	}
 }
+
 
 void streamout()
 {
@@ -295,10 +406,51 @@ int argc;
 char *argv[];
 {
   int n, nerr = 0;
+  char	*geom;
+  char  *end;
 
-  while( (n=getopt(argc,argv,"s:d:n:")) != EOF)
+  while( (n=getopt(argc,argv,"v:a:s:d:n:")) != EOF)
   {
     switch(n) {
+
+      case 'a':
+	geom = optarg;
+	active_width = strtol(geom, &end, 10);
+	if (*end != 'x' || active_width < 100) {
+		fprintf(stderr, "Bad width parameter\n");
+		nerr++;
+		break;
+	}
+
+	geom = end + 1;
+	active_height = strtol(geom, &end, 10);
+	if ((*end != '+' && *end != '\0') || active_height < 100) {
+		fprintf(stderr, "Bad height parameter\n");
+		nerr++;
+		break;
+	}
+
+	if (*end == '\0')
+		break;
+
+	geom = end + 1;
+	active_x = strtol(geom, &end, 10);
+	if ((*end != '+' && *end != '\0') || active_x > 720) {
+		fprintf(stderr, "Bad x parameter\n");
+		nerr++;
+		break;
+	}
+
+
+	geom= end + 1;
+	active_y = strtol(geom, &end, 10);
+	if (*end != '\0' || active_y > 240) {
+		fprintf(stderr, "Bad y parameter\n");
+		nerr++;
+		break;
+	}
+	break;
+	
 
       case 's':
         param_special = atoi(optarg);
@@ -308,6 +460,10 @@ char *argv[];
           nerr++;
         }
         break;
+
+      case 'v':
+	verbose = atoi(optarg);
+	break;
 
       case 'd':
         param_drop_lsb = atoi(optarg);
@@ -334,7 +490,6 @@ char *argv[];
   if(optind>=argc) nerr++;
 
   if(nerr) Usage(argv[0]);
-
 
   /* Open editlist */
 
@@ -386,6 +541,25 @@ char *argv[];
   /* Round sizes to multiples of 16 ... */
   output_width = ((output_width + 15) / 16) * 16;
   output_height = ((output_height + 15) / 16) * 16;
+
+  if (active_width == 0) {
+	active_width = output_width;
+  }
+
+  if (active_height == 0) {
+	active_height = output_height;
+  }
+
+
+  if (active_width + active_x > output_width) {
+	fprintf(stderr, "active offset + acitve width > image size\n");
+	Usage(argv[0]);
+  }
+
+  if (active_height + active_y > output_height) {
+	fprintf(stderr, "active offset + active height > image size\n");
+	Usage(argv[0]);
+  }
 
   init();
   streamout();
