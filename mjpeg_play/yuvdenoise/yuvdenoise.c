@@ -16,7 +16,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#define DEBUG 
+/* #define DEBUG */
 
 #define MAGIC "YUV4MPEG"
 
@@ -629,8 +629,8 @@ mb_search_44 (int x, int y)
     for (qx = -(search_radius >> 1); qx <= +(search_radius >> 1); qx += 4)
       {
 	d = 0;
-	for (dy = -4; dy < 20; dy += 4)
-	  for (dx = -4; dx < 20; dx += 4)
+	for (dy = -4; dy < 12; dy += 4)
+	  for (dx = -4; dx < 12; dx += 4)
 	    {
 	      Y =
 		SUBA4[(x + dx + qx) + (y + dy + qy) * width] -
@@ -679,12 +679,12 @@ mb_search_88 (int x, int y)
   int by = best_match_y / 2;
 
   SQD = 10000000;
-  for (qy = (by - 8); qy <= (by + 8); qy += 2)
-    for (qx = (bx - 8); qx <= (bx + 8); qx += 2)
+  for (qy = (by - 4); qy <= (by + 4); qy += 2)
+    for (qx = (bx - 4); qx <= (bx + 4); qx += 2)
       {
 	d = 0;
-	for (dy = 0; dy < 16; dy += 2)
-	  for (dx = 0; dx < 16; dx += 2)
+	for (dy = -4; dy < 12; dy += 2)
+	  for (dx = -4; dx < 12; dx += 2)
 	    {
 	      Y =
 		SUBA[(x + dx + qx) + (y + dy + qy) * width] -
@@ -739,8 +739,8 @@ mb_search (int x, int y)
 	d = 0;
 	dv = 0;
 	du = 0;
-	for (dy = 0; dy < 16; dy++)
-	  for (dx = 0; dx < 16; dx++)
+	for (dy = 0; dy < 8; dy++)
+	  for (dx = 0; dx < 8; dx++)
 	    {
 	      Y =
 		AVRG[(x + dx + qx) + (y + dy + qy) * width] -
@@ -815,8 +815,8 @@ mb_search_half (int x, int y)
 	yy = y + qy / 2;
 
 	d = 0;
-	for (dy = 0; dy < 16; dy++)
-	  for (dx = 0; dx < 16; dx++)
+	for (dy = 0; dy < 8; dy++)
+	  for (dx = 0; dx < 8; dx++)
 	    {
 	      x0 = xx + dx;
 	      x1 = x0 + 1;
@@ -877,8 +877,8 @@ copy_filtered_block (int x, int y)
   a2 = (1 - sx) * (sy);
   a3 = (sx) * (sy);
 
-  for (dy = 0; dy < 16; dy++)
-    for (dx = 0; dx < 16; dx++)
+  for (dy = 0; dy < 8; dy++)
+    for (dx = 0; dx < 8; dx++)
       {
 	xx = x + dx;
 	yy = y + dy;
@@ -949,8 +949,8 @@ copy_reference_block (int x, int y)
   int dx, dy;
   int xx, yy, x2, y2;
 
-  for (dy = 0; dy < 16; dy++)
-    for (dx = 0; dx < 16; dx++)
+  for (dy = 0; dy < 8; dy++)
+    for (dx = 0; dx < 8; dx++)
       {
 	xx = x + dx;
 	yy = (y + dy) * width;
@@ -1122,8 +1122,8 @@ denoise_image ()
   min_V_SQD = 0;
   div = 0;
   Smin=1000000000;
-  for (y = y_start; y < y_end; y += 16)
-    for (x = 0; x < width; x += 16)
+  for (y = y_start; y < y_end; y += 8)
+    for (x = 0; x < width; x += 8)
       {
 	div++;
 	/* subsampled full-search, first 4x4 then 8x8 pixels */
@@ -1143,15 +1143,15 @@ denoise_image ()
 	min_V_SQD += VSQD;
 
 	/* it doesn't seem to be a good idea to set the
-	   factors to any higher value than '3' ... If
+	   factors to any higher value than '4' ... If
 	   you do, you *will* have blocks 
 	 */
-	if (YSQD < (mean_Y_SQD * 2.0) &&
-	    USQD < (mean_U_SQD * 2.0) && 
-	    VSQD < (mean_V_SQD * 2.0) &&
-	    SQD  < (mean_SQD   * 2.0) )
+	if (YSQD < (mean_Y_SQD * 3.0) &&
+	    USQD < (mean_U_SQD * 3.0) && 
+	    VSQD < (mean_V_SQD * 3.0) &&
+	    SQD  < (mean_SQD   * 3.0) )
 	  {
-	      (double)block_quality = (double)SQD/((double)mean_SQD*16);
+	      (double)block_quality = (double)SQD/((double)mean_SQD*6);
 	      copy_filtered_block (x, y);
 	  }
 	else
