@@ -133,7 +133,6 @@ void transform(
 	for (j=0; j<height2; j+=16)
 		for (i=0; i<width; i+=16)
 		{
-			/* TODO: BUG this needs to be outside the n loop! */
 			mbi[k].dctblocks = &blocks[k*block_count];
 
 			for (n=0; n<block_count; n++)
