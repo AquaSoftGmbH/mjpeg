@@ -53,12 +53,15 @@ void set_encoding_syntax(GtkWidget *widget, gpointer data);
 void set_structs_default(struct encodingoptions *point);
 void save_common(FILE *fp);
 void save_section(FILE *fp, struct encodingoptions *point,char section[LONGOPT]);
+void set_common(void);
 void load_common(void);
 void load_section(char section[LONGOPT],struct encodingoptions *point);
 void print_encoding_options(char section[LONGOPT],struct encodingoptions *point);
 void do_preset_mpeg2(struct encodingoptions *point);
 void do_preset_vcd(struct encodingoptions *point);
 void do_preset_svcd(struct encodingoptions *point);
+void change_four(GtkAdjustment *adjust_scale);
+void change_two(GtkAdjustment *adjust_scale);
 
 /* config.c */
 int chk_dir(char *name);
@@ -71,11 +74,33 @@ int chk_dir(char *name);
 
 /* other variables*/
 #define Encoptions_Table_x 2
-#define Encoptions_Table_y 7
+#define Encoptions_Table_y 8
 int t_use_yuvplay_pipe, t_encoding_syntax_style, t_addoutputnorm;
+int t_fourpelmotion, t_twopelmotion;
 char t_ininterlace_type[LONGOPT];
+GtkWidget *fourpel_scale, *twopel_scale;
 
 /* ================================================================= */
+
+/* Set up the common values */
+void set_common(void)
+{
+int i; 
+
+for (i=0; i < FILELEN; i++)
+  {
+     enc_inputfile[i]  ='\0';
+     enc_outputfile[i] ='\0';
+     enc_audiofile[i]  ='\0';
+     enc_videofile[i]  ='\0';
+  }
+
+use_yuvplay_pipe = 0;
+encoding_syntax_style = 0;
+fourpelmotion = 2;
+twopelmotion  = 3;
+
+}
 
 /* set the structs to default values */
 void set_structs_default(struct encodingoptions *point)
@@ -99,17 +124,22 @@ int i;
       (*point).muxvbr[i]         ='\0';
     }
 
-  (*point).addoutputnorm = 0;
-  (*point).outputformat = 0;
-  (*point).droplsb = 0;
-  (*point).noisefilter = 0;
-  (*point).audiobitrate = 0;
-  (*point).outputbitrate = 0;
-  (*point).bitrate = 1152;
+  (*point).addoutputnorm  = 0;
+  (*point).outputformat   = 0;
+  (*point).droplsb        = 0;
+  (*point).noisefilter    = 0;
+  (*point).audiobitrate   = 0;
+  (*point).outputbitrate  = 0;
+  (*point).bitrate        = 1152;
   (*point).searchradius   = 0;
   (*point).muxformat      = 0;
   (*point).streamdatarate = 0;
   (*point).decoderbuffer  = 46;
+  (*point).qualityfactor  = 0;
+  (*point).minGop         = 12;
+  (*point).maxGop         = 12;
+  (*point).sequencesize   = 0;
+  (*point).nonvideorate   = 0;
 
   sprintf((*point).output_size,"as is");
 }
@@ -173,6 +203,13 @@ int i;
     encoding_syntax_style = i;
   else
     encoding_syntax_style = 140;
+
+  if (-1 != (i = cfg_get_int("Studio","Encoding_four_pel_motion_compensation")))
+    fourpelmotion = i;
+
+  if (-1 != (i = cfg_get_int("Studio","Encoding_two_pel_motion_compensation")))
+    twopelmotion = i;
+
 }
 
 void load_section(char section[LONGOPT],struct encodingoptions *point)
@@ -238,6 +275,21 @@ int i;
   if (-1 != (i = cfg_get_int(section,"Encode_Video_Bitrate")))
         (*point).bitrate = i;
 
+  if (-1 != (i = cfg_get_int(section,"Encode_Quality_Factor")))
+        (*point).qualityfactor = i;
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Minimum_GOP_Size")))
+        (*point).minGop = i;
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Maximum_GOP_Size")))
+        (*point).maxGop = i;
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Sequence_Size")))
+        (*point).sequencesize = i;
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Non_Video_Bitrate")))
+        (*point).nonvideorate = i;
+
   if (-1 != (i = cfg_get_int(section,"Encode_Searchradius")))
         (*point).searchradius = i;
   else
@@ -271,10 +323,15 @@ void print_encoding_options(char section[LONGOPT], struct encodingoptions *point
   printf("Encoding Noise filter strength: \'%i\' \n",   (*point).noisefilter);
   printf("Encoding Audio Bitrate : \'%i\' \n",         (*point).audiobitrate);
   printf("Encoding Audio Samplerate : \'%i\' \n",     (*point).outputbitrate);
-  printf("Encoding Audio force stereo: \'%s\' \n",      (*point).forcestereo);
-  printf("Encoding Audio force mono: \'%s\' \n",          (*point).forcemono);
-  printf("Encoding Audio force VCD: \'%s\' \n",            (*point).forcevcd);
-  printf("Encoding Video Bitrate: \'%i\' \n",               (*point).bitrate);
+  printf("Encoding Audio force stereo : \'%s\' \n",     (*point).forcestereo);
+  printf("Encoding Audio force mono : \'%s\' \n",         (*point).forcemono);
+  printf("Encoding Audio force VCD : \'%s\' \n",           (*point).forcevcd);
+  printf("Encoding Video Bitrate : \'%i\' \n",              (*point).bitrate);
+  printf("Encoding Quality Factor : \'%i\' \n",       (*point).qualityfactor);
+  printf("Encoding Minimum GOP size : \'%i\' \n",            (*point).minGop);
+  printf("Encoding Maximum GOP size : \'%i\' \n",            (*point).maxGop);
+  printf("Encoding sequence every MB in final:\'%i\'\n",(*point).sequencesize);
+  printf("Encoding Non-video data bitrate \'%i\' \n",  (*point).nonvideorate);
   printf("Encoding Searchradius : \'%i\' \n",          (*point).searchradius);
   printf("Encoding Mplex Format : \'%i\' \n",             (*point).muxformat);
   printf("Encoding Mux VBR : \'%s\' \n",                     (*point).muxvbr);
@@ -311,6 +368,7 @@ int have_config;
   /* Saved bu not in the structs */
   encoding_syntax_style = 0;
 
+  set_common();
   load_common();
   
   if (verbose)
@@ -321,6 +379,8 @@ int have_config;
       printf("Encode video file set to \'%s\' \n",enc_videofile);
       printf("Encoding Preview with yuvplay : \'%i\' \n",use_yuvplay_pipe);
       printf("Encoding Syntax Style :\'%i\' \n",encoding_syntax_style);
+      printf("Encoding 4*4-pel motion compensation :\'%i\' \n",fourpelmotion);
+      printf("Encoding 2*2-pel motion compensation :\'%i\' \n",twopelmotion);
     }
 
   strncpy(section,"MPEG1",LONGOPT);
@@ -364,6 +424,9 @@ void save_common(FILE *fp)
     fprintf(fp,"Encode_Video_Preview = %s\n", "no");
 
   fprintf(fp,"Encoding_Syntax_style = %i\n", encoding_syntax_style);
+
+  fprintf(fp,"Encoding_four_pel_motion_compensation = %i\n", fourpelmotion);
+  fprintf(fp,"Encoding_two_pel_motion_compensation = %i\n", twopelmotion);
 
 }
 
@@ -413,6 +476,11 @@ void save_section(FILE *fp, struct encodingoptions *point, char section[LONGOPT]
     fprintf(fp,"Encode_Force_Vcd = %s\n", "as is");
 
   fprintf(fp,"Encode_Video_Bitrate = %i\n", (*point).bitrate);
+  fprintf(fp,"Encode_Quality_Factor = %i\n", (*point).qualityfactor);
+  fprintf(fp,"Encode_Minimum_GOP_Size = %i\n", (*point).minGop);
+  fprintf(fp,"Encode_Maximum_GOP_Size = %i\n", (*point).maxGop);
+  fprintf(fp,"Encode_Sequence_Size = %i\n", (*point).sequencesize);
+  fprintf(fp,"Encode_Non_Video_Bitrate = %i\n", (*point).nonvideorate);
   fprintf(fp,"Encode_Searchradius = %i\n", (*point).searchradius);
 
   fprintf(fp,"Encode_Muxformat = %i\n", (*point).muxformat);
@@ -439,7 +507,7 @@ FILE *fp;
 
   if (chk_dir(directory) == 0)
     {
-      fprintf(stderr,"can't open config file %s\n",filename);
+      fprintf(stderr,"cant open config file %s\n",filename);
       return;
     }
  
@@ -449,7 +517,7 @@ FILE *fp;
   fp = fopen(filename,"w");
   if (NULL == fp)
     {
-       fprintf(stderr,"can't open config file %s\n",filename);
+       fprintf(stderr,"cant open config file %s\n",filename);
        return;
     }
 
@@ -481,23 +549,41 @@ void accept_encoptions(GtkWidget *widget, gpointer data)
     {
       printf ("\nThe OK button in the Encoding Options was pressed, changing options:\n");
       if (t_use_yuvplay_pipe != use_yuvplay_pipe)
-        printf(" Encoding Preview set to %i \n ",use_yuvplay_pipe);
+        printf(" Encoding Preview set to %i \n ",t_use_yuvplay_pipe);
 
       if (t_addoutputnorm != encoding.addoutputnorm)
-        printf(" Output norm is added %i \n ",encoding.addoutputnorm);
+        printf(" Output norm is added %i \n ",t_addoutputnorm);
 
       if (strcmp(t_ininterlace_type, encoding.ininterlace_type) != 0 )
-        printf(" yuvscaler interlace type set to %s \n ",
-                                      encoding.ininterlace_type);
+        printf(" yuvscaler interlace type set to %s \n ", t_ininterlace_type);
     
       if (t_encoding_syntax_style != encoding_syntax_style)
         printf(" Encoding Syntax set to %i \n", t_encoding_syntax_style);
+
+      if (t_fourpelmotion != fourpelmotion)
+        printf("\n 4*4-pel subsampled motion compensation : %i \n", t_fourpelmotion);
+      if (t_twopelmotion != twopelmotion)
+        printf("\n 2*2-pel subsampled motion compensation : %i \n", twopelmotion);
     }
   
   use_yuvplay_pipe = t_use_yuvplay_pipe;
   encoding.addoutputnorm = t_addoutputnorm;
   strcpy(encoding.ininterlace_type, t_ininterlace_type);
-  encoding_syntax_style = t_encoding_syntax_style;   
+  encoding_syntax_style = t_encoding_syntax_style;  
+  fourpelmotion = t_fourpelmotion;
+  twopelmotion = t_twopelmotion;
+}
+
+/* Set the value of the Slider 4 to the variable */
+void change_four ( GtkAdjustment *adjust_scale)
+{
+  t_fourpelmotion = adjust_scale->value;
+}
+
+/* Set the value of the Slider 2 to the variable */
+void change_two ( GtkAdjustment *adjust_scale)
+{
+  t_twopelmotion = adjust_scale->value;
 }
 
 /* Set if the video window is shown */
@@ -536,7 +622,6 @@ int i;
 /* Set the encoding syntax syle */
 void set_encoding_syntax(GtkWidget *widget, gpointer data)
 {
-
   t_encoding_syntax_style = atoi ((char*)data);
 }
 
@@ -546,6 +631,7 @@ void create_encoding_layout(GtkWidget *table)
 GtkWidget *preview_button, *label, *addnorm_button, *int_asis_button;
 GtkWidget *int_odd_button, *int_even_button, *style_14x, *style_15x;
 GSList *interlace_type, *encoding_style;
+GtkObject *adjust_scale, *adjust_scale_n;
 int table_line;
 
 table_line = 0;
@@ -554,6 +640,8 @@ table_line = 0;
   t_addoutputnorm = encoding.addoutputnorm;
   strcpy(t_ininterlace_type, encoding.ininterlace_type);
   t_encoding_syntax_style = encoding_syntax_style;
+  t_fourpelmotion = fourpelmotion;
+  t_twopelmotion = twopelmotion;
 
   label = gtk_label_new ("Show video while encoding ");
   gtk_table_attach_defaults (GTK_TABLE (table), 
@@ -648,6 +736,40 @@ table_line = 0;
   if (encoding_syntax_style == 150)
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(style_15x), TRUE);
   table_line++;
+
+  label = gtk_label_new (" 4*4-pel subsampled motion comp : ");
+  gtk_table_attach_defaults (GTK_TABLE (table), 
+                             label, 0, 1, table_line, table_line+1);
+  gtk_widget_show (label);
+
+  adjust_scale = gtk_adjustment_new (1.0, 1.0, 5.0, 1, 1.0, 1.0);
+
+  fourpel_scale = gtk_hscale_new (GTK_ADJUSTMENT (adjust_scale));
+  gtk_scale_set_value_pos (GTK_SCALE(fourpel_scale), GTK_POS_LEFT);
+  gtk_scale_set_digits (GTK_SCALE (fourpel_scale),0);
+  gtk_signal_connect (GTK_OBJECT (adjust_scale), "value_changed",
+                         GTK_SIGNAL_FUNC (change_four), adjust_scale);
+  gtk_table_attach_defaults (GTK_TABLE (table),
+                            fourpel_scale, 1, 2, table_line, table_line+1);
+  gtk_widget_show (fourpel_scale);
+  gtk_adjustment_set_value (GTK_ADJUSTMENT (adjust_scale), t_fourpelmotion);
+  table_line++;
+
+  label = gtk_label_new (" 2*2-pel subsampled motion comp : ");
+  gtk_table_attach_defaults (GTK_TABLE (table), 
+                             label, 0, 1, table_line, table_line+1);
+  gtk_widget_show (label);
+
+  adjust_scale_n = gtk_adjustment_new (1.0, 1.0, 5.0, 1, 1.0, 1.0);
+  twopel_scale = gtk_hscale_new (GTK_ADJUSTMENT (adjust_scale_n));
+  gtk_scale_set_value_pos (GTK_SCALE(twopel_scale), GTK_POS_LEFT);
+  gtk_scale_set_digits (GTK_SCALE (twopel_scale),0);
+  gtk_signal_connect (GTK_OBJECT (adjust_scale_n), "value_changed",
+                         GTK_SIGNAL_FUNC (change_two), adjust_scale_n);
+  gtk_table_attach_defaults (GTK_TABLE (table),
+                            twopel_scale, 1, 2, table_line, table_line+1);
+  gtk_widget_show (twopel_scale);
+  gtk_adjustment_set_value (GTK_ADJUSTMENT (adjust_scale_n), t_twopelmotion);
  
 }
 
