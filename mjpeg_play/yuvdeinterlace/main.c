@@ -114,50 +114,58 @@ main (int argc, char *argv[])
   mjpeg_log (LOG_INFO, "       Motion-Compensating-Deinterlacer          ");
   mjpeg_log (LOG_INFO, "-------------------------------------------------");
 
-  while ((c = getopt (argc, argv, "hvr:s:")) != -1)
+  while ((c = getopt (argc, argv, "hvs:")) != -1)
     {
       switch (c)
 	{
 	case 'h':
 	  {
-	    mjpeg_log (LOG_INFO, "\n\n"
-		       " Usage of the deinterlacer                                  \n"
-		       " -------------------------                                  \n"
-		       "                                                            \n"
-		       " You should use this program when you (as I do) prefer      \n"
-		       " motion-compensation-artefacts over interlacing artefacts   \n"
-		       " in your miniDV recordings. BTW, you can make them even     \n"
-		       " more to apear like 35mm film recordings, when you lower    \n"
-		       " the saturation a little (75%%-80%%) and raise the contrast \n"
-		       " of the luma-channel. You may (if you don't care of the     \n"
-		       " bitrate) add some noise and blurr the result with          \n"
-		       " y4mspatialfilter (but not too much ...).                   \n"
-		       "                                                            \n"
-		       " y4mdeinterlace understands the following options:          \n"
-		       "                                                            \n"
-		       " -v verbose/debug                                           \n"
-		       " -r [n=0...72] sets the serach-radius (default is 8)        \n"
-		       " -s [n=0/1] forces field-order in case of misflagged streams\n"
-		       "    -s0 is bottom-field-first                               \n"
-		       "    -s1 is bottom-field-first                               \n");
+	    mjpeg_log (LOG_INFO,
+		       "                                                            ");
+	    mjpeg_log (LOG_INFO,
+		       " Usage of the deinterlacer                                  ");
+	    mjpeg_log (LOG_INFO,
+		       " -------------------------                                  ");
+	    mjpeg_log (LOG_INFO,
+		       "                                                            ");
+	    mjpeg_log (LOG_INFO,
+		       " You should use this program when you (as I do) prefer      ");
+	    mjpeg_log (LOG_INFO,
+		       " motion-compensation-artefacts over interlacing artefacts   ");
+	    mjpeg_log (LOG_INFO,
+		       " in your miniDV recordings. BTW, you can make them even     ");
+	    mjpeg_log (LOG_INFO,
+		       " more to apear like 35mm film recordings, when you lower    ");
+	    mjpeg_log (LOG_INFO,
+		       " the saturation a little (75%%-80%%) and raise the contrast ");
+	    mjpeg_log (LOG_INFO,
+		       " of the luma-channel. You may (if you don't care of the     ");
+	    mjpeg_log (LOG_INFO,
+		       " bitrate) add some noise and blurr the result with          ");
+	    mjpeg_log (LOG_INFO,
+		       " y4mspatialfilter (but not too much ...).                   ");
+	    mjpeg_log (LOG_INFO,
+		       "                                                            ");
+	    mjpeg_log (LOG_INFO,
+		       " y4mdeinterlace understands the following options:          ");
+	    mjpeg_log (LOG_INFO,
+		       "                                                            ");
+	    mjpeg_log (LOG_INFO,
+		       " -v verbose/debug                                           ");
+	    mjpeg_log (LOG_INFO,
+		       "                                                            ");
+	    mjpeg_log (LOG_INFO,
+		       " -s [n=0/1] forces field-order in case of misflagged streams");
+	    mjpeg_log (LOG_INFO,
+		       "                                                            ");
+	    mjpeg_log (LOG_INFO,
+		       "    -s0 is top-field-first                                  ");
+	    mjpeg_log (LOG_INFO,
+		       "    -s1 is bottom-field-first                               ");
+	    mjpeg_log (LOG_INFO,
+		       "                                                            ");
 
 	    exit (0);
-	    break;
-	  }
-	case 'r':
-	  {
-	    search_radius = atoi (optarg);
-	    mjpeg_log (LOG_INFO, "serach-radius set to %i", search_radius);
-	    break;
-	  }
-	case 'f':
-	  {
-	    fast_mode = 1;
-	    break;
-	  }
-	case 'i':
-	  {
-	    non_interleaved_fields = 1;
 	    break;
 	  }
 	case 'v':
@@ -186,12 +194,14 @@ main (int argc, char *argv[])
   /* initialize motion_library */
   init_motion_search ();
 
+#if 0
   /* initialize MMX transforms (fixme) */
   if ((cpucap & ACCEL_X86_MMXEXT) != 0 || (cpucap & ACCEL_X86_SSE) != 0)
     {
       mjpeg_log (LOG_INFO,
 		 "FIXME: could use MMX/SSE Block/Frame-Copy/Blend if I had one ;-)");
     }
+#endif
 
   /* initialize stream-information */
   y4m_accept_extensions (1);
@@ -243,12 +253,18 @@ main (int argc, char *argv[])
 			   y4m_si_get_sampleaspect (&istreaminfo));
 
 /* fixme, test for field dominance */
-  mjpeg_log (LOG_WARN, "## FIXME !!! ####################################################");
-  mjpeg_log (LOG_WARN, "Currently, you *must* set the field-dominance as the deinterlacer");
-  mjpeg_log (LOG_WARN, "does not check the according Y4M-Flag.                           ");
-  mjpeg_log (LOG_WARN, "BTTV-recordings typicaly require top-field-first.                ");
-  mjpeg_log (LOG_WARN, "All others require bottom-field-first. (miniDV + lavrec)         ");
-  mjpeg_log (LOG_WARN, "#################################################################");
+  mjpeg_log (LOG_WARN,
+	     "## FIXME !!! ####################################################");
+  mjpeg_log (LOG_WARN,
+	     "Currently, you *must* set the field-dominance as the deinterlacer");
+  mjpeg_log (LOG_WARN,
+	     "does not check the according Y4M-Flag.                           ");
+  mjpeg_log (LOG_WARN,
+	     "BTTV-recordings typicaly require top-field-first.                ");
+  mjpeg_log (LOG_WARN,
+	     "All others require bottom-field-first. (miniDV + lavrec)         ");
+  mjpeg_log (LOG_WARN,
+	     "#################################################################");
 
   /* write the outstream header */
   y4m_write_stream_header (fd_out, &ostreaminfo);
