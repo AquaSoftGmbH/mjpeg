@@ -384,7 +384,6 @@ void motion_estimation(
 	int i, j;
 	int mb_row_incr;			/* Offset increment to go down 1 row of mb's */
 	int mb_row_start;
-
 	mb_row_start = 0;
 	if (picture->pict_struct==FRAME_PICTURE)
 	{			
@@ -394,7 +393,7 @@ void motion_estimation(
 		{
 			for (i=0; i<width; i+=16)
 			{
-				frame_ME(picture, mc_data, mb_row_start,i,j,mbi);
+				frame_ME(picture, mc_data, mb_row_start, i,j, mbi);
 				mbi++;
 			}
 			mb_row_start += mb_row_incr;
@@ -2520,21 +2519,41 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 			}
 			qorgblk = old_qorgblk + (qlx<<1);
 		}
+
+		/* Statistically thin the rough matches to roughly the upper quartile */
+		rough_heap_size = thin_vector(  rough_match_heap, 
+										dist_sum / rough_heap_size, rough_heap_size );
+		dist_sum = 0;
+		for( i = 0; i < rough_heap_size; ++i )
+			dist_sum += rough_match_heap[i].weight;
+		rough_heap_size = thin_vector(  rough_match_heap, 
+										dist_sum / rough_heap_size, rough_heap_size );
+		/*dist_sum = 0;
+		for( i = 0; i < rough_heap_size; ++i )
+			dist_sum += rough_match_heap[i].weight;
+		rough_heap_size = thin_vector(  rough_match_heap, 
+										dist_sum / rough_heap_size, rough_heap_size );
+		*/
+
+		searched_rough_size = rough_heap_size;
+		/*
 		heapify( rough_match_heap, rough_heap_size );
 
 		best_quad_dist = rough_match_heap[0].weight;	
-
+		searched_rough_size = 1+rough_heap_size / 6;
+		*/
+		best_quad_dist = rough_match_heap[0].weight;	
 		/* 
 		   We now use the good matches on 8-pel boundaries 
 		   as starting points for matches on 4-pel boundaries...
 		*/
 
-		searched_rough_size = 1+rough_heap_size / 6;
 
 		dist_sum = 0;
 		for( k = 0; k < searched_rough_size; ++k )
 		{
-			heap_extract( rough_match_heap, &rough_heap_size, &distrec );
+			/* heap_extract( rough_match_heap, &rough_heap_size, &distrec ); */
+			distrec = rough_match_heap[k];
 			matchrec = rough_matches[distrec.index];
 			qorgblk =  qorg + (matchrec.y>>2)*qlx +(matchrec.x>>2);
 			quad_matches[quad_heap_size].x = matchrec.x;
