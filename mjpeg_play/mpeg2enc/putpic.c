@@ -196,6 +196,13 @@ void putpict(pict_data_s *picture )
 	if( picture->gop_start )
 	{
 		rc_init_GOP(picture->np, picture->nb);
+	}
+
+	calc_vbv_delay(picture);
+	rc_init_pict(picture); /* set up rate control */
+
+	if( picture->gop_start )
+	{
 		/* set closed_GOP in first GOP only 
 		   No need for per-GOP seqhdr in first GOP as one
 		   has already been created.
@@ -204,9 +211,6 @@ void putpict(pict_data_s *picture )
 				   picture->decode,
 				   picture->decode != 0 && seq_header_every_gop);
 	}
-
-	calc_vbv_delay(picture);
-	rc_init_pict(picture); /* set up rate control */
 
 	/* picture header and picture coding extension */
 	putpicthdr(picture);

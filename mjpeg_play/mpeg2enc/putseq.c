@@ -442,6 +442,11 @@ static void gop_start( stream_state_s *ss )
 
 	ss->np = np;
 	ss->nb = nb;
+	if( np+nb+1 != ss->gop_length )
+	{
+		mjpeg_error_exit1( "****INTERNAL: inconsistent GOP %d %d %d\n", 
+						   ss->gop_length, np, nb);
+	}
 
 }
 

@@ -82,6 +82,8 @@ int	d0i = 0, d0pb = 0;
 
 */
 static double R;
+static long long int gop_start;
+static long long int  init_R;
 static int d;
 static double T;
 
@@ -286,8 +288,7 @@ void rc_init_seq(int reinit)
 
 }
 
-void rc_init_GOP(np,nb)
-	int np,nb;
+void rc_init_GOP(int np, int nb)
 {
 	double per_gop_bits = 
 		(double)(1 + np + nb) * (double)bit_rate / frame_rate;
@@ -317,7 +318,13 @@ void rc_init_GOP(np,nb)
 	   it to make bit allocation decisions.
 
 	*/
-
+	if( gop_start+init_R - bitcount() > (long long int)R+1 ||
+		gop_start+init_R - bitcount() < (long long int)R-1
+		)
+		mjpeg_error( "******BIT LEAKAGE %lld vs %lld\n",
+					 (long long int)R, gop_start+init_R - bitcount() );
+	if( R < -5000 || R > 5000 )
+		mjpeg_warn( "R = %lld\n", (long long int)R );
 	if( R > 0  )
 	{
 		/* We replacing running estimate of undershoot with
@@ -334,6 +341,9 @@ void rc_init_GOP(np,nb)
 		R +=  per_gop_bits;
 		gop_undershoot = 0;
 	}
+	gop_start = bitcount();
+	init_R = (long long int)R;
+	
 
 	Np = fieldpic ? 2*np+1 : np;
 	Nb = fieldpic ? 2*nb : nb;

@@ -490,7 +490,7 @@ static void output_info_video (Video_struc *video_info)
 	char *str;
 	mjpeg_info("VIDEO STREAM:\n");
 
-    mjpeg_info ("nStream length  : %11llu\n",video_info->stream_length);
+    mjpeg_info ("Stream length  : %11llu\n",video_info->stream_length);
     mjpeg_info ("Sequence start : %8u\n",video_info->num_sequence);
     mjpeg_info ("Sequence end   : %8u\n",video_info->num_seq_end);
     mjpeg_info ("No. Pictures   : %8u\n",video_info->num_pictures);
