@@ -17,6 +17,7 @@
 #undef YUV2LAV_LOCATION
 #undef LAVPIPE_LOCATION
 #undef LAVADDWAV_LOCATION
+#undef YUV2DIVX_LOCATION
 
 /* mixer, video and audio devices */
 #undef DEFAULT_MIXER
@@ -26,9 +27,6 @@
 /* Define us to use OSS/ALSA */
 #undef OSS
 #undef ALSA
-
-/* The maximum number of scenes that the editor can open */
-#undef MAX_NUM_SCENES
 
 /* Have lirc? */
 #undef HAVE_LIRC
