@@ -26,14 +26,15 @@
  *      and vice versa.
  *		 
  *   -i/--input [pPnNsStTa] --- Input Source:
- *      'p': PAL       Composite Input
- *      'P': PAL       SVHS-Input
- *      'n': NTSC      Composite Input
- *      'N': NTSC      SVHS-Input
- *      's': SECAM     Composite Input
- *      'S': SECAM     SVHS-Input
- *      't': PAL/SECAM TV tuner input (if available)
- *      'T': NTSC      TV tuner input (if available)
+ *      'p': PAL       Composite Input or first Bt8x8 input
+ *      'P': PAL       SVHS-Input or second Bt8x8 input
+ *      't': PAL       TV tuner input or third Bt8x8 input
+ *      'n': NTSC      Composite Input or first Bt8x8 input
+ *      'N': NTSC      SVHS-Input or second Bt8x8 input
+ *      'T': NTSC      TV tuner input or third Bt8x8 input
+ *      's': SECAM     Composite Input or first Bt8x8 input
+ *      'S': SECAM     SVHS-Input or second Bt8x8 input
+ *      'f': SECAM     TV tuner input or third Bt8x8 input
  *      'a': (or every other letter) Autosense (default)
  *
  *   -d/--decimation num --- Frame recording decimation:
@@ -223,7 +224,7 @@ static void Usage(char *progname)
            " "
 #endif
            "]         Format AVI/Quicktime/movtar\n");
-	fprintf(stderr, "  -i/--input [pPnNsStTa]      Input Source\n");
+	fprintf(stderr, "  -i/--input [pPnNsStTfa]     Input Source\n");
 	fprintf(stderr, "  -d/--decimation num         Decimation (either 1,2,4 or two digit number)\n");
 	fprintf(stderr, "  -g/--geometry WxH+X+Y       X-style geometry string (part of 768/720x576/480)\n");
 	fprintf(stderr, "  -q/--quality num            Quality [%%]\n");
@@ -612,6 +613,7 @@ static int set_option(const char *name, char *value)
 			case 'S': info->video_norm = 2 /* SECAM */; info->video_src = 1 /* S-Video */; break;
 			case 't': info->video_norm = 0 /* PAL */; info->video_src = 2 /* TV-tuner */; break;
 			case 'T': info->video_norm = 1 /* NTSC */; info->video_src = 2 /* TV-tuner */; break;
+			case 'f': info->video_norm = 2 /* SECAM */; info->video_src = 2 /* TV-tuner */; break;
 			default:  info->video_norm = 3 /* auto */; info->video_src = 3 /* auto */; break;
 		}
 		input_source = value[0];
@@ -979,14 +981,15 @@ static void lavrec_print_properties()
 		(info->video_format=='m'?"Movtar":(info->video_format=='j'?"JPEG":"AVI")));
 	switch(input_source)
 	{
-		case 'p': source = info->software_encoding?"BT8x8 PAL\n":"Composite PAL\n"; break;
-		case 'P': source = "S-Video PAL\n"; break;
-		case 'n': source = info->software_encoding?"BT8x8 NTSC\n":"Composite NTSC\n"; break;
-	        case 'N': source = "S-Video NTSC\n"; break;
-		case 's': source = info->software_encoding?"BT8x8 SECAM\n":"Composite SECAM\n"; break;
-		case 'S': source = "S-Video SECAM\n"; break;
-		case 't': source = "PAL TV-tuner\n"; break;
-		case 'T': source = "NTSC TV-tuner\n"; break;
+		case 'p': source = info->software_encoding?"BT8x8 1st input PAL\n":"Composite PAL\n"; break;
+		case 'P': source = info->software_encoding?"BT8x8 2nd input PAL\n":"S-Video PAL\n"; break;
+		case 'n': source = info->software_encoding?"BT8x8 1st input NTSC\n":"Composite NTSC\n"; break;
+	        case 'N': source = info->software_encoding?"BT8x8 2nd input PAL\n":"S-Video NTSC\n"; break;
+		case 's': source = info->software_encoding?"BT8x8 1st input SECAM\n":"Composite SECAM\n"; break;
+		case 'S': source = info->software_encoding?"BT8x8 2nd input PAL\n":"S-Video SECAM\n"; break;
+		case 't': source = info->software_encoding?"BT8x8 3rd input PAL\n":"PAL TV-tuner\n"; break;
+		case 'T': source = info->software_encoding?"BT8x8 3rd input PAL\n":"NTSC TV-tuner\n"; break;
+		case 'f': source = info->software_encoding?"BT8x8 3rd input PAL\n":"SECAM TV-tuner\n"; break;
 		default:  source = "Auto detect\n";
 	}
 	mjpeg_info("Input Source:       %s\n", source);

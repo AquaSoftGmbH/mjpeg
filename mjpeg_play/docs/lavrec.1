@@ -49,17 +49,18 @@ By default, lavrec will look at the extension of the first file
 (*.avi, *.qt, *.movtar) and choose a format based on that.
 
 .TP 8
-.BR \-i/\-\-input " [" p | P | n | N | s | S | t | T | a ]
+.BR \-i/\-\-input " [" p | P | n | N | s | S | t | T | f | a ]
 The recording source and the video source standard format.
-  p - PAL through the Composite-in or Bt8x8
-  P - PAL through the S-Video
-  n - NTSC through the Composite-in or Bt8x8
-  N - NTSC through the S-Video
-  s - SECAM through the Composite-in or Bt8x8
-  S - SECAM through the S-Video
-  t - PAL through the TV-tuner input
-  T - NTSC through the TV-tuner input
-  a - Auto-detect (default)
+ p - PAL through Composite Input or first Bt8x8 input
+ P - PAL through SVHS-Input or second Bt8x8 input
+ t - PAL through TV tuner input or third Bt8x8 input
+ n - NTSC through Composite Input or first Bt8x8 input
+ N - NTSC through SVHS-Input or second Bt8x8 input
+ T - NTSC through TV tuner input or third Bt8x8 input
+ s - SECAM through Composite Input or first Bt8x8 input
+ S - SECAM through SVHS-Input or second Bt8x8 input
+ f - SECAM through TV tuner input or third Bt8x8 input
+ a - (or every other letter) Autosense (default)
 
 .TP 8
 .BI  \-d/\-\-decimation " num"

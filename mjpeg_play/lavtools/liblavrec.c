@@ -2059,7 +2059,10 @@ static void lavrec_record(lavrec_t *info)
 
    if (info->software_encoding)
    {
+      pthread_mutex_lock(&settings->queue_mutex);
       settings->please_stop_syncing = 1; /* Ask the software sync thread to stop */
+      pthread_cond_broadcast(&settings->queue_wait);
+      pthread_mutex_unlock(&settings->queue_mutex);
       
       for (x = 0; x < info->num_encoders; x++)
       {
