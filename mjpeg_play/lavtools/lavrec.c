@@ -243,6 +243,7 @@ static void Usage(char *progname)
 	fprintf(stderr, "  -n/--mjpeg-buffers num      Number of MJPEG buffers (default: 64)\n");
 	fprintf(stderr, "  -b/--mjpeg-buffer-size num  Size of MJPEG buffers [Kb] (default: 256)\n");
 	fprintf(stderr, "  -C/--channel LIST:CHAN      When using a TV tuner, channel list/number\n");
+	fprintf(stderr, "  -F/--frequency KHz          When using a TV tuner, frequency in KHz\n");
 	fprintf(stderr, "  -U/--use-read               Use read instead of mmap for recording\n");
 	fprintf(stderr, "  --software-encoding         Use software JPEG-encoding (for BTTV-capture)\n");
 	fprintf(stderr, "  --num-procs num             Number of encoding processes (default: 1)\n");
@@ -755,6 +756,10 @@ static int set_option(const char *name, char *value)
 	{
 		info->MJPG_bufsize = atoi(value);
 	}
+	else if (strcmp(name, "frequency")==0 || strcmp(name,"F")==0)
+	{
+		info->tuner_frequency = atoi(value);
+	}
 	else if (strcmp(name, "channel")==0 || strcmp(name,"C")==0)
 	{
 		int colin=0; int chlist=0; int chan=0;
@@ -877,6 +882,7 @@ static void check_command_line_options(int argc, char *argv[])
 		{"num-procs"        ,1,0,0},   /* --num-procs            */
 		{"max-file-size"    ,1,0,0},   /* --max-file-size        */
 		{"file-flush"       ,1,0,0},   /* --file-flush           */
+		{"frequency"        ,1,0,0},   /* --frequency/-F         */
 		{0,0,0,0}
 	};
 #endif
@@ -887,10 +893,10 @@ static void check_command_line_options(int argc, char *argv[])
 	/* Get options */
 	nerr = 0;
 #ifdef HAVE_GETOPT_LONG
-	while( (n=getopt_long(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mUBR:c:n:b:C:",
+	while( (n=getopt_long(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mUBR:c:n:b:C:F:",
 		long_options, &option_index)) != EOF)
 #else
-	while( (n=getopt(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mUBR:c:n:b:C:")) != EOF)
+	while( (n=getopt(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mUBR:c:n:b:C:F:")) != EOF)
 #endif
 	{
 		switch(n)

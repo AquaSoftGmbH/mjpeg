@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <string.h>
 #include <math.h>
 #include "mjpeg_types.h"
 #include "motion.h"
