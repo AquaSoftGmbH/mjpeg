@@ -152,7 +152,6 @@ PictureReader::~PictureReader()
     int n,i;
     for(n=0;n<input_imgs_buf_size;n++)
     {
-        input_imgs_buf[n] =  new ImagePlaneArray;
         for (i=0; i<3; i++)
         {
             free( input_imgs_buf[n][i] );
@@ -210,7 +209,7 @@ void PictureReader::ReadChunk()
 
 		   pthread_mutex_unlock( &input_imgs_buf_lock );
 	   }
-      if( LoadFrame( ) )
+      if( LoadFrame() )
       {
           mjpeg_debug( "End of input stream detected" );
           if( ctl_parallel_read )
@@ -225,7 +224,7 @@ void PictureReader::ReadChunk()
               //mjpeg_info( "PRO: Signalling new_chunk_ack @ %d", frames_read );
               pthread_cond_broadcast( &new_chunk_ack );
           }
-
+          return;
       }
 
 	  if( ctl_parallel_read )
