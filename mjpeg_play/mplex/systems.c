@@ -45,23 +45,27 @@ char filename[MAXPATHLEN];
 		
 int packet_payload( Sys_header_struc *sys_header, Pack_struc *pack_header, int buffers, int PTSstamp, int DTSstamp )
 {
-	int payload = sector_size - PACKET_HEADER_SIZE ;
+  int payload = sector_size - PACKET_HEADER_SIZE ;
 	if( sys_header != NULL )
 		payload -= sys_header->length;
-	if( buffers )
-		payload -=  BUFFERINFO_LENGTH;
 	if( opt_mpeg == 2 )
 	{
-		payload -= MPEG2_AFTER_PACKET_LENGTH_MIN;
-		if( pack_header != NULL )
-			payload -= pack_header->length;
-		if( DTSstamp )
-			payload -= DTS_PTS_TIMESTAMP_LENGTH;
-		if ( PTSstamp )
-			payload -= DTS_PTS_TIMESTAMP_LENGTH;
+	  if( buffers )
+	    payload -= MPEG2_BUFFERINFO_LENGTH;
+
+	  payload -= MPEG2_AFTER_PACKET_LENGTH_MIN;
+	  if( pack_header != NULL )
+	    payload -= pack_header->length;
+	  if( DTSstamp )
+	    payload -= DTS_PTS_TIMESTAMP_LENGTH;
+	  if ( PTSstamp )
+	    payload -= DTS_PTS_TIMESTAMP_LENGTH;
 	}
 	else
 	{
+	        if( buffers )
+	          payload -= MPEG1_BUFFERINFO_LENGTH;
+
 		payload -= MPEG1_AFTER_PACKET_LENGTH_MIN;
 		if( pack_header != NULL )
 			payload -= pack_header->length;
@@ -309,9 +313,9 @@ void create_sector (Sector_struc 	 *sector,
 			   <PES_private_data:1=0><pack_header_field=0>
 			   <program_packet_sequence_counter=0>
 			   <P-STD_buffer=1><reserved:3=1><{PES_extension_flag_2=0> */
-
-			*(index++) = (unsigned char) (0x1E);
-			*(index++) = (unsigned char) ((buffer_scale << 5) | (buffer_size >> 8));
+			*(index++) = (unsigned char) 0x1e;
+			*(index++) = (unsigned char) (0x40 | (buffer_scale << 5) | 
+										  (buffer_size >> 8));
 			*(index++) = (unsigned char) (buffer_size & 0xff);
 		}
 	}
@@ -349,18 +353,17 @@ void create_sector (Sector_struc 	 *sector,
     if (type == PADDING_STR)
     {
     	/* TODO DEBUG */
-		for (j=0; j<target_packet_data_size; j++)
+		for (j=0; j< packet_data_to_read; j++)
 			*(index+j)=(unsigned char) STUFFING_BYTE;
-		actual_packet_data_size = target_packet_data_size;
-		bytes_short = 0;
+		actual_packet_data_size = packet_data_to_read;
     } 
     else
     {   
 		actual_packet_data_size = fread (index, sizeof (unsigned char), 
 										 packet_data_to_read, 
 										 inputstream);
-		bytes_short = target_packet_data_size - actual_packet_data_size;
 	}
+	bytes_short = target_packet_data_size - actual_packet_data_size;
 	
 	/* Handle the situations where we don't have enough data to fill
 	   the packet size fully ...
@@ -508,18 +511,18 @@ void create_pack (
 void create_sys_header (
 	Sys_header_struc *sys_header,
 	unsigned int	 rate_bound,
-	unsigned char	 audio_bound,
-	unsigned char	 fixed,
-	unsigned char	 CSPS,
-	unsigned char	 audio_lock,
-	unsigned char	 video_lock,
-	unsigned char	 video_bound,
+	int	 audio_bound,
+	int	 fixed,
+	int	 CSPS,
+	int	 audio_lock,
+	int	 video_lock,
+	int	 video_bound,
 
-	unsigned char 	 stream1,
-	unsigned char 	 buffer1_scale,
+	unsigned int 	 stream1,
+	unsigned int 	 buffer1_scale,
 	unsigned int 	 buffer1_size,
-	unsigned char 	 stream2,
-	unsigned char 	 buffer2_scale,
+	unsigned int 	 stream2,
+	unsigned int 	 buffer2_scale,
 	unsigned int 	 buffer2_size,
 	unsigned int     which_streams
 	)

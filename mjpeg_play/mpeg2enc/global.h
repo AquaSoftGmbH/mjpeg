@@ -147,6 +147,7 @@ void calc_vbv_delay (pict_data_s *picture);
 /* readpic.c */
 int readframe (int frame_num, uint8_t *frame[]);
 int frame_lum_mean(int frame_num);
+void read_stream_params( int *hsize, int *vsize, int *frame_rate_code );
 
 /* stats.c */
 void calcSNR (pict_data_s *picture);
@@ -168,7 +169,7 @@ void writeframe (int frame_num, uint8_t *frame[]);
 
 EXTERN char version[]
 #ifdef GLOBAL
-  ="MSSG+ 1.1 2000/12/12 (development of mpeg2encode V1.2, 96/07/19)"
+  ="MSSG+ 1.2 2001/3/10 (development of mpeg2encode V1.2, 96/07/19)"
 #endif
 ;
 
@@ -410,11 +411,7 @@ EXTERN int frame_rate_code;		/* coded value of frame rate */
 EXTERN int dctsatlim;			/* Value to saturated DCT coeffs to */
 EXTERN double frame_rate;		/* frames per second */
 EXTERN double bit_rate;			/* bits per second */
-EXTERN int    fast_mc_frac;		/* inverse proportion of fast motion estimates
-							   	consider in detail */
-EXTERN int    fast_mc_threshold; /* Use a sliding threshold technique to
-									dynamical adjust motion compensation
-									window size */
+
 EXTERN int mc_44_red;			/* Sub-mean population reduction passes for 4x4 and 2x2 */
 EXTERN int mc_22_red;			/* Motion compensation stages						*/
 

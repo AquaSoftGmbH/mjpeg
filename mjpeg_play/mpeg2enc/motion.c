@@ -27,7 +27,7 @@
  * design.
  * */
 
-/* Modifications and enhancements (C) 2000 Andrew Stevens */
+/* Modifications and enhancements (C) 2000/2001 Andrew Stevens */
 
 /* These modifications are free software; you can redistribute it
  *  and/or modify it under the terms of the GNU General Public License
@@ -45,7 +45,7 @@
  * 02111-1307, USA.
  *
  */
-
+
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -98,7 +98,10 @@ typedef struct _mc_result_vec {
 
 
 
-/* private prototypes */
+
+/*
+  Main field and frame based motion compensation entry points.
+*/
 
 static void frame_ME (pict_data_s *picture,
 								  int mboffset,
@@ -153,7 +156,7 @@ static void dpfield_estimate (
 	mb_motion_s *dpbest,
 	int *vmcp);
 
-static void fullsearch (
+static void mb_mc_search (
 	uint8_t *org, uint8_t *ref,
 	subsampled_mb_s *ssblk,
 	int lx, int i0, int j0, 
@@ -161,6 +164,16 @@ static void fullsearch (
 	int xmax, int ymax,
 	mb_motion_s *motion );
 
+
+/*
+  Forward declarations of various low-level block comparison
+  functions. Note that particular implemenations of the same
+  function are selected at initialisation time to make best
+  use of CPU capabilities.
+
+  Some are CPU specific and so compiled only conditionally.
+
+*/
 static void find_best_one_pel( mc_result_set *sub22set,
 							   uint8_t *org, uint8_t *blk,
 							   int i0, int j0,
@@ -173,8 +186,8 @@ static void find_best_one_pel( mc_result_set *sub22set,
 static int build_sub22_mcomps( mc_result_set *sub44set,
 							   mc_result_set *sub22set,
 							   int i0,  int j0, int ihigh, int jhigh, 
-								int null_mc_sad,
-						   		uint8_t *s22org,  uint8_t *s22blk, 
+							   int null_mc_sad,
+							   uint8_t *s22org,  uint8_t *s22blk, 
 							   int flx, int fh );
 
 static int build_sub44_mcomps( mc_result_set *sub44set,
@@ -187,18 +200,18 @@ static int build_sub44_mcomps( mc_result_set *sub44set,
 #ifdef HAVE_X86CPU 
 static void find_best_one_pel_mmxe( mc_result_set *sub22set, 
 									uint8_t *org, uint8_t *blk,
-							   int i0, int j0,
-							   int ilow, int jlow,
-							   int xmax, int ymax,
-							   int lx, int h, 
-							   mb_motion_s *res
+									int i0, int j0,
+									int ilow, int jlow,
+									int xmax, int ymax,
+									int lx, int h, 
+									mb_motion_s *res
 	);
 
 static int build_sub22_mcomps_mmxe( mc_result_set *sub44set,
 									mc_result_set *sub22set,
 									int i0,  int j0, int ihigh, int jhigh, 
-							 int null_mc_sad,
-							 uint8_t *s22org,  uint8_t *s22blk, 
+									int null_mc_sad,
+									uint8_t *s22org,  uint8_t *s22blk, 
 									int flx, int fh );
 static int build_sub44_mcomps_mmx( mc_result_set *sub44set,
 								   int ilow, int jlow, int ihigh, int jhigh, 
@@ -215,14 +228,6 @@ static int (*pmblock_sub44_dists)( uint8_t *blk,  uint8_t *ref,
 							mc_result_s *resvec);
 #endif
 
-static int unidir_pred_var( const mb_motion_s *motion, 
-							uint8_t *mb,  int lx, int h);
-static int bidir_pred_var( const mb_motion_s *motion_f,  
-						   const mb_motion_s *motion_b, 
-						   uint8_t *mb,  int lx, int h);
-static int bidir_pred_sad( const mb_motion_s *motion_f,  
-						   const mb_motion_s *motion_b, 
-						   uint8_t *mb,  int lx, int h);
 
 static int variance(  uint8_t *mb, int size, int lx);
 
@@ -236,19 +241,36 @@ static int bdist2_22( uint8_t *blk1f, uint8_t *blk1b,
 					  int lx, int h);
 
 
+static int dist1_00( uint8_t *blk1, uint8_t *blk2,  int lx, int h, int distlim);
+static int dist1_01( uint8_t *blk1, uint8_t *blk2, int lx, int h);
+static int dist1_10( uint8_t *blk1, uint8_t *blk2, int lx, int h);
+static int dist1_11( uint8_t *blk1, uint8_t *blk2, int lx, int h);
+static int dist2( uint8_t *blk1, uint8_t *blk2,
+							  int lx, int hx, int hy, int h);
+static int bdist2( uint8_t *pf, uint8_t *pb,
+	uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
+static int bdist1( uint8_t *pf, uint8_t *pb,
+				   uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
+
+
+/*
+ * Function pointers for selecting CPU specific implementations
+ *
+ */
+
 static void (*pfind_best_one_pel)( mc_result_set *sub22set,
 								   uint8_t *org, uint8_t *blk,
-							   int i0, int j0,
-							   int ilow, int jlow,
-							   int xmax, int ymax,
-							   int lx, int h, 
-							   mb_motion_s *res
+								   int i0, int j0,
+								   int ilow, int jlow,
+								   int xmax, int ymax,
+								   int lx, int h, 
+								   mb_motion_s *res
 	);
 static int (*pbuild_sub22_mcomps)( mc_result_set *sub44set,
 									mc_result_set *sub22set,
 									int i0,  int j0, int ihigh, int jhigh, 
-								   int null_mc_sad,
-								   uint8_t *s22org,  uint8_t *s22blk, 
+									int null_mc_sad,
+									uint8_t *s22org,  uint8_t *s22blk, 
 									int flx, int fh );
 
 static int (*pbuild_sub44_mcomps)( mc_result_set *sub44set,
@@ -264,17 +286,6 @@ static int (*pbdist2_22)( uint8_t *blk1f, uint8_t *blk1b,
 						  int lx, int h);
 
 static int (*pvariance)(uint8_t *mb, int size, int lx);
-
-static int dist1_00( uint8_t *blk1, uint8_t *blk2,  int lx, int h, int distlim);
-static int dist1_01(uint8_t *blk1, uint8_t *blk2, int lx, int h);
-static int dist1_10(uint8_t *blk1, uint8_t *blk2, int lx, int h);
-static int dist1_11(uint8_t *blk1, uint8_t *blk2, int lx, int h);
-static int dist2 (uint8_t *blk1, uint8_t *blk2,
-							  int lx, int hx, int hy, int h);
-static int bdist2 (uint8_t *pf, uint8_t *pb,
-	uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
-static int bdist1 (uint8_t *pf, uint8_t *pb,
-				   uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
 
 
 static int (*pdist22) ( uint8_t *blk1, uint8_t *blk2,  int flx, int fh);
@@ -294,28 +305,20 @@ static int (*pbdist2) (uint8_t *pf, uint8_t *pb,
 static int (*pbdist1) (uint8_t *pf, uint8_t *pb,
 					   uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
 
-void init_motion(void);
-int round_search_radius( int radius );
-int bidir_chrom_var_sum( mb_motion_s *lum_mc_f, 
-					   mb_motion_s *lum_mc_b, 
-					   uint8_t **ref_f, 
-					   uint8_t **ref_b,
-					   subsampled_mb_s *ssblk,
-					   int lx, int h );
 
 
 
 /*
-  Initialise motion compensation - currently purely selection of which
-  versions of the various low level computation routines to use
-  
-  */
+ *  Initialise motion compensation - currently only selection of which
+ * versions of the various low level computation routines to use
+ * 
+ */
 
-void init_motion(void)
+void init_motion()
 {
 	int cpucap = cpu_accel();
 
-	if( cpucap  == 0 )	/* No MMX/SSE etc support available */
+	if( cpucap == 0 )	/* No MMX/SSE etc support available */
 	{
 		pdist22 = dist22;
 		pdist44 = dist44;
@@ -394,25 +397,11 @@ int round_search_radius( int radius )
 
 
 /*
- * motion estimation for progressive and interlaced frame pictures
+ * motion estimation top level entry point
  *
- * oldorg: source frame for forward prediction (used for P and B frames)
- * neworg: source frame for backward prediction (B frames only)
- * oldref: reconstructed frame for forward prediction (P and B frames)
- * newref: reconstructed frame for backward prediction (B frames only)
- * cur:    current frame (the one for which the prediction is formed)
- * sxf,syf: forward search window (frame coordinates)
- * sxb,syb: backward search window (frame coordinates)
- * mbi:    pointer to macroblock info structure
- *
- * results:
- * mbi->
- *  mb_type: 0, MB_INTRA, MB_FORWARD, MB_BACKWARD, MB_FORWARD|MB_BACKWARD
- *  MV[][][]: motion vectors (frame format)
- *  mv_field_sel: top/bottom field (for field prediction)
- *  motion_type: MC_FRAME, MC_FIELD
- *
- *
+ * Fills in the macro-block info of the specified picture with 
+ * best-guess motion estimates.  Seperate frame and field based MC
+ * routines are used depending on picture (and hence stream) structure.
  */
 
 
@@ -425,6 +414,7 @@ void motion_estimation(
 	int mb_row_incr;			/* Offset increment to go down 1 row of mb's */
 	int mb_row_start;
 	mb_row_start = 0;
+
 	if (picture->pict_struct==FRAME_PICTURE)
 	{			
 		mb_row_incr = 16*width;
@@ -456,58 +446,63 @@ void motion_estimation(
 	}
 }
 
-/* DEBUGGER...
-static void check_mc( const mb_motion_s *motion, int rx, int ry, int i, int j, char *str )
+/*
+ * Compute the variance of the residual of uni-directionally motion
+ * compensated block.
+ *
+ */
+
+static __inline__ int unidir_pred_var( const mb_motion_s *motion,
+							uint8_t *mb,  
+							int lx, 
+							int h)
 {
-	rx *= 2; ry *= 2;
-	if( motion->sad < 0 || motion->sad > 0x10000 )
-	{
-		printf( "SAD ooops %s\n", str );
-		exit(1);
-	}
-	if( motion->pos.x-i*2 < -rx || motion->pos.x-i*2 >= rx )
-	{
-		printf( "X MC ooops %s = %d [%d]\n", str, motion->pos.x-i*2,rx );
-		exit(1);
-	}
-	if( motion->pos.y-j*2 < -ry || motion->pos.y-j*2 >= ry )
-	{
-		printf( "Y MC ooops %s %d [%d]\n", str, motion->pos.y-j*2, ry );
-		exit(1);
-	}
+	return (*pdist2)(motion->blk, mb, lx, motion->hx, motion->hy, h);
 }
 
-static void init_mc( mb_motion_s *motion )
+
+/*
+ * Compute the variance of the residual of bi-directionally motion
+ * compensated block.
+ */
+
+static __inline__ int bidir_pred_var( const mb_motion_s *motion_f, 
+									  const mb_motion_s *motion_b,
+									  uint8_t *mb,  
+									  int lx, int h)
 {
-	motion->sad = -123;
-	motion->pos.x = -1000;
-	motion->pos.y = -1000;
+	return (*pbdist2)( motion_f->blk, motion_b->blk,
+					   mb, lx, 
+					   motion_f->hx, motion_f->hy,
+					   motion_b->hx, motion_b->hy,
+					   h);
 }
-*/
 
-/* unidir_NI_var_sum
-   Compute the combined variance of luminance and chrominance information
-   for a particular non-intra macro block after unidirectional
-   motion compensation...  
 
-   Note: results are scaled to give chrominance equal weight to
-   chrominance.  The variance of the luminance portion is computed
-   at the time the motion compensation is computed.
+/* unidir_var_sum
+ *
+ * Compute the combined variance of luminance and
+ * chrominance information for a particular non-intra macro block
+ * after unidirectional motion compensation...
+ *
+ *  Note: results are scaled to give chrominance equal weight to
+ *  chrominance.  The variance of the luminance portion is computed
+ *  at the time the motion compensation is computed.
+ *
+ *  TODO: Perhaps we should compute the whole thing in mb_mc_search
+ *  not seperate it.  However, that would involve a lot of fiddling
+ *  with field_* and until its thoroughly debugged and tested I think
+ *  I'll leave that alone. Furthermore, it is unclear if its really
+ *  worth * doing these computations for B *and* P frames.
+ *
+ *  TODO: BUG: ONLY works for 420 video...
+ *  
+ */
 
-   TODO: Perhaps we should compute the whole thing in fullsearch not
-   seperate it.  However, that would involve a lot of fiddling with
-   field_* and until its thoroughly debugged and tested I think I'll
-   leave that alone. Furthermore, it is unclear if its really worth
-   doing these computations for B *and* P frames.
-
-   TODO: BUG: ONLY works for 420 video...
-
-*/
-
-static int unidir_chrom_var_sum( mb_motion_s *lum_mc, 
-							  uint8_t **ref, 
-							  subsampled_mb_s *ssblk,
-							  int lx, int h )
+static int unidir_var_sum( mb_motion_s *lum_mc, 
+									 uint8_t **ref, 
+									 subsampled_mb_s *ssblk,
+									 int lx, int h )
 {
 	int uvlx = (lx>>1);
 	int uvh = (h>>1);
@@ -515,35 +510,36 @@ static int unidir_chrom_var_sum( mb_motion_s *lum_mc,
 	int cblkoffset = (lum_mc->fieldoff>>1) +
 		(lum_mc->pos.x>>2) + (lum_mc->pos.y>>2)*uvlx;
 	
-	return 	((*pdist2_22)( ref[1] + cblkoffset, ssblk->umb, uvlx, uvh) +
-			 (*pdist2_22)( ref[2] + cblkoffset, ssblk->vmb, uvlx, uvh))*2;
+	return 	lum_mc->var +
+		((*pdist2_22)( ref[1] + cblkoffset, ssblk->umb, uvlx, uvh) +
+		 (*pdist2_22)( ref[2] + cblkoffset, ssblk->vmb, uvlx, uvh));
 }
 
 /*
-  bidir_NI_var_sum
-   Compute the combined variance of luminance and chrominance information
-   for a particular non-intra macro block after unidirectional
-   motion compensation...  
-
-   Note: results are scaled to give chrominance equal weight to
-   chrominance.  The variance of the luminance portion is computed
-   at the time the motion compensation is computed.
-
-   Note: results scaled to give chrominance equal weight to chrominance.
-  
-  TODO: BUG: ONLY works for 420 video...
-
-  NOTE: Currently unused but may be required if it turns out that taking
-  chrominance into account in B frames is needed.
-
+ *  bidir_var_sum
+ *  Compute the combined variance of luminance and chrominance information
+ *  for a particular non-intra macro block after bidirectional
+ *  motion compensation...  
+ *
+ *  Note: results are scaled to give chrominance equal weight to
+ *  chrominance.  The variance of the luminance portion is computed
+ *  at the time the motion compensation is computed.
+ *
+ *  Note: results scaled to give chrominance equal weight to chrominance.
+ * 
+ *  TODO: BUG: ONLY works for 420 video...
+ *
+ *  NOTE: Currently unused but may be required if it turns out that taking
+ *  chrominance into account in B frames is needed.
+ *
  */
 
-int bidir_chrom_var_sum( mb_motion_s *lum_mc_f, 
-					   mb_motion_s *lum_mc_b, 
-					   uint8_t **ref_f, 
-					   uint8_t **ref_b,
-					   subsampled_mb_s *ssblk,
-					   int lx, int h )
+int bidir_var_sum( mb_motion_s *lum_mc_f, 
+				   mb_motion_s *lum_mc_b, 
+				   uint8_t **ref_f, 
+				   uint8_t **ref_b,
+				   subsampled_mb_s *ssblk,
+				   int lx, int h )
 {
 	int uvlx = (lx>>1);
 	int uvh = (h>>1);
@@ -551,22 +547,68 @@ int bidir_chrom_var_sum( mb_motion_s *lum_mc_f,
 	int cblkoffset_f = (lum_mc_f->fieldoff>>1) + 
 		(lum_mc_f->pos.x>>2) + (lum_mc_f->pos.y>>2)*uvlx;
 	int cblkoffset_b = (lum_mc_b->fieldoff>>1) + 
-		(lum_mc_b->pos.x>>2) + (lum_mc_f->pos.y>>2)*uvlx;
+		(lum_mc_b->pos.x>>2) + (lum_mc_b->pos.y>>2)*uvlx;
 	
 	return 	(
+		(*pbdist2)( lum_mc_f->blk, lum_mc_b->blk,
+					ssblk->mb, lx, 
+					lum_mc_f->hx, lum_mc_f->hy,
+					lum_mc_b->hx, lum_mc_b->hy,
+					h) +
 		(*pbdist2_22)( ref_f[1] + cblkoffset_f, ref_b[1] + cblkoffset_b,
 					   ssblk->umb, uvlx, uvh ) +
 		(*pbdist2_22)( ref_f[2] + cblkoffset_f, ref_b[2] + cblkoffset_b,
-					   ssblk->vmb, uvlx, uvh ))*2;
+					   ssblk->vmb, uvlx, uvh ));
 
 }
 
-static int chrom_var_sum( subsampled_mb_s *ssblk, int h, int lx )
+/*
+ * Sum of chrominance variance of a block.
+ */
+
+static __inline__ int chrom_var_sum( subsampled_mb_s *ssblk, int h, int lx )
 {
 	return ((*pvariance)(ssblk->umb,(h>>1),(lx>>1)) + 
 			(*pvariance)(ssblk->vmb,(h>>1),(lx>>1))) * 2;
 }
 
+
+
+/*
+ * Compute SAD for bi-directionally motion compensated blocks...
+ */
+
+static __inline__ int bidir_pred_sad( const mb_motion_s *motion_f, 
+									  const mb_motion_s *motion_b,
+									  uint8_t *mb,  
+									  int lx, int h)
+{
+	return (*pbdist1)(motion_f->blk, motion_b->blk, 
+					 mb, lx, 
+					 motion_f->hx, motion_f->hy,
+					 motion_b->hx, motion_b->hy,
+					 h);
+}
+
+
+
+/*
+ *
+ * motion estimation for frame pictures
+ * picture: picture object for which MC is to be computed.
+ * mbi:    pointer to macroblock info of picture object
+ * mb_row_start: offset in chrominance block of start of this MB's row
+ *
+ * results:
+ * mbi->
+ *  mb_type: 0, MB_INTRA, MB_FORWARD, MB_BACKWARD, MB_FORWARD|MB_BACKWARD
+ *  MV[][][]: motion vectors (frame format)
+ *  motion_type: MC_FRAME, MC_DMV, MC_FIELD
+ *
+ * TODO: MC_DMV currently never used.  It should in any case trigger on
+ * the current (dynamically selected) bigroup length and not the fixed
+ * Maximum bi-group length M.
+ */
 static void frame_ME(pict_data_s *picture,
 					 int mb_row_start,
 					 int i, int j, 
@@ -589,7 +631,11 @@ static void frame_ME(pict_data_s *picture,
 	
 
 	/* A.Stevens fast motion estimation data is appended to actual
-	   luminance information 
+	   luminance information. 
+	   TODO: The append thing made sense before we had
+	   a nice tidy compression record for each picture but now 
+	   it should really be replaced by additional pointers to
+	   seperate buffers.
 	*/
 	ssmb.mb = picture->curorg[0] + mb_row_start + i;
 	ssmb.umb = (uint8_t*)(picture->curorg[1] + (i>>1) + (mb_row_start>>2));
@@ -602,7 +648,7 @@ static void frame_ME(pict_data_s *picture,
 	/* Compute variance MB as a measure of Intra-coding complexity
 	   We include chrominance information here, scaled to compensate
 	   for sub-sampling.  Silly MPEG forcing chrom/lum to have same
-	   quantisations...
+	   quantisations... ;-)
 	 */
 	var = (*pvariance)(ssmb.mb,16,width);
 
@@ -618,12 +664,12 @@ static void frame_ME(pict_data_s *picture,
 
 		if (picture->frame_pred_dct)
 		{
-			fullsearch(picture->oldorg[0],picture->oldref[0],&ssmb,
+			mb_mc_search(picture->oldorg[0],picture->oldref[0],&ssmb,
 					   width,i,j,picture->sxf,picture->syf,16,width,height,
 					    &framef_mc);
 			framef_mc.fieldoff = 0;
-			vmc = framef_mc.var +
-				unidir_chrom_var_sum( &framef_mc, picture->oldref, &ssmb, width, 16 );
+			vmc = 
+				unidir_var_sum( &framef_mc, picture->oldref, &ssmb, width, 16 );
 			mbi->motion_type = MC_FRAME;
 		}
 		else
@@ -634,13 +680,12 @@ static void frame_ME(pict_data_s *picture,
 						   &topfldf_mc,
 						   &botfldf_mc,
 						   imins,jmins);
-			vmcf = framef_mc.var + 
-				unidir_chrom_var_sum( &framef_mc, picture->oldref, &ssmb, width, 16 );
+			vmcf = 
+				unidir_var_sum( &framef_mc, picture->oldref, &ssmb, width, 16 );
 			vmcfieldf = 
-				topfldf_mc.var + 
-				unidir_chrom_var_sum( &topfldf_mc, picture->oldref, &ssmb, (width<<1), 8 ) +
-				botfldf_mc.var + 
-				unidir_chrom_var_sum( &botfldf_mc, picture->oldref, &ssmb, (width<<1), 8 );
+				unidir_var_sum( &topfldf_mc, picture->oldref, &ssmb, (width<<1), 8 ) +
+				
+				unidir_var_sum( &botfldf_mc, picture->oldref, &ssmb, (width<<1), 8 );
 			if ( M==1)
 			{
 				dpframe_estimate(picture,picture->oldref[0],&ssmb,
@@ -678,17 +723,14 @@ static void frame_ME(pict_data_s *picture,
 		 * prediction error variance (vmc)
 		 *
 		 * Used to be: blocks with small prediction error are always 
-		 * coded non-intra even if variance is smaller (is this reasonable?
-		 *
-		 * TODO: A.Stevens Jul 2000
-		 * The bbmpeg guys have found this to be *unreasonable*.
-		 * I'm not sure I buy their solution using vmc*2.  It is probabably
-		 * the vmc>= 9*256 test that is suspect.
+		 * coded non-intra even if variance is smaller 
+		 * This seemed unreasonable and potentially brittle and was changed so
+		 * that intra is chosen if its variance is smaller.
 		 * 
 		 */
 
 
-		if (vmc>var /*&& vmc>=(3*3)*16*16*2*/ )
+		if (vmc>var*3/2 )
 		{
 			mbi->mb_type = MB_INTRA;
 			mbi->var = var;
@@ -756,25 +798,28 @@ static void frame_ME(pict_data_s *picture,
 		{
 			var = (*pvariance)(ssmb.mb,16,width);
 			/* forward */
-			fullsearch(picture->oldorg[0],picture->oldref[0],&ssmb,
+			mb_mc_search(picture->oldorg[0],picture->oldref[0],&ssmb,
 					   width,i,j,picture->sxf,picture->syf,
 					   16,width,height,
 					   &framef_mc
 					   );
 			framef_mc.fieldoff = 0;
 			vmcf = framef_mc.var;
+			vmcf = unidir_var_sum( &framef_mc, picture->oldref, &ssmb, width, 16 );
 
 			/* backward */
-			fullsearch(picture->neworg[0],picture->newref[0],&ssmb,
+			mb_mc_search(picture->neworg[0],picture->newref[0],&ssmb,
 					   width,i,j,picture->sxb,picture->syb,
 					   16,width,height,
 					   &frameb_mc);
 			frameb_mc.fieldoff = 0;
 			vmcr = frameb_mc.var;
+			vmcr = unidir_var_sum( &frameb_mc, picture->oldref, &ssmb, width, 16 );
 
 			/* interpolated (bidirectional) */
 
 			vmci = bidir_pred_var( &framef_mc, &frameb_mc, ssmb.mb, width, 16 );
+			vmci =  bidir_var_sum( &framef_mc, &frameb_mc,  picture->oldref, picture->newref,  &ssmb, width, 16 );
 
 			/* decisions */
 
@@ -886,15 +931,13 @@ static void frame_ME(pict_data_s *picture,
 		 * prediction error variance (vmc)
 		 *
 		 * Used to be: blocks with small prediction error are always 
-		 * coded non-intra even if variance is smaller (is this reasonable?
-		 *
-		 * TODO: A.Stevens Jul 2000
-		 * The bbmpeg guys have found this to be *unreasonable*.
-		 * I'm not sure I buy their solution using vmc*2 in the first comparison.
-		 * It is probabably the vmc>= 9*256 test that is suspect.
-		 *
+		 * coded non-intra even if variance is smaller 
+		 * This seemed unreasonable and potentially brittle and was changed so
+		 * that intra is chosen if its variance is smaller.
+		 * 
 		 */
-		if (vmc>var && vmc>=9*256)
+
+		if (vmc>var*3/2)
 			mbi->mb_type = MB_INTRA;
 		else
 		{
@@ -932,8 +975,9 @@ static void frame_ME(pict_data_s *picture,
 
 /*
  * motion estimation for field pictures
- *
- * mbi:    pointer to macroblock info structure
+ * picture: picture object for which MC is to be computed.
+ * mbi:    pointer to macroblock info of picture object
+ * mb_row_start: offset in chrominance block of start of this MB's row
  * secondfield: indicates second field of a frame (in P fields this means
  *              that reference field of opposite parity is in curref instead
  *              of oldref)
@@ -948,7 +992,6 @@ static void frame_ME(pict_data_s *picture,
  *  mv_field_sel: top/bottom field
  *  motion_type: MC_FIELD, MC_16X8
  *
- * uses global vars: pict_type, pict_struct
  */
 static void field_ME(
 	pict_data_s *picture,
@@ -997,7 +1040,7 @@ static void field_ME(
 		topref = picture->oldref[0];
 		botorg = picture->oldorg[0] + width;
 		botref = picture->oldref[0] + width;
-
+                                                        
 		if (secondfield)
 		{
 			/* opposite parity field is in same frame */
@@ -1013,8 +1056,9 @@ static void field_ME(
 				toporg = picture->curorg[0];
 				topref = picture->curref[0];
 			}
+			if( frame_num > 8 )
+				frame_num = (frame_num + 1) - 1 ;
 		}
-
 		field_estimate(picture,
 					   toporg,topref,botorg,botref,&ssmb,
 					   i,j,picture->sxf,picture->syf,ipflag,
@@ -1278,17 +1322,17 @@ static void frame_estimate(
 	botssmb.vmb = ssmb->vmb+(width>>1);
 
 	/* frame prediction */
-	fullsearch(org,ref,ssmb,width,i,j,sx,sy,16,width,height,
+	mb_mc_search(org,ref,ssmb,width,i,j,sx,sy,16,width,height,
 						  bestfr );
 	bestfr->fieldsel = 0;
 	bestfr->fieldoff = 0;
 
 	/* predict top field from top field */
-	fullsearch(org,ref,ssmb,width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
+	mb_mc_search(org,ref,ssmb,width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
 			   &topfld_mc);
 
 	/* predict top field from bottom field */
-	fullsearch(org+width,ref+width,ssmb, width<<1,i,j>>1,sx,sy>>1,8,
+	mb_mc_search(org+width,ref+width,ssmb, width<<1,i,j>>1,sx,sy>>1,8,
 			   width,height>>1, &botfld_mc);
 
 	/* set correct field selectors... */
@@ -1313,12 +1357,12 @@ static void frame_estimate(
 	}
 
 	/* predict bottom field from top field */
-	fullsearch(org,ref,&botssmb,
+	mb_mc_search(org,ref,&botssmb,
 					width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
 					&topfld_mc);
 
 	/* predict bottom field from bottom field */
-	fullsearch(org+width,ref+width,&botssmb,
+	mb_mc_search(org+width,ref+width,&botssmb,
 					width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
 					&botfld_mc);
 
@@ -1399,7 +1443,7 @@ static void field_estimate (
 	if (notop)
 		topfld_mc.sad = dt = 65536; /* infinity */
 	else
-		fullsearch(toporg,topref,ssmb,width<<1,
+		mb_mc_search(toporg,topref,ssmb,width<<1,
 				   i,j,sx,sy>>1,16,width,height>>1,
 				   &topfld_mc);
 	dt = topfld_mc.sad;
@@ -1407,7 +1451,7 @@ static void field_estimate (
 	if (nobot)
 		botfld_mc.sad = db = 65536; /* infinity */
 	else
-		fullsearch(botorg,botref,ssmb,width<<1,
+		mb_mc_search(botorg,botref,ssmb,width<<1,
 				   i,j,sx,sy>>1,16,width,height>>1,
 				   &botfld_mc);
 	db = botfld_mc.sad;
@@ -1441,10 +1485,11 @@ static void field_estimate (
 	/* 16x8 motion compensation */
 
 	/* predict upper half field from top field */
+
 	if (notop)
 		topfld_mc.sad = dt = 65536;
 	else
-		fullsearch(toporg,topref,ssmb,width<<1,
+		mb_mc_search(toporg,topref,ssmb,width<<1,
 				   i,j,sx,sy>>1,8,width,height>>1,
 				    &topfld_mc);
 	dt = topfld_mc.sad;
@@ -1452,7 +1497,7 @@ static void field_estimate (
 	if (nobot)
 		botfld_mc.sad = db = 65536;
 	else
-		fullsearch(botorg,botref,ssmb,width<<1,
+		mb_mc_search(botorg,botref,ssmb,width<<1,
 				   i,j,sx,sy>>1,8,width,height>>1,
 				    &botfld_mc);
 	db = botfld_mc.sad;
@@ -1487,7 +1532,7 @@ static void field_estimate (
 	if (notop)
 		topfld_mc.sad = dt = 65536;
 	else
-		fullsearch(toporg,topref,&botssmb,
+		mb_mc_search(toporg,topref,&botssmb,
 				   width<<1,
 				   i,j+8,sx,sy>>1,8,width,height>>1,
 				    &topfld_mc);
@@ -1496,7 +1541,7 @@ static void field_estimate (
 	if (nobot)
 		botfld_mc.sad = db = 65536;
 	else
-		fullsearch(botorg,botref,&botssmb,width<<1,
+		mb_mc_search(botorg,botref,&botssmb,width<<1,
 				   i,j+8,sx,sy>>1,8,width,height>>1,
 				   &botfld_mc);
 	db = botfld_mc.sad;
@@ -1851,44 +1896,39 @@ static void sub_mean_reduction( mc_result_set *matchset,
 	*minweight_res = mean_weight;
 }
 
-/* Build a vector of the top 4*4 sub-sampled motion compensations in
-  the box (ilow,jlow) to (ihigh,jhigh).
-
-	The algorithm is as follows: 1. coarse matches on an 8*8 grid of
-	positions are collected that fall below a (very conservative) sad
-	threshold (basically 50% more than moving average of the mean sad
-	of such matches).
-	
-	2. The worse than-average matches are discarded.
-	
-	3. The remaining coarse matches are expanded with the left/lower
-	neighbouring 4*4 grid matches. Again only those better than a
-	threshold (this time the mean of the 8*8 grid matches are
-	retained.
-	
-	4. Multiple passes are made discarding worse than-average matches.
-	The number of passes is specified by the user.  The default it 2
-	(leaving roughly 1/4 of the matches).
-	
-	The net result is very fast and find good matches if they're to be
-	found.  I.e. the penalty over exhaustive search is pretty low.
-	
-	NOTE: The "discard below average" trick depends critically on
-	having some variation in the matches.  The slight penalty imposed
-	for distant matches (reasonably since the motion vectors have to
-	be encoded) is *vital* as otherwise pathologically bad performance
-	results on highly uniform images.
-	
-	TODO: We should probably allow the user to eliminate the initial
-	thinning of 8*8 grid matches if ultimate quality is demanded
-	(e.g. for low bit-rate applications).
-
-*/
+/* 
+ * Build a vector of the top 4*4 sub-sampled motion compensations in
+ * the box (ilow,jlow) to (ihigh,jhigh).
+ *
+ *	The algorithm is as follows: 
+ * 
+ *  1. Matches on an 4*4 pel grid are collected. All those matches
+ * whose that is over a (conservative) threshold (basically 50% more
+ * than moving average of the mean sad of such matches) are discarded.
+ *	
+ *	2. Multiple passes are made discarding worse than-average matches.
+ *	The number of passes is specified by the user.  The default it 2
+ *	(leaving roughly 1/4 of the matches).
+ *	
+ *	The net result is very fast and find good matches if they're to be
+ *	found.  I.e. the penalty over exhaustive search is pretty low.
+ *	
+ *	NOTE: The "discard below average" trick depends critically on
+ *	having some variation in the matches.  The slight penalty imposed
+ *	for distant matches (reasonable since the motion vectors have to
+ *	be encoded) is *vital* as otherwise pathologically bad performance
+ *	results on highly uniform images.
+ *	
+ *	TODO: We should probably allow the user to eliminate the initial
+ *	thinning of 4*4 grid matches if ultimate quality is demanded
+ *	(e.g. for low bit-rate applications).
+ * 
+ */
 
 static int build_sub44_mcomps( mc_result_set *sub44set,
 							   int ilow, int jlow, int ihigh, int jhigh, 
-							int i0, int j0,
-								int null_mc_sad,
+							   int i0, int j0,
+							   int null_mc_sad,
 							   uint8_t *s44org, uint8_t *s44blk, 
 							   int qlx, int qh )
 {
@@ -1912,7 +1952,7 @@ static int build_sub44_mcomps( mc_result_set *sub44set,
 	   performed on the results of this pass will filter out
 	   out-of-range blocks...
 	*/
-
+	
 	threshold = 6*null_mc_sad / (4*4*mc_44_red);
 	s44orgblk = s44org+(ilow>>2)+qlx*(jlow>>2);
 	
@@ -1923,26 +1963,26 @@ static int build_sub44_mcomps( mc_result_set *sub44set,
 
 	sub44_num_mcomps = 0;
 
-		/* Invariant:  s44orgblk = s44org+(i>>2)+qlx*(j>>2) */
-		s44orgblk = s44org+(ilow>>2)+qlx*(jlow>>2);
-		for( j = jstrt; j <= jend; j += 4 )
+	/* Invariant:  s44orgblk = s44org+(i>>2)+qlx*(j>>2) */
+	s44orgblk = s44org+(ilow>>2)+qlx*(jlow>>2);
+	for( j = jstrt; j <= jend; j += 4 )
+	{
+		old_s44orgblk = s44orgblk;
+		for( i = istrt; i <= iend; i += 4 )
 		{
-			old_s44orgblk = s44orgblk;
-			for( i = istrt; i <= iend; i += 4 )
-			{
 			s1 = ((*pdist44)( s44orgblk,s44blk,qlx,qh) & 0xffff);
-				if( s1 < threshold )
-				{
+			if( s1 < threshold )
+			{
 				threshold = intmin(s1<<2,threshold);
-					sub44_mcomps[sub44_num_mcomps].x = i;
-					sub44_mcomps[sub44_num_mcomps].y = j;
+				sub44_mcomps[sub44_num_mcomps].x = i;
+				sub44_mcomps[sub44_num_mcomps].y = j;
 				sub44_mcomps[sub44_num_mcomps].weight = s1 + ((intabs(i-i0)+intabs(j-j0))>>3);
-					++sub44_num_mcomps;
-				}
-				s44orgblk += 1;
+				++sub44_num_mcomps;
 			}
-			s44orgblk = old_s44orgblk + qlx;
+			s44orgblk += 1;
 		}
+		s44orgblk = old_s44orgblk + qlx;
+	}
 	sub44set->len = sub44_num_mcomps;
 			
 	sub_mean_reduction( sub44set, 1+(mc_44_red>1),  &mean_weight);
@@ -1950,7 +1990,7 @@ static int build_sub44_mcomps( mc_result_set *sub44set,
 
 	return sub44set->len;
 }
-			
+
 #ifdef HAVE_X86CPU
 
 static int build_sub44_mcomps_mmx( mc_result_set *sub44set,
@@ -1974,13 +2014,13 @@ static int build_sub44_mcomps_mmx( mc_result_set *sub44set,
 	s44orgblk = s44org+(ilow>>2)+qlx*(jlow>>2);
 	
 	sub44set->len = (*pmblock_sub44_dists)( s44orgblk, s44blk,
-								  istrt, jstrt,
-								  iend, jend, 
-								  qh, qlx, 
-								  threshold,
-								  sub44_mcomps);
-
-		/* If we're really pushing quality we reduce once otherwise twice. */
+											istrt, jstrt,
+											iend, jend, 
+											qh, qlx, 
+											threshold,
+											sub44_mcomps);
+	
+   /* If we're really pushing quality we reduce once otherwise twice. */
 			
 	sub_mean_reduction( sub44set, 1+(mc_44_red>1),  &mean_weight);
 
@@ -1991,31 +2031,32 @@ static int build_sub44_mcomps_mmx( mc_result_set *sub44set,
 
 
 
-/* Build a vector of the best 2*2 sub-sampled motion
-  compensations using the best 4*4 matches as starting points.  As
-  with with the 4*4 matches We don't collect them densely as they're
-  just search starting points for 1-pel search and ones that are 1 out
-  should still give better than average matches...
-
-*/
+/*  Build a vector of the best 2*2 sub-sampled motion * compensations
+ *   using the best 4*4 matches as starting points.  As * with with
+ *   the 4*4 matches We don't collect them densely as they're * just
+ *   search starting points for 1-pel search and ones that are 1 out *
+ *   should still give better than average matches...
+ *
+ * A super-fast version using MMX assembly code for X86 follows.
+ * Other CPU's could/should be handled the same way.  */
 
 
 static int build_sub22_mcomps( mc_result_set *sub44set,
 							   mc_result_set *sub22set,
 							   int i0,  int j0, int ihigh, int jhigh, 
-								int null_mc_sad,
-						   		uint8_t *s22org,  uint8_t *s22blk, 
+							   int null_mc_sad,
+							   uint8_t *s22org,  uint8_t *s22blk, 
 							   int flx, int fh )
 {
 	int i,k,s;
 	int threshold = 6*null_mc_sad / (2 * 2*mc_22_red);
-
+	
 	int min_weight;
 	int ilim = ihigh-i0;
 	int jlim = jhigh-j0;
 	blockxy matchrec;
 	uint8_t *s22orgblk;
-
+	
 	sub22set->len = 0;
 	for( k = 0; k < sub44set->len; ++k )
 	{
@@ -2063,8 +2104,8 @@ static int build_sub22_mcomps( mc_result_set *sub44set,
 int build_sub22_mcomps_mmxe( mc_result_set *sub44set,
 							 mc_result_set *sub22set,
 							 int i0,  int j0, int ihigh, int jhigh, 
-								int null_mc_sad,
-						   		uint8_t *s22org,  uint8_t *s22blk, 
+							 int null_mc_sad,
+							 uint8_t *s22org,  uint8_t *s22blk, 
 							 int flx, int fh )
 {
 	int i,k,s;
@@ -2126,10 +2167,12 @@ int build_sub22_mcomps_mmxe( mc_result_set *sub44set,
 #endif
 
 /*
-  Search for the best 1-pel match within 1-pel of a good 2*2-pel match.
-	TODO: Its a bit silly to cart around absolute M/C co-ordinates that
-	eventually get turned into relative ones anyway...
-*/
+ * Search for the best 1-pel match within 1-pel of a good 2*2-pel
+ * match.  TODO: Its a bit silly to cart around absolute M/C
+ * co-ordinates that eventually get turned into relative ones
+ * anyway... 
+ *
+ */
 
 
 static void find_best_one_pel( mc_result_set *sub22set,
@@ -2192,11 +2235,11 @@ static void find_best_one_pel( mc_result_set *sub22set,
 #ifdef HAVE_X86CPU 
 void find_best_one_pel_mmxe( mc_result_set *sub22set,
 							 uint8_t *org, uint8_t *blk,
-							   int i0, int j0,
-							   int ilow, int jlow,
-							   int xmax, int ymax,
-							   int lx, int h, 
-							   mb_motion_s *res
+							 int i0, int j0,
+							 int ilow, int jlow,
+							 int xmax, int ymax,
+							 int lx, int h, 
+							 mb_motion_s *res
 	)
 
 {
@@ -2252,29 +2295,37 @@ void find_best_one_pel_mmxe( mc_result_set *sub22set,
 }
 #endif 
  
-/*
- * full search block matching
+/* Hierarchical block matching motion compensation search
  *
- * A.Stevens 2000: This is now a big misnomer.  The search is now a hierarchical/sub-sampling
- * search not a full search.  However, experiments have shown it is always close to
- * optimal and almost always very close or optimal.
+ * A.Stevens 2000: This is now a big misnomer.  The search is now a
+ * hierarchical/sub-sampling search not a full search.  However,
+ * experiments have shown it is always close to optimal and almost
+ * always very close or optimal.
  *
- * blk: top left pel of (16*h) block
- * s22blk: top element of fast motion compensation block corresponding to blk
- * h: height of block
- * lx: distance (in bytes) of vertically adjacent pels in ref,blk
  * org: top left pel of source reference picture
  * ref: top left pel of reconstructed reference picture
+ * ssblk: top-left element of macro block to be motion compensated
+ *        at 1*1,2*2 and 4*4 subsampling
+ * lx: distance (in bytes) of vertically adjacent pels in ref,blk
  * i0,j0: center of search window
  * sx,sy: half widths of search window
- * xmax,ymax: right/bottom limits of search area
- * iminp,jminp: pointers to where the result is stored
- *              result is given as half pel offset from ref(0,0)
- *              i.e. NOT relative to (i0,j0)
+ * h: height of macro block
+ * xmax,ymax: right/bottom limits of search area for macro block
+ * res: pointers to where the result is stored
+ *      N.b. as in the original code result is given as
+ *      half pel offset from ref(0,0) not the position relative to i0 j0
+ *      as will actually be used.
+ *
+ * TODO: SHould use half-pel co-ordinates relative to i0,j0 for motion vectors
+ * throughout the motion estimation code but this would be damn fiddly to
+ * do without introducing lots of tricky-to-find bugs.
+ *
  */
+ 
 
 
-static void fullsearch(
+
+static void mb_mc_search(
 	uint8_t *org,
 	uint8_t *ref,
 	subsampled_mb_s *ssblk,
@@ -2347,10 +2398,10 @@ static void fullsearch(
 	 */
 	(*pbuild_sub44_mcomps)( &sub44set,
 							ilow, jlow, ihigh, jhigh,
-									  i0, j0,
-									  best.sad,
-									  s44org, 
-									  ssblk->qmb, qlx, qh );
+							i0, j0,
+							best.sad,
+							s44org, 
+							ssblk->qmb, qlx, qh );
 
 	
 	/* Generate the best 2*2 sub-sampling matches from the
@@ -2363,7 +2414,7 @@ static void fullsearch(
 
 	(*pbuild_sub22_mcomps)( &sub44set, &sub22set,
 							i0, j0, ihigh,  jhigh, 
-											   best.sad,
+							best.sad,
 							s22org, ssblk->fmb, flx, fh );
 
 		
@@ -2376,9 +2427,9 @@ static void fullsearch(
 
 	(*pfind_best_one_pel)( &sub22set,
 						   ref, ssblk->mb, 
-					   i0, j0,
-					   ilow, jlow, xmax, ymax, 
-					   lx, h, &best );
+						   i0, j0,
+						   ilow, jlow, xmax, ymax, 
+						   lx, h, &best );
 
 	/* Final polish: half-pel search of best 1*1 against
 	   reconstructed image. 
@@ -2428,21 +2479,17 @@ static void fullsearch(
 	*res = best;
 }
 
-/*
- * total absolute difference between two (16*h) blocks
- * including optional half pel interpolation of blk1 (hx,hy)
+/* 
+ * sum absolute difference between two (16*h) blocks Four variations
+ * depending on the required half pel interpolation of blk1 (hx,hy)
+ *
  * blk1,blk2: addresses of top left pels of both blocks
  * lx:        distance (in bytes) of vertically adjacent pels
  * hx,hy:     flags for horizontal and/or vertical interpolation
  * h:         height of block (usually 8 or 16)
- * distlim:   bail out if sum exceeds this value
- */
-
-/* A.Stevens 2000: New version for highly pipelined CPUs where branching is
-   costly.  Really it sucks that C doesn't define a stdlib abs that could
-   be realised as a compiler intrinsic using appropriate CPU instructions.
-   That 1970's heritage...
-*/
+ * distlim: bail out if sum exceeds this value 
+ *
+ **/
 
 
 static int dist1_00(uint8_t *blk1,uint8_t *blk2,
@@ -2475,8 +2522,7 @@ static int dist1_00(uint8_t *blk1,uint8_t *blk2,
 	return s;
 }
 
-static int dist1_01(uint8_t *blk1,uint8_t *blk2,
-					int lx, int h)
+static int dist1_01(uint8_t *blk1,uint8_t *blk2,int lx, int h)
 {
 	uint8_t *p1,*p2;
 	int i,j;
@@ -2500,8 +2546,7 @@ static int dist1_01(uint8_t *blk1,uint8_t *blk2,
 	return s;
 }
 
-static int dist1_10(uint8_t *blk1,uint8_t *blk2,
-					int lx, int h)
+static int dist1_10(uint8_t *blk1,uint8_t *blk2, int lx, int h)
 {
 	uint8_t *p1,*p1a,*p2;
 	int i,j;
@@ -2527,8 +2572,7 @@ static int dist1_10(uint8_t *blk1,uint8_t *blk2,
 	return s;
 }
 
-static int dist1_11(uint8_t *blk1,uint8_t *blk2,
-					int lx, int h)
+static int dist1_11(uint8_t *blk1,uint8_t *blk2, int lx, int h)
 {
 	uint8_t *p1,*p1a,*p2;
 	int i,j;
@@ -2556,9 +2600,9 @@ static int dist1_11(uint8_t *blk1,uint8_t *blk2,
 
 
 /* 
-   Append fast motion estimation data to original luminance
-   data.  N.b. memory allocation for luminance data allows space
-   for this information...
+ *  Append fast motion estimation data to original luminance
+ *  data.  N.b. memory allocation for luminance data allows space
+ *  for this information...
  */
 
 void fast_motion_data( pict_data_s *picture )
@@ -2636,69 +2680,13 @@ void fast_motion_data( pict_data_s *picture )
 		nb = b + nextfieldline;
 	}
 
-#ifdef TEST_RCSEARCH
-	/* TODO: BUG: THIS CODE DOES NOT YET ALLOW FOR INTERLACED FIELDS.... */
-  
-	/*
-	  Initial row sums....
-	*/
-	pb = blk;
-	for(j = 0; j < height; ++j )
-	{
-		rowsum = 0;
-		for( i = 0; i < 16; ++ i )
-		{
-			rowsum += pb[i];
-		}
-		rowsums[j] = rowsum;
-		pb += width;
-	}
-  
-	/*
-	  Initial column sums
-	*/
-	for( i = 0; i < width; ++i )
-	{
-		colsums[i] = 0;
-	}
-	pb = blk;
-	for( j = 0; j < 16; ++j )
-	{
-		for( i = 0; i < width; ++i )
-		{
-			colsums[i] += *pb;
-			++pb;
-		}
-	}
-  
-	/* Now fill in the row/column sum tables...
-	   Note: to allow efficient construction of sum/col differences for a
-	   given position row sums are held in a *column major* array
-	   (changing y co-ordinate makes for small index changes)
-	   the col sums are held in a *row major* array
-	*/
-  
-	pb = blk;
-	pc = start_colblk;
-	for(j = 0; j <32; ++j )
-	{
-		pr = start_rowblk;
-		rowsum = rowsums[j];
-		for( i = 0; i < width-16; ++i )
-		{
-			pc[i] = colsums[i];
-			pr[j] = rowsum;
-			colsums[i] = (colsums[i] + pb[down16] )-pb[0];
-			rowsum = (rowsum + pb[16]) - pb[0];
-			++pb;
-			pr += height;
-		}
-		pb += 16;   /* move pb on to next row... rememember we only did width-16! */
-		pc += width;
-	}
-#endif 		
 }
 
+/*
+ * Same as dist1_00 except for 2*2 subsampled data so only 8 wide!
+ *
+ */
+ 
 
 static int dist22( uint8_t *s22blk1, uint8_t *s22blk2,int flx,int fh)
 {
@@ -2726,10 +2714,12 @@ static int dist22( uint8_t *s22blk1, uint8_t *s22blk2,int flx,int fh)
 
 
 /*
-  Sum absolute differences for 4*4 sub-sampled data.  
-
-  TODO: currently assumes  only 16*16 or 16*8 motion compensation will be used...
-  I.e. 4*4 or 4*2 sub-sampled blocks will be compared.
+ * Same as dist1_00 except for 4*4 sub-sampled data.  
+ *
+ * N.b.: currently assumes only 16*16 or 16*8 motion compensation will
+ * be used...  I.e. 4*4 or 4*2 sub-sampled blocks will be compared.  
+ *
+ *
  */
 
 
@@ -2964,7 +2954,7 @@ static int bdist2(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
 	uint8_t *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
 	int i,j;
 	int s,v;
-
+	
 	pfa = pf + hxf;
 	pfb = pf + lx*hyf;
 	pfc = pfb + hxf;
@@ -2979,9 +2969,12 @@ static int bdist2(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
 	{
 		for (i=0; i<16; i++)
 		{
-			v = ((((unsigned int)(*pf++ + *pfa++ + *pfb++ + *pfc++ + 2)>>2) +
-				  ((unsigned int)(*pb++ + *pba++ + *pbb++ + *pbc++ + 2)>>2) + 1)>>1)
-				- *p2++;
+#define ui(x) ((unsigned int)x)
+			v = ((((ui(*pf++) + ui(*pfa++) + ui(*pfb++) + ui(*pfc++) + 2)>>2) +
+				  ((ui(*pb++) + ui(*pba++) + ui(*pbb++) + ui(*pbc++) + 2)>>2)
+				  + 1
+				)>>1) - ui(*p2++);
+#undef ui
 			s+=v*v;
 		}
 		p2+= lx-16;
@@ -3027,49 +3020,3 @@ static int variance(uint8_t *p, int size,	int lx)
 	return var;
 }
 
-/*
-  Compute the variance of the residual of uni-directionally motion
-  compensated block.
- */
-
-static int unidir_pred_var( const mb_motion_s *motion,
-							uint8_t *mb,  
-							int lx, 
-							int h)
-{
-	return (*pdist2)(motion->blk, mb, lx, motion->hx, motion->hy, h);
-}
-
-
-/*
-  Compute the variance of the residual of bi-directionally motion
-  compensated block.
- */
-
-static int bidir_pred_var( const mb_motion_s *motion_f, 
-						   const mb_motion_s *motion_b,
-						   uint8_t *mb,  
-						   int lx, int h)
-{
-	return (*pbdist2)( motion_f->blk, motion_b->blk,
-					   mb, lx, 
-					   motion_f->hx, motion_f->hy,
-					   motion_b->hx, motion_b->hy,
-					   h);
-}
-
-/*
-  Compute SAD for bi-directionally motion compensated blocks...
- */
-
-static int bidir_pred_sad( const mb_motion_s *motion_f, 
-						   const mb_motion_s *motion_b,
-						   uint8_t *mb,  
-						   int lx, int h)
-{
-	return (*pbdist1)(motion_f->blk, motion_b->blk, 
-					 mb, lx, 
-					 motion_f->hx, motion_f->hy,
-					 motion_b->hx, motion_b->hy,
-					 h);
-}

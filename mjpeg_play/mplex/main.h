@@ -99,7 +99,8 @@ typedef uint64_t clockticks;
 /* Range of sizes of the fields following the packet length field in packet header:
 	used to calculate if recieve buffers will have enough space... */
 
-#define BUFFERINFO_LENGTH 3
+#define MPEG2_BUFFERINFO_LENGTH 3
+#define MPEG1_BUFFERINFO_LENGTH 2
 #define DTS_PTS_TIMESTAMP_LENGTH 5
 #define MPEG2_AFTER_PACKET_LENGTH_MIN    3
 #define MPEG1_AFTER_PACKET_LENGTH_MIN    (0+1)
@@ -325,18 +326,18 @@ void create_sector (Sector_struc 	 *sector,
 void create_sys_header (
 						Sys_header_struc *sys_header,
 						unsigned int	 rate_bound,
-						unsigned char	 audio_bound,
-						unsigned char	 fixed,
-						unsigned char	 CSPS,
-						unsigned char	 audio_lock,
-						unsigned char	 video_lock,
-						unsigned char	 video_bound,
+						int	 audio_bound,
+						int	 fixed,
+						int	 CSPS,
+						int	 audio_lock,
+						int	 video_lock,
+						int	 video_bound,
 
-						unsigned char 	 stream1,
-						unsigned char 	 buffer1_scale,
+						unsigned int 	 stream1,
+						unsigned int 	 buffer1_scale,
 						unsigned int 	 buffer1_size,
-						unsigned char 	 stream2,
-						unsigned char 	 buffer2_scale,
+						unsigned int 	 stream2,
+						unsigned int 	 buffer2_scale,
 						unsigned int 	 buffer2_size,
 						unsigned int     which_streams
 						);						/* erstellt einen System Header		*/
@@ -374,7 +375,8 @@ void output_padding       (
 					FILE *ostream,
 					unsigned char start_of_new_pack,
 					unsigned char include_sys_header,
-					unsigned char pseudo_VBR
+					unsigned char pseudo_VBR,
+					int packet_data_limit
 						);	/* erstellt und schreibt Padding packet	*/
 
 void buffer_clean	  (Buffer_struc *buffer, clockticks timenow);

@@ -46,7 +46,7 @@ int opt_audio_offset = 0;
 int opt_sector_size = 2324;
 int opt_VBR = 0;
 int opt_mpeg = 1;
-int opt_mux_format = 0;			/* VCD as default */
+int opt_mux_format = 0;			/* Generic MPEG-1 stream as default */
 int opt_multifile_segment = 0;
 int opt_always_system_headers = 0;
 int opt_packets_per_pack = 20;
@@ -59,117 +59,105 @@ intmax_t max_system_segment_size =  680*1024*1024;
 int intro_and_options(int argc, char *argv[])
 {
     int n;
-    printf("\n***************************************************************\n");
-    printf(  "*               MPEG1/SYSTEMS      Multiplexer                *\n");
-    printf(  "*               (C)  Christoph Moar, 1994/1995                *\n");
-    printf(  "*               moar@informatik.tu-muenchen.de                *\n");
-    printf(  "*               Technical University of Munich                *\n");
-    printf(  "*               SIEMENS ZFE  ST SN 11 / T SN 6                *\n");
-    printf(  "*                                                             *\n");
-    printf(  "*  This program is free software. See the GNU General Public  *\n");
-    printf(  "*  License in the file COPYING for more details.              *\n");
-    printf(  "*  Release %s (%s)                                  *\n",MPLEX_VER,MPLEX_DATE);
-    printf(  "***************************************************************\n\n");
-
-
-  while( (n=getopt(argc,argv,"b:r:v:a:m:f:l:S:qiVnMe")) != EOF)
-  {
-    switch(n)
-	  {
+	printf( "mplex version %s (%s)\n",MPLEX_VER,MPLEX_DATE );
+	while( (n=getopt(argc,argv,"b:r:v:a:m:f:l:S:qiVnMe")) != EOF)
+	{
+		switch(n)
+		{
 	  
-	  case 'm' :
-		opt_mpeg = atoi(optarg);
-		if( opt_mpeg < 1 || opt_mpeg > 2 )
-		  Usage(argv[0]);
+		case 'm' :
+			opt_mpeg = atoi(optarg);
+			if( opt_mpeg < 1 || opt_mpeg > 2 )
+				Usage(argv[0]);
   	
-	  	break;
-	  case 'q' :
-		verbose = 0;
-		break;
+			break;
+		case 'q' :
+			verbose = 0;
+			break;
 	
-	  case 'n' :
-		verbose = 2;
-		break;
+		case 'n' :
+			verbose = 2;
+			break;
 	
-	  case 'V' :
-	    opt_VBR = 1;
-	    break;
+		case 'V' :
+			opt_VBR = 1;
+			break;
 	  
-	  case 'h' :
-	  	opt_always_system_headers = 1;
-		break;
+		case 'h' :
+			opt_always_system_headers = 1;
+			break;
 
-	  case 'b':
-		opt_buffer_size = atoi(optarg);
-		if( opt_buffer_size < 0 || opt_buffer_size > 1000 )
-		  Usage(argv[0]);
-		break;
+		case 'b':
+			opt_buffer_size = atoi(optarg);
+			if( opt_buffer_size < 0 || opt_buffer_size > 1000 )
+				Usage(argv[0]);
+			break;
 
-	  case 'r':
-		opt_data_rate = atoi(optarg);
-		if( opt_data_rate < 0 )
+		case 'r':
+			opt_data_rate = atoi(optarg);
+			if( opt_data_rate < 0 )
+				Usage(argv[0]);
+			/* Convert from kbit/sec (user spec) to 50B/sec units... */
+			opt_data_rate = (( opt_data_rate * 1000 / 8 + 49) / 50 ) * 50;
+			break;
+
+		case 'v':
+			opt_video_offset = atoi(optarg);
+			if( opt_video_offset < -10000000 || opt_video_offset > 1000000 )
+				Usage(argv[0]);
+			break;
+
+		case 'a' :
+			opt_audio_offset = atoi(optarg);
+			if( opt_video_offset < -10000000 || opt_video_offset > 1000000 )
+				Usage(argv[0]);
+			break;
+		
+		case 'l' : 
+			opt_max_PTS = (clockticks)atoi(optarg) * (clockticks)CLOCKS;
+			if( opt_max_PTS < 1  )
+				Usage(argv[0]);
+			break;
+		
+		case 'p' : 
+			opt_packets_per_pack = atoi(optarg);
+			if( opt_packets_per_pack < 1 || opt_packets_per_pack > 100  )
+				Usage(argv[0]);
+			break;
+		
+	  
+		case 'f' :
+			opt_mux_format = atoi(optarg);
+			if( opt_mux_format < MPEG_MPEG1 || opt_mux_format > MPEG_SVCD )
+				Usage(argv[0]);
+			break;
+		case 's' :
+			opt_sector_size = atoi(optarg);
+			if( opt_sector_size < 256 || opt_sector_size > 16384 )
+				Usage(argv[0]);
+			break;
+		case 'S' :
+			max_system_segment_size = atoi(optarg);
+			if( max_system_segment_size < 0  )
+				Usage(argv[0]);
+			max_system_segment_size *= 1024*1024; 
+			break;
+		case 'M' :
+			opt_multifile_segment = 1;
+			break;
+		case 'e' :
+			opt_emul_vcdmplex = 1;
+			break;
+		default :
 			Usage(argv[0]);
-		/* Convert from kbit/sec (user spec) to 50B/sec units... */
-		opt_data_rate = (( opt_data_rate * 1000 / 8 + 49) / 50 ) * 50;
-		break;
-
-	  case 'v':
-		opt_video_offset = atoi(optarg);
-		if( opt_video_offset < -10000000 || opt_video_offset > 1000000 )
-		  Usage(argv[0]);
-		break;
-
-	  case 'a' :
-		opt_audio_offset = atoi(optarg);
-		if( opt_video_offset < -10000000 || opt_video_offset > 1000000 )
-		  Usage(argv[0]);
-		break;
-		
-	  case 'l' : 
-	  	opt_max_PTS = (clockticks)atoi(optarg) * (clockticks)CLOCKS;
-		if( opt_max_PTS < 1  )
-		  Usage(argv[0]);
-		break;
-		
-	  case 'p' : 
-	  	opt_packets_per_pack = atoi(optarg);
-		if( opt_packets_per_pack < 1 || opt_packets_per_pack > 100  )
-		  Usage(argv[0]);
-		break;
-		
-	  
-	  case 'f' :
-	    opt_mux_format = atoi(optarg);
-	    if( opt_mux_format < MPEG_MPEG1 || opt_mux_format > MPEG_SVCD )
-	    	Usage(argv[0]);
-		break;
-	  case 's' :
-		opt_sector_size = atoi(optarg);
-		if( opt_sector_size < 256 || opt_sector_size > 16384 )
-		  Usage(argv[0]);
-		break;
-	  case 'S' :
-		max_system_segment_size = atoi(optarg);
-		if( max_system_segment_size < 0  )
-		  Usage(argv[0]);
-		   max_system_segment_size *= 1024*1024; 
-		break;
-	  case 'M' :
-	  	 opt_multifile_segment = 1;
-		 break;
-	  case 'e' :
-	  	 opt_emul_vcdmplex = 1;
-		 break;
-	  default :
-		Usage(argv[0]);
-		break;
-	  }
-  }
-  if (argc - optind < 2)
+			break;
+		}
+	}
+	if (argc - optind < 2)
     {	
-	  Usage(argv[0]);
+		Usage(argv[0]);
     }
-  return optind-1;
+	return optind-1;
 }
 
 

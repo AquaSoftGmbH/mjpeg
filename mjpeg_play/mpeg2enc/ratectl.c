@@ -26,6 +26,24 @@
  * design.
  *
  */
+/* Modifications and enhancements (C) 2000/2001 Andrew Stevens */
+
+/* These modifications are free software; you can redistribute it
+ *  and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2 of
+ *  the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
+ *
+ */
 
 #include <config.h>
 #include <stdio.h>
@@ -357,9 +375,27 @@ void rc_init_pict(pict_data_s *picture)
 	actcovered = 0.0;
 
 	/* Allocate target bits for frame based on frames numbers in GOP
-	   weighted by global complexity estimates and B-frame scale factor
+	   weighted by:
+	   - global complexity averages
+	   - predicted activity measures
+	   - fixed type based weightings
+	   
 	   T = (Nx * Xx/Kx) / Sigma_j (Nj * Xj / Kj)
+
+	   N.b. B frames are an exception as there is *no* predictive
+	   element in their bit-allocations.  The reason this is done is
+	   that highly active B frames are inevitably the result of
+	   transients and/or scene changes.  Psycho-visual considerations
+	   suggest there's no point rendering sudden transients
+	   terribly well as they're not percieved accurately anyway.  
+
+	   In the case of scene changes similar considerations apply.  In
+	   this case also we want to save bits for the next I or P frame
+	   where they will help improve other frames too.  
+	   TODO: Experiment with *inverse* predictive correction for B-frames
+	   and turning off active-block boosting for B-frames.
 	*/
+
 	min_q = min_d = INT_MAX;
 	max_q = max_d = INT_MIN;
 	switch (picture->pict_type)
@@ -386,7 +422,7 @@ void rc_init_pict(pict_data_s *picture)
 	case B_TYPE:
 		d = d0pb;            // B and P frame share ratectl virtual buffer
 		avg_K = avg_KB;
-		Sb = Xb /* + avg_K * actsum) / 2.0 */;
+		Sb = Xb;
 		T =  R/(Nb+Np*Kb*Xp/(Kp*Sb));
 		break;
 	}
@@ -440,20 +476,24 @@ static double calc_actj(pict_data_s *picture)
 	for (j=0; j<height2; j+=16)
 		for (i=0; i<width; i+=16)
 		{
-			/* A.Stevens Jul 2000 Luminance variance *has* to be a rotten measure
-			   of how active a block in terms of bits needed to code a lossless DCT.
-			   E.g. a half-white half-black block has a maximal variance but 
-			   pretty small DCT coefficients.
+			/* A.Stevens Jul 2000 Luminance variance *has* to be a
+			   rotten measure of how active a block in terms of bits
+			   needed to code a lossless DCT.  E.g. a half-white
+			   half-black block has a maximal variance but pretty
+			   small DCT coefficients.
 
-			   So.... we use the absolute sum of DCT coefficients as our
-			   variance measure.  
-			*/
+			   So.... instead of luminance variance as used in the
+			   original we use the absolute sum of DCT coefficients as
+			   our block activity measure.  */
+
 			if( picture->mbinfo[k].mb_type  & MB_INTRA )
 			{
 				i_q_mat = i_intra_q;
-				/* EXPERIMENT: See what happens if we compensate for
-				 the wholly disproprotionate weight of the DC
-				 coefficients.  Shold produce more sensible results...  */
+				/* Compensate for the wholly disproprotionate weight
+				 of the DC coefficients.  Shold produce more sensible
+				 results...  yes... it *is* an mostly empirically derived
+				 fudge factor ;-)
+				*/
 				actsum =  -80*COEFFSUM_SCALE;
 			}
 			else
@@ -582,12 +622,13 @@ void rc_update_pict(pict_data_s *picture)
 
 	*/
 	
-	/* EXPERIMENT: Xi are used as a guesstimate of likely *future* frame
+	/* Xi are used as a guesstimate of *typical* frame
 	   activities based on the past.  Thus we don't want anomalous outliers
-	   due to scene changes swinging things too much.  Introduce moving averages
-	   for the Xi...
-	   TODO: The averaging constants should be adjust to suit relative frame
-	   frequencies...
+	   due to scene changes swinging things too much (this is handled
+	   by the predictive complexity measure stuff) so we use moving
+	   averages.
+	   The weightings are intended so all 3 averages have similar real-time
+	   decay periods based on an assumption of 20-30Hz frame rates.
 	*/
 	switch (picture->pict_type)
 	{
@@ -685,9 +726,12 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 	/*  Heuristic: Decrease quantisation for blocks with lots of
 		sizeable coefficients.  We assume we just get a mess if
 		a complex texture's coefficients get chopped...
+		We don't bother for B frames as the effect can only be transient, 
+		and hence not really noticeable.  The bits can be better "spent"
+		on improving P and I frames.
 	*/
 		
-	N_actj =  actj < avg_act ? 
+	N_actj =  ( actj < avg_act || picture->pict_type == B_TYPE ) ? 
 		1.0 : 
 		(actj + act_boost*avg_act)/(act_boost*actj +  avg_act);
    
@@ -786,7 +830,7 @@ void calc_vbv_delay(pict_data_s *picture)
 		/* I or P picture */
 		if (fieldpic)
 		{
-			if(picture->topfirst==(picture->pict_struct==TOP_FIELD))
+			if(picture->topfirst && (picture->pict_struct==TOP_FIELD))
 			{
 				/* first field */
 				picture_delay = 90000.0/(2.0*frame_rate);

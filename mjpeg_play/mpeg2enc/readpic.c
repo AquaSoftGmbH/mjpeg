@@ -26,6 +26,47 @@
  * design.
  *
  */
+/* Modifications and enhancements (C) 2000/2001 Andrew Stevens */
+
+/* These modifications are free software; you can redistribute it
+ *  and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2 of
+ *  the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
+ *
+ */
+
+/* Modifications and enhancements 
+   (C) 2000/2001 Andrew Stevens, Rainer Johanni
+
+ */
+
+/* These modifications are free software; you can redistribute it
+ *  and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2 of
+ *  the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
+ *
+ */
+
 
 #include <config.h>
 #include <stdio.h>
@@ -43,9 +84,6 @@ static int last_frame = -1;
 /* Buffers for frame luminance means */
 
 static int lum_mean[FRAME_BUFFER_SIZE];
-
-int piperead(int fd, char *buf, int len);
-void load_frame( int num_frame, int look_ahead );
 
 
 static int luminance_mean(uint8_t *frame, int w, int h )
@@ -210,4 +248,42 @@ int frame_lum_mean( int num_frame )
 	}
 	load_frame( n, 1 );
 	return lum_mean[n% FRAME_BUFFER_SIZE];
+}
+
+
+void read_stream_params( int *hsize, int *vsize, int *frame_rate_code )
+{
+	const int PARAM_LINE_MAX=256;
+	int n;
+	char param_line[PARAM_LINE_MAX];
+	for(n=0;n<PARAM_LINE_MAX;n++)
+	{
+		if(!read(input_fd,param_line+n,1))
+		{
+			fprintf(stderr,"Error reading header from input stream\n");
+			exit(1);
+		}
+		if(param_line[n]=='\n') break;
+	}
+	if(n==PARAM_LINE_MAX)
+	{
+		fprintf(stderr,"Didn't get linefeed in first %d characters of input stream\n",
+				PARAM_LINE_MAX);
+		exit(1);
+	}
+	param_line[n] = 0; /* Replace linefeed by end of string */
+
+	if(strncmp(param_line,"YUV4MPEG",8))
+	{
+		fprintf(stderr,"Input starts not with \"YUV4MPEG\"\n");
+		fprintf(stderr,"This is not a valid input for me\n");
+		exit(1);
+	}
+
+
+	if( sscanf(param_line+8,"%d %d %d",hsize,vsize,frame_rate_code) != 3)
+	{
+		fprintf(stderr,"Could not get image dimenstion and frame rate from input stream\n");
+		exit(1);
+	}
 }

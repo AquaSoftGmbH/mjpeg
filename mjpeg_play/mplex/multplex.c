@@ -69,23 +69,26 @@ Sector_struc 		cur_sector;
 static  unsigned long long bytes_output;
 static  FILE *istream_v =NULL;			/* Inputstream Video	*/
 static  FILE *istream_a =NULL;			/* Inputstream Audio	*/
-static  FILE *ostream;					/* Outputstream MPEG	*/
+static  FILE *ostream;				/* Outputstream MPEG	*/
 
 
 typedef enum { start_segment, mid_segment, 
-			   last_vau_segment, last_aaus_segment }
-     segment_state;
+	       last_vau_segment, last_aaus_segment }
+segment_state;
 
-void outputstreamsuffix(clockticks *SCR,
-	FILE *ostream, unsigned long long  *bytes_output);
+void outputstreamsuffix(clockticks *SCR, FILE *ostream, 
+			unsigned long long  *bytes_output);
 void next_video_access_unit (Buffer_struc *buffer,
-	Vaunit_struc *video_au, unsigned int bytes_muxed, 
-	unsigned int *AU_starting_next_sec, clockticks SCR_delay,
-	Vector vaunit_info_vec);
+			     Vaunit_struc *video_au, unsigned int bytes_muxed, 
+			     unsigned int *AU_starting_next_sec, 
+			      clockticks SCR_delay,
+			     Vector vaunit_info_vec);
 void next_audio_access_unit (Buffer_struc *buffer,
-	Aaunit_struc *audio_au, unsigned int bytes_muxed,
-	unsigned char *audio_frame_start, clockticks SCR_delay,
-	Vector aaunit_info_vec);
+			     Aaunit_struc *audio_au, 
+			     unsigned int bytes_muxed,
+			     unsigned char *audio_frame_start, 
+			     clockticks SCR_delay,
+			     Vector aaunit_info_vec);
 void outputstreamprefix( clockticks *current_SCR);
 
 
@@ -128,7 +131,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	  	video_buffer_size = 46*1024;
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
-		zero_stuffing = 1;
+		zero_stuffing = 0;
 		audio_packet_data_limit = 2279;		/* Ugh... what *were* they thinking of? */
 		dtspts_for_all_vau = 1;
 		break;
@@ -172,6 +175,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		zero_stuffing = 0;
 		audio_packet_data_limit = 0;
         dtspts_for_all_vau = 0;
+
 		break;
 			 
 	 	default : /* MPEG_MPEG1 - auto format MPEG1 */
@@ -192,6 +196,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		break;
 	}
 	
+
   audio_buffer_size = 4 * 1024;
   printf("\n+------------------ MPEG/SYSTEMS INFORMATION -----------------+\n");
     
@@ -205,14 +210,14 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 
   audio_max_packet_data = packet_payload( NULL, NULL, FALSE, TRUE, FALSE );
   video_max_packet_data = packet_payload( NULL, NULL, FALSE, FALSE, FALSE );
-  create_sys_header (&dummy_sys_header, mux_rate,0, 0, 1, 1, 1, 1,
-					   AUDIO_STR_0, 1, audio_buffer_size/128,
-					   VIDEO_STR_0, 1, video_buffer_size/1024, 
-					   which_streams);
   create_pack (&dummy_pack, 0, mux_rate);
-
   if( always_sys_header_in_pack )
   {
+	  create_sys_header (&dummy_sys_header, mux_rate, 1, !opt_VBR, 1, 1, 1, 1,
+						 AUDIO_STR_0, 0, audio_buffer_size/128,
+						 VIDEO_STR_0, 1, video_buffer_size/1024, 
+						 which_streams  & STREAMS_AUDIO );
+
   	video_min_packet_data = 
 		packet_payload( &dummy_sys_header, &dummy_pack, 
 						always_buffers_in_video, TRUE, TRUE );
@@ -301,11 +306,16 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 
 /******************************************************************
     Program start-up packets.  Generate any irregular packets						needed at the start of the stream...
-   
+	Note: *must* leave a sensible in-stream system header in
+	sys_header.
+	TODO: get rid of this grotty sys_header global.
 ******************************************************************/
 
 void outputstreamprefix( clockticks *current_SCR)
 {
+	int vcd_2nd_syshdr_data_limit;
+	Pack_struc 			dummy_pack;
+
 	/* Deal with transport padding */
 	bytes_output += transport_prefix_sectors*sector_transport_size;
 	bytepos_timecode ( bytes_output, current_SCR);
@@ -323,8 +333,9 @@ void outputstreamprefix( clockticks *current_SCR)
 					   which_streams  & STREAMS_VIDEO);
 	  	output_padding( *current_SCR, ostream,
 					  	TRUE,
-					 	 TRUE,
-					 	 FALSE);					 
+						TRUE,
+						FALSE,
+						0);					 
 		bytes_output += sector_transport_size;			 
 		bytepos_timecode ( bytes_output, current_SCR);
 		
@@ -333,31 +344,52 @@ void outputstreamprefix( clockticks *current_SCR)
 					   AUDIO_STR_0, 0, audio_buffer_size/128,
 					   VIDEO_STR_0, 1, video_buffer_size/1024, 
 					   which_streams  & STREAMS_AUDIO );
+		create_pack (&dummy_pack, 0, mux_rate);
+
+		vcd_2nd_syshdr_data_limit = 
+			packet_payload( &sys_header, &dummy_pack,FALSE, 0, 0)-20;
+										  
 	  	output_padding( *current_SCR, ostream,
 					  	TRUE,
-					 	 TRUE,
-					 	 FALSE);
+						TRUE,
+						FALSE,
+						vcd_2nd_syshdr_data_limit
+			          );
 		bytes_output += sector_transport_size;
 		bytepos_timecode ( bytes_output, current_SCR);
+		/* Calculate the payload of an audio packet... currently 2279 */
+		audio_packet_data_limit = 
+			packet_payload( NULL, &dummy_pack,TRUE,TIMESTAMPBITS_PTS,0 )-20;
+		
+        /* Ugh... what *were* they thinking of? */
+
 		break;
 		
 		case MPEG_SVCD :
+
 		/* First packet carries sys_header */
-		create_sys_header (&sys_header, mux_rate,1, 0, 1, 1, 1, 1,
-					   AUDIO_STR_0, 1, audio_buffer_size/128,
+		create_sys_header (&sys_header, mux_rate,1, !opt_VBR, 1, 1, 1, 1,
+					   AUDIO_STR_0, 0, audio_buffer_size/128,
 					   VIDEO_STR_0, 1, video_buffer_size/1024, 
 					   which_streams  );
 	  	output_padding( *current_SCR, ostream,
 					  	TRUE,
-					 	 TRUE,
-					 	 FALSE);					 
+						TRUE,
+						FALSE,
+						0);					 
 		bytes_output += sector_transport_size;			 
-
 		bytepos_timecode ( bytes_output, current_SCR);
 		break;
 
 		default:
 	}
+
+   /* Create the in-stream header if needed */
+	create_sys_header (&sys_header, mux_rate,1, !opt_VBR, 1, 1, 1, 1,
+					   AUDIO_STR_0, 0, audio_buffer_size/128,
+					   VIDEO_STR_0, 1, video_buffer_size/1024, 
+					   which_streams);
+
 
 }
 
@@ -390,7 +422,8 @@ void outputstreamsuffix(clockticks *SCR,
 	  output_padding( *SCR, ostream,
 					  TRUE,
 					  FALSE,
-					  FALSE);
+					  FALSE,
+					  0);
 	  *bytes_output += sector_transport_size;
 		
 	}
@@ -598,11 +631,6 @@ void outputstream ( char 		*video_file,
 				buffer_flush (&audio_buffer);
 				status_header ();
 				outputstreamprefix( &current_SCR );
-				/* (Re)construct 
-				   In-stream system header ( in case required)									*/
-				create_sys_header (&sys_header, mux_rate, 1, 0, 1, 1, 1, 1,
-								   AUDIO_STR_0, 0, audio_buffer_size/128,
-								   VIDEO_STR_0, 1, video_buffer_size/1024, which_streams );
 
 				/* The starting PTS/DTS of AU's may of course be
 				   non-zero since this might not be the first segment
@@ -768,7 +796,8 @@ void outputstream ( char 		*video_file,
 		{
 
 			output_padding (current_SCR, ostream, 
-							start_of_new_pack, include_sys_header, opt_VBR);
+							start_of_new_pack, include_sys_header, opt_VBR,
+							0);
 			padding_packet =TRUE;
 			++nsec_p;
 		}
@@ -1342,6 +1371,11 @@ void output_audio ( clockticks SCR,
 	The stream we generate is then simply a CBR stream
 	for this bit-rate for a large buffer and *with
 	padding blocks stripped*.
+
+	We have to pass in a packet data limit to cope with
+	appalling mess VCD makes of audio packets (the last 20
+	bytes being dropped thing)
+	0 = Fill the packet completetely...
 ******************************************************************/
 
 void output_padding (
@@ -1349,7 +1383,8 @@ void output_padding (
 					 FILE *ostream,
 					 unsigned char start_of_new_pack,
 					 unsigned char include_sys_header,
-					 unsigned char VBR_pseudo
+					 unsigned char VBR_pseudo,
+					 int padding_limit
 					 )
 
 {
@@ -1359,7 +1394,6 @@ void output_padding (
 
   if( ! VBR_pseudo  )
 	{
-
 	  if (start_of_new_pack)
 		{
 		  /* Wir generieren den Pack Header				*/
@@ -1374,7 +1408,7 @@ void output_padding (
 	  /* Wir generieren das Packet				*/
 	  /* let's generate the packet				*/
 	  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
-					 0,
+					 padding_limit,
 					 NULL, PADDING_STR, 0, 0,
 					 FALSE, 0, 0,
 					 TIMESTAMPBITS_NO );

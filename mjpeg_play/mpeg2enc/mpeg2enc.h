@@ -146,17 +146,16 @@ struct pict_data
 	sync_guard_t *ref_frame_completion;
 	sync_guard_t *prev_frame_completion;
 	sync_guard_t completion;
-	sync_guard_t ipcompletion;
 
-	/* picture encoding source data */
+	/* picture encoding source data  */
 	uint8_t **oldorg, **neworg;	/* Images for Old and new reference picts */
 	uint8_t **oldref, **newref;	/* original and reconstructed */
 	uint8_t **curorg, **curref;	/* Images for current pict orginal and*/
 								/* reconstructed */
-	uint8_t **pred;				/* Prediction based on MC (if any) */
+	uint8_t **pred;			/* Prediction based on MC (if any) */
 	int sxf, syf, sxb, syb;		/* MC search limits. */
 	int secondfield;			/* Second field of field frame */
-	int ipflag;					/* P pict in IP frame */
+	int ipflag;					/* P pict in IP frame (FIELD pics only)*/
 
 	/* picture structure (header) data */
 

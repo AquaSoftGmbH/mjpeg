@@ -1,13 +1,22 @@
 /* putseq.c, sequence level routines                                        */
 
-/* Original 
-   Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. 
-
-*/
-
-/* Subsequent modification (C) Andrew Stevens 2000, 2001
+/* (C) Andrew Stevens 2000, 2001
+ *  This file is free software; you can redistribute it
+ *  and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2 of
+ *  the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
+ *
  */
-
 /*
  * Disclaimer of Warranty
  *
@@ -39,61 +48,29 @@
 #include <string.h>
 #include "global.h"
 
-struct _stream_state 
- {
-	 int i;						/* Index in current sequence */
-	 int g;						/* Index in current GOP */
-	 int b;						/* Index in current B frame group */
-	 int gop_start_frame;		/* Index start current sequence in
-								   input stream */
-	 int seq_start_frame;		/* Index start current gop in input stream */
-	 int gop_length;			/* Length of current gop */
-	 int bigrp_length;			/* Length of current B-frame group */
-	 int bs_short;				/* Number of B frame GOP is short of
-								   having M-1 B's for each I/P frame
-								 */
-	 int np;					/* P frames in current GOP */
-	 int nb;					/* B frames in current GOP */
-	 double next_b_drop;		/* When next B frame drop is due in GOP */
-	 int new_seq;				/* Current GOP/frame starts new sequence */
-	int64_t next_split_point;
-	int64_t seq_split_length;
-};
 
-typedef struct _stream_state stream_state_s;
 
-static void set_pic_params( int pict_struct,
-							int decode,
+static void set_pic_params( int decode,
 							int b_index,
-							int secondfield,
 							pict_data_s *picture )
 {
 	picture->decode = decode;
-	picture->pict_struct = pict_struct;
 	picture->dc_prec = opt_dc_prec;
 	picture->prog_frame = opt_prog_frame;
 	picture->repeatfirst = 0;
+	picture->secondfield = 0;
+	picture->ipflag = 0;
 
-	/* Handle topfirst and ipflag special-case for field pictures */
-	if( pict_struct != FRAME_PICTURE )
+	/* Handle picture structure... */
+	if( fieldpic )
 	{
-		picture->topfirst = (!!secondfield) ^ (pict_struct == TOP_FIELD);
-		picture->ipflag = (picture->pict_type==I_TYPE) && secondfield;
-		if( picture->ipflag)
-		picture->pict_type = P_TYPE;
-		if (!quiet)
-		{
-			fprintf(stderr,"\nField %s (%s) ",
-					secondfield ? "second" : "first ",
-					picture->topfirst ? "top" : "bot");
-			fflush(stderr);
-		}
-
+		picture->pict_struct = opt_topfirst ? TOP_FIELD : BOTTOM_FIELD;
+		picture->topfirst = 0;
 	}
 	else
 	{
-		picture->topfirst = 0;
-		picture->ipflag = 0;
+		picture->pict_struct = FRAME_PICTURE;
+		picture->topfirst = opt_topfirst;
 	}
 
 	switch ( picture->pict_type )
@@ -101,8 +78,8 @@ static void set_pic_params( int pict_struct,
 	case I_TYPE :
 		picture->forw_hor_f_code = 15;
 		picture->forw_vert_f_code = 15;
-		picture->back_hor_f_code = 15; 
-		picture->back_vert_f_code = 15;
+		picture->sxf = motion_data[0].sxf;
+		picture->syf = motion_data[0].syf;
 		break;
 	case P_TYPE :
 		picture->forw_hor_f_code = motion_data[0].forw_hor_f_code;
@@ -161,6 +138,35 @@ static void set_pic_params( int pict_struct,
 
 }
 
+/*
+ * Adjust picture parameters for the second field in a pair of field
+ * pictures.
+ *
+ */
+
+void set_2nd_field_params(pict_data_s *picture)
+{
+	picture->secondfield = 1;
+	if( picture->pict_struct == TOP_FIELD )
+		picture->pict_struct =  BOTTOM_FIELD;
+	else
+		picture->pict_struct =  TOP_FIELD;
+	
+	if( picture->pict_type == I_TYPE )
+	{
+		picture->ipflag = 1;
+		picture->pict_type = P_TYPE;
+		
+		picture->forw_hor_f_code = motion_data[0].forw_hor_f_code;
+		picture->forw_vert_f_code = motion_data[0].forw_vert_f_code;
+		picture->back_hor_f_code = 15;
+		picture->back_vert_f_code = 15;
+		picture->sxf = motion_data[0].sxf;
+		picture->syf = motion_data[0].syf;	
+	}
+}
+
+
 /************************************
  *
  * gop_end_frame - Finds a sensible spot for a GOP to end based on
@@ -185,22 +191,6 @@ static void set_pic_params( int pict_struct,
  ************************************/
 
 #define SCENE_CHANGE_THRESHOLD 4
-
-int find_gop_length( int gop_start_frame, int I_frame_temp_ref,
-	int gop_min_len, int gop_max_len );
-void encodepict(pict_data_s *picture);
-void create_threads( pthread_t *threads, int num, void *(*start_routine)(void *) );
-void gop_start( stream_state_s *ss );
-void flip_ref_images( pict_data_s *picture );
-void I_or_P_frame_struct( stream_state_s *ss, pict_data_s *picture );
-void B_frame_struct(  stream_state_s *ss, pict_data_s *picture );
-void next_seq_state( stream_state_s *ss );
-void stputseq(void);
-void init_pict_data( pict_data_s *picture );
-void init_pictures( pict_data_s *ref_pictures, pict_data_s *b_pictures );
-void *parencodeworker(void *start_arg);
-void parencodepict( pict_data_s *picture );
-
 
 int find_gop_length( int gop_start_frame, 
 					 int I_frame_temp_ref,
@@ -272,59 +262,37 @@ int find_gop_length( int gop_start_frame,
 }
 
 
-void encodepict(pict_data_s *picture)
-{
-	if (!quiet)
-	{
-		printf("Frame start %d %d %d\n",
-			   picture->decode, 
-			   pict_type_char[picture->pict_type],
-			   picture->temp_ref);
-	}
-	
-	/* TODO: fast_motion_data need not be repeated for the
-	   second field as it is already done in the first... */
-	fast_motion_data(picture);
-	motion_estimation(picture);
-	predict(picture);
-	dct_type_estimation(picture);
-	transform(picture);
-	putpict(picture);
-	
-#ifndef OUTPUT_STAT
-	if( picture->pict_type!=B_TYPE)
-	{
-#endif
-		iquantize( picture );
-		itransform(picture);
-		calcSNR(picture);
-		stats();
-#ifndef OUTPUT_STAT
-	}
-#endif
-	#ifdef DEBUG
-	if (!quiet)
-	{
-		printf("Frame end %d %c %3.2f %.2f %2.1f %.2f\n",
-			   picture->decode, 
-			   picture->pad ? 'P' : ' ',
-			   picture->avg_act, picture->sum_avg_act,
-			   picture->AQ, picture->SQ);
-	}
-#endif
-	
 
-}
+struct _stream_state 
+ {
+	 int i;						/* Index in current sequence */
+	 int g;						/* Index in current GOP */
+	 int b;						/* Index in current B frame group */
+	 int gop_start_frame;		/* Index start current sequence in
+								   input stream */
+	 int seq_start_frame;		/* Index start current gop in input stream */
+	 int gop_length;			/* Length of current gop */
+	 int bigrp_length;			/* Length of current B-frame group */
+	 int bs_short;				/* Number of B frame GOP is short of
+								   having M-1 B's for each I/P frame
+								 */
+	 int np;					/* P frames in current GOP */
+	 int nb;					/* B frames in current GOP */
+	 double next_b_drop;		/* When next B frame drop is due in GOP */
+	 int new_seq;				/* Current GOP/frame starts new sequence */
+	int64_t next_split_point;
+	int64_t seq_split_length;
+};
 
-
+typedef struct _stream_state stream_state_s;
 
 void create_threads( pthread_t *threads, int num, void *(*start_routine)(void *) )
 {
 	int i;
 	for(i = 0; i < num; ++i )
-			{
+	{
 		if( pthread_create( &threads[i], NULL, start_routine, NULL ) != 0 )
-			{
+		{
 			perror( "worker thread creation failed: " );
 			exit(1);
 		}
@@ -411,7 +379,7 @@ void gop_start( stream_state_s *ss )
 	}
 			/* number of B frames */
 	nb = ss->gop_length - np - 1;
-	
+
 	ss->np = np;
 	ss->nb = nb;
 #ifdef GOP_MODIFICATIONS
@@ -546,112 +514,6 @@ void next_seq_state( stream_state_s *ss )
 }
 
 
-void stputseq(void)
-{
-	stream_state_s ss;
-	pict_data_s cur_picture;
-	/* Pointer blocks pointing to original frame data in frame data buffers
-	 */
-	uint8_t *neworgframe[3], *oldorgframe[3], *auxorgframe[3];
-	
-	/* Allocate buffers for picture transformation */
-	cur_picture.qblocks =
-		(int16_t (*)[64])bufalloc(mb_per_pict*block_count*sizeof(int16_t [64]));
-	cur_picture.mbinfo = 
-		(struct mbinfo *)bufalloc(mb_per_pict*sizeof(struct mbinfo));
-
-	cur_picture.blocks =
-		(int16_t (*)[64])bufalloc(mb_per_pict*block_count*sizeof(int16_t [64]));
-
-	/* Initialise picture buffers for simple single-threaded encoding 
-	   loop */
-	cur_picture.oldorg = oldorgframe;
-	cur_picture.neworg = neworgframe;
-	cur_picture.oldref = oldrefframe;
-	cur_picture.newref = newrefframe;
-	cur_picture.pred = predframe;
-
-	rc_init_seq(0);
-	putseqhdr();
-	
-	ss.i = 0;		                /* Index in current MPEG sequence */
-	ss.g = 0;						/* Index in current GOP */
-	ss.b = 0;						/* B frames since last I/P */
-	ss.gop_length = 0;				/* Length of current GOP init 0
-								   0 force new GOP at start 1st sequence */
-	ss.seq_start_frame = 0;		/* Index start current sequence in
-								 input stream */
-	ss.gop_start_frame = 0;		/* Index start current gop in input stream */
-	ss.seq_split_length = ((int64_t)seq_length_limit)*(8*1024*1024);
-	ss.next_split_point = BITCOUNT_OFFSET + ss.seq_split_length;
-	fprintf( stderr, "DEBUG: split len = %lld\n", ss.seq_split_length );
-
-	frame_num = 0;              /* Encoding number */
-
-	gop_start(&ss);
-
-	/* loop through all frames in encoding/decoding order */
-	while( frame_num<nframes )
-	{
-
-		/* Each bigroup starts once all the B frames of its predecessor
-		   have finished.
-		*/
-		if ( ss.b == 0)
-		{
-			flip_ref_images( &cur_picture );
-			I_or_P_frame_struct(&ss, &cur_picture);
-		}
-		else
-		{
-			/* B frame: no need to change the reference frames.
-			   The current frame data pointers are a 3rd set
-			   seperate from the reference data pointers.
-			*/
-			cur_picture.curorg = auxorgframe;
-			cur_picture.curref = auxframe;
-
-			B_frame_struct( &ss, &cur_picture );
-		}
-
-
-		printf( "(%d %d) ",
-				cur_picture.temp_ref+ss.gop_start_frame, 
-				cur_picture.temp_ref );
-		if( readframe(cur_picture.temp_ref+ss.gop_start_frame,cur_picture.curorg) )
-		{
-			fprintf( stderr, "Corrupt frame data aborting!\n" );
-			exit(1);
-		}
-
-
-        if (fieldpic)
-		{
-			set_pic_params( opt_topfirst ? TOP_FIELD : BOTTOM_FIELD,
-							ss.i, ss.b,   0, &cur_picture );
-			encodepict( &cur_picture );
-
-			set_pic_params( opt_topfirst ? BOTTOM_FIELD : TOP_FIELD,
-							ss.i, ss.b,  1, &cur_picture );
-			encodepict( &cur_picture );
-		}
-		else
-		{
-			set_pic_params( FRAME_PICTURE,
-							ss.i, ss.b,   0, &cur_picture );
-			encodepict( &cur_picture );
-		}
-
-#ifdef DEBUG
-		writeframe(cur_picture.temp_ref+ss.gop_start_frame,cur_picture.curref);
-#endif
-
-		next_seq_state( &ss );
-		++frame_num;
-	}
-	putseqend();
-}
-
 
 void init_pict_data( pict_data_s *picture )
 {
@@ -681,7 +543,6 @@ void init_pict_data( pict_data_s *picture )
 	   picture encoding data buffers is "completed"
 	*/
 	sync_guard_init( &picture->completion, 1 );
-	sync_guard_init( &picture->ipcompletion, 0 );
 }
 
 
@@ -728,11 +589,111 @@ void init_pictures( pict_data_s *ref_pictures, pict_data_s *b_pictures )
 	}
 }
 
+/*
+ *
+ * Reconstruct the decoded image for references images and
+ * for statistics
+ *
+ */
+
+
+void reconstruct( pict_data_s *picture)
+{
+
+#ifndef OUTPUT_STAT
+		if( picture->pict_type!=B_TYPE)
+		{
+#endif
+			iquantize( picture );
+			itransform(picture);
+			calcSNR(picture);
+			stats();
+#ifndef OUTPUT_STAT
+		}
+#endif
+}
 
 semaphore_t worker_available =  SEMAPHORE_INITIALIZER;
 semaphore_t picture_available = SEMAPHORE_INITIALIZER;
 semaphore_t picture_started = SEMAPHORE_INITIALIZER;
 static volatile pict_data_s *picture_to_encode;
+
+void stencodeworker(pict_data_s *picture)
+{
+		/* ALWAYS do-able */
+		if (!quiet )
+		{
+			printf("Frame start %d %c %d\n",
+				   picture->decode, 
+				   pict_type_char[picture->pict_type],
+				   picture->temp_ref);
+		}
+
+		if( picture->pict_struct != FRAME_PICTURE )
+			printf("Field %s (%d)\n",
+				   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
+				   picture->pict_struct
+				);
+
+		fast_motion_data(picture);
+
+		
+		/* DEPEND on completion previous Reference frames (P) or on old
+		   and new Reference frames B.  However, since new reference frame
+		   cannot complete until old reference frame completed (see below)
+		   suffices just to check new reference frame... 
+		   N.b. completion guard of picture is always reset to false
+		   before this function is called...
+		   
+		   In field picture encoding the P field of an I frame is
+		   a special case.  We have to wait for completion of the I field
+		   before starting the P field
+		*/
+
+		motion_estimation(picture);
+		predict(picture);
+
+		/* No dependency */
+		dct_type_estimation(picture);
+		transform(picture);
+		/* Depends on previous frame completion for IB and P */
+
+		putpict(picture);
+
+		reconstruct(picture);
+
+		/* Handle second field of a frame that is being field encoded */
+		if( fieldpic )
+		{
+			set_2nd_field_params(picture);
+			printf("Field %s (%d)\n",
+				   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
+				   picture->pict_struct
+				);
+
+			motion_estimation(picture);
+			predict(picture);
+			dct_type_estimation(picture);
+			transform(picture);
+			putpict(picture);
+			reconstruct(picture);
+
+		}
+
+
+#ifdef DEBUG
+		if (!quiet)
+		{
+			printf("Frame end %d %s %3.2f %.2f %2.1f %.2f\n",
+				   picture->decode, 
+				   picture->pad ? "PAD" : "   ",
+				   picture->avg_act, picture->sum_avg_act,
+				   picture->AQ, picture->SQ);
+		}
+#endif
+			
+}
+
 
 void *parencodeworker(void *start_arg)
 {
@@ -749,13 +710,19 @@ void *parencodeworker(void *start_arg)
 		semaphore_signal( &picture_started, 1);
 
 		/* ALWAYS do-able */
-		if (!quiet)
+		if (!quiet )
 		{
 			printf("Frame start %d %c %d\n",
 				   picture->decode, 
 				   pict_type_char[picture->pict_type],
 				   picture->temp_ref);
 		}
+
+		if( picture->pict_struct != FRAME_PICTURE )
+			printf("Field %s (%d)\n",
+				   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
+				   picture->pict_struct
+				);
 
 		fast_motion_data(picture);
 
@@ -771,10 +738,7 @@ void *parencodeworker(void *start_arg)
 		   a special case.  We have to wait for completion of the I field
 		   before starting the P field
 		*/
-		if( fieldpic && picture->ipflag )
-			sync_guard_test( &picture->ipcompletion );
-		else
-			sync_guard_test( picture->ref_frame_completion );
+		sync_guard_test( picture->ref_frame_completion );
 		motion_estimation(picture);
 		predict(picture);
 
@@ -784,45 +748,51 @@ void *parencodeworker(void *start_arg)
 		/* Depends on previous frame completion for IB and P */
 		sync_guard_test( picture->prev_frame_completion );
 		putpict(picture);
-	
-#ifndef OUTPUT_STAT
-		if( picture->pict_type!=B_TYPE)
+
+		reconstruct(picture);
+
+		/* Handle second field of a frame that is being field encoded */
+		if( fieldpic )
 		{
-#endif
-			iquantize( picture );
-			itransform(picture);
-			calcSNR(picture);
-			stats();
-#ifndef OUTPUT_STAT
+			set_2nd_field_params(picture);
+
+			printf("Field %s (%d)\n",
+				   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
+				   picture->pict_struct
+				);
+
+			motion_estimation(picture);
+			predict(picture);
+			dct_type_estimation(picture);
+			transform(picture);
+			putpict(picture);
+			reconstruct(picture);
+
 		}
-#endif
+
+
 #ifdef DEBUG
 		if (!quiet)
 		{
-			printf("Frame end %d %c %3.2f %.2f %2.1f %.2f\n",
+			printf("Frame end %d %s %3.2f %.2f %2.1f %.2f\n",
 				   picture->decode, 
-				   picture->pad ? 'P' : ' ',
+				   picture->pad ? "PAD" : "   ",
 				   picture->avg_act, picture->sum_avg_act,
 				   picture->AQ, picture->SQ);
 		}
 #endif
-		/* If it is a frame picture or the second field of a field picture
-		   we're finished!
+		/* We're finished - let anyone depending on us know...
 		*/
-		if( picture->pict_struct == FRAME_PICTURE ||
-			( picture->topfirst && picture->pict_struct == BOTTOM_FIELD ) ||
-			( ! picture->topfirst && picture->pict_struct == TOP_FIELD )
-			)
-			sync_guard_update( &picture->completion, 1 );
-		else if( picture->pict_struct != FRAME_PICTURE &&
-				 picture->pict_type == I_TYPE )
-			sync_guard_update( &picture->ipcompletion, 1 );
+		sync_guard_update( &picture->completion, 1 );
+			
 	}
+
 	return NULL;
 }
 
 void parencodepict( pict_data_s *picture )
 {
+
 	semaphore_wait( &worker_available );
 	picture_to_encode = picture;
 	semaphore_signal( &picture_available, 1 );
@@ -925,7 +895,6 @@ void putseq()
 		}
 
 		sync_guard_update( &cur_picture->completion, 0 );
-		sync_guard_update( &cur_picture->ipcompletion, 0 );
 
 		if( readframe(cur_picture->temp_ref+ss.gop_start_frame,cur_picture->curorg) )
 		{
@@ -934,22 +903,8 @@ void putseq()
 		}
 
 
-        if (fieldpic)
-		{
-			set_pic_params( opt_topfirst ? TOP_FIELD : BOTTOM_FIELD,
-							ss.i, ss.b,   0, cur_picture );
-			parencodepict( cur_picture );
-
-			set_pic_params( opt_topfirst ? BOTTOM_FIELD : TOP_FIELD,
-							ss.i, ss.b,  1, cur_picture );
-			parencodepict( cur_picture );
-		}
-		else
-		{
-			set_pic_params( FRAME_PICTURE,
-							ss.i, ss.b,   0, cur_picture );
-			parencodepict( cur_picture );
-		}
+		set_pic_params( ss.i, ss.b,   cur_picture );
+		parencodepict( cur_picture );
 
 #ifdef DEBUG
 		writeframe(cur_picture->temp_ref+ss.gop_start_frame,cur_picture->curref);

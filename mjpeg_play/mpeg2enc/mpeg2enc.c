@@ -26,12 +26,25 @@
  * design.
  *
  */
+/* Modifications and enhancements (C) 2000/2001 Andrew Stevens */
 
-/*
+/* These modifications are free software; you can redistribute it
+ *  and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2 of
+ *  the License, or (at your option) any later version.
  *
- * Modifications to speed up motion compensation (c) 2000 Andrew Stevens
- * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
+ *
  */
+
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,9 +79,10 @@ static int param_bitrate    = 0;
 static int param_quant      = 0;
 static int param_searchrad  = 16;
 static int param_mpeg       = 1;
-static int param_fieldpic   = 0;  /* 0: progressive, 1: bottom first, 2: top first, 3 = progressive seq, field MC and DCT in picture */
-static int param_norm       = 0;  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
-static int param_fastmc     = 10;
+static int param_aspect_ratio = 0;
+static int param_frame_rate  = 0;
+static int param_fieldpic   = 0;  /* 0: progressive, 1: bottom first, 2: top first, 3 = progressive seq, interlace frames with field MC and DCT in picture */
+static int param_norm       = 'p';  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
 static int param_44_red	= 2;
 static int param_22_red	= 3;	
 static int param_hfnoise_quant = 0;
@@ -81,22 +95,104 @@ static int param_min_GOP_size = 12;
 static int param_max_GOP_size = 12;
 static int param_Bgrp_size = 3;
 static int param_num_cpus = 1;
-static double framerates[9]=
-    {0.0, 24000.0/1001.0,24.0,25.0,30000.0/1001.0,30.0,50.0,60000.0/1001.0,60.0};
-
-
 /* reserved: for later use */
 int param_422 = 0;
 
-void Usage(char *str);
 
+
+static double framerates[]=
+    {0.0, 24000.0/1001.0,24.0,25.0,30000.0/1001.0,30.0,50.0,60000.0/1001.0,60.0};
+
+#define num_frame_rates (sizeof(framerates)/sizeof(double))
+
+static char *frame_rate_definitions[num_frame_rates] =
+{
+    "illegal", 
+	"24000.0/1001.0 (NTSC 3:2 pulldown converted FILM)",
+	"24.0 (NATIVE FILM)",
+	"25.0 (PAL/SECAM VIDEO / converted FILM)",
+	"30000.0/1001.0 (NTSC VIDEO)",
+	"30.0",
+	"50.0 (PAL FIELD RATE)",
+	"60000.0/1001.0 (NTSC FIELD RATE)",
+	"60.0"
+};
+
+
+static char * mpeg1_aspect_ratio_definitions[] =
+{
+	"1:1 (square pixels)",
+	"1:0.6735",
+	"1:0.7031 (16:9 Anisomorphic PAL/SECAM for 720x578/352x288 images)",
+    "1:0.7615",
+	"1:0.8055",
+	"1:0.8437 (16:9 Anisomorphic NTSC for 720x480/352x240 images)",
+	"1:0.8935",
+	"1:0.9375 (4:3 PAL/SECAM for 720x578/352x288 images)",
+	"1:0.9815",
+	"1:1.0255",
+	"1:1:0695",
+	"1:1.125  (4:3 NTSC for 720x480/352x240 images)",
+	"1:1575",
+	"1:1.2015"
+};
+
+static char *mpeg2_aspect_ratio_definitions[] = 
+{
+	"1  - 1:1 display",
+	"2  - 4:3 display",
+	"3  - 16:9 display",
+	"4  - 2.21:1 display"
+};
+
+static char **aspect_ratio_definitions[2] = 
+{
+	mpeg1_aspect_ratio_definitions,
+	mpeg2_aspect_ratio_definitions
+};
+
+static const int num_aspect_ratios[2] = 
+{
+	sizeof(mpeg1_aspect_ratio_definitions)/sizeof(char *),
+     sizeof(mpeg2_aspect_ratio_definitions)/sizeof(char *)
+};
+
+static void DisplayFrameRates()
+{
+ 	int i;
+	printf("Frame-rate codes:\n");
+	for( i = 0; i < num_frame_rates; ++i )
+	{
+		printf( "%2d - %s\n", i, frame_rate_definitions[i]);
+	}
+	exit(0);
+}
+
+static void DisplayAspectRatios()
+{
+ 	int i;
+	printf("MPEG1 pixel aspect ratio codes:\n");
+	for( i = 0; i < num_aspect_ratios[0]; ++i )
+	{
+		printf( "%2d - %s\n", i+1, aspect_ratio_definitions[0][i]);
+	}
+	printf("\nMPEG2 display aspect ratio codes:\n");
+	for( i = 0; i < num_aspect_ratios[1]; ++i )
+	{
+		printf( "%2d - %s\n", i+1, aspect_ratio_definitions[1][i]);
+	}
+	exit(0);
+}
 
 void Usage(char *str)
 {
-	printf("lavtools mpeg2enc version " VERSION "\n" );
+	printf("mjpegtools mpeg2enc version " VERSION "\n" );
 	printf("Usage: %s [params]\n",str);
 	printf("   where possible params are:\n");
 	printf("   -m num     MPEG level (1 or 2) default: 1\n");
+	printf("   -a num     Aspect ratio displayed image [1..14] (default: code for 4:3 in specified norm)\n" );
+	printf("              0 - Display MPEG1 and MPEG2 aspect ratio code tables");
+	printf("   -f num     Frame rate for encoded video (default: frame rate of input stream)\n");
 	printf("   -b num     Bitrate in KBit/sec (default: 1152 KBit/s for VCD)\n");
 	printf("   -q num     Quality factor [1..31] (1 is best, no default)\n");
 	printf("              Bitrate and Quality are mutually exclusive!\n");
@@ -116,25 +212,26 @@ void Usage(char *str)
 	printf("   -M num     Optimise threading for num CPU's (default: 1)\n");
 	printf("   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 .. 10] (default: 2.5)\n");
 	printf("   -v num     Target video buffer size in KB (default 46)\n");
-	printf("   -n n|p|s   Force video norm (NTSC, PAL, SECAM).\n");
+	printf("   -n n|p|s   Force video norm (NTSC, PAL, SECAM) (default: PAL).\n");
 	printf("   -S num     Start a new sequence in the output every num Mbytes\n");
 	printf("   -s         Generate a sequence header for every GOP rather than just for the first GOP\n");
 	printf("   -t         Activate dynamic thresholding of motion compensation window size\n" );
 	printf("   -N         Noise filter via quantisation adjustment (experimental)\n" );
 	printf("   -h         Maximise high-frequency resolution (useful for high quality sources at high bit-rates)\n" );
+	printf("   -?         Print this lot out!\n");
 	exit(0);
 }
+
 
 int main(argc,argv)
 	int argc;
 	char *argv[];
 {
 	char *outfilename=0;
-	int n, nerr = 0;
-#define PARAM_LINE_MAX 256
-	char param_line[PARAM_LINE_MAX];
+	int nerr = 0;
+	int n;
 
-	while( (n=getopt(argc,argv,"m:n:b:q:o:S:F:r:M:4:2:Q:g:G:v:stNhO")) != EOF)
+	while( (n=getopt(argc,argv,"m:a:f:n:b:q:o:S:F:r:M:4:2:Q:g:G:v:stNhO?")) != EOF)
 	{
 		switch(n) {
 
@@ -156,6 +253,30 @@ int main(argc,argv)
 			if(param_quant<1 || param_quant>16)
 			{
 				fprintf(stderr,"-q option requires arg 1 .. 16\n");
+				nerr++;
+			}
+			break;
+
+        case 'a' :
+			param_aspect_ratio = atoi(optarg);
+            if( param_aspect_ratio == 0 )
+				DisplayAspectRatios();
+			/* Checking has to come later once MPEG 1/2 has been selected...*/
+			if( param_aspect_ratio < 0 )
+			{
+				fprintf( stderr, "-a option must be positive\n");
+				nerr++;
+			}
+			break;
+
+       case 'f' :
+			param_frame_rate = atoi(optarg);
+            if( param_frame_rate == 0 )
+				DisplayFrameRates();
+			if( param_frame_rate < 0 || param_frame_rate > num_frame_rates-1)
+			{
+				fprintf( stderr, "-f option must be [0..%d]\n", 
+						 num_frame_rates-1);
 				nerr++;
 			}
 			break;
@@ -264,18 +385,16 @@ int main(argc,argv)
 				nerr++;
 			}
 			break;
+		case '?':
 		default:
 			nerr++;
 		}
 	}
 
-	if(!outfilename)
-	{
-		fprintf(stderr,"Output file name (-o option) is required!\n");
-		nerr++;
-	}
+    if( nerr )
+		Usage(argv[0]);
 
-
+	/* Select input stream */
 	if(optind!=argc)
 	{
 		if( optind == argc-1 )
@@ -294,6 +413,86 @@ int main(argc,argv)
 	else
 		input_fd = 0; /* stdin */
 
+	/* Read parameters inferred from input stream */
+	read_stream_params( &horizontal_size, &vertical_size, &frame_rate_code );
+
+	if(horizontal_size<=0)
+	{
+		fprintf(stderr,"Horizontal size from input stream illegal\n");
+		nerr++;
+	}
+	if(vertical_size<=0)
+	{
+		fprintf(stderr,"Vertical size from input stream illegal\n");
+		nerr++;
+	}
+
+	
+	/* Infer norm, aspect ratios and frame_rate if not specified */
+	if( param_norm == 0 && (frame_rate_code==3 || frame_rate_code == 2) )
+	{
+		fprintf(stderr,"Assuming norm PAL\n");
+		param_norm = 'p';
+	}
+	if( param_norm == 0 && (frame_rate_code==4 || frame_rate_code == 1) )
+	{
+		fprintf(stderr,"Assuming norm NTSC\n");
+		param_norm = 'n';
+	}
+
+	if( param_frame_rate != 0 )
+	{
+		if( frame_rate_code != param_frame_rate && 
+			frame_rate_code > 0 && frame_rate_code < num_frame_rates )
+		{
+			fprintf(stderr, "+++ WARNING: Specified output frame-rate %3.2f will over-ride\n", framerates[param_frame_rate]);
+			fprintf(stderr, "+++ WARNING: (different!) frame-rate %3.2f of the input stream\n", framerates[frame_rate_code]);
+		}
+		frame_rate_code = param_frame_rate;
+	}
+	
+	if( param_aspect_ratio == 0 )
+	{
+		if( param_norm == 'p' || param_norm == 's' )
+		{
+			param_aspect_ratio = param_mpeg == 1 ? 8 : 1;
+		}
+	    else if( param_norm == 'n' )
+		{
+			param_aspect_ratio = param_mpeg == 1 ? 12 : 1;
+		}
+		else
+		{
+			fprintf( stderr, "No default aspect ratio if norm unspecified!\n");
+			nerr++;
+		}
+	}
+
+	/* Check parameters that cannot be checked when parsed/read */
+
+	if(!outfilename)
+	{
+		fprintf(stderr,"Output file name (-o option) is required!\n");
+		nerr++;
+	}
+
+	if(frame_rate_code<1 || frame_rate_code>8)
+	{
+		fprintf(stderr,"Frame rate code from input stream cannot be interpreted !!!!\n");
+		nerr++;
+	}
+
+
+
+	if(  param_aspect_ratio > num_aspect_ratios[param_mpeg-1] ) 
+	{
+		fprintf( stderr,"For MPEG-%d aspect ratio codes > %d illegal\n", 
+				 param_mpeg, num_aspect_ratios[param_mpeg-1]);
+		nerr++;
+	}
+		
+
+
 	if( param_min_GOP_size > param_max_GOP_size )
 	{
 		fprintf(stderr, "Min GOP size must be <= Max GOP size\n" );
@@ -310,6 +509,9 @@ int main(argc,argv)
 				(FRAME_BUFFER_SIZE-READ_CHUNK_SIZE-1-param_Bgrp_size)/2);
 		++nerr;
 	}
+
+
+
 	if(nerr) Usage(argv[0]);
 
 	if( param_quant )
@@ -323,75 +525,30 @@ int main(argc,argv)
 	act_boost = (param_act_boost+1.0);
   
 
-	/* Read stdin until linefeed is seen */
-
-	for(n=0;n<PARAM_LINE_MAX;n++)
-	{
-		if(!read(input_fd,param_line+n,1))
-		{
-			fprintf(stderr,"Error reading header from stdin\n");
-			exit(1);
-		}
-		if(param_line[n]=='\n') break;
-	}
-	if(n==PARAM_LINE_MAX)
-	{
-		fprintf(stderr,"Didn't get linefeed in first %d characters of data\n",
-				PARAM_LINE_MAX);
-		exit(1);
-	}
-	param_line[n] = 0; /* Replace linefeed by end of string */
-
-	if(strncmp(param_line,"YUV4MPEG",8))
-	{
-		fprintf(stderr,"Input starts not with \"YUV4MPEG\"\n");
-		fprintf(stderr,"This is not a valid input for me\n");
-		exit(1);
-	}
-
-
-	sscanf(param_line+8,"%d %d %d",&horizontal_size,&vertical_size,&frame_rate_code);
-
-	nerr = 0;
-	fprintf(stderr,"Horizontal size: %d\n",horizontal_size);
-	if(horizontal_size<=0)
-	{
-		fprintf(stderr,"Horizontal size illegal\n");
-		nerr++;
-	}
-	fprintf(stderr,"Vertical size: %d\n",vertical_size);
-	if(vertical_size<=0)
-	{
-		fprintf(stderr,"Vertical size size illegal\n");
-		nerr++;
-	}
-	fprintf(stderr,"Frame rate code: %d",frame_rate_code);
-	if(frame_rate_code<1 || frame_rate_code>8)
-	{
-		fprintf(stderr," illegal !!!!\n");
-		nerr++;
-	}
-	else
-		fprintf(stderr," = %2.3f fps\n",framerates[frame_rate_code]);
-
 	if(nerr) exit(1);
 
-	if(!param_norm && frame_rate_code==3)
-	{
-		fprintf(stderr,"Assuming norm PAL\n");
-		param_norm = 'p';
-	}
-	if(!param_norm && frame_rate_code==4)
-	{
-		fprintf(stderr,"Assuming norm NTSC\n");
-		param_norm = 'n';
-	}
 
 	printf("\nEncoding MPEG-%d video to %s\n",param_mpeg,outfilename);
-	if(param_bitrate) printf("Bitrate: %d KBit/s\n",param_bitrate);
-	if(param_quant) printf("Quality factor: %d (1=best, 31=worst)\n",param_quant);
-	if(param_seq_hdr_every_gop ) printf("Sequence header for every GOP\n");
-	else printf( "Sequence header only for first GOP\n");
+	fprintf(stderr,"Horizontal size: %d pel\n",horizontal_size);
+	fprintf(stderr,"Vertical size: %d pel\n",vertical_size);
+	fprintf(stderr,"Aspect ratio code: %d = %s\n", 
+			param_aspect_ratio,
+			aspect_ratio_definitions[param_mpeg-1][param_aspect_ratio-1]);
+	fprintf(stderr,"Frame rate code:   %d = %s\n",
+			frame_rate_code,
+			frame_rate_definitions[frame_rate_code]);
+
+	if(param_bitrate) 
+		printf("Bitrate: %d KBit/s\n",param_bitrate);
+	else
+		printf( "Bitrate: VCD\n");
+	if(param_quant) 
+		printf("Quality factor: %d (1=best, 31=worst)\n",param_quant);
+	
+	if(param_seq_hdr_every_gop ) 
+		printf("Sequence header for every GOP\n");
+	else 
+		printf( "Sequence header only for first GOP\n");
 		
 	if( param_seq_length_limit )
 		printf( "New Sequence every %d Mbytes\n", param_seq_length_limit );
@@ -566,10 +723,8 @@ void error(text)
 }
 
 #define MAX(a,b) ( (a)>(b) ? (a) : (b) )
-static void init_encoding_parms(void);
 
-
-static void init_encoding_parms(void)
+static void init_encoding_parms()
 {
 	int i;
 	int c;
@@ -593,7 +748,7 @@ static void init_encoding_parms(void)
 	/* RJ: aspectratio is differently coded for MPEG1 and MPEG2.
 	 *     For MPEG2 aspect ratio is for total image: 2 means 4:3
 	 *     For MPEG1 aspect ratio is for the pixels:  1 means square Pixels */
-	aspectratio     = mpeg1 ? 1 : 2;
+	aspectratio     = param_aspect_ratio;
 	dctsatlim		= mpeg1 ? 255 : 2047;
 
 	/* If we're using a non standard (VCD?) profile bit-rate adjust	the vbv
@@ -631,7 +786,6 @@ static void init_encoding_parms(void)
 	}
 	vbv_buffer_size = vbv_buffer_code*16384;
 	
-	fast_mc_frac    = param_fastmc;
 	mc_44_red		= param_44_red;
 	mc_22_red		= param_22_red;
 	video_buffer_size = param_video_buffer_size * 1024 * 8;
@@ -643,7 +797,7 @@ static void init_encoding_parms(void)
 	constrparms = 1;
 	profile         = param_422 ? 1 : 4; /* High or Main profile resp. */
 	level           = 8;                 /* Main Level      CCIR 601 rates */
-	prog_seq        = (fieldpic==0);
+	prog_seq        = (param_fieldpic==0);
 	chroma_format   = param_422 ? CHROMA422 : CHROMA420;
 	switch(param_norm)
 	{
@@ -665,7 +819,9 @@ static void init_encoding_parms(void)
 	display_vertical_size    = vertical_size;
 
 	opt_dc_prec         = 0;  /* 8 bits */
-	opt_topfirst        = (param_fieldpic==2);
+	opt_topfirst        = (param_fieldpic==2) || (param_fieldpic == 3);
+	opt_repeatfirst     = 0;
+	opt_prog_frame      = (param_fieldpic==0) || (param_fieldpic == 3);
 
 	frame_pred_dct_tab[0] = mpeg1 ? 1 : (param_fieldpic == 0);
 	frame_pred_dct_tab[1] = mpeg1 ? 1 : (param_fieldpic == 0);
@@ -694,8 +850,7 @@ static void init_encoding_parms(void)
 	altscan_tab[0]  = 0;
 	altscan_tab[1]  = 0;
 	altscan_tab[2]  = 0;
-	opt_repeatfirst     = 0;
-	opt_prog_frame      = prog_seq;
+
 
 
 	/*  A.Stevens 2000: The search radius *has* to be a multiple of 8

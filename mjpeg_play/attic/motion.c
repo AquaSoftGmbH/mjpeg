@@ -362,6 +362,55 @@ void reset_thresholds(int macroblocks_per_frame)
 }
 
 
+
+/*
+  Compute the variance of the residual of uni-directionally motion
+  compensated block.
+ */
+
+static __inline__ int unidir_pred_var( const mb_motion_s *motion,
+							uint8_t *mb,  
+							int lx, 
+							int h)
+{
+	return (*pdist2)(motion->blk, mb, lx, motion->hx, motion->hy, h);
+}
+
+
+/*
+  Compute the variance of the residual of bi-directionally motion
+  compensated block.
+ */
+
+static __inline__ int bidir_pred_var( const mb_motion_s *motion_f, 
+						   const mb_motion_s *motion_b,
+						   uint8_t *mb,  
+						   int lx, int h)
+{
+	return (*pbdist2)( motion_f->blk, motion_b->blk,
+					   mb, lx, 
+					   motion_f->hx, motion_f->hy,
+					   motion_b->hx, motion_b->hy,
+					   h);
+}
+
+/*
+  Compute SAD for bi-directionally motion compensated blocks...
+ */
+
+static __inline__ int bidir_pred_sad( const mb_motion_s *motion_f, 
+						   const mb_motion_s *motion_b,
+						   uint8_t *mb,  
+						   int lx, int h)
+{
+	return (*pbdist1)(motion_f->blk, motion_b->blk, 
+					 mb, lx, 
+					 motion_f->hx, motion_f->hy,
+					 motion_b->hx, motion_b->hy,
+					 h);
+}
+
+
 /*
  * Round search radius to suit the search algorithm.
  * Currently radii must be multiples of 8.
@@ -1242,7 +1291,8 @@ static void field_estimate (
 	nobot = ipflag && (picture->pict_struct==BOTTOM_FIELD);
 
 	/* field prediction */
-
+	if( ipflag )
+		printf( "DO TOP\n");
 	/* predict current field from top field */
 	if (notop)
 		topfld_mc.sad = dt = 65536; /* infinity */
@@ -1251,6 +1301,9 @@ static void field_estimate (
 				   i,j,sx,sy>>1,16,width,height>>1,
 				   &topfld_mc);
 	dt = topfld_mc.sad;
+	if( ipflag )
+		printf( "DO BOT\n");
+
 	/* predict current field from bottom field */
 	if (nobot)
 		botfld_mc.sad = db = 65536; /* infinity */
@@ -1282,6 +1335,8 @@ static void field_estimate (
 
 
 	/* 16x8 motion compensation */
+	if( ipflag )
+		printf( "DO 16x8UT\n");
 
 	/* predict upper half field from top field */
 	if (notop)
@@ -1291,6 +1346,9 @@ static void field_estimate (
 				   i,j,sx,sy>>1,8,width,height>>1,
 				    &topfld_mc);
 	dt = topfld_mc.sad;
+
+	if( ipflag )
+		printf( "DO 16x8UB\n");
 	/* predict upper half field from bottom field */
 	if (nobot)
 		botfld_mc.sad = db = 65536;
@@ -1320,6 +1378,9 @@ static void field_estimate (
 	  This requires adding width = width
 	 
 	*/
+	if( ipflag )
+		printf( "DO 16x8LT\n");
+
 	if (notop)
 		topfld_mc.sad = dt = 65536;
 	else
@@ -1329,6 +1390,9 @@ static void field_estimate (
 				   /* &imint,&jmint, &dt,*/ &topfld_mc);
 	dt = topfld_mc.sad;
 	/* predict lower half field from bottom field */
+	if( ipflag )
+		printf( "DO 16x8LB\n");
+
 	if (nobot)
 		botfld_mc.sad = db = 65536;
 	else
@@ -2976,11 +3040,13 @@ static void fullsearch(
 	uint8_t *forg = (uint8_t*)(org+fsubsample_offset);
 	uint8_t *qorg = (uint8_t*)(org+qsubsample_offset);
 	uint8_t *orgblk;
+
 	int flx = lx >> 1;
 	int qlx = lx >> 2;
 	int fh = h >> 1;
 	int qh = h >> 2;
 
+	mc_result_set sub44set;
 	sxy = (sx>sy) ? sx : sy;
 
 	/* xmax and ymax into more useful form... */
@@ -3716,51 +3782,4 @@ static int variance(p,lx)
 		p+= lx-16;
 	}
 	return s2 - (s*s)/256;
-}
-
-/*
-  Compute the variance of the residual of uni-directionally motion
-  compensated block.
- */
-
-static int unidir_pred_var( const mb_motion_s *motion,
-							uint8_t *mb,  
-							int lx, 
-							int h)
-{
-	return (*pdist2)(motion->blk, mb, lx, motion->hx, motion->hy, h);
-}
-
-
-/*
-  Compute the variance of the residual of bi-directionally motion
-  compensated block.
- */
-
-static int bidir_pred_var( const mb_motion_s *motion_f, 
-						   const mb_motion_s *motion_b,
-						   uint8_t *mb,  
-						   int lx, int h)
-{
-	return (*pbdist2)( motion_f->blk, motion_b->blk,
-					   mb, lx, 
-					   motion_f->hx, motion_f->hy,
-					   motion_b->hx, motion_b->hy,
-					   h);
-}
-
-/*
-  Compute SAD for bi-directionally motion compensated blocks...
- */
-
-static int bidir_pred_sad( const mb_motion_s *motion_f, 
-						   const mb_motion_s *motion_b,
-						   uint8_t *mb,  
-						   int lx, int h)
-{
-	return (*pbdist1)(motion_f->blk, motion_b->blk, 
-					 mb, lx, 
-					 motion_f->hx, motion_f->hy,
-					 motion_b->hx, motion_b->hy,
-					 h);
 }

@@ -78,7 +78,7 @@ encode.c
  * 8/05/93  TEST                changed I_a_bit_allocation() from:    *
  *                              if( ad > ...) to if(ad >= ...)        *
  **********************************************************************/
- 
+
 #include "common.h"
 #include "encoder.h"
 

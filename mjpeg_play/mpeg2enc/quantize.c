@@ -26,6 +26,25 @@
  * design.
  *
  */
+/* Modifications and enhancements (C) 2000/2001 Andrew Stevens */
+
+/* These modifications are free software; you can redistribute it
+ *  and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2 of
+ *  the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
+ *
+ */
+
 
 #include <config.h>
 #include <stdio.h>
@@ -50,8 +69,6 @@ static void (*piquant_non_intra_m1)(int16_t *src, int16_t *dst,  uint16_t *quant
 
 static int quant_weight_coeff_sum( int16_t *blk, uint16_t * i_quant_mat );
 static void iquant_non_intra_m1(int16_t *src, int16_t *dst, uint16_t *quant_mat);
-
-void init_quantizer(void);
 
 
 /*

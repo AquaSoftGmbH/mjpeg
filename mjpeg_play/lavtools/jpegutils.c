@@ -140,7 +140,7 @@ jpeg_buffer_src (j_decompress_ptr cinfo, unsigned char *buffer, long num)
 void
 jpeg_skip_ff (j_decompress_ptr cinfo)
 {
-	fprintf( stderr,"Starting skip with %d bytes left\n", cinfo->src->bytes_in_buffer);
+
   while(cinfo->src->bytes_in_buffer>1 &&
         cinfo->src->next_input_byte[0] == 0xff &&
         cinfo->src->next_input_byte[1] == 0xff)
