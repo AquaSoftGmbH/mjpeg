@@ -167,8 +167,7 @@ static int jsb_table[3][4] =  { { 4, 8, 12, 16 }, { 4, 8, 12, 16},
                                 { 0, 4, 8, 16} };  /* lay+m_e -> jsbound */
 
     if(lay<1 || lay >3 || m_ext<0 || m_ext>3) {
-        fprintf(stderr, "js_bound bad layer/modext (%d/%d)\n", lay, m_ext);
-        exit(1);
+		mjpeg_error_exit1("js_bound bad layer/modext (%d/%d)\n", lay, m_ext);
     }
     return(jsb_table[lay-1][m_ext]);
 }
@@ -189,7 +188,8 @@ layer *hdr = fr_ps->header;     /* (or pass in as arg?) */
     /* alloc, tab_num set in pick_table */
 }
 
-void WriteHdr(fr_ps, s)
+#ifdef WRITE_DEBUG_INFO
+void WriteHdr(fr_ps s)
 frame_params *fr_ps;
 FILE *s;
 {
@@ -286,6 +286,7 @@ int sblimit = fr_ps->sblimit;
         if(ch==(stereo-1) )     fprintf(s, "\n");
         else                    fprintf(s, "\t");
 }
+#endif
 
 int NumericQ(s) /* see if a string lookd like a numeric argument */
 char *s;
@@ -299,6 +300,7 @@ char    c;
     return isdigit((int)c);
 }
 
+#ifdef WRITE_DEBUG_INFO
 int BitrateIndex(layr, bRate)   /* convert bitrate in kbps to index */
 int     layr;           /* 1 or 2 */
 int     bRate;          /* legal rates from 32 to 448 */
@@ -335,6 +337,8 @@ long sRate;             /* legal rates 32000, 44100, 48000 */
         return(-1);      /* Error! */
     }
 }
+
+#endif
 
 /*******************************************************************************
 *

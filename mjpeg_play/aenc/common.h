@@ -137,6 +137,8 @@ common.h
 #endif  /* MSC60 */
 #endif  /* MS_DOS */
 
+#include "mjpeg_logging.h"
+
 /***********************************************************************
 *
 *  Global Definitions

@@ -118,16 +118,17 @@ double sfreq;        /* to match prototype : float args are always double */
      phi_sav = (F2HBLK *) mem_alloc(sizeof(F22HBLK), "phi_sav");
 
      i = sfreq + 0.5;
-     switch(i){
-        case 32000: sfreq_idx = 0; break;
-        case 44100: sfreq_idx = 1; break;
-        case 48000: sfreq_idx = 2; break;
-        default:    printf("error, invalid sampling frequency: %d Hz\n",i);
-        exit(-1);
+     switch(i) 
+	 {
+	 case 32000: 
+		 sfreq_idx = 0; break;
+	 case 44100: 
+		 sfreq_idx = 1; break;
+	 case 48000: 
+		 sfreq_idx = 2; break;
+	 default: 
+		 mjpeg_error_exit1("invalid sampling frequency: %d Hz\n",i);
      }
-
-     // RJ: disturbs our percent counting:
-     //printf("absthr[][] sampling frequency index: %d\n",sfreq_idx);
 
      read_absthr(absthr, sfreq_idx);
      if(lay==1){
@@ -377,10 +378,10 @@ temp2=r[chn][new][j] * sin((double) phi[j]) - r_prime * sin((double) phi_prime);
      }
      break;
   case 3:
-     printf("layer 3 is not currently supported\n");
+	  mjpeg_error_exit1("layer 3 is not currently supported\n");
      break;
   default:
-     printf("error, invalid MPEG/audio coding layer: %d\n",lay);
+	  mjpeg_error_exit1("invalid MPEG/audio coding layer: %d\n",lay);
  }
 
 /* These mem_free() calls must correspond with the mem_alloc() calls     */

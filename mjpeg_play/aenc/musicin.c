@@ -107,7 +107,7 @@ musicin.c
 
 FILE               *musicin;
 Bit_stream_struc   bs;
-int		   verbose = 2;
+int		   verbose = LOG_INFO;
 char               *programName;
 
 /* Global variables */
@@ -123,14 +123,29 @@ static void Usage(char *str)
 {
   printf("Usage: %s [params] < input.wav\n",str);
   printf("   where possible params are:\n");
+  printf( "  -v num  Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n");
   printf("   -b num     Bitrate in KBit/sec (default: 224 KBit/s)\n");
   printf("   -o name    Outputfile name (REQUIRED)\n");
-  printf("   -r num     Force output rate to be num Hz (default: 44100)\n");
+  printf("   -r num     Force output sampling rate to be num Hz (default: 44100)\n");
   printf("              num must be one of 32000, 44100, 48000\n");
   printf("   -s         Force stereo output (default)\n");
   printf("   -m         Force mono output\n");
-  printf("   -v         Force VCD compatible output (same as: -b 224 -r 44100 -s)\n");
+  printf("   -V         Force VCD compatible output (same as: -b 224 -r 44100 -s)\n");
+  printf("   -?         Print this lot out\n");
   exit(0);
+}
+
+static mjpeg_log_handler_t default_mjpeg_log_handler;
+
+static void
+mplex_log_handler( log_level_t level, const char message[] )
+{
+	if (level == LOG_DEBUG && verbose > LOG_DEBUG)
+		return;
+	if( level == LOG_INFO && verbose > LOG_INFO )
+		return;
+
+	default_mjpeg_log_handler( level, message );
 }
 
 
@@ -152,6 +167,12 @@ char            encoded_file_name[MAX_NAME_SIZE];
     int j, n;
     int audio_format;
 
+
+	/* Set up error logging.  The initial handling level is LOG_INFO
+	 */
+	
+	default_mjpeg_log_handler = mjpeg_log_set_handler(mplex_log_handler );
+
     /* RJ: We set most params to fixed defaults: */
 
     info->lay = 2;
@@ -167,48 +188,51 @@ char            encoded_file_name[MAX_NAME_SIZE];
 
     brt = 0;
 
-    while( (n=getopt(argc,argv,"b:o:r:smvV:")) != EOF)
+    while( (n=getopt(argc,argv,"b:o:r:smv:V")) != EOF)
     {
         switch(n) {
 
-            case 'b':
-               brt = atoi(optarg);
-               break;
+		case 'b':
+			brt = atoi(optarg);
+			break;
+			
+		case 'o':
+			outfilename = optarg;
+			break;
+			
+		case 'r':
+			freq_out = atoi(optarg);
+			break;
+			
+		case 's':
+			stereo = 1;
+			break;
+			
+		case 'm':
+			mono = 1;
+			break;
+			
+		case 'V':
+			video_cd = 1;
+			break;
 
-            case 'o':
-               outfilename = optarg;
-               break;
+	    case 'v':
+			verbose = LOG_WARN-atoi(optarg);
+			if( verbose < LOG_DEBUG || verbose > LOG_WARN )
+				Usage(argv[0]);
+			break;
 
-            case 'r':
-               freq_out = atoi(optarg);
-               break;
-
-            case 's':
-               stereo = 1;
-               break;
-
-            case 'm':
-               mono = 1;
-               break;
-
-            case 'v':
-               video_cd = 1;
-               break;
-
-	    case 'V':
-		verbose = atoi(optarg);
-		break;
-
-            case '?':
-               Usage(argv[0]);
+		case '?':
+			Usage(argv[0]);
         }
     }
 
-    if(argc!=optind) Usage(argv[0]);
+    if(argc!=optind) 
+		Usage(argv[0]);
 
     if(outfilename==0)
     {
-        fprintf(stderr,"Output file name (-o option) is required!\n");
+        mjpeg_error("Output file name (-o option) is required!\n");
         Usage(argv[0]);
     }
     strncpy(encoded_file_name,outfilename,MAX_NAME_SIZE);
@@ -217,13 +241,13 @@ char            encoded_file_name[MAX_NAME_SIZE];
 
     if(freq_out!=0 && freq_out!=32000 && freq_out!=44100 && freq_out!=48000)
     {
-       fprintf(stderr,"Options -r requires one of 32000 44100 48000!\n");
+       mjpeg_error("Options -r requires one of 32000 44100 48000!\n");
        Usage(argv[0]);
     }
 
     if(stereo && mono)
     {
-       fprintf(stderr,"Options -s and -m are mutally exclusive!\n");
+       mjpeg_error("Options -s and -m are mutally exclusive!\n");
        Usage(argv[0]);
     }
     if(mono)   chans_out = 1;
@@ -231,19 +255,19 @@ char            encoded_file_name[MAX_NAME_SIZE];
 
     if(video_cd && mono)
     {
-       fprintf(stderr,"Options -v and -m are mutally exclusive!\n");
+		mjpeg_error("Options -v and -m are mutally exclusive!\n");
        Usage(argv[0]);
     }
 
     if(video_cd && freq_out!=0 && freq_out!=44100)
     {
-       fprintf(stderr,"Option -v requires sample rate 44100!\n");
+       mjpeg_error("Option -v requires sample rate 44100!\n");
        Usage(argv[0]);
     }
 
     if(video_cd && brt!=0 && brt!=224)
     {
-       fprintf(stderr,"Option -v requires bit rate 224 KBit/s!\n");
+       mjpeg_error("Option -v requires bit rate 224 KBit/s!\n");
        Usage(argv[0]);
     }
 
@@ -259,28 +283,28 @@ char            encoded_file_name[MAX_NAME_SIZE];
     if(wav_read_header(stdin,&freq_in,&chans_in,&audio_bits,
                        &audio_format,&audio_bytes))
     {
-       fprintf(stderr,"*** Error reading WAV file ***\n");
+       mjpeg_error("failure reading WAV file\n");
        exit(0);
     }
 
-    printf("Opened WAV file, freq = %d Hz, channels = %d, bits = %d\n",
+    mjpeg_info("Opened WAV file, freq = %d Hz, channels = %d, bits = %d\n",
            freq_in, chans_in, audio_bits);
-    printf("   format = 0x%x, audio length = %lu bytes\n",audio_format,audio_bytes);
+    mjpeg_info("format = 0x%x, audio length = %lu bytes\n",audio_format,audio_bytes);
 
     if(audio_format!=1)
     {
-       fprintf(stderr,"Error: WAV file is not in PCM format\n");
+       mjpeg_error("WAV file is not in PCM format\n");
        exit(1);
     }
     if(audio_bits!=8 && audio_bits!=16)
     {
-       fprintf(stderr,"Error: audio samples must have 8 or 16 bits\n");
+       mjpeg_error("audio samples must have 8 or 16 bits\n");
        exit(1);
     }
 
     if(chans_in!=1 && chans_in!=2)
     {
-       fprintf(stderr,"Error: can only handle files with 1 or 2 channels\n");
+       mjpeg_error("can only handle files with 1 or 2 channels\n");
        exit(1);
     }
 
@@ -309,8 +333,8 @@ char            encoded_file_name[MAX_NAME_SIZE];
            info->sampling_frequency = 2;
            break;
        default:
-           fprintf(stderr,"Error: Frequency must be one of 32000 44100 48000"
-                          " unless -r is used!\n");
+           mjpeg_error("Frequency must be one of 32000 44100 48000"
+					   " unless -r is used!\n");
            exit(1);
     }
 
@@ -321,14 +345,14 @@ char            encoded_file_name[MAX_NAME_SIZE];
     for(j=0;j<15;j++) if (bitrate[info->lay-1][j] == brt) break;
 
     if (j==15) {
-        fprintf(stderr,"Bitrate of %d KBit/s not allowed!\n",brt);
+        mjpeg_error("Bitrate of %d KBit/s not allowed!\n",brt);
         exit(1);
     }
 
     info->bitrate_index = j;
 
     if(info->lay==2 && brt>192 && info->mode==MPG_MD_MONO) {
-        fprintf(stderr,"Bitrate of %d KBit/s not allowed for MONO\n",brt);
+        mjpeg_error("Bitrate of %d KBit/s not allowed for MONO\n",brt);
         exit(1);
     }
  
@@ -350,25 +374,22 @@ int     *psy;
 unsigned long *num_samples;
 char    outPath[MAX_NAME_SIZE];
 {
- layer *info = fr_ps->header;
+	layer *info = fr_ps->header;
 
-   if (verbose < 2)
-	return;
- 
-   printf("Encoding configuration:\n");
-   if(info->mode != MPG_MD_JOINT_STEREO)
-      printf("Layer=%s   mode=%s   extn=%d   psy model=%d\n",
-             layer_names[info->lay-1], mode_names[info->mode],
-             info->mode_ext, *psy);
-   else printf("Layer=%s   mode=%s   extn=data dependant   psy model=%d\n",
-               layer_names[info->lay-1], mode_names[info->mode], *psy);
-   printf("samp frq=%.1f kHz   total bitrate=%d kbps\n",
-          s_freq[info->sampling_frequency],
-          bitrate[info->lay-1][info->bitrate_index]);
-   printf("de-emph=%d   c/right=%d   orig=%d   errprot=%d\n",
-          info->emphasis, info->copyright, info->original,
-          info->error_protection);
-   printf("output file: '%s'\n", outPath);
+	mjpeg_debug("Encoding configuration:\n");
+	if(info->mode != MPG_MD_JOINT_STEREO)
+		mjpeg_debug("Layer=%s   mode=%s   extn=%d   psy model=%d\n",
+					layer_names[info->lay-1], mode_names[info->mode],
+					info->mode_ext, *psy);
+	else mjpeg_debug("Layer=%s   mode=%s   extn=data dependant   psy model=%d\n",
+					 layer_names[info->lay-1], mode_names[info->mode], *psy);
+	mjpeg_debug("samp frq=%.1f kHz   total bitrate=%d kbps\n",
+				s_freq[info->sampling_frequency],
+				bitrate[info->lay-1][info->bitrate_index]);
+	mjpeg_debug("de-emph=%d   c/right=%d   orig=%d   errprot=%d\n",
+				info->emphasis, info->copyright, info->original,
+				info->error_protection);
+	mjpeg_debug("output file: '%s'\n", outPath);
 }
  
 /************************************************************************
@@ -495,17 +516,15 @@ static unsigned int crc;
                           ((double)bitrate[info.lay-1][info.bitrate_index] /
                            (double)bitsPerSlot);
     whole_SpF = (int) avg_slots_per_frame;
-    if (verbose > 1)
-	printf("slots/frame = %d\n",whole_SpF);
+	mjpeg_info("slots/frame = %d\n",whole_SpF);
     frac_SpF  = avg_slots_per_frame - (double)whole_SpF;
     slot_lag  = -frac_SpF;
-    if (verbose > 1)
-	printf("frac SpF=%.3f, tot bitrate=%d kbps, s freq=%.1f kHz\n",
+	mjpeg_info("frac SpF=%.3f, tot bitrate=%d kbps, s freq=%.1f kHz\n",
            frac_SpF, bitrate[info.lay-1][info.bitrate_index],
            s_freq[info.sampling_frequency]);
  
-    if (verbose > 2 &&frac_SpF != 0)
-       printf("Fractional number of slots, padding required\n");
+    if (frac_SpF != 0)
+       mjpeg_info("Fractional number of slots, padding required\n");
     else info.padding = 0;
  
     while (get_audio(musicin, buffer, num_samples, stereo, info.lay) > 0) {
@@ -517,13 +536,11 @@ static unsigned int crc;
              slot_lag -= frac_SpF;
              extra_slot = 0;
              info.padding = 0;
-             /*  printf("No padding for this frame\n"); */
           }
           else {
              extra_slot = 1;
              info.padding = 1;
              slot_lag += (1-frac_SpF);
-             /*  printf("Padding for this frame\n");    */
           }
        }
        adb = (whole_SpF+extra_slot) * bitsPerSlot;
@@ -625,7 +642,7 @@ static unsigned int crc;
  
        frameBits = sstell(&bs) - sentBits;
        if(frameBits%bitsPerSlot)   /* a program failure */
-          fprintf(stderr,"Sent %ld bits = %ld slots plus %ld\n",
+          mjpeg_error("Sent %ld bits = %ld slots plus %ld\n",
                   frameBits, frameBits/bitsPerSlot,
                   frameBits%bitsPerSlot);
        sentBits += frameBits;
@@ -634,8 +651,7 @@ static unsigned int crc;
 
     close_bit_stream_w(&bs);
 
-    if (verbose > 1)
-	printf("Avg slots/frame = %.3f; b/smp = %.2f; br = %.3f kbps\n",
+	mjpeg_info("Avg slots/frame = %.3f; b/smp = %.2f; br = %.3f kbps\n",
            (FLOAT) sentBits / (frameNum * bitsPerSlot),
            (FLOAT) sentBits / (frameNum * samplesPerFrame),
            (FLOAT) sentBits / (frameNum * samplesPerFrame) *
@@ -646,10 +662,8 @@ static unsigned int crc;
                       FILETYPE_ENCODE);
 #endif
 
-    if (verbose > 1) {
-	printf("Encoding with psychoacoustic model %d is finished\n", model);
-	printf("The MPEG encoded output file name is \"%s\"\n",
-            encoded_file_name);
-    }
+	mjpeg_info("Encoding with psychoacoustic model %d is finished\n", model);
+	mjpeg_info("The MPEG encoded output file name is \"%s\"\n",
+			   encoded_file_name);
     exit(0);
 }

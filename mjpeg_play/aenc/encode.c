@@ -123,8 +123,8 @@ static void read_and_resample()
 
       n = fread(in_buff+freq_in*nbps,1,nbps,stdin);
       if(n!=nbps) {
-         fprintf(stderr,"\nError reading wave data\n");
-         exit(1);
+		  mjpeg_error_exit1("\nError reading wave data\n");
+
       }
    }
 
@@ -186,10 +186,7 @@ static void read_and_resample()
    num_out *= chans_out;
 
    nseconds++;
-   if (verbose > 0) {
-     printf("%4ld seconds done\r",nseconds);
-     fflush(stdout);
-   }
+   mjpeg_debug("%4ld seconds done\n",nseconds);
 }
 
 static int get_samples(short *abuff, int num, int stereo)
@@ -207,28 +204,29 @@ static int get_samples(short *abuff, int num, int stereo)
       if(*pfred == 1)
       {
          big_endian = 1;
-         printf("System is big endian\n");
+         mjpeg_info("System is big endian\n");
       }
       else if(*pfred == 2)
       {
          big_endian = 0;
-         printf("System is little endian\n");
+		 mjpeg_info("System is little endian\n");
       }
       else
       {
-         fprintf(stderr,"Can not determine if system is big/lttle endian\n");
-         fprintf(stderr,"Are you running on a Cray - or what?\n");
-         exit(1);
+         mjpeg_error("Can not determine if system is big/lttle endian\n");
+         mjpeg_error_exit1("Are you running on a Cray - or what?\n");
       }
 
       freq_quot = (double)freq_in/(double)freq_out;
 
       in_buff = (unsigned char *) malloc((freq_in+1)*chans_in*audio_bits/8);
-      if(!in_buff) { fprintf(stderr,"Malloc failed\n"); exit(1); }
+      if(!in_buff) 
+		  mjpeg_error_exit1("Malloc failed\n");
       if( audio_bits==8 || (audio_bits==16 && big_endian) )
       {
          buf1 = (short *)malloc((freq_in+1)*chans_in*sizeof(short));
-         if(!buf1) { fprintf(stderr,"Malloc failed\n"); exit(1); }
+         if(!buf1) 
+			 mjpeg_error_exit1("Malloc failed\n");
       }
       else
          buf1 = (short *)in_buff;
@@ -236,7 +234,8 @@ static int get_samples(short *abuff, int num, int stereo)
       if(chans_in!=chans_out)
       {
          buf2 = (short *)malloc((freq_in+1)*chans_out*sizeof(short));
-         if(!buf2) { fprintf(stderr,"Malloc failed\n"); exit(1); }
+         if(!buf2) 
+			 mjpeg_error("Malloc failed\n");
       }
       else
          buf2 = buf1;
@@ -244,7 +243,8 @@ static int get_samples(short *abuff, int num, int stereo)
       if(freq_in!=freq_out)
       {
          out_buff = (short *)malloc(freq_out*chans_out*sizeof(short));
-         if(!out_buff) { fprintf(stderr,"Malloc failed\n"); exit(1); }
+         if(!out_buff)
+			 mjpeg_error("Malloc failed\n");
       }
       else
          out_buff = buf2;
@@ -264,7 +264,8 @@ static int get_samples(short *abuff, int num, int stereo)
         if(num_out==0) return 0;
       }
       n = num;
-      if(buff_pos+n>num_out) n = num_out-buff_pos;
+      if(buff_pos+n>num_out) 
+		  n = num_out-buff_pos;
       memcpy(abuff,out_buff+buff_pos,n*sizeof(short));
       abuff += n;
       buff_pos += n;
@@ -363,7 +364,6 @@ int stereo, lay;
          }
       }
    }
-   if(res==0) printf("\n");
    return res;
 }
 
@@ -1358,7 +1358,7 @@ frame_params *fr_ps;
              else
                d = sb_samples[k][s][j][i] / multiple[scalar[k][s][i]];
              if (mod(d) > 1.0)
-               printf("Not scaled properly %d %d %d %d\n",k,s,j,i);
+				 mjpeg_info("Not scaled properly %d %d %d %d\n",k,s,j,i);
              qnt = (*alloc)[i][bit_alloc[k][i]].quant;
              d = d * a[qnt] + b[qnt];
              /* extract MSB N-1 bits from the floating point sample */

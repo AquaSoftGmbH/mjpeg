@@ -71,7 +71,7 @@ static unsigned long find_tag(FILE *fd, char *tag)
    }
 
 error:
-   fprintf(stderr,"EOF in WAV header when searching for tag \"%s\"\n",tag);
+   mjpeg_error("EOF in WAV header when searching for tag \"%s\"\n",tag);
    return -1;
 }
 
@@ -84,19 +84,19 @@ int wav_read_header(FILE *fd, int *rate, int *chans, int *bits,
 
    n = fread(data,1,12,fd);
    if(n!=12) {
-      fprintf(stderr,"EOF in WAV header\n");
+	   mjpeg_error("EOF in WAV header\n");
       return -1;
    }
 
    if(strncasecmp(data,"RIFF",4)) {
-      fprintf(stderr,"Input not a WAV file - starts not with \"RIFF\"\n");
+      mjpeg_error("Input not a WAV file - starts not with \"RIFF\"\n");
       return -1;
    }
 
    riff_len = getulong(data+4);
 
    if(strncasecmp(data+8,"WAVE",4)) {
-      fprintf(stderr,"Input not a WAV file - has no \"WAVE\" tag\n");
+      mjpeg_error("Input not a WAV file - has no \"WAVE\" tag\n");
       return -1;
    }
 
@@ -106,13 +106,13 @@ int wav_read_header(FILE *fd, int *rate, int *chans, int *bits,
    if(fmt_len<0) return -1;
    if(fmt_len&1) fmt_len++;
    if(fmt_len<16) {
-      fprintf(stderr,"WAV format len %ld too short\n",fmt_len);
+      mjpeg_error("WAV format len %ld too short\n",fmt_len);
       return -1;
    }
 
    n = fread(data,1,16,fd);
    if(n!=16) {
-      fprintf(stderr,"EOF in WAV header\n");
+      mjpeg_error("EOF in WAV header\n");
       return -1;
    }
 
@@ -139,9 +139,9 @@ int wav_read_header(FILE *fd, int *rate, int *chans, int *bits,
    if(*bytes<0) return -1;
 
    if(*bytes+hdr_len != riff_len+8) {
-      fprintf(stderr,"Warning:\n");
-      fprintf(stderr,"File length according data tag: %lu\n",*bytes+hdr_len);
-      fprintf(stderr,"File length according RIFF tag: %lu\n",riff_len+8);
+      mjpeg_warn("File length according data tag: %lu\n",*bytes+hdr_len);
+      mjpeg_warn("File length according RIFF tag: %lu\n",riff_len+8);
+	  mjpeg_warn("Inconsistency is inevitable if wav's are being piped\n");
    }
 
    return 0;
