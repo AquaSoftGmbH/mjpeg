@@ -86,6 +86,11 @@ You'll find more information about the other man pages in the SEE ALSO section.
 You will usually have to load the drivers for the Buz or DC10(+) or LML33
 cards. So you have to run the update script providing as option the name 
 of your card you have. The script is usually in /usr/src/driver\-zoran/
+.br
+The zoran kernel driver below the kernel 2.4.4 do not work. You have to use
+the driver aviable from: http://www.cicese.mx/~mirsev/Linux/DC10plus/
+.br
+The driver for the Matrox Marvel card also works, more information about it: http://marvel.sourceforge.net
 
 If you compile the tools on a P6 based computer (PPro, P\-II, P\-III, P\-4,
 Athlon,Duron) then never try to let them run on a P5 based computer 
@@ -163,6 +168,8 @@ Should start recording now,
 record.avi: name of the created file.
 .br 
 Recording is finished by pressing Crtl\-C (nowadays: Strg\-C).
+.br
+Sometimes useing \-f A instead of \-f a might be necessary.
 
 Other example:
 .br 
@@ -189,7 +196,7 @@ is needed if your sound card does not support the mmap for recording.
 
 The cards record at a different size in PAL when recording at -d 1 :
 .br
-BUZ and LML33: 720x576 and the DC10: 768x576
+BUZ, LML33, Matrox Marvel: 720x576 and the DC10: 768x576
 
 
 Other example:
@@ -260,6 +267,9 @@ There are more options, but with this you should be able to start.
 How about some hints as to sensible settings. I habitually turn quality to
 80% or more for \-d 2 capture. At full resolution as low as 40% seems to be
 visually "perfect".  \-d 2 is already better than VHS video (a *lot*!).
+.br
+For a Marvel you should not set the quality higher than 50 when you record at full size (-d 1). If you use higher settings (-q 60) it is more likely that you encounter problems. If you use much higher settings you will encounter framedropps. 
+.br
 If you're aiming to create VCD's then there is little to be gained recording
 at full resolution as you need to reduce to \-d 2 resolution later anyway.
 
@@ -304,7 +314,7 @@ video material that is captured each frame comprised a top field (the 0th,
 
 There are three bad things that can happen with fields:
 
-1. This is really only an issue for Movies in PAL video where each
+1. This is really only an issue for wet-film Movies in PAL video where each
 Film frame is sent as a pair of fields. These can be sent top or
 bottom field first and sadly its not always the same, though
 bottom-first appears to be usual. If you capture with the wrong field
@@ -319,6 +329,7 @@ moments in time 1/25sec apparent.
 
 2. The two fields can simply be swapped somehow so that top gets treat as
 bottom and bottom treat as top.   Juddering and "slicing" is the result.
+This occasionally seems to happen due to hardware glitches in the capture card.
 
 3. Somewhere in capturing/processing the *order* in time of the two fields in 
 each frame can get mislabeled somehow.  This is not good as it means that
@@ -341,26 +352,108 @@ appear to be "detached" you've got this problem!
 are from one scene and even from another you've captured with the
 wrong field order.
 
+If you use glav or lavplay be soure that you also use the -F/--flicker option.
+This disables some things that make the picture to look better, and problems
+are not that hard to be recognized. 
+
+If you want to look at the video you can also use yuvplay:
+> lav2yuv | ... | yuvplay 
+You should see here also some problems. 
+
 
 .B How can you fix it?
 
 1.   To fix this one the fields need to be "shifted" through the frames.
-Use yuvscaler's -M BOTT_FORWARD/TOP_FORWARD option can help here. Or re-record
-exchanging -f a for -F A or vice-versa. I believe the same applies to NTSC.
+Use yuvscaler's -M BOTT_FORWARD/TOP_FORWARD to shift the way fields are 
+allocated to frames.   You can find out the current field order for an MJPEG 
+file by looking at the first few lines of debug output from:
+.br
+> lav2yuv -v 2 the_mjpeg_file > /dev/null
+
+Or re-record exchanging -f a for -F A or vice-versa.
 
 2.   This isn't too bad either.  Use a tool that simply swaps the top and
 bottom fields a second time. yuvscaler can do this use the -M LINE_SWITCH.
 
-3.  Is easy to fix.  Either tell a tool someplace to relabel or simply tell
-the player to play back in swapped order (the latter can be done "indirectly"
-by telling mpeg2enc to reverse the flag (-z b|t) that tells the decoder which
-field order to use.
+3.  Is easy to fix.  Either tell a tool someplace to relabel the fields or simply tell the player to play back in swapped order (the latter can be done "indirectly" by telling mpeg2enc when encoding to reverse the flag (-z b|t) that tells the decoder which field order to use.
+
+In order to determine exactly what type of interlacing problem you have, you 
+need to extract some frames from the recorded stream and take a look at them.
+
+> mkdir pnm
+.br
+> lav2yuv -f 40 video.avi | y4mtoppm | pnmsplit - pnm/image%d.pnm
+.br
+> rm pnm/image?.pnm 
+.br
+> cd pnm
+.br
+> xv
+
+First we create a directory where we store the images. 
+The lav2yuv -f 40 writes only the first 40 frames to stdout. The mjpegtools 
+y4mtoppm converts the frames to pnm images and the pnmsplit splits the picture
+into two frames in the picture to two single pictures. Then we remove the first
+10 images because pnmsplit does not support the %0xd numbering. 
+.br
+Without a leading zero in the number, the files will be sorted in the wrong
+order, leading to a confusing playback.
+.br
+Use your favourite grafic program (xv for example) to view the pictures. 
+As each picture only contain one field out of two, they will appear scaled 
+vertically.
+
+If you look at the pictures you should see the movie slow advancing. 
+
+If you have a film you should always see 2 pictures that are nearly the same 
+after each other. Nearly because the film frame is split into two field for
+broadcasting. You can notice this rather easy if you have comb efects when you
+pause the film because both field should fit together well. The two pictures 
+that belong together should have an even number and the following odd number.
+.br
+So if you take a look on pictures: 4 and 5 are nearly identical,
+5 and 6 differ (have movement), 6 and 7 identical, 7 and 8 differ , ....
+
+To fix this problem you have to use yuvscaler's -M BOTT_FORWARD or TOP_FORWARD.
+
+You can also have the problem that the field order (top/bottom) is still wrong.
+You may have to use yuvscaler a second time with -M LINE_SWITCH, or 
+use the mpeg2enc -z (b|t) option.
+
+To see if you guessed correctly, extract the frames again, reordering them
+using yuvscaler:
+.br
+> lav2yuv -f 40 video.avi | yuvscaler -M OPTION |
+.br
+y4mtoppm | pnmsplit - pnm/image%d.pnm
+
+Where "OPTION" is what you think it will corrects the problem. 
+
+This is for material converted from film. Material produced directly for TV
+is addressed below.
 
 .B Hey, what about NTSC movies?
 
 Movies are broadcast in NTSC  using "3:2" pulldown which means that half the
 capture frames contain fields from 1 movie frame and half fields from 2
 frames.  To undo this effect for efficient MPEG encoding you need to use yuvkineco.
+
+If you have an interlaced source like a TV camera you have a frame consists of
+two fields that are recorded at different points in time and shown after each
+other. Spotting the problem here is harder. You need to find something moving
+hoziontally from the left to the right. When you extract the fields, the thing
+should move in small steps from the left to the right, not one large step
+forward, small step back, large forward, small back...... 
+.br
+You have to use the same options mentioned aboth to correct the problem.
+
+Do not expect that the field order is always the same (top- or bottom-first)
+It my change between the channels, between the films and it may even change in
+a film. If it changes constant you may have to encode with the mpeg2enc -I 1 or
+even -I 2. 
+
+You can only have this problems if you record at full size !!!
+
 
 .SH "CREATING VIDEOS FROM IMAGES"
 .br 
@@ -770,9 +863,8 @@ the bitrate you need if you want to create VCDs.
 
 Example:
 .br
-.B > lav2yuv \-d 2 stream*.avi | mpeg2enc \-b 1500 \-r 16 \-o video.m1v
+.B > lav2yuv stream*.avi | mpeg2enc \-b 1500 \-r 16 \-o video.m1v
 
-There lav2yuv drops the 2 lsb (Less Significant Byte) of the each pixel. Then
 mpeg2enc creates a video with a bitrate of 1500kBit/s uses an search radius of
 16. That when trying to find similar 16*16 macroblocks of pixels in between
 frames the encoder looks up to 16 pixels away from the current position of
@@ -787,7 +879,6 @@ all files are processed that match this pattern beginning with 00, 01....
 Scaling:
 .br
 Using yuvscaler one can now also scale the video before encoding it. This can be useful for users with a DC10 or DC10+ cards which captures at -d 1 768x576 or -d 2 384x288 (PAL/SECAM) or -d 1 640x480 (NTSC). 
-These sizes cannot be scaled right with the -s option from lav2yuv to VCD or SVCD format. It is only scaled right with lav2yuv when using a Buz or LML33 card. 
 
 You get a full description of all commands starting:
 .br
@@ -816,8 +907,6 @@ Here we only use a part of the input and have a special output format.
 
 Note: yuvscaler can also set a active area, and set everything else to real
 black using: -I ACTIVE_WidthxHeight+WidthOffset+HeightOffset
-.br
-Like the -a option in lav2yuv.
 
 Testing is done by:
 .br
@@ -835,7 +924,7 @@ take. In common you can say the more options used the longer it takes.
 .B Note3: 
 MPEG1 was not designed to be a VBR (variable bitrate stream) !!
 So if you encode with -q 15 mpeg2enc sets the maximal bitrate -b to 1152.
-If you want a VBR MPEG1 you have to set -b very high (2500).
+If you want a VBR MPEG1 you have to set -b higher (2500) else VBR does not make much sense. It is not likely that VBR MPEG1 works on HW-players.
 .br
 .B Note4: 
 Maybe you should give better names than video.m1v. 
@@ -925,12 +1014,11 @@ So you do NOT have to create an edited stream with lavtrans to get it converted 
 .B Video Creation Example:
 
 .br
-.B > lav2yuv \-n 1 editlist.eli | mpeg2enc \-b 2000 \-r 24 \-q 6 \-o video.m1v
+.B > lav2yuv editlist.eli | mpeg2enc \-b 2000 \-r 24 \-q 6 \-o video.m1v
 
-There lav2yuv applies a low\-pass noise filter to the images. Then mpeg2enc
-creates an video with an bitrate of 2000kBit/s (or 2000000Bit/s) but the -q 
-flag activates the variable bitrate and an quality factor of 6. It also uses a
-search radius of 24. An editlistfile used.
+Then mpeg2enc creates an video with an bitrate of 2000kBit/s (or 2000000Bit/s) 
+but the -q flag activates the variable bitrate and an quality factor of 6. It 
+also uses a search radius of 24. An editlistfile used.
 
 Explanation:
 .br
@@ -954,12 +1042,11 @@ reached (e.g. 10Mbps) and a q of 2 or 3 are reasonable choices.
 
 Example:
 .br
-.B > lav2yuv \-a 352x240+0+21 stream.avi | mpeg2enc \-b 1152 \-r 16 \-4 1 \-2 1 \-o video.m1v
+.B > lav2yuv | yuvscaler -I ACTIVE_352x240+0+21 | mpeg2enc \-b 1152 \-r 16 \-4 1 \-2 1 \-o video.m1v
 .br
 
 Usually there is at the top and at the bottom a nearly black border and a lot
-of bandwidth is used for something you do not like. The \-a option sets
-everything that is not in the described area to black, but the imagesize
+of bandwidth is used for something you do not like. The yuvscaler -I ACTIVE option sets everything that is not in the described area to black, but the imagesize
 (352x288) is not changed.
 .br
 So you have a real black border the encoder only uses a few bits for encoding
@@ -1008,10 +1095,9 @@ player you can use other min\-max values.
 
 Example:
 .br
-.B > lav2yuv \-n 1 \-a 352x220+0+34 stream*.avi | mpeg2enc \-b 1500 \-r 16 \-4 1 \-2 1 \-S 630 \-B 260 \-o video_n1_1500_r16_41_21_S630_B240.m1v
+.B > lav2yuv stream*.avi | mpeg2enc \-b 1500 \-r 16 \-4 1 \-2 1 \-S 630 \-B 260 \-o video_n1_1500_r16_41_21_S630_B240.m1v
 
-Here lav2yuv uses the low pass filter for optimizing the pictures, also a
-part top and bottom border are set to black. lav2yuv processes all the stream
+lav2yuv processes all the stream
 files. Then mpeg2enc uses some options that make the encoded stream look nicer.
 Using '-S 630' means that mpeg2enc marks the stream so that mplex generates
 a new stream every 630MB.  One important thing is the use of the -B option
@@ -1073,7 +1159,7 @@ The most important option is the -f 3. That tells mpeg2enc that it should create
 a MPEG2 stream. Because it is a generic MPEG2 you have to use the -b bitrate
 options. And should use the -q option because you usually want a space saving
 VBR Stream. When using VBR Streams the -b option tell mpeg2enc the maximum 
-bitrate that can be used. The -q option tell mpeg2enc which quality the streams should have.  
+bitrate that can be used. The -q option tell mpeg2enc which quality the streams should have, but is bound to the maximal bitrate -b we allow.
 
 .B > lav2yuv editlist.eli | mpeg2enc -f 3 -4 1 -2 1 -q7 -b 4500 -V 300 -P -g 6 -G 18 -I 1 -o video.m2v
 
@@ -1117,13 +1203,14 @@ the maximal bitrate or a to high quality factor.
 
 A combination that will produce more artefacts you can count, is a SVCD with
 a maximal video bitrate of 2500kBit and a qualitfactor set to 1 or 2.
-For SVCD with a video limit of 2500kBit a quality factor of 7-9 fits quite good.If you use filter programs or have a very good source like digital TV,
+For SVCD with a video limit of 2500kBit a quality factor of 7-11 fits quite
+good. If you use filter programs or have a very good source like digital TV,
 DVD like material or rendered pictures. If your SVCD/DVD player supports higher
 bitrates than the official 2788kBit/sec for the video and audio. Use the
 higher bitrate and a higher quality factor, action scenes for example will
 look much better.
 
-The same (7-9) quality factor for a full size picture and a top bitrate of
+The same (7-11) quality factor for a full size picture and a top bitrate of
 3500 to 4000 kBit won't produce to much artefacts too.
 
 For SVCD/DVD you can expect a result like the one described if the maximal
@@ -1138,6 +1225,48 @@ q <= 10 average quality
 q >= 11 not that good
 .br
 q >= 13 here even still sequences might look blocky
+
+.B Encoding destination TV (interlaced) or Monitor (progressive)
+
+MPEG2 supports interlaced movies to be encoded. So a MPEG2 movie can be 
+interlaced or progressive. It depends on the source Film or broadcast. And on
+the viewing device. 
+
+If you encode a Film both fields should be the same. Deinterlace the stream
+with yuvdenose -F, or if you have a high quality source, and don't need to use
+the denoiser, with yuvscaler -O NOT_INTERLACED. Also set the mpeg2enc 
+interlace-mode (-I) option to 0. This means that there is no interlacing. 
+.br
+We do here not really need deinterlacing because there is no motion between the
+fields of the frame. We only need to union them to a single progressive frame.
+This movie should be played back an any device (TV or Monitor) without problems.
+
+If you have an interlaced source (broadcast) you can encode it as interlaced
+stream. Or deinterlace the stream, and encode it as progressive stream.
+If you deinterlace it with yuvdenoise -F, you will lose details. 
+.br
+But if you plan to play the recorded stream on your DVD player and you TV. 
+It would not be wise to do that. But if you only want to play it back on the 
+Monitor (progressive display) the picture lookes better when playing it back
+if it is deinterlaced. If the player you use, can do deinterlacing it does not
+matter if your encoded video has interlaced frames or progressive frames. 
+
+If you plan to deinterlace the stream you can only do this with yuvdenose -F,
+And set the mpeg2enc -I 0. If you do not want do deinterlace th stream, yo do
+not need to set any special option.(Do not use yuvscaler -F, and mpeg2enc -I 0)
+
+If you like to pause the stream and look on the still you should deinterlace.
+Because then the image is flicker free when pausing. 
+
+If you have a film (progressive) with parts from a broadcast (interlaced) mixed
+together. Like in a documentation, where some parts are from an speaker are
+recorded interlaced and other parts are filmed. 
+.br
+You have to decide if you want optimal film sequences and good still images
+you should deinterlace (yuvdenoise -F, mpeg2enc -I 0). 
+
+Else you do not need to deinterlace it, and have a better quality of the 
+interlaced sequences. 
 
 .B Multiplexing Example
 
@@ -1307,6 +1436,8 @@ SVCD supports variable bitrate (VBR), because MPEG2 is usually VBR, but with
 the top video bitrate limit of 2500kBit/sec. With the -f 4 flag the encoder 
 also sets dynamic GOP with a low limit of -g 6 and a high limit of -G 18.
 This saves a few bits/sec and improves the picture quality during scene changes.
+.br
+When encoding with \-f 4 mpeg2enc ignores the video bitrate (\-b) and search radius (\-r) options. If you use \-f 5 mpeg2enc uses this options.
 
 An other possibility for movies in PAL (European style 25 frames/50 fields
 per sec) video is:
