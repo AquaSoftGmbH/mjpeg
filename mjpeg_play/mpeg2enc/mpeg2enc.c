@@ -705,8 +705,13 @@ int main(argc,argv)
 
 	if(opt_frame_rate_code<1 || opt_frame_rate_code>8)
 	{
-		mjpeg_error("Frame rate code from input stream cannot be interpreted !!!!\n");
-		++nerr;
+		if( param_frame_rate == 0 )
+		{
+			mjpeg_error("Input stream with unknown frame-rate and no frame-rate specified with -a!\n");
+			++nerr;
+		}
+		else
+			opt_frame_rate_code = param_frame_rate;
 	}
 
 
