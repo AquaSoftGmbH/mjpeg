@@ -46,6 +46,9 @@
 #include "blend_fields.h"
 #include "transform_block.h"
 
+struct vector search_backward_vector(int , int);
+struct vector search_forward_vector(int , int );
+
 int BLKthreshold=32*32*16;
 int search_radius=8;
 int verbose = 0;
@@ -337,28 +340,6 @@ main (int argc, char *argv[])
 
 	/* Exit gently */
 	return (0);
-}
-
-void subsample_frame ( uint8_t * a1, uint8_t * a2 )
-{
-	int x,y;
-	uint8_t * b1 = a2;
-	uint8_t * c1 = a2;
-
-	for(y=0;y<(height/2);y++)
-	{
-		for(x=0;x<width;x+=2)
-		{
-			*(a1 + (x>>1) ) = (	*( b1 + x     ) +
-								*( b1 + x + 1 ) +
-								*( c1 + x     ) +
-								*( c1 + x + 1 ) ) >>2;
-		}
-	a1 += width;
-	b1 += width*2;
-	c1 += width*2;
-	}
-	
 }
 
 struct vector

@@ -1,5 +1,6 @@
 #include "config.h"
 #include "mjpeg_types.h"
+#include "interleave.h"
 #include "copy_frame.h"
 
 extern int width;

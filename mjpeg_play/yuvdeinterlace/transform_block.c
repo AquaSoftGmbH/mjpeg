@@ -1,5 +1,6 @@
 #include "config.h"
 #include "mjpeg_types.h"
+#include "transform_block.h"
 
 extern int width;
 extern int height;

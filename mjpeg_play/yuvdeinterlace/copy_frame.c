@@ -1,6 +1,7 @@
 #include <string.h>
 #include "config.h"
 #include "mjpeg_types.h"
+#include "copy_frame.h"
 
 extern int width;
 extern int height;

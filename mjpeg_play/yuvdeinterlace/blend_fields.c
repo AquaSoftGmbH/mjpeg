@@ -1,6 +1,7 @@
 #include "config.h"
 #include "mjpeg_types.h"
 #include "copy_frame.h"
+#include "blend_fields.h"
 
 extern int width;
 extern int height;
