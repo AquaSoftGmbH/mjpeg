@@ -33,24 +33,23 @@ increase video quality, and to reduce the bitrate needed to encode
 your video (e.g. for VCD and SVCD creation).
 
 .SH HOW IT WORKS
-It maintains a list of the last several frames, called reference frames.
-Each reference frame is composed of reference pixels, which work like
-normal pixels except that each contains the sum of the values of all
-the pixels it represents, and the number of pixels it represents.
-Every time a pixel in one frame is proven to be a moved instance of a
-pixel in another frame, the reference-pixel incorporates its value, and
-produces an average value for the pixel.  The oldest reference frame,
-therefore, gets a pretty good idea of the real value of every pixel,
-but of course output is delayed by the number of reference frames.
+It maintains a list of the last several frames, called reference
+frames.  Each reference frame is composed of reference pixels.
+Every time a pixel in one frame is proven to be a moved instance
+of a pixel in another frame, the reference-pixel incorporates its
+value, and produces an average value for all instances of the pixel.
+The oldest reference frame, therefore, gets a pretty good idea of
+the real value of every pixel, but of course output is delayed by
+the number of reference frames.
 
 The search is not actually done one pixel at a time; it's done in
 terms of pixel groups.  An entire pixel-group has to match for any
 match to be found, but all possible pixel-groups are tested (i.e. all
-possible overlaps are checked).  Using pixel-groups helps to establish
-a minimum standard for what may be considered a match, in order to
-avoid finding lots of really small (and really useless) matches.
-Presently, intensity pixel-groups are 4x2 (i.e. 4 across and 2 down),
-and color pixel-groups are 2x2.
+possible overlapping combinations are checked).  Using pixel-groups
+helps to establish a minimum standard for what may be considered a
+match, in order to avoid finding lots of really small (and really
+useless) matches.  Presently, intensity pixel-groups are 4x2
+(i.e. 4 across and 2 down), and color pixel-groups are 2x2.
 
 It compares every pixel-group in the current frame with all
 pixel-groups in the previous frame, within a given search-radius,
@@ -64,11 +63,6 @@ the command line.
 At the end of the frame, any new-frame pixels not resolved yet
 are considered to be new information, and a new reference-pixel is
 generated for each one.
-
-The flood-fill still extends the matches out to pixel accuracy,
-so the only details that can't be found by motion-detection are the ones
-smaller than a pixel-group, which is not a bad sacrifice for
-performance's sake.
 
 .SH OPTIONS
 \fBy4mdenoise\fP accepts the following options:
@@ -108,7 +102,7 @@ Default is 5.
 .TP 4
 .BI \-M " [num] Match-size throttle"
 The minimum size of the flood-filled region generated from a match
-necessary to use the match.  Matches smaller than this are thrown
+necessary for it to be used.  Matches smaller than this are thrown
 away.  Specified in terms of pixel-groups.  Default is 2.
 
 .TP 4
@@ -135,7 +129,7 @@ Set interlacing type.  Default is taken from the YUV4MPEG2 stream.
 bottom-field interlaced.  This is useful when the signal is more
 naturally of some other interlacing type than its current representation
 (e.g. if the original was shot on film and then later it was transferred
-to interlaced video, it may denoise better if treated as film, i.e.
+to interlaced video, it will denoise better if treated as film, i.e.
 non-interlaced).
 
 .SH TYPICAL USAGE AND TIPS
@@ -145,25 +139,22 @@ should be used, for the same reason that car designers aren't
 necessarily professional drivers.)
 
 The error-threshold must be determined for every individual YUV4MPEG2
-stream.  If the threshold is set too low, it'll leave noise in the
-video, and the denoiser will run a lot slower than it has to.  If it's
-set too high, the denoiser will start to remove detail: the video will
-get blurrier, you may see topographical-like bands in the relatively
-flat areas of the video, and small parts of the video that should
-be moving will be stuck in place.  Additionally, just because the
-video came to you from a clean source (digital cable TV, LaserDisc,
-etc.) doesn't mean the video itself is clean; \fBy4mdenoise\fP is
-capable of picking up on noise in the original recording, and
-sampling error from the video-capture device.  You will have
-to generate small clips of representative parts of your video,
-denoise them with various error thresholds, and see what looks
-the best.  As you gain experience with the tool, you may know what
-error threshold generally works with various types of sources,
-but you'll still want to double-check your assumptions.
-
-Interlaced video that was made from non-interlaced video (e.g. a
-videotape or LaserDisc of a film) must be denoised as non-interlaced.
-Otherwise the result tends to be grainy.
+stream.  If the threshold is set too low, it'll leave noise in
+the video, and the denoiser will run a lot slower than it has to.
+If it's set too high, the denoiser will start to remove detail:
+the video will get blurrier, you may see topographical-like bands
+in the relatively flat areas of the video, and small parts of the
+video that should be moving will be stuck in place.  It may also
+run a little slower.  Additionally, just because the video came to
+you from a clean source (digital cable TV, LaserDisc, etc.) doesn't
+mean the video itself is clean; \fBy4mdenoise\fP is capable of
+picking up on noise in the original recording as well as sampling error
+from the video-capture device.  You will have to generate small
+clips of representative parts of your video, denoise them with
+various error thresholds, and see what looks the best.  As you
+gain experience with the tool, you may know what error threshold
+generally works with various types of sources, but you'll still
+want to double-check your assumptions.
 
 Animation seems to require a higher error threshold than comparable
 live-action video, e.g. 50% higher and up.  Flat, shiny surfaces, like
@@ -172,11 +163,15 @@ seem to require a lower error threshold.
 
 Here is the author's experience:
 
- -t 1 : Digital cable TV, LaserDisc, DV camcorder video
+ -t 1 : Digital cable TV, most LaserDiscs, DV camcorder video
  -t 2 : VHS camcorder video, commercially-produced videotapes
  -t 3 : Analog cable TV, VHS videotape (at the 2-hour speed)
  -t 4 : VHS videotape (at the 6-hour speed)
  -t 5 : Flat animation
+
+Interlaced video that was made from non-interlaced video (e.g. a
+videotape or LaserDisc of a film) must be denoised as non-interlaced.
+Otherwise the result tends to be grainy.
 
 \fBy4mdenoise\fP only removes temporal noise, i.e. noise that occurs
 over time.  And it tends to do such a good job of this, that the
@@ -186,9 +181,12 @@ tends to become very distinct.  Therefore, always pipe the output of
 or \fByuvmedianfilter\fP.
 
 When producing very low bitrate video (e.g. VCD-compatible video
-less than 900 kbps), raising the error threshold slightly, even to
-the point where artifacts would be visible in higher-bitrate video,
-tends to improve the results of low-bitrate encodings.
+less than 900 kbps), denoise at the output frame size, e.g. don't
+denoise at DVD frame size then downscale to VCD size.  That will
+denoise as well as condition the video for the motion-detection part of
+\fBmpeg2enc\fP.  Not doing this will produce video where the less
+complex scenes will look really good, but high-motion scenes will blur
+significantly.
 
 JPEG compression of your video frames, even 100% compression, seems to
 be inaccurate enough to affect MPEG encoding.  Therefore, if you're
