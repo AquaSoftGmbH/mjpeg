@@ -86,7 +86,7 @@ else
       DEFAULT_JPEGDIR_I=/usr/local/include
       DEFAULT_JPEGDIR_L=/usr/local/lib
     else
-      echo "No JPEG-MMX lib found"
+      echo "No JPEG-MMX lib found in the default directories (maybe you supplied your own dir?)"
     fi
   fi
 fi
