@@ -1,6 +1,6 @@
 %define name    mjpegtools
 %define version 1.6.0
-%define release rc2
+%define release 1
 %define prefix  /usr
 
 Name:           %name
@@ -10,10 +10,10 @@ Summary:	Tools for recording, editing, playing back and mpeg-encoding video unde
 License:	GPL
 Url:		http://mjpeg.sourceforge.net/
 Group:		Video
-Source0:	http://prdownloads.sourceforge.net/mjpeg/mjpegtools-%{version}-%{release}.tar.gz
+Source0:	http://prdownloads.sourceforge.net/mjpeg/mjpegtools-%{version}.tar.gz
 Source1:	http://prdownloads.sourceforge.net/mjpeg/quicktime4linux-1.4-patched-2.tar.gz
-Source2:	http://prdownloads.sourceforge.net/mjpeg/libmovtar-0.1.3-rc1.tar.gz
-Source3:	http://prdownloads.sourceforge.net/mjpeg/jpeg-mmx-0.1.4-rc1.tar.gz
+Source2:	http://prdownloads.sourceforge.net/mjpeg/libmovtar-0.1.3.tar.gz
+Source3:	http://prdownloads.sourceforge.net/mjpeg/jpeg-mmx-0.1.4.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-buildroot-%{version}-%{release}
 BuildRequires:  XFree86-devel automake >= 1.5
 Prefix:		%{prefix}
@@ -27,7 +27,7 @@ hardware. With the rest of the tools, this video can be edited and
 encoded into mpeg1/2 or divx video.
 
 %prep
-%setup -q -n %{name}-%{version}-%{release} -a 1 -a 2 -a 3
+%setup -q -n %{name}-%{version} -a 1 -a 2 -a 3
 
 mv jpeg-mmx-* jpeg-mmx
 mv quicktime4linux-* quicktime4linux
