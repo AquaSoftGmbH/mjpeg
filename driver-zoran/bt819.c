@@ -1,4 +1,4 @@
-#define DEBUGLEVEL 1
+#define DEBUGLEVEL 0
 /* 
     bt819 - BT819A VideoStream Decoder (Rockwell Part)
 
@@ -194,7 +194,7 @@ static int bt819_init(struct i2c_device * device)
  	0x12, 0x04,	/* 0x12 Output Format */
 	0x13, 0x20,	/* 0x13 Vertical Scaling msb=0x00,
 				   chroma comb OFF, line drop scaling, interlace scaling
-				   BUG? Why does turning the chroma comb on fuck up color?
+				   BUG? Why does turning the chroma comb on screw up color?
 				   Bug in the bt819 stepping on my board?
 				 */
 	0x14, 0x00,	/* 0x14 Vertial Scaling lsb */
@@ -209,8 +209,6 @@ static int bt819_init(struct i2c_device * device)
    struct timing *timing;
    
    decoder = device->data;
-   printk(KERN_ERR "%s: bt819_init: init hware\n", 
-		  decoder->bus->name);
 
    timing = &timing_data[decoder->norm];
 

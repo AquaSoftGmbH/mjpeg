@@ -3226,16 +3226,15 @@ static void zoran_init_hardware (struct zoran *zr)
         if (zr->card == BUZ)
 	    j = zr->params.input == 0 ? 3 : 7;
         else
-			j = zr->params.input == 0 ? 0 : 7;
-		j = 0;
+		j = zr->params.input == 0 ? 0 : 7;
+
         decoder_command(zr, 0, NULL);
-		decoder_command(zr, DECODER_SET_NORM, &zr->params.norm);
-		printk("%s: zoran_init_hardware %d\n", zr->name, j);
-		decoder_command(zr, DECODER_SET_INPUT, &j);
+	decoder_command(zr, DECODER_SET_NORM, &zr->params.norm);
+	decoder_command(zr, DECODER_SET_INPUT, &j);
         
         encoder_command(zr, 0, NULL);
-		encoder_command(zr, ENCODER_SET_NORM, &zr->params.norm);
-		encoder_command(zr, ENCODER_SET_INPUT, &zero);
+	encoder_command(zr, ENCODER_SET_NORM, &zr->params.norm);
+	encoder_command(zr, ENCODER_SET_INPUT, &zero);
 
 	/* toggle JPEG codec sleep to sync PLL */
 	zr36060_sleep(zr, 1);
@@ -3267,8 +3266,6 @@ static int zoran_open(struct video_device *dev, int flags)
 
 	DEBUG1(printk(KERN_INFO "%s: zoran_open, %s pid=[%d]\n", zr->name, current->comm, current->pid));
 
-	printk(KERN_WARNING "%s: XXzoran_open: flags = 0x%x \n", zr->name, flags);
-
 	switch (flags) {
 
 	case 0:
@@ -3287,7 +3284,6 @@ static int zoran_open(struct video_device *dev, int flags)
 		/* default setup */
 
 		if (zr->user == 1) {	/* First device open */
-			printk(KERN_WARNING "%s: XXzoran_reinit: flags = 0x%x \n", zr->name, flags);
 			zr36057_restart(zr);
 			zoran_open_init_params(zr);
 			zoran_init_hardware(zr);
@@ -3521,7 +3517,6 @@ static int zoran_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
 				zr36057_overlay(zr, 0);
 
 		        // set_videobus_enable(zr, 0);
-			printk("%s: VIDIOCSCHAN %d\n", zr->name, input);
 			decoder_command(zr, DECODER_SET_INPUT, &input);
 			decoder_command(zr, DECODER_SET_NORM, &zr->params.norm);
 			encoder_command(zr, ENCODER_SET_NORM, &encoder_norm);
@@ -4145,9 +4140,9 @@ static int zoran_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
 			    input = zr->params.input == 0 ? 3 : 7;
                         else
 			    input = zr->params.input == 0 ? 0 : 7;
+
 		        // set_videobus_enable(zr, 0);
-						printk("%s: BUZIOC_G_STATUS REST %d\n", zr->name, input);
-				decoder_command(zr, DECODER_SET_INPUT, &input);
+			decoder_command(zr, DECODER_SET_INPUT, &input);
 			decoder_command(zr, DECODER_SET_INPUT, &input);
 			decoder_command(zr, DECODER_SET_NORM, &zr->params.norm);
 		        // set_videobus_enable(zr, 1);
