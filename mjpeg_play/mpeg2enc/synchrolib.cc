@@ -53,20 +53,44 @@ void sync_guard_init( sync_guard_t *guard, int init )
 
 void sync_guard_test( sync_guard_t *guard)
 {
-	if (pthread_mutex_lock( &guard->mutex ) != 0) abort();
+    int e;
+
+	e = pthread_mutex_lock( &guard->mutex );
+	if (e != 0)
+	   {
+	   fprintf(stderr, "#1 pthread_mutex_lock=%d\n", e);
+	   abort();
+	   }
 	while( !guard->predicate )
 	{
 		pthread_cond_wait( &guard->cond, &guard->mutex );
 	}
-	if (pthread_mutex_unlock( &guard->mutex ) != 0) abort();
+	e = pthread_mutex_unlock(&guard->mutex);
+	if (e != 0)
+	   {
+	   fprintf(stderr, "#1 pthread_mutex_unlock=%d\n", e);
+	   abort();
+	   }
 }
 
 void sync_guard_update( sync_guard_t *guard, int predicate )
 {
-	if (pthread_mutex_lock( &guard->mutex ) != 0) abort();
+    int e;
+
+	e = pthread_mutex_lock( &guard->mutex );
+	if (e != 0)
+	   {
+	   fprintf(stderr, "#2 pthread_mutex_lock=%d\n", e);
+	   abort();
+	   }
 	guard->predicate = predicate;
 	pthread_cond_broadcast( &guard->cond );
-	if (pthread_mutex_unlock( &guard->mutex ) != 0) abort();
+	e = pthread_mutex_unlock(&guard->mutex);
+	if (e != 0)
+	   {
+	   fprintf(stderr, "#2 pthread_mutex_unlock=%d\n", e);
+	   abort();
+	   }
 }
 
 
@@ -88,27 +112,63 @@ void mp_semaphore_init( mp_semaphore_t *sema, int init_count )
 
 void mp_semaphore_wait( mp_semaphore_t *sema)
 {
-	if (pthread_mutex_lock( &sema->mutex ) != 0) abort();
+    int e;
+
+	e = pthread_mutex_lock(&sema->mutex);
+	if (e != 0)
+	   {
+	   fprintf(stderr, "#3 pthread_mutex_lock=%d\n", e);
+	   abort();
+	   }
 	while( sema->count == 0 )
 	{
 		pthread_cond_wait( &sema->raised, &sema->mutex );
 	}
 	--(sema->count);
-	if (pthread_mutex_unlock( &sema->mutex ) != 0) abort();
+	e = pthread_mutex_unlock(&sema->mutex);
+	if (e != 0)
+	   {
+	   fprintf(stderr, "#3 pthread_mutex_unlock=%d\n", e);
+	   abort();
+	   }
 }
 
 void mp_semaphore_signal( mp_semaphore_t *sema, int count )
 {
-	if (pthread_mutex_lock( &sema->mutex ) != 0) abort();
+    int e;
+
+	e = pthread_mutex_lock(&sema->mutex);
+	if (e != 0)
+	   {
+	   fprintf(stderr, "#4 pthread_mutex_lock=%d\n", e);
+	   abort();
+	   }
 	sema->count += count;
 	pthread_cond_broadcast( &sema->raised );
-	if (pthread_mutex_unlock( &sema->mutex ) != 0) abort();
+	e = pthread_mutex_unlock(&sema->mutex);
+	if (e != 0)
+	   {
+	   fprintf(stderr, "#4 pthread_mutex_unlock=%d\n", e);
+	   abort();
+	   }
 }
 
 void mp_semaphore_set( mp_semaphore_t *sema )
 {
-	if (pthread_mutex_lock( &sema->mutex ) != 0) abort();
+    int e;
+
+	e = pthread_mutex_lock(&sema->mutex);
+	if (e != 0)
+	   {
+	   fprintf(stderr, "#5 pthread_mutex_lock=%d\n", e);
+	   abort();
+	   }
 	sema->count = 1;
 	pthread_cond_broadcast( &sema->raised );
-	if (pthread_mutex_unlock( &sema->mutex ) != 0) abort();
+	e = pthread_mutex_unlock(&sema->mutex);
+	if (e != 0)
+	   {
+	   fprintf(stderr, "#5 pthread_mutex_unlock=%d\n", e);
+	   abort();
+	   }
 }

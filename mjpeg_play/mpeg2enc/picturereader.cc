@@ -206,7 +206,12 @@ void PictureReader::ReadChunk()
 		   // starting the other.
 		   //mjpeg_info( "PRO:  releasing frame buf lock @ %d ", frames_read);
 
-		   if (pthread_mutex_unlock(&input_imgs_buf_lock) != 0) abort();
+		   e = pthread_mutex_unlock(&input_imgs_buf_lock);
+		   if (e != 0)
+		      {
+		      fprintf(stderr, "*1 pthread_mutex_unlock=%d\n", e);
+		      abort();
+		      }
 	   }
       if( LoadFrame() )
       {
@@ -390,7 +395,12 @@ void PictureReader::ReadChunkParallel( int num_frame)
 			frames_read >= istrm_nframes )
 		{
 			//mjpeg_info( "CON:  releasing frame buf lock - enough frames to go on with...");
-			if (pthread_mutex_unlock(&input_imgs_buf_lock) != 0) abort();
+			e = pthread_mutex_unlock(&input_imgs_buf_lock);
+			if (e != 0)
+			   {
+			   fprintf(stderr, "*4 pthread_mutex_unlock=%d\n", e);
+			   abort();
+			   }
 			return;
 		}
 		//mjpeg_info( "CON: waiting for new_chunk_ack - too few frames" );
