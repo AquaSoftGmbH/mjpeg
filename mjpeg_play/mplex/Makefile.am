@@ -27,7 +27,7 @@ mplex_SOURCES = \
 	vector.cc	vector.hh	mplexconsts.hh \
 	inputstrm.cc inputstrm.hh aunit.hh \
 	stillsstream.cc stillsstream.hh \
-	stream_params.cc
+	stream_params.cc stream_params.hh
 
 mplex_LDADD = -L$(top_builddir)/utils -lmjpegutils -lstdc++ @LIBGETOPT_LIB@ $(LIBM_LIBS) 
 
