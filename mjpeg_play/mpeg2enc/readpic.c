@@ -96,7 +96,7 @@ static int last_frame = -1;
 
 /* Buffers for frame luminance means */
 
-static int lum_mean[FRAME_BUFFER_SIZE];
+static int *lum_mean = NULL;
 
 
 static int luminance_mean(uint8_t *frame, int w, int h )
@@ -152,7 +152,7 @@ static void read_chunk(void)
 
 		   pthread_mutex_unlock( &frame_buffer_lock );
 	   }
-      n = frames_read % FRAME_BUFFER_SIZE;
+      n = frames_read % frame_buffer_size;
 
       y4m_init_frame_info (&fi);
 
@@ -367,6 +367,8 @@ static void load_frame( int num_frame )
 #endif		
 		pthread_mutex_init( &frame_buffer_lock, p_attr );
 
+        lum_mean = malloc(frame_buffer_size*sizeof(int));
+
 		/*
           Pre-fill the buffer with one chunk of frames...
         */
@@ -393,9 +395,9 @@ static void load_frame( int num_frame )
    /* We aren't allowed to go too far behind the last read
 	  either... */
 
-   if(num_frame < frames_read - FRAME_BUFFER_SIZE)
+   if(num_frame+frame_buffer_size < frames_read )
    {
-	   mjpeg_error("Internal:readframe: internal error - buffer flushed too soon");
+	   mjpeg_error("Internal:readframe: %d internal error - buffer flushed too soon", frame_buffer_size );
 	   abort();
    }
 
@@ -409,7 +411,7 @@ int readframe( int num_frame,
    int n;
 
    load_frame( num_frame ); 
-   n = num_frame % FRAME_BUFFER_SIZE;
+   n = num_frame % frame_buffer_size;
    frame[0] = frame_buffers[n][0];
    frame[1] = frame_buffers[n][1];
    frame[2] = frame_buffers[n][2];
@@ -434,7 +436,7 @@ int frame_lum_mean( int num_frame )
     //
     if( last_frame > 0 && n > last_frame )
         n = last_frame;
-	return lum_mean[n% FRAME_BUFFER_SIZE];
+	return lum_mean[n% frame_buffer_size];
 }
 
 

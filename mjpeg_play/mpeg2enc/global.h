@@ -326,7 +326,7 @@ EXTERN const char *statname
 */
 
 #define READ_CHUNK_SIZE 5
-#define FRAME_BUFFER_SIZE (READ_CHUNK_SIZE*9)
+//#define FRAME_BUFFER_SIZE (READ_CHUNK_SIZE*9)
 
 /*
   How many frames encoding may be concurrently under way.
@@ -497,9 +497,16 @@ EXTERN int
 EXTERN int lum_buffer_size, chrom_buffer_size;
 
 /* Buffers frame data */
-EXTERN uint8_t ***frame_buffers;
-
-
+EXTERN uint8_t ***frame_buffers
+#ifdef GLOBAL
+ = NULL
+#endif
+;
+EXTERN unsigned int frame_buffer_size
+#ifdef GLOBAL
+  = 0
+#endif
+;
 
 /* Table driven intra / non-intra quantization matrices */
 EXTERN uint16_t i_intra_q[64], i_inter_q[64];

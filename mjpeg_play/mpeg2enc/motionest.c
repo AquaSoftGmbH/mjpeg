@@ -553,7 +553,7 @@ static void frame_ME(pict_data_s *picture,
 		else
 		{
 			botssmb.mb = ssmb.mb+opt_phy_width;
-			botssmb.fmb = ssmb.mb+(opt_phy_width>>1);
+			botssmb.fmb = ssmb.fmb+(opt_phy_width>>1);
 			botssmb.qmb = ssmb.qmb+(opt_phy_width>>2);
 			botssmb.umb = ssmb.umb+(opt_phy_width>>1);
 			botssmb.vmb = ssmb.vmb+(opt_phy_width>>1);
@@ -745,7 +745,7 @@ static void frame_ME(pict_data_s *picture,
 		else
 		{
 			botssmb.mb = ssmb.mb+opt_phy_width;
-			botssmb.fmb = ssmb.mb+(opt_phy_width>>1);
+			botssmb.fmb = ssmb.fmb+(opt_phy_width>>1);
 			botssmb.qmb = ssmb.qmb+(opt_phy_width>>2);
 			botssmb.umb = ssmb.umb+(opt_phy_width>>1);
 			botssmb.vmb = ssmb.vmb+(opt_phy_width>>1);

@@ -608,21 +608,6 @@ static int check_param_constraints(void)
 		mjpeg_error_exit1("Not both divisible by %d", param_Bgrp_size );
 	}
 
-	if(	( param_format != MPEG_FORMAT_VCD_STILL &&
-		  param_format != MPEG_FORMAT_SVCD_STILL &&
-		  param_min_GOP_size < 2*param_Bgrp_size 
-			)  ||
-		param_max_GOP_size+param_max_GOP_size+param_Bgrp_size+1 > 
-		FRAME_BUFFER_SIZE-READ_CHUNK_SIZE  )
-	{
-		mjpeg_error( 
-				"Min and max GOP sizes must be in range [%d..%d]",
-				2*param_Bgrp_size,
-				(FRAME_BUFFER_SIZE-READ_CHUNK_SIZE-1-param_Bgrp_size)/2);
-		++nerr;
-	}
-
-
 	switch( param_format )
 	{
 	case MPEG_FORMAT_SVCD_STILL :
@@ -1205,11 +1190,12 @@ static void init_encoder(void)
 		clp_0_255[i] = (i<0) ? 0 : ((i>255) ? 255 : i);
 	
 	/* Allocate the frame data buffers */
-
+    frame_buffer_size = 2*param_max_GOP_size+param_Bgrp_size+READ_CHUNK_SIZE+1;
+    mjpeg_info( "Buffering %d frames\n", frame_buffer_size );
 	frame_buffers = (uint8_t ***) 
-		bufalloc(FRAME_BUFFER_SIZE*sizeof(uint8_t**));
+		bufalloc(frame_buffer_size*sizeof(uint8_t**));
 	
-	for(n=0;n<FRAME_BUFFER_SIZE;n++)
+	for(n=0;n<frame_buffer_size;n++)
 	{
          frame_buffers[n] = (uint8_t **) bufalloc(3*sizeof(uint8_t*));
 		 for (i=0; i<3; i++)
