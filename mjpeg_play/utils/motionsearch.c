@@ -29,8 +29,7 @@
 #include "fastintfns.h"
 #include "motionsearch.h"
 #include "mjpeg_logging.h"
-
-
+#include "mblock_sub44_sads_x86.h"
 
 
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
@@ -40,20 +39,6 @@ static int (*pmblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
 							int ihigh, int jhigh, 
 							int h, int rowstride, 
 							int threshold,
-							me_result_s *resvec);
-
-int mblocks_sub44_mests_mmxe( uint8_t *blk,  uint8_t *ref,
-							 int ilow, int jlow,
-							 int ihigh, int jhigh, 
-							 int h, int rowstride, 
-							 int threshold,
-							 me_result_s *resvec);
-int mblocks_sub44_mests_mmx( uint8_t *blk,  uint8_t *ref,
-							int ilow, int jlow,
-							int ihigh, int jhigh, 
-							int threshold,
-							int h, int rowstride, 
-							me_result_s *resvec);
 
 void mblock_sub22_nearest4_sads_mmxe(uint8_t *blk1,uint8_t *blk2,
 				     int frowstride,int fh, int* resvec) 

@@ -40,6 +40,7 @@
 #include "mmx.h"
 #include "fastintfns.h"
 #include "motionsearch.h"
+#include "mblock_sub44_sads_x86.h"
 
 /*
   Register usage:
