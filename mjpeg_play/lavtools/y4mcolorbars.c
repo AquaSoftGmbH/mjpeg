@@ -96,7 +96,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
   cl->height = 480;
   cl->aspect = y4m_sar_NTSC_CCIR601;
 
-  while ((c = getopt(argc, argv, "A:F:I:W:H:n:S:h")) != -1) {
+  while ((c = getopt(argc, argv, "A:F:I:W:H:n:S:v:h")) != -1) {
     switch (c) {
     case 'W':
       if ((cl->width = atoi(optarg)) <= 0) {
@@ -263,8 +263,8 @@ void create_bars(unsigned char *ycbcr[], int width, int height)
   lineCr = malloc(width * sizeof(lineCr[0]));
 
   /* Top:  Rainbow */
-  for (x = 0, i = 0, w = 0; x < width; i++) {
-    for (w = 0; w < stripe_width; w++, x++) {
+  for (i = 0, x = 0; i < 7; i++) {
+    for (w = 0; (w < stripe_width) && (x < width); w++, x++) {
       lineY[x] = rainbow[0][i];
       lineCb[x] = rainbow[1][i];
       lineCr[x] = rainbow[2][i];
@@ -278,10 +278,10 @@ void create_bars(unsigned char *ycbcr[], int width, int height)
     Cb += width;
     Cr += width;
   }
-  
+
   /* Middle:  Wobnair */
-  for (x = 0, i = 0, w = 0; x < width; i++) {
-    for (w = 0; w < stripe_width; w++, x++) {
+  for (i = 0, x = 0; i < 7; i++) {
+    for (w = 0; (w < stripe_width) && (x < width); w++, x++) {
       lineY[x] = wobnair[0][i];
       lineCb[x] = wobnair[1][i];
       lineCr[x] = wobnair[2][i];
@@ -295,7 +295,6 @@ void create_bars(unsigned char *ycbcr[], int width, int height)
     Cb += width;
     Cr += width;
   }
-
 
   /* Bottom:  PLUGE */
   pl_width = 5 * stripe_width / 4;
@@ -323,7 +322,7 @@ void create_bars(unsigned char *ycbcr[], int width, int height)
     lineCb[x] = 128;
     lineCr[x] = 128;
   }
-  /* black - 8 (3.75IRE) ; black ; black + 8  */
+  /* black - 8 (3.75IRE) | black | black + 8  */
   for (; x < (5 * stripe_width) + (stripe_width / 3); x++) {
     lineY[x] =    8;
     lineCb[x] = 128;
@@ -353,7 +352,6 @@ void create_bars(unsigned char *ycbcr[], int width, int height)
     Cb += width;
     Cr += width;
   }
-
   free(lineY);
   free(lineCb);
   free(lineCr);
