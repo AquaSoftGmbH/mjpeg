@@ -34,6 +34,7 @@
 
 struct wave_header wave;
 int verbose = 1;
+int big_endian; /* The endian detection */
 static uint8_t audio_buff[2*256*1024]; /* Enough for 1fps, 48kHz ... */
 int silence_sr, silence_bs, silence_ch ; 
 EditList el;
@@ -61,8 +62,24 @@ static size_t do_write( int fd, void *buf, size_t count )
 	return count;
 }
 
+uint32_t reorder_32(uint32_t todo)
+{
+unsigned char b0, b1, b2, b3;
+uint32_t reversed;
+
+b0 = (todo & 0x000000FF);
+b1 = (todo & 0x0000FF00) >> 8;
+b2 = (todo & 0x00FF0000) >> 16;
+b3 = (todo & 0xFF000000) >> 24;
+
+reversed = (b0 << 24) + (b1 << 16) + (b2 << 8) +b3;
+return reversed;
+}
+
 int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int fd )
 {
+	uint16_t temp_16; /* temp variables for swapping the bytes */
+	uint32_t temp_32; /* temp variables for swapping the bytes */
         unsigned int dummy_size = 0x7fffff00+sizeof(wave);
 
 	/* Write out a ZEROD wave header first */
@@ -71,21 +88,50 @@ int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int
 	strncpy((char*)wave.riff.id, "RIFF", 4);
 	strncpy((char*)wave.riff.wave_id, "WAVE",4);
 	dummy_size -=8;
-	wave.riff.len =  dummy_size;
+        if (big_endian == 0)
+	  wave.riff.len =  dummy_size;
+	else 
+	  wave.riff.len = reorder_32((uint32_t)dummy_size);
+
 	strncpy((char*)wave.format.id, "fmt ",4);
-	wave.format.len = sizeof(struct common_struct);
+        if (big_endian == 0)
+	  wave.format.len = sizeof(struct common_struct);
+        else
+          wave.format.len = reorder_32((uint32_t)sizeof(struct common_struct));
 
 	/* Store information */
-	wave.common.wFormatTag = WAVE_FORMAT_PCM;
-	wave.common.wChannels = channels;
-	wave.common.dwSamplesPerSec = rate;
-	wave.common.dwAvgBytesPerSec = channels*rate*bits/8;
-	wave.common.wBlockAlign = channels*bits/8;
-	wave.common.wBitsPerSample = bits;
+        if (big_endian == 0) 
+          {
+             wave.common.wFormatTag = WAVE_FORMAT_PCM;
+             wave.common.wChannels = channels;
+             wave.common.dwSamplesPerSec = rate;
+             wave.common.dwAvgBytesPerSec = channels*rate*bits/8;
+             wave.common.wBlockAlign = channels*bits/8;
+             wave.common.wBitsPerSample = bits;
+          }
+        else  /* We have a big endian machine and have to swapp the bytes */
+          {
+             temp_16 = WAVE_FORMAT_PCM;
+             swab(&temp_16, &wave.common.wFormatTag,2);
+             temp_16 = channels;
+             swab(&temp_16, &wave.common.wChannels, 2);
+             temp_32 = rate;
+             wave.common.dwSamplesPerSec = reorder_32 (temp_32);
+             temp_32 = channels*rate*bits/8;
+             wave.common.dwAvgBytesPerSec = reorder_32 (temp_32);
+             temp_16 = channels*bits/8;
+             swab(&temp_16, &wave.common.wBlockAlign, 2);
+             temp_16 = bits;
+             swab(&temp_16, &wave.common.wBitsPerSample, 2);
+          }
 
 	strncpy((char*)wave.data.id, "data",4);
 	dummy_size -= 20+sizeof(struct common_struct);
-	wave.data.len = dummy_size;
+
+        if (big_endian == 0) 
+	    wave.data.len = dummy_size;
+        else
+            wave.data.len = reorder_32 ((uint32_t)dummy_size);
 	if (do_write(fd, &wave, sizeof(wave)) != sizeof(wave)) 
 	{
 		return 1;
@@ -119,9 +165,16 @@ static void wav_close(int fd)
 
 	/* Fill out our wav-header with some information.  */
 	size -= 8;
-	wave.riff.len = size;
+        if (big_endian == 0)
+	  wave.riff.len = size;
+        else
+          wave.riff.len = reorder_32 ((uint32_t)size);
+
 	size -= 20+sizeof(struct common_struct);
-	wave.data.len = size;
+        if (big_endian == 0)
+	  wave.data.len = size;
+	else
+	  wave.data.len = reorder_32 ((uint32_t)size);
 
 	if (do_write(fd, &wave, sizeof(wave)) < sizeof(wave)) 
 	{
@@ -202,6 +255,8 @@ char    **argv;
 	int num_frames = -1;
         int ignore_bitrate = 0;
 	int fragments;
+        unsigned int fred;
+        char *pfred;
    
 silence_sr=0; /* silence_sr is use for detecting if the -r option is used */
 silence_bs=0; silence_ch=0; 
@@ -238,6 +293,27 @@ silence_bs=0; silence_ch=0;
 		Usage(argv[0]);
         }
     }
+
+      /* The endiat detection copied from mp2enc */
+      fred = 2 | (1 << (sizeof(int)*8-8));
+      pfred = (char *)&fred;
+
+      if(*pfred == 1)
+      {
+         big_endian = 1;
+         mjpeg_info("System is big endian");
+      }
+      else if(*pfred == 2)
+      {
+         big_endian = 0;
+                 mjpeg_info("System is little endian");
+      }
+      else
+      {
+         mjpeg_error("Can not determine if system is big/lttle endian");
+         mjpeg_error_exit1("Are you running on a Cray - or what?");
+      }
+
     /* Open editlist */
 	if( argc-optind < 1)
 		Usage(argv[0]);
