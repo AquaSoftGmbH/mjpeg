@@ -29,11 +29,11 @@ padding (uint8_t * padded_input, uint8_t * input, unsigned int half,
 
 int cubic_scale_interlaced (uint8_t *, uint8_t *, uint8_t *,
 			    unsigned int *, unsigned int *,
-			    int16_t **, uint16_t,
-			    int16_t **, uint16_t,
+			    int16_t *, uint16_t, uint8_t,
+			    int16_t *, uint16_t, uint8_t,
 			    unsigned int);
 int cubic_scale (uint8_t *, uint8_t *,
 			    unsigned int *, unsigned int *,
-			    int16_t **, uint16_t,
-			    int16_t **, uint16_t,
+			    int16_t *, uint16_t, uint8_t,
+			    int16_t *, uint16_t, uint8_t,
 			    unsigned int);

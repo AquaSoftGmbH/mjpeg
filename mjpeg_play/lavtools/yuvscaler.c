@@ -1,6 +1,6 @@
 /*
   *  yuvscaler.c
-  *  Copyright (C) 2001-2003 Xavier Biquard <xbiquard@free.fr>
+  *  Copyright (C) 2001-2004 Xavier Biquard <xbiquard@free.fr>
   * 
   *  
   *  Scales arbitrary sized yuv frame to yuv frames suitable for VCD, SVCD or specified
@@ -38,13 +38,13 @@
 // October 2002: yuvscaler functionnalities not related to image rescaling now part of yuvcorrect
 // January 2003: reimplementation of the bicubic algorithm => goes faster
 // December-January 2004: First MMX subroutine for bicubic calculus => speed x2
+// January-February 2004: make it go even faster
 // This first MMX version showed the limits of the use of cspline_w and cspline_h pointers => second
 // MMX version will implement dedicated cspline_w and cspline_h pointers for MMX treatment
 // 
 // 
 // TODO:
 // no more global variables for librarification
-// reading field per field when interlaced in the bicubic case
 
 // Remove file reading/writing
 // treat the interlace case + specific cases
@@ -74,8 +74,8 @@
 #include "../utils/mmx.h"
 #endif
 
-#define yuvscaler_VERSION "31-12-2003"
-// For pointer adress alignement
+#define yuvscaler_VERSION "11-02-2004"
+// For pointer address alignement
 #define ALIGNEMENT 16		// 16 bytes alignement for mmx registers in SIMD instructions for Pentium
 #define MAXWIDTHNEIGHBORS 16
 
@@ -175,12 +175,8 @@ const char NOMMX[] = "NOMMX";
 // 2048=2^11
 #define FLOAT2INTEGER 2048
 #define FLOAT2INTEGERPOWER 11
-long int FLOAT2INTOFFSET = 2097152;
 unsigned int bicubic_div_width = FLOAT2INTEGER, bicubic_div_height =
   FLOAT2INTEGER;
-float bicubic_negative_max = 0.04, bicubic_positive_max = 1.08;
-long int bicubic_offset = 0;
-unsigned long int bicubic_max = 0;
 unsigned int multiplicative;
 
 
@@ -202,6 +198,9 @@ int16_t *mmx_padded, *mmx_cubic;
 int32_t *mmx_res;
 int mmx = 1;			// =1 for mmx activated, =0 for deactivated/not available
 #endif
+
+int32_t *intermediate,*intermediate_p,*inter_begin;
+
 
 // *************************************************************************************
 void
@@ -768,9 +767,9 @@ handle_args_dependent (int argc, char *argv[])
 	   // developper's Testing purpose only
 	   if (strcmp (optarg, NOMMX) == 0)
 	    {
-#ifdef HAVE_ASM_MMX
+#ifdef HAVE_ASM_MMX	       
 	      mmx = 0;
-#endif
+#endif	       
 	      mode = 1;
 	    }
 	  if (strcmp (optarg, RESAMPLE) == 0)
@@ -1157,9 +1156,9 @@ main (int argc, char *argv[])
   int input_fd = 0;
   int output_fd = 1;
 
-//  DDD use
-// int input_fd  = open("./yuvscaler.input",O_RDONLY);
-// int output_fd = open("./yuvscaler.output",O_WRONLY);
+//  DDD and time use
+//   int input_fd  = open("./yuvscaler.input",O_RDONLY);
+//   int output_fd = open("./yuvscaler.output",O_WRONLY);
 // DDD use
 
   int err = Y4M_OK, nb;
@@ -1181,10 +1180,13 @@ main (int argc, char *argv[])
   unsigned int *in_line = NULL, *in_col = NULL, out_line, out_col;
   unsigned long int somme;
   float *a = NULL, *b = NULL;
-  int16_t *cspline_w=NULL,*cspline_h=NULL,**csh=NULL,**csw=NULL;
-  int16_t **cspline_w_neighbors = NULL,**cspline_h_neighbors = NULL;
+  int16_t *cspline_w=NULL,*cspline_h=NULL;
   uint16_t width_offset=0,height_offset=0,left_offset=0,top_offset=0,right_offset=0,bottom_offset=0;
   uint16_t height_pad=0,width_pad=0,width_neighbors=0,height_neighbors=0;
+   // On constate que souvent, le dernier coeff cspline est nul => 
+   // pas la peine de le prendre en compte dans les calculs
+   // Attention ! optimisation vitesse yuvscaler_bicubic.c suppose que zero_width_neighbors=0 ou 1 seulement
+  uint8_t zero_width_neighbors=1,zero_height_neighbors=1;
   float width_scale,height_scale;
   int16_t cspline_value;
      
@@ -1198,7 +1200,7 @@ main (int argc, char *argv[])
 
   // Information output
   mjpeg_info ("yuvscaler "LAVPLAY_VERSION" ("yuvscaler_VERSION") is a general scaling utility for yuv frames");
-  mjpeg_info ("(C) 2001-2003 Xavier Biquard <xbiquard@free.fr>, yuvscaler -h for help, or man yuvscaler");
+  mjpeg_info ("(C) 2001-2004 Xavier Biquard <xbiquard@free.fr>, yuvscaler -h for help, or man yuvscaler");
 
   // Initialisation of global variables that are independent of the input stream, input_file in particular
   handle_args_global (argc, argv);
@@ -1562,31 +1564,19 @@ main (int argc, char *argv[])
 
        mjpeg_debug("height_scale=%f, width_scale=%f, width_neighbors=%d, height_neighbors=%d",height_scale,width_scale,width_neighbors,height_neighbors);
       // Memory allocations
-      
+
+       
 #ifdef HAVE_ASM_MMX
-      if (!
-	  (mmx_padded =
-	   (int16_t *) malloc (4 * sizeof (int16_t) + ALIGNEMENT))
-	  || !(mmx_cubic =
-	       (int16_t *) malloc (4 * sizeof (int16_t) + ALIGNEMENT))
-	  || !(mmx_res =
+      if (!(mmx_res =
 	       (int32_t *) malloc (2 * sizeof (int32_t) + ALIGNEMENT)))
 	mjpeg_error_exit1
 	  ("Could not allocate memory for mmx registers. STOP!");
       // alignement instructions
-      if (((unsigned long int) mmx_padded % ALIGNEMENT) != 0)
-	mmx_padded =
-	  (int16_t *) ((((unsigned long int) mmx_padded / ALIGNEMENT) + 1) *
-		       ALIGNEMENT);
-      if (((unsigned long int) mmx_cubic % ALIGNEMENT) != 0)
-	mmx_cubic =
-	  (int16_t *) ((((unsigned long int) mmx_cubic / ALIGNEMENT) + 1) *
-		       ALIGNEMENT);
       if (((unsigned long int) mmx_res % ALIGNEMENT) != 0)
 	mmx_res =
 	  (int32_t *) ((((unsigned long int) mmx_res / ALIGNEMENT) + 1) *
 		       ALIGNEMENT);
-       // Developper's testing purpose only
+       
        if (mmx==1)
 	 {
 	    if (width_neighbors <= MAXWIDTHNEIGHBORS)
@@ -1602,7 +1592,6 @@ main (int argc, char *argv[])
 		 mjpeg_warn("please use multiple yuvscaler downscaling to achieve the desired downscaling ratio");
 	      }
 	 }
-       
 #endif
 
 
@@ -1611,10 +1600,6 @@ main (int argc, char *argv[])
       if (
 	  !(cspline_w =            (int16_t *) malloc ( width_neighbors  * output_active_width  * sizeof (int16_t))) ||
 	  !(cspline_h =            (int16_t *) malloc ( height_neighbors * output_active_height * sizeof (int16_t))) ||
-	  !(cspline_w_neighbors = (int16_t **) malloc ( width_neighbors  * sizeof (int16_t *))) ||
-	  !(cspline_h_neighbors = (int16_t **) malloc ( height_neighbors * sizeof (int16_t *))) ||
-	  !(csw                 = (int16_t **) malloc ( width_neighbors  * sizeof (int16_t *))) ||
-	  !(csh                 = (int16_t **) malloc ( height_neighbors * sizeof (int16_t *))) ||
 	  !(in_col =          (unsigned int *) malloc ( output_active_width  * sizeof (unsigned int))) ||
 	  !(b =                      (float *) malloc ( output_active_width  * sizeof (float))) ||
 	  !(in_line =         (unsigned int *) malloc ( output_active_height * sizeof (unsigned int))) ||
@@ -1622,16 +1607,14 @@ main (int argc, char *argv[])
 	  )
 	mjpeg_error_exit1
 	  ("Could not allocate memory for bicubic tables. STOP!");
+       int16_t *pointer;
 
        // Initialisation of bicubic tables
-       for (w=0;w<width_neighbors;w++) 
-	 csw[w]=cspline_w_neighbors[w]=cspline_w+w*output_active_width;
-       for (h=0;h<height_neighbors;h++) 
-	 csh[h]=cspline_h_neighbors[h]=cspline_h+h*output_active_height;
-       
+       pointer=cspline_h;
        for (out_line = 0; out_line < output_active_height; out_line++)
 	 {
 	    in_line[out_line] = (out_line * input_height_slice) / output_height_slice;
+	    //	    mjpeg_debug("in_line[%u]=%u",out_line,in_line[out_line]);
 	    a[out_line] = 
 	      (float) ((out_line * input_height_slice) % output_height_slice) /
 	      (float) output_height_slice;
@@ -1639,20 +1622,18 @@ main (int argc, char *argv[])
 	    for (h=0;h<height_neighbors;h++)
 	      {
 		 cspline_value=cubic_spline ((a[out_line] + height_offset -h)*height_scale, bicubic_div_height)*height_scale;
-//		 mjpeg_debug("cspline_value=%d,cspline=%d,a[%u]=%g,height_offset=%d,height_scale=%g,h=%lu",cspline_value,cubic_spline ((a[out_line] + height_offset -h)*height_scale, bicubic_div_height),out_line,a[out_line],height_offset,height_scale,h);
+		 mjpeg_debug("cspline_value=%d,cspline=%d,a[%u]=%g,height_offset=%d,height_scale=%g,h=%lu",cspline_value,cubic_spline ((a[out_line] + height_offset -h)*height_scale, bicubic_div_height),out_line,a[out_line],height_offset,height_scale,h);
 		 somme+=cspline_value;
-		 // Normalisation test and normalisation of cspline 
-		 if ((h==(height_neighbors-1)) && (somme != bicubic_div_height))
-		   cspline_value += bicubic_div_height-somme;
-		 *(csh[h]++)=cspline_value;
+		 *(pointer++)=cspline_value;
 	      }
+	    if (cspline_value!=0)
+	      zero_height_neighbors=0;
+	    // Normalisation test and normalisation of cspline 
+	    if (somme != bicubic_div_height) 
+	      *(pointer-2) += bicubic_div_height-somme; 
 	 }
-
-/*       for (h=0;h<height_neighbors;h++) 
-	 csh[h]=cspline_h_neighbors[h];
-       for (w=0;w<output_active_height;w++)
-	 mjpeg_info("*(csh[0,1,2,3]++)=%d %d %d %d",*(csh[0]++),*(csh[1]++),*(csh[2]++),*(csh[3]++));
-*/       
+       
+       pointer=cspline_w;
        for (out_col = 0; out_col < output_active_width; out_col++)
 	 {
 	    in_col[out_col] = (out_col * input_width_slice) / output_width_slice;
@@ -1664,13 +1645,16 @@ main (int argc, char *argv[])
 	      {
 //		 mjpeg_debug("b[%u]=%g,width_offset=%d,width_scale=%g,w=%lu",out_col,b[out_col],width_offset,width_scale,w);
 		 cspline_value=cubic_spline ((b[out_col] + width_offset -w)*width_scale, bicubic_div_width)*width_scale;
+		 mjpeg_debug("cspline_value=%d,b[%u]=%g,height_offset=%d,height_scale=%g,w=%lu",cspline_value,out_col,b[out_col],height_offset,height_scale,w);
 		 somme+=cspline_value;
-		 // Normalisation test and normalisation of cspline 
-		 if ((w==(width_neighbors-1)) && (somme != bicubic_div_width))
-		   cspline_value -= somme - bicubic_div_width;
-		 *(csw[w]++)=cspline_value;
+		 *(pointer++)=cspline_value;
 	      }
-	}
+	    if (cspline_value!=0)
+	      zero_width_neighbors=0;
+	    // Normalisation test and normalisation of cspline 
+	    if (somme != bicubic_div_width) 
+	      *(pointer-2) += bicubic_div_width-somme; 
+	 }
        
 // Added +2*ALIGNEMENT for MMX scaling routines that loads a higher number of pixels than necessary (memory overflow) 
       if (interlaced == Y4M_ILACE_NONE)
@@ -1692,17 +1676,22 @@ main (int argc, char *argv[])
 	    mjpeg_error_exit1
 	      ("Could not allocate memory for padded_top|bottom tables. STOP!");
 	}
+       if (!(intermediate = (int32_t *) malloc(output_active_width*(input_useful_height + height_neighbors)*sizeof(int32_t)))) 
+	     mjpeg_error_exit1
+	     ("Could not allocate memory for intermediate. STOP!");
+       
     }
-  // END OF BICUBIC BICUBIC BICUBIC     
+   
+   // END OF BICUBIC BICUBIC BICUBIC     
 
 
   // Pointers allocations
   if (!(line = malloc (input_width)) ||
       !(field1 = malloc (3 * (input_width / 2) * (input_height / 2))) ||
       !(field2 = malloc (3 * (input_width / 2) * (input_height / 2))) ||
-      !(input = malloc (((input_width * input_height * 3) / 2) + ALIGNEMENT))
-      || !(output =
-	   malloc (((output_width * output_height * 3) / 2) + ALIGNEMENT)))
+      !(input = malloc (((input_width * input_height * 3) / 2) + ALIGNEMENT)) ||
+      !(output = malloc (((output_width * output_height * 3) / 2) + ALIGNEMENT))
+      )
     mjpeg_error_exit1
       ("Could not allocate memory for line, field1, field2, input or output tables. STOP!");
 
@@ -1869,6 +1858,9 @@ main (int argc, char *argv[])
   if (no_header == 0)
     y4m_write_stream_header (output_fd, &out_streaminfo);
   y4m_log_stream_info (LOG_INFO, "output: ", &out_streaminfo);
+   
+  
+   
 
   // Master loop : continue until there is no next frame in stdin
   while ((err = yuvscaler_y4m_read_frame
@@ -1929,22 +1921,22 @@ main (int argc, char *argv[])
 		padding_interlaced (padded_top, padded_bottom, input_y, 0,left_offset,top_offset,right_offset,bottom_offset,width_pad);
 		cubic_scale_interlaced (padded_top, padded_bottom, output_y, 
 					in_col, in_line,
-					cspline_w_neighbors, width_neighbors,
-					cspline_h_neighbors, height_neighbors,
+					cspline_w, width_neighbors, zero_width_neighbors,
+					cspline_h, height_neighbors, zero_height_neighbors,
 					0);
 		if (!mono) 
 		  {
 		     padding_interlaced (padded_top, padded_bottom, input_u, 1,left_offset,top_offset,right_offset,bottom_offset,width_pad);
 		     cubic_scale_interlaced (padded_top, padded_bottom, output_u, 
 					     in_col, in_line,
-					     cspline_w_neighbors, width_neighbors,
-					     cspline_h_neighbors, height_neighbors,
+					     cspline_w, width_neighbors,zero_width_neighbors,
+					     cspline_h, height_neighbors,zero_height_neighbors,
 					     1);
 		     padding_interlaced (padded_top, padded_bottom, input_v, 1,left_offset,top_offset,right_offset,bottom_offset,width_pad);
 		     cubic_scale_interlaced (padded_top, padded_bottom, output_v, 
 					     in_col, in_line,
-					     cspline_w_neighbors, width_neighbors,
-					     cspline_h_neighbors, height_neighbors,
+					     cspline_w, width_neighbors,zero_width_neighbors,
+					     cspline_h, height_neighbors,zero_height_neighbors,
 					     1);
 		  }
 	     }
@@ -1953,22 +1945,22 @@ main (int argc, char *argv[])
 		padding (padded_input, input_y, 0,left_offset,top_offset,right_offset,bottom_offset,width_pad);
 		cubic_scale (padded_input, output_y, 
 			     in_col, in_line,
-			     cspline_w_neighbors, width_neighbors,
-			     cspline_h_neighbors, height_neighbors,
+			     cspline_w, width_neighbors,  zero_width_neighbors,
+			     cspline_h, height_neighbors, zero_height_neighbors,
 			     0);
 		if (!mono) 
 		  {
 		     padding (padded_input, input_u, 1,left_offset,top_offset,right_offset,bottom_offset,width_pad);
 		     cubic_scale (padded_input, output_u, 
 				  in_col, in_line,
-				  cspline_w_neighbors, width_neighbors,
-				  cspline_h_neighbors, height_neighbors,
+				  cspline_w, width_neighbors, zero_width_neighbors,
+				  cspline_h, height_neighbors, zero_height_neighbors,
 				  1);
 		     padding (padded_input, input_v, 1,left_offset,top_offset,right_offset,bottom_offset,width_pad);
 		     cubic_scale (padded_input, output_v, 
 				  in_col, in_line,
-				  cspline_w_neighbors, width_neighbors,
-				  cspline_h_neighbors, height_neighbors,
+				  cspline_w, width_neighbors, zero_width_neighbors,
+				  cspline_h, height_neighbors, zero_height_neighbors,
 				  1);
 		  }
 	     }
