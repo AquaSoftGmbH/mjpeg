@@ -1,4 +1,9 @@
+*.lo
+*.la
+.deps
+.libs
 Makefile
 Makefile.in
+yuvfilter
 yuvycsnoise
 yuvkineco
