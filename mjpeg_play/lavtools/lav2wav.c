@@ -227,6 +227,7 @@ silence_bs=0; silence_ch=0;
 		  silence_sr=44100;
 		  silence_bs=16;
 		  silence_ch=2;
+                  break;
 		}
            case 'f':
 	   case 'c':
@@ -239,7 +240,6 @@ silence_bs=0; silence_ch=0;
 		Usage(argv[0]);
         }
     }
-
     /* Open editlist */
 	if( argc-optind < 1)
 		Usage(argv[0]);
