@@ -45,7 +45,7 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
   y4m_si_set_height(&si, h0->height);
   y4m_si_set_framerate(&si, mpeg_framerate(h0->fpscode));
   y4m_si_set_interlace(&si, h0->interlace);
-  y4m_si_set_sampleaspect(&si, h0->aspectratio);
+  y4m_si_set_sampleaspect(&si, h0->sampleaspect);
   if (y4m_write_stream_header(1, &si) != Y4M_OK) {
     YfFreeTask(h);
     h = NULL;

@@ -51,7 +51,7 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
   h->height      = y4m_si_get_height(&si);
   h->fpscode     = mpeg_framerate_code(y4m_si_get_framerate(&si));
   h->interlace   = y4m_si_get_interlace(&si);
-  h->aspectratio = y4m_si_get_sampleaspect(&si);
+  h->sampleaspect= y4m_si_get_sampleaspect(&si);
  FINI_SI:
   y4m_fini_stream_info(&si);
   return h;

@@ -60,7 +60,7 @@ typedef struct YfTaskCore_tag {
   /* protected: filter must set */
   int width, height, fpscode;
   int interlace;
-  y4m_ratio_t aspectratio;
+  y4m_ratio_t sampleaspect;
 } YfTaskCore_t;
 
 typedef struct YfTaskClass_tag {
