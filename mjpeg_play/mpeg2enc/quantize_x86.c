@@ -280,6 +280,7 @@ static int quant_non_intra_mmx( struct QuantizerWorkSpace *wsp,
                 }
                 else
                 {
+		    emms();
                     return quant_non_intra(wsp, src, dst, 
                                            q_scale_type,
                                            satlim,
