@@ -198,7 +198,11 @@ static int variance(  uint8_t *mb, int size, int lx);
 static int dist22 ( uint8_t *blk1, uint8_t *blk2,  int qlx, int qh);
 
 static int dist44 ( uint8_t *blk1, uint8_t *blk2,  int flx, int fh);
-
+static int dist2_22( uint8_t *blk1, uint8_t *blk2,
+					 int lx, int h);
+static int bdist2_22( uint8_t *blk1f, uint8_t *blk1b, 
+					  uint8_t *blk2,
+					  int lx, int h);
 
 static int (*pbuild_sub22_mcomps)( int i0,  int j0, int ihigh, int jhigh, 
 								   int null_mc_sad,
@@ -219,7 +223,11 @@ static int (*pmblock_sub44_dists)( uint8_t *blk,  uint8_t *ref,
 							int h, int rowstride, 
 							int threshold,
 							mc_result_s *resvec);
-
+static int (*pdist2_22)( uint8_t *blk1, uint8_t *blk2,
+						 int lx, int h);
+static int (*pbdist2_22)( uint8_t *blk1f, uint8_t *blk1b, 
+						  uint8_t *blk2,
+						  int lx, int h);
 
 static int dist1_00( uint8_t *blk1, uint8_t *blk2,  int lx, int h, int distlim);
 static int dist1_01(uint8_t *blk1, uint8_t *blk2, int lx, int h);
@@ -271,6 +279,8 @@ void init_motion()
 		pbdist1 = bdist1;
 		pdist2 = dist2;
 		pbdist2 = bdist2;
+		pdist2_22 = dist2_22;
+		pbdist2_22 = bdist2_22;
 		pfind_best_one_pel = find_best_one_pel;
 		pbuild_sub22_mcomps	= build_sub22_mcomps;
 	 }
@@ -287,6 +297,8 @@ void init_motion()
 		pbdist1 = bdist1_mmx;
 		pdist2 = dist2_mmx;
 		pbdist2 = bdist2_mmx;
+		pdist2_22 = dist2_22_mmx;
+		pbdist2_22 = bdist2_22_mmx;
 		pfind_best_one_pel = find_best_one_pel_mmxe;
 		pbuild_sub22_mcomps	= build_sub22_mcomps_mmxe;
 		pmblock_sub44_dists = mblock_sub44_dists_mmxe;
@@ -304,6 +316,8 @@ void init_motion()
 		pbdist1 = bdist1_mmx;
 		pdist2 = dist2_mmx;
 		pbdist2 = bdist2_mmx;
+		pdist2_22 = dist2_22_mmx;
+		pbdist2_22 = bdist2_22_mmx;
 		pfind_best_one_pel = find_best_one_pel;
 		pbuild_sub22_mcomps	= build_sub22_mcomps;
 		pmblock_sub44_dists = mblock_sub44_dists_mmx;
@@ -451,8 +465,8 @@ static int unidir_chrom_var_sum( mb_motion_s *lum_mc,
 	int cblkoffset = (lum_mc->fieldoff>>1) +
 		(lum_mc->pos.x>>2) + (lum_mc->pos.y>>2)*uvlx;
 	
-	return 	(dist2_22_mmx( ref[1] + cblkoffset, ssblk->umb, uvlx, uvh) +
-			 dist2_22_mmx( ref[2] + cblkoffset, ssblk->vmb, uvlx, uvh))*2;
+	return 	((*pdist2_22)( ref[1] + cblkoffset, ssblk->umb, uvlx, uvh) +
+			 (*pdist2_22)( ref[2] + cblkoffset, ssblk->vmb, uvlx, uvh))*2;
 }
 
 /*
@@ -489,11 +503,12 @@ int bidir_chrom_var_sum( mb_motion_s *lum_mc_f,
 	int cblkoffset_b = (lum_mc_b->fieldoff>>1) + 
 		(lum_mc_b->pos.x>>2) + (lum_mc_f->pos.y>>2)*uvlx;
 	
-	return 	(bdist2_22_mmx( ref_f[1] + cblkoffset_f, ref_b[1] + cblkoffset_b,
+	return 	(
+		(*pbdist2_22)( ref_f[1] + cblkoffset_f, ref_b[1] + cblkoffset_b,
 					   ssblk->umb, uvlx, uvh ) +
-			 bdist2_22_mmx( ref_f[2] + cblkoffset_f, ref_b[2] + cblkoffset_b,
-							ssblk->vmb, uvlx, uvh ))*2
-		;
+		(*pbdist2_22)( ref_f[2] + cblkoffset_f, ref_b[2] + cblkoffset_b,
+					   ssblk->vmb, uvlx, uvh ))*2;
+
 }
 
 static int chrom_var_sum( subsampled_mb_s *ssblk, int h, int lx )
@@ -2716,6 +2731,59 @@ static int dist44( uint8_t *s44blk1, uint8_t *s44blk2,int qlx,int qh)
 	return s;
 }
 
+/*
+ * total squared difference between two (8*h) blocks of 2*2 sub-sampled pels
+ * blk1,blk2: addresses of top left pels of both blocks
+ * lx:        distance (in bytes) of vertically adjacent pels
+ * h:         height of block (usually 8 or 16)
+ */
+ 
+static int dist2_22(uint8_t *blk1, uint8_t *blk2, int lx, int h)
+{
+	uint8_t *p1 = blk1, *p2 = blk2;
+	int i,j,v;
+	int s = 0;
+	for (j=0; j<h; j++)
+	{
+		for (i=0; i<8; i++)
+		{
+			v = p1[i] - p2[i];
+			s+= v*v;
+		}
+		p1+= lx;
+		p2+= lx;
+	}
+	return s;
+}
+
+/* total squared difference between bidirection prediction of (8*h)
+ * blocks of 2*2 sub-sampled pels and reference 
+ * blk1f, blk1b,blk2: addresses of top left
+ * pels of blocks 
+ * lx: distance (in bytes) of vertically adjacent
+ * pels 
+ * h: height of block (usually 4 or 8)
+ */
+ 
+static int bdist2_22(uint8_t *blk1f, uint8_t *blk1b, uint8_t *blk2, 
+					 int lx, int h)
+{
+	uint8_t *p1f = blk1f,*p1b = blk1b,*p2 = blk2;
+	int i,j,v;
+	int s = 0;
+	for (j=0; j<h; j++)
+	{
+		for (i=0; i<8; i++)
+		{
+			v = ((p1f[i]+p1b[i]+1)>>1) - p2[i];
+			s+= v*v;
+		}
+		p1f+= lx;
+		p1b+= lx;
+		p2+= lx;
+	}
+	return s;
+}
 
 /*
  * total squared difference between two (16*h) blocks
