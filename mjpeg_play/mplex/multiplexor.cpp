@@ -1102,7 +1102,7 @@ void Multiplexor::Multiplex()
 		clockticks earliest = 0;
 		for( str = estreams.begin(); str < estreams.end(); ++str )
 		{
-                mjpeg_info("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld", 
+                mjpeg_debug("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld", 
                            (*str)->stream_id,
                            current_SCR /300,
                            (*str)->MuxPossible(current_SCR),
