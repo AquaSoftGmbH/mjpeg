@@ -1697,7 +1697,7 @@ static void *lavrec_software_sync_thread(void* arg)
             break;
       }
 
-      pthread_mutex_lock(&(settings->queue_mutex));
+      pthread_mutex_lock(&(settings->encoding_mutex));
       while (settings->queue_left < MIN_QUEUES_NEEDED)
       {
 	 if (settings->is_queued[frame] <= 0 ||
@@ -1719,9 +1719,12 @@ static void *lavrec_software_sync_thread(void* arg)
          {
             pthread_cond_wait(&(settings->buffer_completion[qframe]),
                &(settings->encoding_mutex));
+            if (settings->please_stop_syncing)
+               pthread_exit(0);
          }
          if (!lavrec_queue_buffer(info, &qframe))
          {
+            pthread_mutex_unlock(&(settings->encoding_mutex));
             pthread_mutex_lock(&(settings->software_sync_mutex));
             settings->software_sync_ready[qframe] = -1;
             pthread_cond_broadcast(&(settings->software_sync_wait[qframe]));
@@ -1739,10 +1742,10 @@ static void *lavrec_software_sync_thread(void* arg)
       {
 	 lavrec_msg(LAVREC_MSG_DEBUG, info,
 		    "Software sync thread stopped");
-	 pthread_mutex_unlock(&settings->queue_mutex);
+	 pthread_mutex_unlock(&settings->encoding_mutex);
 	 pthread_exit(NULL);
       }
-      pthread_mutex_unlock(&settings->queue_mutex);
+      pthread_mutex_unlock(&settings->encoding_mutex);
       
 retry:
       if (ioctl(settings->video_fd, VIDIOCSYNC, &frame) < 0)
@@ -2139,10 +2142,11 @@ static void lavrec_record(lavrec_t *info)
 
    if (info->software_encoding)
    {
-      pthread_mutex_lock(&settings->queue_mutex);
+      pthread_mutex_lock(&settings->encoding_mutex);
       settings->please_stop_syncing = 1; /* Ask the software sync thread to stop */
-      pthread_cond_broadcast(&settings->queue_wait);
-      pthread_mutex_unlock(&settings->queue_mutex);
+      for (x=0;x<settings->softreq.frames;x++)
+        pthread_cond_broadcast(&settings->buffer_completion[x]);
+      pthread_mutex_unlock(&settings->encoding_mutex);
       
       for (x = 0; x < info->num_encoders; x++)
       {
