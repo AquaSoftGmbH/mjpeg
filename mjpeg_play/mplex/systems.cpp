@@ -28,11 +28,17 @@ PS_Stream:: PS_Stream( unsigned _mpeg,
 	max_segment_size = max_seg_size;
 	strncpy( filename_pat, name_pat, MAXPATHLEN );
 	snprintf( cur_filename, MAXPATHLEN, filename_pat, segment_num );
+}
+
+int PS_Stream::Open()
+{
 	strm = fopen( cur_filename, "wb" );
 	if( strm == NULL )
 	{
 		mjpeg_error_exit1( "Could not open for writing: %s", cur_filename );
 	}
+
+	return 0;
 }
 
 bool
@@ -74,12 +80,12 @@ PS_Stream::NextFile( )
 	
 		
 unsigned int 
-PS_Stream::PacketPayload( MuxStream &strm,
+PS_Stream::PacketPayload( MuxStream &mux_strm,
 						  Sys_header_struc *sys_header, 
 						  Pack_struc *pack_header, 
 						  int buffers, int PTSstamp, int DTSstamp )
 {
-  int payload = sector_size - (PACKET_HEADER_SIZE + strm.zero_stuffing);
+  int payload = sector_size - (PACKET_HEADER_SIZE + mux_strm.zero_stuffing);
 	if( sys_header != NULL )
 		payload -= sys_header->length;
 	if( mpeg_version == 2 )
@@ -416,7 +422,7 @@ unsigned int
 PS_Stream::CreateSector (Pack_struc	 	 *pack,
 						 Sys_header_struc *sys_header,
 						 unsigned int     max_packet_data_size,
-						 MuxStream        &strm,
+						 MuxStream        &mux_strm,
 						 bool 	 buffers,
 						 bool    end_marker,
 						 clockticks   	 PTS,
@@ -434,13 +440,13 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 	unsigned int actual_packet_data_size;
 	int packet_data_to_read;
 	int bytes_short;
-	uint8_t 	 type = strm.stream_id;
-	uint8_t 	 buffer_scale = strm.BufferScale();
-	unsigned int buffer_size = strm.BufferSizeCode();
+	uint8_t 	 type = mux_strm.stream_id;
+	uint8_t 	 buffer_scale = mux_strm.BufferScale();
+	unsigned int buffer_size = mux_strm.BufferSizeCode();
 	unsigned int sector_pack_area;
 	index = sector_buf;
 
-	sector_pack_area = sector_size - strm.zero_stuffing;
+	sector_pack_area = sector_size - mux_strm.zero_stuffing;
 	if( end_marker )
 		sector_pack_area -= 4;
 
@@ -545,7 +551,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 
         (end_marker ? target_packet_data_size+4 : target_packet_data_size) 
         != 
-        PacketPayload( strm, sys_header, pack, buffers,
+        PacketPayload( mux_strm, sys_header, pack, buffers,
                        timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS) )
 	
     { 
@@ -553,7 +559,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
                timestamps,
 			   sys_header!=0, pack!=0, buffers,
 			   target_packet_data_size , 
-			   PacketPayload( strm, sys_header, pack, buffers,
+			   PacketPayload( mux_strm, sys_header, pack, buffers,
 							  timestamps & TIMESTAMPBITS_PTS, 
                               timestamps & TIMESTAMPBITS_DTS));
         exit(1);
@@ -574,7 +580,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 
     /* MPEG-1, MPEG-2: read in available packet data ... */
 
-    actual_packet_data_size = strm.ReadPacketPayload(index,packet_data_to_read);
+    actual_packet_data_size = mux_strm.ReadPacketPayload(index,packet_data_to_read);
 
     // DVD MPEG2: AC3 in PRIVATE_STR_1: fill in syncword count and offset
 #ifdef MUX_DEBUG
@@ -682,7 +688,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
     }
 
     unsigned int j;
-    for (j = 0; j < strm.zero_stuffing; j++)
+    for (j = 0; j < mux_strm.zero_stuffing; j++)
         *(index++) = static_cast<uint8_t>(0);
 	
 

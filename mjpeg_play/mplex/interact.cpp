@@ -421,6 +421,20 @@ void MultiplexJob::InputStreamsFromCmdLine (unsigned int argc, char* argv[] )
         
 }
 
+PS_Stream *MultiplexJob::GetOutputStream(
+			   unsigned mpeg,
+               unsigned int sector_size,
+               const char *filename_pat,
+               off_t max_segment_size // 0 = No Limit
+			   )
+{
+	PS_Stream *psstrm;
+
+	psstrm = new PS_Stream(mpeg, sector_size,
+                           filename_pat, max_segment_size );
+
+	return psstrm;
+}
 
 
 /* 

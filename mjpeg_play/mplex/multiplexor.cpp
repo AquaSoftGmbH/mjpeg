@@ -33,6 +33,15 @@ Multiplexor::Multiplexor(MultiplexJob &job)
     underruns = 0;
     InitSyntaxParameters(job);
     InitInputStreams(job);
+
+	/* Get an output stream object for the job */
+	psstrm = job.GetOutputStream( mpeg, sector_size,
+								  output_filename_pattern, max_segment_size );
+	if( !psstrm )
+	{
+		mjpeg_error_exit1("Failed to optain an output stream");
+	}
+
 }
 
 
@@ -532,8 +541,7 @@ void Multiplexor::Init()
 	unsigned int nominal_rate_sum;
 	
 	mjpeg_info("SYSTEMS/PROGRAM stream:");
-	psstrm = new PS_Stream(mpeg, sector_size,
-                           output_filename_pattern, max_segment_size );
+	psstrm->Open();
 	
     /* These are used to make (conservative) decisions
 	   about whether a packet should fit into the recieve buffers... 

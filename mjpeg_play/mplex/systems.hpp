@@ -47,14 +47,14 @@ public:
                off_t max_segment_size // 0 = No Limit
         );
 
-    bool FileLimReached( );
-    void NextFile();
-    unsigned int PacketPayload( MuxStream &strm,
+    virtual bool FileLimReached( );
+    virtual void NextFile();
+    virtual unsigned int PacketPayload( MuxStream &strm,
                                 Sys_header_struc *sys_header, 
                                 Pack_struc *pack_header, 
                                 int buffers, int PTSstamp, int DTSstamp );
 
-    unsigned int CreateSector (Pack_struc	 	 *pack,
+    virtual unsigned int CreateSector (Pack_struc	 	 *pack,
                                Sys_header_struc *sys_header,
                                unsigned int     max_packet_data_size,
                                MuxStream        &strm,
@@ -64,7 +64,7 @@ public:
                                clockticks   	 DTS,
                                uint8_t 	 timestamps
         );
-    void RawWrite(uint8_t *data, unsigned int len);
+    virtual void RawWrite(uint8_t *data, unsigned int len);
     static void BufferSectorHeader( uint8_t *buf,
                              Pack_struc	 	 *pack,
                              Sys_header_struc *sys_header,
@@ -90,11 +90,11 @@ public:
 
         }
 
-    void CreatePack ( Pack_struc	 *pack,
+    virtual void CreatePack ( Pack_struc	 *pack,
                       clockticks   SCR,
                       unsigned int 	 mux_rate
         );
-    void CreateSysHeader ( Sys_header_struc *sys_header,
+    virtual void CreateSysHeader ( Sys_header_struc *sys_header,
                            unsigned int	 rate_bound,
                            bool	 fixed,
                            int	     CSPS,
@@ -103,7 +103,8 @@ public:
                            vector<MuxStream *> &streams
         );
 
-    void Close() { fclose(strm); }
+    virtual void Close() { fclose(strm); }
+    virtual int  Open( );
 
 private:
 

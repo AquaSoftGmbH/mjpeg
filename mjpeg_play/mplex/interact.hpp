@@ -29,6 +29,7 @@
 #include <vector>
 #include "mjpeg_types.h"
 #include "stream_params.hpp"
+#include "systems.hpp"
 
 class IBitStream;
 
@@ -74,12 +75,20 @@ class MultiplexJob : public MultiplexParams
 {
 public:
   MultiplexJob();
-  void SetFromCmdLine( unsigned int argc, char *argv[]);
+  virtual void SetFromCmdLine( unsigned int argc, char *argv[]);
+  virtual PS_Stream *GetOutputStream(
+			   unsigned mpeg,
+               unsigned int sector_size,
+               const char *filename_pat,
+               off_t max_segment_size // 0 = No Limit
+			   );
+
 private:
-  void InputStreamsFromCmdLine (unsigned int argc, char* argv[] );
-  static void Usage(char *program_name);
-  bool ParseVideoOpt( const char *optarg );
-  bool ParseLpcmOpt( const char *optarg );
+  virtual void InputStreamsFromCmdLine (unsigned int argc, char* argv[] );
+  virtual void Usage(char *program_name);
+  virtual bool ParseVideoOpt( const char *optarg );
+  virtual bool ParseLpcmOpt( const char *optarg );
+
 public:  
   vector<IBitStream *> mpa_files;
   vector<IBitStream *> ac3_files;
