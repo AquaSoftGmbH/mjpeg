@@ -18,6 +18,7 @@
 from string import *
 from time import *
 import marshal 
+import ConfigParser
 
 class GuideCmd:
 	def __init__(self, func, *args, **kw):
@@ -31,11 +32,27 @@ class GuideCmd:
 		apply(self.func, args, kw)
 
 
-
 class Guide:
 
 	def __init__(self):
 		self.listing = []
+		self.config_data = ConfigParser.ConfigParser()
+		self.config_data.read("/etc/dvcr")
+
+	def config_string(self, section, name):
+		try:
+			return self.config_data.get(section, name)
+		except:
+			return None
+
+	def config_list(self, section, name):
+		try:
+			data = self.config_data.get(section, name)
+		except:
+			return None
+
+		return map(strip, split(data, ","))
+		
 
 	def output(self):
 		self.listing.sort()
@@ -49,12 +66,14 @@ class Guide:
 		self.listing.append(new_entry)
 
 	def save(self):
-		file_name = strftime("%y.%m.%d", gmtime(self.listing[0][0]))
+		dir = self.config_string("global", "guidedir")
+		file_name = dir+strftime("%y.%m.%d",gmtime(self.listing[0][0]))
 		file = open(file_name, "w")
 		marshal.dump(self.listing, file)
 
 	def load(self, seconds):
-		file_name = strftime("%y.%m.%d", gmtime(seconds))
+		dir = self.config_string("global", "guidedir")
+		file_name = dir + strftime("%y.%m.%d", gmtime(seconds))
 		file = open(file_name, "r")
 		self.listing = marshal.load(file)
 
