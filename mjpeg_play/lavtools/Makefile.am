@@ -1,7 +1,5 @@
 # Makefile for lavtools
 
-CXX = g++
-
 INCLUDES =  -I$(top_srcdir) -I$(top_srcdir)/mjpeg -I$(includedir) \
 	-DG_LOG_DOMAIN=\"lavtools\" -DLAVPLAY_VERSION=\"$(VERSION)\" \
 	$(MOVTAR_CFLAGS) $(QUICKTIME_CFLAGS) -I /usr/X11R6/include/X11 \
@@ -14,7 +12,8 @@ INCLUDES =  -I$(top_srcdir) -I$(top_srcdir)/mjpeg -I$(includedir) \
 lib_LTLIBRARIES = liblavfile.la liblavjpeg.la liblavrec.la
 
 liblavincludedir = $(includedir)/mjpegtools
-liblavinclude_HEADERS = editlist.h lav_io.h jpegutils.h frequencies.h
+liblavinclude_HEADERS = editlist.h lav_io.h jpegutils.h frequencies.h \
+	liblavrec.h
 
 liblavfile_la_SOURCES = editlist.c lav_io.c avilib.c
 liblavfile_la_LDFLAGS = \
@@ -36,7 +35,7 @@ liblavrec_la_LDFLAGS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
 	-release $(LT_RELEASE) \
 	-export-dynamic \
-	$(MOVTAR_LIBS) $(QUICKTIME_LIBS) $(JPEG_LIBS) -lpthread
+	$(MOVTAR_LIBS) $(QUICKTIME_LIBS) $(JPEG_LIBS) $(PTHREAD_LIBS)
 
 # *********************************************************************
 # The tools themselves
@@ -76,7 +75,7 @@ matteblend_flt_SOURCES = matteblend.flt.c yuv4mpeg.c ${lav_headers}
 matteblend_flt_LDADD = -L$(top_srcdir)/utils -lutils
 
 lavplay_SOURCES = lavplay.c audiolib.c $(lav_headers)
-lavplay_LDADD = -L$(top_builddir)/mjpeg -lmjpeg $(PTHREAD_LIBS)\
+lavplay_LDADD = -L$(top_builddir)/mjpeg -lmjpeg $(PTHREAD_LIBS) \
 	-L$(top_srcdir)/utils -lutils $(SDL_LIBS) \
 	-L$(top_srcdir)/lavtools/.libs -llavfile -llavjpeg
 
@@ -89,11 +88,11 @@ testrec_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lutils
 
 lav2yuv_SOURCES = lav2yuv.c yuv4mpeg.c lav_common.c $(lav_headers)
 lav2yuv_LDADD = -L$(top_srcdir)/utils -lutils \
-	-L$(top_builddir)/lavtools/.libs -llavfile -llavjpeg $(DV_LIBS)
+	-L$(top_srcdir)/lavtools/.libs -llavfile -llavjpeg $(DV_LIBS)
 
 lav2divx_SOURCES = lav2divx.cpp lav_common.c jpegutils.c yuv4mpeg.c $(lav_headers)
 lav2divx_LDADD = -L$(top_srcdir)/utils -lutils \
-	-L$(top_builddir)/lavtools/.libs -llavfile -llavjpeg $(DV_LIBS) \
+	-L$(top_srcdir)/lavtools/.libs -llavfile -llavjpeg $(DV_LIBS) \
 	$(AVIPLAY_LIBS)
 
 lavpipe_SOURCES = lavpipe.c yuv4mpeg.c pipelist.c $(lav_headers)

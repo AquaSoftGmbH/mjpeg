@@ -36,7 +36,9 @@ int verbose = 1;
 EditList el;
 
 // was extern
-dv_decoder_t *decoder;
+#ifdef SUPPORT_READ_DV2
+extern dv_decoder_t *decoder;
+#endif
 
 void Usage(char *str)
 {

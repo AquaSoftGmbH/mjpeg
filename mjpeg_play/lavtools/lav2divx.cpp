@@ -199,7 +199,7 @@ main (int argc, char **argv)
 	LavBuffers buffer;
 
 #ifdef SUPPORT_READ_DV2
-	dv_decoder_t	*decoder;
+	extern dv_decoder_t	*decoder;
 #endif
 
 	memset (&bounds, 0, sizeof(LavBounds));
