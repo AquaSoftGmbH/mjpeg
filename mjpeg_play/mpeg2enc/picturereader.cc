@@ -217,10 +217,10 @@ void PictureReader::ReadChunk()
           }
           last_frame = frames_read-1;
           istrm_nframes = frames_read;
-          mjpeg_info( "Signalling last frame = %d", last_frame );
+          mjpeg_info( "Signaling last frame = %d", last_frame );
           if( encparams.parallel_read )
           {
-              //mjpeg_info( "PRO: Signalling new_chunk_ack @ %d", frames_read );
+              //mjpeg_info( "PRO: Signaling new_chunk_ack @ %d", frames_read );
               pthread_cond_broadcast( &new_chunk_ack );
           }
           return;
@@ -241,7 +241,7 @@ void PictureReader::ReadChunk()
 
 	  if( encparams.parallel_read )
 	  {
-		  //mjpeg_info( "PRO: Signalling new_chunk_ack @ %d", frames_read );
+		  //mjpeg_info( "PRO: Signaling new_chunk_ack @ %d", frames_read );
 		  pthread_cond_broadcast( &new_chunk_ack );
 	  }
 
@@ -358,7 +358,7 @@ void PictureReader::ReadChunkParallel( int num_frame)
 		if( frames_read - num_frame < READ_CHUNK_SIZE && 
 			frames_read < istrm_nframes )
 		{
-			//mjpeg_info( "CON: Running low on frames: signalling new_chunk_req" );
+			//mjpeg_info( "CON: Running low on frames: signaling new_chunk_req" );
 
 			pthread_cond_broadcast( &new_chunk_req );
 		}
