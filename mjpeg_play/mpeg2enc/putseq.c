@@ -243,11 +243,6 @@ int find_gop_length( int gop_start_frame,
 			i = gop_max_len;
 	}
 
-	/* TODO DEBUG remove....
-	for( j= gop_start_frame; j<= gop_start_frame+gop_max_len+gop_min_len; ++j)
-		printf( "%03d ", frame_lum_mean( j+I_frame_temp_ref ));
-		printf( "\n");
-	*/
 	if( i != gop_max_len )
 		printf( "DEBUG: GOP nonstandard size %d\n", i );
 
@@ -305,6 +300,7 @@ struct _stream_state
 
 typedef struct _stream_state stream_state_s;
 
+#ifdef OBSOLETE_DELETE_EVENTUALLY
 void oldputseq()
 {
 	stream_state_s ss;
@@ -575,6 +571,8 @@ void oldputseq()
 	}
 	putseqend();
 }
+
+#endif
 
 void gop_start( stream_state_s *ss )
 {

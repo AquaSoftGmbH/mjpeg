@@ -994,7 +994,7 @@ long AVI_read_frame(avi_t *AVI, char *vidbuf)
 
    if(AVI->video_pos < 0 || AVI->video_pos >= AVI->video_frames) return 0;
    n = AVI->video_index[AVI->video_pos].len;
-
+			
    lseek(AVI->fdes, AVI->video_index[AVI->video_pos].pos, SEEK_SET);
    if (read(AVI->fdes,vidbuf,n) != n)
    {

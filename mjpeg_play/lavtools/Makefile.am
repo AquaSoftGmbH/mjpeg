@@ -19,7 +19,7 @@ bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf lav2wav lav2yuv lavtrans lavaddw
 lav_headers = lav_io.h editlist.h xlav.h avilib.h
 
 
-lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c  $(lav_headers)
+lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c $(lav_headers)
 lavplay_LDFLAGS = -L../mjpeg/ @GLIB_LIBS@ 
 lavplay_LDADD = @MOVTAR_LIBS@ -lmjpeg
 

@@ -132,6 +132,7 @@ jpeg_buffer_src (j_decompress_ptr cinfo, unsigned char *buffer, long num)
 void
 jpeg_skip_ff (j_decompress_ptr cinfo)
 {
+	fprintf( stderr,"Starting skip with %d bytes left\n", cinfo->src->bytes_in_buffer);
   while(cinfo->src->bytes_in_buffer>1 &&
         cinfo->src->next_input_byte[0] == 0xff &&
         cinfo->src->next_input_byte[1] == 0xff)
@@ -235,6 +236,7 @@ int decode_jpeg_raw(unsigned char *jpeg_data, int len,
    /* Read header, make some checks and try to figure out what the
       user really wants */
 
+	 fprintf( stderr, "HS = %08x\n", *(int *)dinfo.src->next_input_byte );
    jpeg_read_header(&dinfo, TRUE);
    dinfo.raw_data_out = TRUE;
    dinfo.out_color_space = JCS_YCbCr;
@@ -324,6 +326,7 @@ int decode_jpeg_raw(unsigned char *jpeg_data, int len,
    {
       if(field>0)
       {
+		 fprintf( stderr, "HS = %08x\n", *(int *)dinfo.src->next_input_byte );
          jpeg_read_header(&dinfo, TRUE);
          dinfo.raw_data_out = TRUE;
          dinfo.out_color_space = JCS_YCbCr;
@@ -344,6 +347,8 @@ int decode_jpeg_raw(unsigned char *jpeg_data, int len,
       }
       else
          yl=yc=0;
+
+	  fprintf( stderr, "OS = %d BL = %d\n", dinfo.output_scanline, dinfo.src->bytes_in_buffer);
 
       while (dinfo.output_scanline < dinfo.output_height)
       {
@@ -426,6 +431,7 @@ int decode_jpeg_raw(unsigned char *jpeg_data, int len,
             }
          }
       }
+	  fprintf( stderr, "OS = %d BL = %d\n", dinfo.output_scanline, dinfo.src->bytes_in_buffer);
 
       (void) jpeg_finish_decompress(&dinfo);
       if(field==0 && numfields>1) jpeg_skip_ff(&dinfo);

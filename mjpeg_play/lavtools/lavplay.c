@@ -297,8 +297,12 @@ int queue_next_frame(char *vbuff, int skip_video, int skip_audio, int skip_incr)
             res = el_get_video_frame(vbuff, nframe, &el);
             if(res<0) return -1;
             jpeg_len1 = lav_get_field_size(vbuff, res);
-            memcpy(vbuff+jpeg_len1, vbuff, jpeg_len1);
-            old_field_len = 0;
+			/* Found seperate fields? */
+			if( jpeg_len1 < res )
+			{
+				memcpy(vbuff+jpeg_len1, vbuff, jpeg_len1);
+				old_field_len = 0;
+			}
          }
          else /* play_speed < 0, play old first field + actual second field */
          {
@@ -306,23 +310,26 @@ int queue_next_frame(char *vbuff, int skip_video, int skip_audio, int skip_incr)
             res = el_get_video_frame(tmpbuff[new_buff_no], nframe, &el);
             if(res<0) return -1;
             jpeg_len1 = lav_get_field_size(tmpbuff[new_buff_no], res);
-            jpeg_len2 = res - jpeg_len1;
-            if(old_field_len==0)
-            {
-               /* no old first field, duplicate second field */
-               memcpy(vbuff,tmpbuff[new_buff_no]+jpeg_len1,jpeg_len2);
-               old_field_len = jpeg_len2;
-            }
-            else
-            {
-               /* copy old first field into vbuff */
-               memcpy(vbuff,tmpbuff[old_buff_no],old_field_len);
-            }
-            /* copy second field */
-            memcpy(vbuff+old_field_len,tmpbuff[new_buff_no]+jpeg_len1,jpeg_len2);
-            /* save first field */
-            old_field_len = jpeg_len1;
-            old_buff_no   = new_buff_no;
+			if( jpeg_len1 < res )
+			{
+				jpeg_len2 = res - jpeg_len1;
+				if(old_field_len==0)
+				{
+					/* no old first field, duplicate second field */
+					memcpy(vbuff,tmpbuff[new_buff_no]+jpeg_len1,jpeg_len2);
+					old_field_len = jpeg_len2;
+				}
+				else
+				{
+					/* copy old first field into vbuff */
+					memcpy(vbuff,tmpbuff[old_buff_no],old_field_len);
+				}
+				/* copy second field */
+				memcpy(vbuff+old_field_len,tmpbuff[new_buff_no]+jpeg_len1,jpeg_len2);
+				/* save first field */
+				old_field_len = jpeg_len1;
+				old_buff_no   = new_buff_no;
+			}
          }
       }
       else
@@ -619,7 +626,7 @@ int main(int argc, char ** argv)
 		if (screen->format->BytesPerPixel == 2)
 			mjpeg_calc_rgb16_params(screen->format->Rloss, screen->format->Gloss, screen->format->Bloss,
 									screen->format->Rshift, screen->format->Gshift, screen->format->Bshift);
-       
+
 		if ( screen == NULL )  
 		{
 			lavplay_msg(LAVPLAY_ERROR,"SDL: Output screen error", SDL_GetError());
@@ -800,7 +807,7 @@ int main(int argc, char ** argv)
    
 	bp.odd_even = (el.video_inter==LAV_INTER_EVEN_FIRST);
 	if(exchange_fields) bp.odd_even = !bp.odd_even;
-   
+
 	mjpeg_set_params(mjpeg, &bp);
 
 	/* Set target play-back frame-rate */
@@ -833,6 +840,7 @@ int main(int argc, char ** argv)
 	tdiff1 = 0.0;
 	tdiff2 = 0.0;
 	tdiff  = 0.0;
+	play_speed = 1;				/* In case we already reached end seq */
 
 	while(1)
 	{
