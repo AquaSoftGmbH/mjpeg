@@ -22,7 +22,7 @@ DEPENDENCIES	= $(top_srcdir)/utils/libutils.a
 LDADD		= -L$(top_srcdir)/utils -lutils
 CLEANFILES	= $(BINARIES) $(MAINS) $L
 SOURCES		= main.c $(BINARIES:$X=.c) $(STDOBJS:$O=.c) yuvfilters.h
-EXTRA_DIST	= README.yuvkineco .cvsignore
+EXTRA_DIST	= README.yuvkineco README.2-3pulldown .cvsignore
 MAINTAINERCLEANFILES = Makefile.in
 
 %$X: %_main$O $L(%$O $(STDOBJS)) $(DEPENDENCIES)

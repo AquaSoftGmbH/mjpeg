@@ -1,3 +1,13 @@
+2001-08-29  Kawamata/Hitoshi  <kwmt@din.or.jp>
+
+	* README.2-3pulldown: added.
+
+2001-08-28  Kawamata/Hitoshi  <kwmt@din.or.jp>
+
+	* timecode.c, timecode.h: moved to ../utils/mpegtimecode.[ch].
+	* yuvkineco.c: use mpegtimecode.h.
+	* all: add copyright(GPL) comment, use config.h, use mjpeg_logging.h.
+
 2001-08-02  Kawamata/Hitoshi  <kwmt@din.or.jp>
 
 	* yuvycsnoise: chroma noise detection case increased.
