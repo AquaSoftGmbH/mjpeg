@@ -148,7 +148,7 @@ static double test_factor = 1.0; /* Internal test of synchronizaion only */
 static int  audio_enable = 1;
 
 /* gz: This makes lavplay play back in software */
-int soft_play = 0;
+int soft_play = 1;
 int soft_fullscreen = 0;
 
 /* gz: This is the new handle for MJPEG library */
@@ -505,6 +505,7 @@ int main(int argc, char ** argv)
          case 'S':
 	    printf("Choosing software MJPEG playback\n");
             soft_play = 1;
+	    screen_output = 0;
             break;
 
          case 'Z':
@@ -514,6 +515,7 @@ int main(int argc, char ** argv)
          case 'H':
 	    printf("Choosing hardware MJPEG playback (on-screen)\n");
             screen_output = 1;
+	    soft_play = 0;
             break;
       }
    }
