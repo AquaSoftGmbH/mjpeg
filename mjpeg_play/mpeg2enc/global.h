@@ -61,8 +61,6 @@ void init_idct _ANSI_ARGS_((void));
 
 void init_motion ();
 
-void set_motion_search_limits(	pict_data_s *picture,motion_comp_s *mc_data  );
-void record_range_of_motion( pict_data_s *picture,motion_comp_s *mc_data  );
 
 void motion_estimation _ANSI_ARGS_((
 	pict_data_s *picture,
@@ -71,7 +69,7 @@ void motion_estimation _ANSI_ARGS_((
 
 void fast_motion_data _ANSI_ARGS_((unsigned char *mcompdata, int pict_struct));
 void check_fast_motion_data _ANSI_ARGS_((unsigned char *blk, char *label ));
-void update_mc_range(  pict_data_s *picture, mbinfo_s *mbi);
+
 void reset_thresholds _ANSI_ARGS_( (int macroblocks_per_frame ) );
 /* mpeg2enc.c */
 void error _ANSI_ARGS_((char *text));
@@ -125,17 +123,15 @@ void putcbp _ANSI_ARGS_((int cbp));
 void quant_intra _ANSI_ARGS_((
 	pict_data_s *picture,
 	short *src, short *dst, 
-	unsigned short *quant_mat,
-	unsigned short *iquant_mat, 
 	int mquant, int *nonsat_mquant));
 int quant_non_intra _ANSI_ARGS_((
 	pict_data_s *picture,
 	short *src, short *dst,
-  unsigned short *quant_mat,  unsigned short *iquant_mat, int mquant, int *nonsat_mquant));
+	int mquant, int *nonsat_mquant));
 void iquant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
-  unsigned short *quant_mat,  unsigned short *i_quant_mat, int mquant));
+  int mquant));
 void iquant_non_intra _ANSI_ARGS_((short *src, short *dst,
-  unsigned short *quant_mat, unsigned short *iquant_mat,  int mquant));
+    int mquant));
 void init_quantizer();
 
 #ifdef X86_CPU
@@ -321,9 +317,16 @@ EXTERN unsigned char *predframe[3];
 EXTERN struct motion_data *motion_data;
 EXTERN short (*qblocks)[64];
 
-/* intra / non_intra quantization matrices */
+/* Orginal intra / non_intra quantization matrices */
 EXTERN unsigned short intra_q[64], inter_q[64];
 EXTERN unsigned short i_intra_q[64], i_inter_q[64];
+
+/* Table driven intra / non-intra quantization matrices */
+EXTERN unsigned short intra_q_tbl[113][64], inter_q_tbl[113][64];
+EXTERN unsigned short i_intra_q_tbl[113][64], i_inter_q_tbl[113][64];
+
+
+
 EXTERN unsigned short chrom_intra_q[64],chrom_inter_q[64];
 /* prediction values for DCT coefficient (0,0) */
 EXTERN int dc_dct_pred[3];
@@ -377,15 +380,13 @@ EXTERN int width2, height2, mb_height2, chrom_width2; /* picture size */
 EXTERN int qsubsample_offset, 
            fsubsample_offset,
 	       rowsums_offset,
-	       colsums_offset;   /* Offset from picture buffer start of sub-sampled data... */
-						      
-EXTERN int aspectratio; /* aspect ratio information (pel or display) */
-EXTERN int frame_rate_code; /* coded value of frame rate */
-EXTERN double frame_rate; /* frames per second */
-EXTERN double bit_rate; /* bits per second */
-EXTERN int    drop_lsb; /* Drop lsb's of samples */
-EXTERN int    noise_filt; /* Do a crude Gaussian noise filter on samples */
-EXTERN int    fast_mc_frac; /* inverse proportion of fast motion estimates
+	       colsums_offset;		/* Offset from picture buffer start of sub-sampled data... */
+EXTERN int mb_per_pict;			/* Number of macro-blocks in a picture */						      
+EXTERN int aspectratio;			/* aspect ratio information (pel or display) */
+EXTERN int frame_rate_code;		/* coded value of frame rate */
+EXTERN double frame_rate;		/* frames per second */
+EXTERN double bit_rate;			/* bits per second */
+EXTERN int    fast_mc_frac;		/* inverse proportion of fast motion estimates
 							   consider in detail */
 EXTERN int    fast_mc_threshold; /* Use a sliding threshold technique to
 									dynamical adjust motion compensation
@@ -396,8 +397,9 @@ EXTERN int vbv_buffer_size; /* size of VBV buffer (* 16 kbit) */
 EXTERN int constrparms; /* constrained parameters flag (MPEG-1 only) */
 EXTERN int load_iquant, load_niquant; /* use non-default quant. matrices */
 EXTERN int load_ciquant,load_cniquant;
-EXTERN int search_radius[2];		/* Radius for motion compensation search */
-
+EXTERN int search_radius[2];	/* Radius for motion compensation search */
+EXTERN int b_frame_jitter;		/* Small extra search in B-frames above
+								 that derived from the following P frame */
 /* sequence specific data (sequence extension) */
 
 EXTERN int profile, level; /* syntax / parameter constraints */
@@ -444,3 +446,33 @@ EXTERN double act_boost;		/* Quantisation reduction for highly active blocks */
 EXTERN int frame_num;			
 
 EXTERN int input_fd;
+
+
+/* Some macros for stuff that is (tediously) absent from the standard
+   C libraries.
+*/
+
+
+/*
+ * fast int abs function for pipelined CPU's that suffer when
+ * they have unpredictable branches...
+ * WARNING: Assumes 8-bit bytes...
+ *
+ */
+
+
+#define fabsshift ((8*sizeof(unsigned int))-1)
+static __inline__ int fastabs(int x)
+{
+	return ((x)-(((unsigned int)(x))>>fabsshift)) ^ ((x)>>fabsshift);
+}
+
+static __inline__ int fastmax(int x, int y)
+{
+	return (((x-y)>>fabsshift) & y) |  ((~((x-y)>>fabsshift)) & x);
+}
+
+static __inline__ int fastmin(int x,int y)
+{
+	return (((y-x)>>fabsshift) & y) |  ((~((y-x)>>fabsshift)) & x);
+}

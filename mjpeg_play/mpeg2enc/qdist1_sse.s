@@ -63,16 +63,14 @@ qdist1_SSE:
 align 32
 nextrowqd: 
 	movq mm4, [eax]				; load 8 bytes of p1 (two blocks!)
-	mov  ecx, [ebx]       ; load 4 bytes of p2
+	add eax, edx		; update pointer to next row
 	movq mm6, mm4				  ;
+	mov  ecx, [ebx]       ; load 4 bytes of p2
     punpcklbw mm4, mm2			; mm4 = bytes 0..3 p1 (spaced out)
 	movd mm5, ecx
 	punpcklbw mm5, mm2      ; mm5 = bytes 0..3 p2  (spaced out)
-	add eax, edx		; update pointer to next row
-
 	psadbw mm4, mm5	    		; compare to left block
 	add ebx, edx		; ditto
-	sub esi, 1
 
 	punpckhbw mm6, mm2          ; mm6 = bytes 4..7 p1 (spaced out)
 
@@ -82,9 +80,9 @@ nextrowqd:
 	
 
 	paddd mm1, mm6				; accumulate difference right block
-
-	test esi, esi		; check rowsleft
-	jnz nextrowqd		; rinse and repeat
+		
+	sub esi, 1
+	jnz nextrowqd
 
 	movd eax, mm0
 	movd ebx, mm1				

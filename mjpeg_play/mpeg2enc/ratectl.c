@@ -50,7 +50,7 @@ static double calc_actj _ANSI_ARGS_((void));
    buffer" is x% full and
 */
 
-int Xi = 0, Xp = 0, Xb = 0;
+double Xi = 0, Xp = 0, Xb = 0;
 int r;
 int	d0i = 0, d0p = 0, d0b = 0;
 
@@ -111,6 +111,8 @@ static double avgsq_KB = 20.0*20.0;
 static double avgsq_KP = 20.0*20.0;
 #define K_AVG_WINDOW 128.0
 static double bits_per_mb;
+
+static double SQ = 0.0;
 
 /* Scaling and clipping of quantisation factors
    One floating point for predictive calculations
@@ -218,9 +220,9 @@ void rc_init_seq()
 	/* These are just some sort-of sensible initial values for start-up */
 	if ( pred_ratectl )
 	{
-		Xi = 120;				/* Empirically derived values */
-		Xp = 45;
-		Xb = 20;
+		Xi = 1500*mb_per_pict;   /* Empirically derived values */
+		Xp = 550*mb_per_pict;
+		Xb = 170*mb_per_pict;
 		d0i = -1;				/* Force initial Quant prediction */
 		d0p = -1;
 		d0b = -1;
@@ -232,23 +234,17 @@ void rc_init_seq()
 		d0p = (int)(Kp*r*0.15 );
 		d0b = (int)(Kb*r*0.15 );
 
-		Xi = (int)floor(160.0*bit_rate/115.0 + 0.5);
-		Xp = (int)floor( 60.0*bit_rate/115.0 + 0.5);
-		Xb = (int)floor( 42.0*bit_rate/115.0 + 0.5);
+		Xi = 160.0*bit_rate/115.0;
+		Xp = 60.0*bit_rate/115.0;
+		Xb = 42.0*bit_rate/115.0;
 		d = d0i;
 	}
 
-		
-/*
-  if (d0i==0) d0i = (int)floor(10.0*r/(qscale_tab[0] ? 56.0 : 31.0) + 0.5);
-  if (d0p==0) d0p = (int)floor(10.0*r/(qscale_tab[1] ? 56.0 : 31.0) + 0.5);
-  if (d0b==0) d0b = (int)floor(K*10.0*r/(qscale_tab[2] ? 56.0 : 31.0) + 0.5);
-*/
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: sequence initialization\n");
 	fprintf(statfile,
-			" initial global complexity measures (I,P,B): Xi=%d, Xp=%d, Xb=%d\n",
+			" initial global complexity measures (I,P,B): Xi=%.0f, Xp=%.0f, Xb=%.0f\n",
 			Xi, Xp, Xb);
 	fprintf(statfile," reaction parameter: r=%d\n", r);
 	fprintf(statfile,
@@ -519,15 +515,15 @@ void rc_update_pict(pict_data_s *picture)
 	AQ = (double)Q/(mb_width*mb_height2);  
 	/* TODO: The X are used as relative activity measures... so why
 	   bother dividing by 2?  
-  */
-	X = (int) floor((double)S*(AQ/2.0 + 0.5));
-
+	*/
+	SQ += AQ;
+	X = (double)S*(AQ/2.0);
 	d += (int)S - (int)T;
-	K = (double)X / actsum;
+	K = X / actsum;
 
 	if( !quiet )
 	{
-		printf( "AQ=%.1f ",  AQ);
+		printf( "AQ=%.1f SQ=%.2f",  AQ,SQ);
 	}
 
 	/* Bits that never got used in the past can't be resurrected
@@ -595,7 +591,7 @@ void rc_update_pict(pict_data_s *picture)
 			(double)Q/(mb_width*mb_height2));
 	fprintf(statfile," remaining number of bits in GOP: R=%.0f\n",R);
 	fprintf(statfile,
-			" global complexity measures (I,P,B): Xi=%d, Xp=%d, Xb=%d\n",
+			" global complexity measures (I,P,B): Xi=%.0f, Xp=%.0f, Xb=%.0f\n",
 			Xi, Xp, Xb);
 	fprintf(statfile,
 			" virtual buffer fullness (I,P,B): d0i=%d, d0p=%d, d0b=%d\n",

@@ -148,6 +148,7 @@ void putseq()
 
 				putgophdr(f0,i==0); /* set closed_GOP in first GOP only */
 
+
 			}
 			else
 			{
@@ -242,12 +243,6 @@ void putseq()
 		mc_data.sxb = sxb;
 		mc_data.syb = syb;
 
-		set_motion_search_limits( &cur_picture, &mc_data  );
-		/*printf( "\nLIMS: MXF=%02d MYF=%02d MXB=%02d MYB=%02d\n", 
-				mc_data.search_limits[fwd][x_crd], 
-				mc_data.search_limits[fwd][y_crd],
-				mc_data.search_limits[bwd][x_crd], 
-				mc_data.search_limits[bwd][y_crd] ); */
         if (fieldpic)
 		{
 			if (!quiet)
@@ -274,13 +269,12 @@ void putseq()
 					for (j=0; j<block_count; j++)
 						iquant_intra(qblocks[k*block_count+j],
 									 qblocks[k*block_count+j],
-									 cur_picture.dc_prec,intra_q, 
-									 i_intra_q, cur_picture.mbinfo[k].mquant);
+									 cur_picture.dc_prec,
+									 cur_picture.mbinfo[k].mquant);
 				else
 					for (j=0;j<block_count;j++)
 						iquant_non_intra(qblocks[k*block_count+j],
 										 qblocks[k*block_count+j],
-										 inter_q,  i_inter_q, 
 										 cur_picture.mbinfo[k].mquant);
 			}
 
@@ -324,13 +318,12 @@ void putseq()
 					for (j=0; j<block_count; j++)
 						iquant_intra(qblocks[k*block_count+j],
 									 qblocks[k*block_count+j],
-									 cur_picture.dc_prec,intra_q, i_intra_q, 
+									 cur_picture.dc_prec,
 									 cur_picture.mbinfo[k].mquant);
 				else
 					for (j=0;j<block_count;j++)
 						iquant_non_intra(qblocks[k*block_count+j],
 										 qblocks[k*block_count+j],
-										 inter_q,  i_intra_q, 
 										 cur_picture.mbinfo[k].mquant);
 			}
 
@@ -358,7 +351,7 @@ void putseq()
 			transform(&cur_picture,predframe,curorg);
 
 			putpict(&cur_picture,qblocks);	/* Quantisation: blocks -> qblocks */
-			
+
 			for (k=0; k<mb_height*mb_width; k++)
 			{
 				if (cur_picture.mbinfo[k].mb_type & MB_INTRA)
@@ -366,13 +359,11 @@ void putseq()
 						iquant_intra(qblocks[k*block_count+j],
 									 qblocks[k*block_count+j],
 									 cur_picture.dc_prec,
-									 intra_q, i_intra_q,  
 									 cur_picture.mbinfo[k].mquant);
 				else
 					for (j=0;j<block_count;j++)
 						iquant_non_intra(qblocks[k*block_count+j],
 										 qblocks[k*block_count+j],
-										 inter_q,  i_inter_q, 
 										 cur_picture.mbinfo[k].mquant);
 			}
 
@@ -382,8 +373,6 @@ void putseq()
 
 			stats();
 		}
-
-		record_range_of_motion( &cur_picture, &mc_data  );
 
 		writeframe(f+frame0,curref);
 

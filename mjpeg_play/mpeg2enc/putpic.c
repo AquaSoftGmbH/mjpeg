@@ -227,7 +227,6 @@ void putpict(pict_data_s *picture, short (*quant_blocks)[64] )
 				quant_intra( picture,
 					         picture->blocks[cur_mb_blocks],
 							 quant_blocks[cur_mb_blocks],
-							 intra_q, i_intra_q, 
 							 cur_mb->mquant, 
 							 &cur_mb->mquant );
 		
@@ -241,7 +240,6 @@ void putpict(pict_data_s *picture, short (*quant_blocks)[64] )
 						quant_non_intra(picture,
 							            picture->blocks[cur_mb_blocks+comp],
 										quant_blocks[cur_mb_blocks+comp],
-										inter_q, i_inter_q, 
 										cur_mb->mquant,
 										&cur_mb->mquant );
 
@@ -410,8 +408,6 @@ void putpict(pict_data_s *picture, short (*quant_blocks)[64] )
 				PMV[0][0][0]=PMV[0][0][1]=PMV[1][0][0]=PMV[1][0][1]=0;
 				PMV[0][1][0]=PMV[0][1][1]=PMV[1][1][0]=PMV[1][1][1]=0;
 			}
-			if( picture->pict_type == P_TYPE )
-				update_mc_range( picture, cur_mb );
 
 			cur_mb->mb_type = mb_type;
 			k++;

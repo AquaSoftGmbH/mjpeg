@@ -32,24 +32,42 @@
 #include "global.h"
 
 extern FILE *outfile; /* the only global var we need here */
-
 /* private data */
+#ifdef ORIGINAL_CODE
 static unsigned char outbfr;
+#else
+static unsigned int outbfr;
+char *outbfrch=(char *)&outbfr;
+#endif
+
+#if __BYTE_ORDER == __BIG_ENDIAN
+#define BYTE4 3
+#else
+#define BYTE4  0
+#endif
+#define ORIGINAL_CODE
 static int outcnt;
 static bitcount_t bytecnt;
 
 /* initialize buffer, call once before first putbits or alignbits */
 void initbits()
 {
+#ifdef ORIGINAL_CODE
   outcnt = 8;
+#else
+  outcnt = 0;
+  outbfr = 0;
+#endif
   bytecnt = BITCOUNT_OFFSET/8LL;
 }
+
 
 /* write rightmost n (0<=n<=32) bits of val to outfile */
 void putbits(val,n)
 int val;
 int n;
 {
+#ifdef ORIGINAL_CODE
   int i;
   unsigned int mask;
 
@@ -72,17 +90,53 @@ int n;
       bytecnt++;
     }
   }
+#else
+  /* We do it in 16-bit (max) chunks to guarantee there's always space in the
+   buffer */
+  int shft;
+  unsigned int byte;
+  int floor = (((n-1) >> 3)<<3);	/* Largest 8*k s.t. 8*k < n */
+
+  while( floor >= 0 )
+  {
+      byte = ((unsigned int)val)>>floor;
+	  n -= floor;
+	  val &= ~(0xff<<floor);
+	  shft = (32-outcnt-n);
+	  outbfr |= (byte<<shft);
+	  outcnt += n;
+	  if( outcnt >= 8 )
+	  {
+		  putc(outbfrch[BYTE4],outfile);
+		  outbfr <<= 8;
+		  ++bytecnt;
+		  outcnt -= 8;
+	  }
+	  n = floor;
+	  floor -= 8;
+  } 
+  
+#endif
 }
 
 /* zero bit stuffing to next byte boundary (5.2.3, 6.2.1) */
 void alignbits()
 {
+#ifdef ORIGINAL_CODE
   if (outcnt!=8)
     putbits(0,outcnt);
+#else
+  if (outcnt!=0)
+	  putbits(0,8-outcnt);
+#endif
 }
 
 /* return total number of generated bits */
 bitcount_t bitcount()
 {
+#ifdef ORIGINAL_CODE
   return 8LL*bytecnt + (8-outcnt);
+#else
+  return 8LL*bytecnt + outcnt;
+#endif
 }

@@ -32,23 +32,8 @@
 #include "config.h"
 #include "global.h"
 #include "math.h"
-/*
+#include "cpu_accel.h"
 
-This links in the prototype version of an experimental gradient-descent
-motion compensation algorithm.   Looks good but its not ready for prime-time
-yet....
-#define TEST_GRAD_DESCENT
-#ifdef TEST_GRAD_DESCENT
-static double seq_sum;
-static double ratio_sum;
-static double worst_seq;
-static int seq_cnt;
-static int miss_cnt;
-static int test_cnt;
-static int dist_cnt;
-#endif
-
-*/
 
 /* Macro-block Motion compensation results record */
 
@@ -230,14 +215,9 @@ static int nodual_qdist;	/* Can the qdist function return two adjacent
 
 void init_motion()
 {
-	int cpuid;
-#ifdef X86_CPU
-	cpuid = cpuid_flags();
-#else
-	cpuid = 0;
-#endif
+	int cpucap = cpu_accel();
 
-	if( (cpuid & (1 << 23)) == 0 )	/* No MMX/SSE support available */
+	if( cpucap  == 0 )	/* No MMX/SSE etc support available */
 	{
 		pfdist1 = fdist1;
 		pqdist1 = qdist1;
@@ -250,7 +230,21 @@ void init_motion()
 		pbdist2 = bdist2;
 		nodual_qdist = 1;
 	}
-	else if((cpuid & (1 << 25)) == 0  ) /* Ordinary MMX no SSE... */
+	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
+	{
+		fprintf( stderr, "SETTING EXTENDED MMX for MOTION!\n");
+		pfdist1 = fdist1_SSE;
+		pqdist1 = qdist1_SSE;
+		pdist1_00 = dist1_00_SSE;
+		pdist1_01 = dist1_01_SSE;
+		pdist1_10 = dist1_10_SSE;
+		pdist1_11 = dist1_11_SSE;
+		pbdist1 = bdist1_mmx;
+		pdist2 = dist2_mmx;
+		pbdist2 = bdist2_mmx;
+		nodual_qdist = 0;
+	}
+	else if(cpucap & ACCEL_X86_MMX) /* Ordinary MMX CPU */
 	{
 		fprintf( stderr, "SETTING MMX for MOTION!\n");
 
@@ -265,32 +259,9 @@ void init_motion()
 		pbdist2 = bdist2_mmx;
 		nodual_qdist = 0;
 	}
-	else								/* SSE CPU */
-	{
-		fprintf( stderr, "SETTING SSE for MOTION!\n");
-		pfdist1 = fdist1_SSE;
-		pqdist1 = qdist1_SSE;
-		pdist1_00 = dist1_00_SSE;
-		pdist1_01 = dist1_01_SSE;
-		pdist1_10 = dist1_10_SSE;
-		pdist1_11 = dist1_11_SSE;
-		pbdist1 = bdist1_mmx;
-		pdist2 = dist2_mmx;
-		pbdist2 = bdist2_mmx;
-		nodual_qdist = 0;
-	}
 
 }
 
-
-
-/*
- * fast int abs function for pipelined CPU's that suffer when
- * they have unpredictable branches...
- * WARNING: Assumes 8-bit bytes...
- */
-#define fabsshift ((8*sizeof(unsigned int))-1)
-#define fastabs(x) (((x)-(((unsigned int)(x))>>fabsshift)) ^ ((x)>>fabsshift))
 
 
 
@@ -378,112 +349,6 @@ void reset_thresholds(int macroblocks_per_frame)
 }
 
 
-/*
- * Update the motion estimation range recorded for a picture to take 
- * into account the current component macro block.
- * Note: we don't worry that the backward motion vectors may be nonsense
- * in a P-frame because in that case they will be ignored anyway...
- *
- */
-
-void update_mc_range(  pict_data_s *picture, mbinfo_s *mbi)
-{
-	int i,lim;
-	/* This is a little hacky but perfectly legit in C - we treat the
-	   2*2 arrays as a 1 * 4 ...
-	*/
-	
-	if ( mbi->motion_type == MC_FIELD )
-		lim = 2;
-	else
-		lim = 1;
-
-	for( i = 0 ; i < lim; ++i )
-	{
-		if( abs(mbi->MV[i][0][0]) > picture->max_MV_x)
-		{
-			picture->max_MV_x = abs(mbi->MV[i][0][0]);
-		}
-		if(	abs(mbi->MV[i][0][1]) > picture->max_MV_y)
-		{
-			picture->max_MV_y = abs( mbi->MV[i][0][1]);
-		}
-	}
-}
-
-/*
- * Set the motion compensation search limits.
- * We use the range of vectors found for a P frame as a bound for search
- * in the subsequent B-frames.
- *
- * TODO Eventually we'll have a sliding limit for P search here...
- */
-
-void set_motion_search_limits(	pict_data_s *picture,motion_comp_s *mc_data  )
-{
-	int i;
-	if( picture->pict_type == I_TYPE || picture->pict_type == P_TYPE )
-	{
-		mc_data->search_limits[fwd][x_crd] = search_radius[x_crd];
-		mc_data->search_limits[fwd][y_crd] = search_radius[y_crd];
-		mc_data->temp_ref_lastIP = picture->temp_ref;
-	}
-	else if( picture->pict_type == B_TYPE )
-	{
-		/* Motion vectors are calculated in 1/2-pel's but we
-		   need specify range in pel's.
-		*/
-
-		int x_range = mc_data->lastIP_max_MV[x_crd] / 2;
-		int y_range = mc_data->lastIP_max_MV[y_crd] / 2;
-		i = mc_data->temp_ref_lastIP - picture->temp_ref;
-		// TODO DEBUG
-		if( i < 1 || i >= M )
-		{
-			fprintf( stderr, "Bogus temportal calculation?\n" );
-			exit(1);
-		}
-
-		mc_data->sxf = round_search_radius((M-i) * x_range / M + 1);
-		mc_data->syf = round_search_radius((M-i) * y_range / M + 1);
-		mc_data->sxb = round_search_radius( i * x_range / M + 1);
-		mc_data->syb = round_search_radius(i * y_range / M + 1);
-
-		
-	}
-
-	picture->max_MV_x = picture->max_MV_y = 0;
-
-}
-
-
-/*
- * Record the range of motion found.
- * We use the range of vectors found for a P frame as a bound for search
- * in the subsequent B-frames.
- * In the case of an I-frame we pretend we had a maximal search.
- *
- * TODO Eventually we'll have a sliding limit for P search here...
- */
-
-void record_range_of_motion( pict_data_s *picture,motion_comp_s *mc_data  )
-{
-	if( picture->pict_type == I_TYPE )
-	{
-		mc_data->lastIP_max_MV[x_crd] = search_radius[x_crd];
-		mc_data->lastIP_max_MV[y_crd] = search_radius[y_crd];
-		printf( "RANGE: X=%03d Y=%03d\n", search_radius[x_crd],search_radius[y_crd]);
-	}
-	else if( picture->pict_type == P_TYPE)
-	{
-		mc_data->lastIP_max_MV[x_crd] = picture->max_MV_x/2;
-		mc_data->lastIP_max_MV[y_crd] = picture->max_MV_y/2;
-		printf( "RANGE: X=%03d Y=%03d\n", picture->max_MV_x/2+1,
-				picture->max_MV_y/2+1);
-	}
-
-}
-
 
 /*
  * motion estimation for progressive and interlaced frame pictures
@@ -531,7 +396,6 @@ void motion_estimation(
 			{
 				frame_ME(picture, mc_data, mb_row_start,i,j,mbi);
 				mbi++;
-				
 			}
 			mb_row_start += mb_row_incr;
 		}
@@ -546,8 +410,6 @@ void motion_estimation(
 			{
 				field_ME(picture, mc_data, mb_row_start, i,j,
 						 mbi,secondfield,ipflag);
-				if( picture->pict_type == P_TYPE )
-					update_mc_range( picture, mbi );
 				mbi++;
 			}
 			mb_row_start += mb_row_incr;
@@ -713,6 +575,8 @@ static void frame_ME(pict_data_s *picture,
 				mbi->motion_type = MC_FRAME;
 				mbi->MV[0][0][0] = 0;
 				mbi->MV[0][0][1] = 0;
+				mbi->MV[0][0][0] = framef_mc.pos.x - (i<<1);
+				mbi->MV[0][0][1] = framef_mc.pos.y - (j<<1);
 			}
 		}
 	}
@@ -2552,7 +2416,6 @@ static sortelt rough_match_heap[MAX_COARSE_HEAP_SIZE];
 static blockxy rough_matches[MAX_COARSE_HEAP_SIZE];
 static int rough_heap_size;
 
-
 /*
   Build a distance based heap of the 4*4 sub-sampled motion compensations.
 
@@ -2573,13 +2436,13 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 {
 	mcompuint *qorgblk;
 	mcompuint *old_qorgblk;
-	sortelt distrec;
-	blockxy matchrec;
 	int i,j,k;
 	int s1,s2;
 	int dist_sum;
-	int searched_rough_size;
 	int best_quad_dist;
+	sortelt distrec;
+	blockxy matchrec;
+	int searched_rough_size;
 
 	/* N.b. we may ignore the right hand block of the pair going over the
 	   right edge as we have carefully allocated the buffer oversize to ensure
@@ -2588,8 +2451,9 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 	   out-of-range blocks...
 	*/
 
-	rough_heap_size = 0;
+
 	dist_sum = 0;
+	quad_heap_size = 0;
 	if( nodual_qdist )
 	{
 		/* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
@@ -2614,7 +2478,8 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 	}
 	else
 	{
-	
+
+		rough_heap_size = 0;
 		qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
 		for( j = jlow; j <= jhigh; j += 8 )
 		{
@@ -2655,7 +2520,6 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 			}
 			qorgblk = old_qorgblk + (qlx<<1);
 		}
-	
 		heapify( rough_match_heap, rough_heap_size );
 
 		best_quad_dist = rough_match_heap[0].weight;	
@@ -2664,8 +2528,8 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 		   We now use the good matches on 8-pel boundaries 
 		   as starting points for matches on 4-pel boundaries...
 		*/
-		quad_heap_size = 0;
-		searched_rough_size = 1+rough_heap_size / 3;
+
+		searched_rough_size = 1+rough_heap_size / 6;
 
 		dist_sum = 0;
 		for( k = 0; k < searched_rough_size; ++k )

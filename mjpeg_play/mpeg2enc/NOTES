@@ -71,6 +71,21 @@ So, combining with Mr mp1e's sneakiness what we need is a table of
 If we want to get *really* clever we combine the quantisation with the
 DCT coefficients to go yet faster.... 
 
+
+(3) Predicting motion vectors....
+
+
+You'd think you could use the motion vectors from the P frame as an
+upper bound for the those needed in the following (in encoding order)
+B-frames.   Wrrrrrooooong.  Doesn't work. Well, actually it works,
+but:
+
+(a) The gains ain't impressive (10% maybe).
+(b) The is some quality loss.
+(c) It is well night impossible to get *any* gains in the MPEG-2
+interlaced (field MC case) which is where you'd really want the speed gains.
+
+
 	Andrew
 
 

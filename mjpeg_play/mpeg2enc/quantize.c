@@ -32,13 +32,15 @@
 #include <fenv.h>
 #include "config.h"
 #include "global.h"
-
+#include "cpu_accel.h"
 
   /* Unpredictable branches suck on modern CPU's... */
-#define fabsshift ((8*sizeof(unsigned int))-1)
-#define fastabs(x) (((x)-(((unsigned int)(x))>>fabsshift)) ^ ((x)>>fabsshift))
+
 #define signmask(x) (((int)x)>>fabsshift)
-#define samesign(x,y) (y+(signmask(x) & -(y<<1)))
+static inline int samesign(int x, int y)
+{
+	return (y+(signmask(x) & -(y<<1)));
+}
 
 #ifdef X86_CPU
 int use_mmx_quantizer;
@@ -53,16 +55,14 @@ int (*pquant_weight_coeff_sum)(short *blk, unsigned short*i_quant_mat );
 void init_quantizer()
 {
   int flags;
-#ifdef X86_CPU
-  flags = cpuid_flags();
-  if( (flags & (1 << 23)) != 0 ) /* MMX CPU */
+  flags = cpu_accel();
+  if( (flags & ACCEL_X86_MMX) != 0 ) /* MMX CPU */
 	{
 	  fprintf( stderr, "SETTING MMX for QUANTIZER!\n");
 	  use_mmx_quantizer = 1;
 	  pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
 	}
   else
-#endif
 	{
 	  use_mmx_quantizer = 0;
 	  pquant_weight_coeff_sum = quant_weight_coeff_sum;
@@ -115,8 +115,6 @@ void quant_intra(
 	pict_data_s *picture,
 	short *src, 
 	short *dst,
-	unsigned short *quant_mat,
-	unsigned short *i_quant_mat,
 	int mquant,
 	int *nonsat_mquant
 	)
@@ -126,6 +124,7 @@ void quant_intra(
   int x, y, d;
   int clipping;
   int clipvalue  = mpeg1 ? 255 : 2047;
+  unsigned short *quant_mat = intra_q;
 
 
   /* Inspired by suggestion by Juan.  Quantize a little harder if we clip...
@@ -221,8 +220,6 @@ int quant_weight_coeff_sum( short *blk, unsigned short * i_quant_mat )
 int quant_non_intra(
 	pict_data_s *picture,
 	short *src, short *dst,
-	unsigned short *quant_mat,
-	unsigned short *i_quant_mat,
 	int mquant,
 	int *nonsat_mquant)
 {
@@ -235,6 +232,8 @@ int quant_non_intra(
   int imquant;
   int flags = 0;
   int saturated = 0;
+  unsigned short *quant_mat = inter_q;
+  unsigned short *i_quant_mat = i_inter_q;
 
     	/* If available use the fast MMX quantiser.  It returns
 		flags to signal if coefficients are outside its limited range or
@@ -336,14 +335,10 @@ restart:
 }
 
 /* MPEG-1 inverse quantization */
-static void iquant1_intra(src,dst,dc_prec,quant_mat,i_quant_mat, mquant)
-short *src, *dst;
-int dc_prec;
-unsigned short *quant_mat;
-unsigned short *i_quant_mat;
-int mquant;
+static void iquant1_intra(short *src, short *dst, int dc_prec, int mquant)
 {
   int i, val;
+  unsigned short *quant_mat = intra_q;
 
   dst[0] = src[0] << (3-dc_prec);
   for (i=1; i<64; i++)
@@ -361,23 +356,18 @@ int mquant;
 
 
 /* MPEG-2 inverse quantization */
-void iquant_intra(src,dst,dc_prec,quant_mat,i_quant_mat,mquant)
-short *src, *dst;
-int dc_prec;
-unsigned short *quant_mat;
-unsigned short *i_quant_mat;
-int mquant;
+void iquant_intra(short *src, short *dst, int dc_prec, int mquant)
 {
   int i, val, sum;
 
   if (mpeg1)
-    iquant1_intra(src,dst,dc_prec,quant_mat,i_quant_mat, mquant);
+    iquant1_intra(src,dst,dc_prec, mquant);
   else
   {
     sum = dst[0] = src[0] << (3-dc_prec);
     for (i=1; i<64; i++)
     {
-      val = (int)(src[i]*quant_mat[i]*mquant)/16;
+      val = (int)(src[i]*intra_q[i]*mquant)/16;
       sum+= dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
     }
 
@@ -390,14 +380,13 @@ int mquant;
 
 
 
-static void iquant1_non_intra(src,dst,quant_mat,i_quant_mat,mquant)
-short *src, *dst;
-unsigned short *quant_mat;
-unsigned short *i_quant_mat;
-int mquant;
+static void iquant1_non_intra(short *src, short *dst, int mquant)
 {
   int i, val;
-
+  unsigned short *quant_mat;
+#ifdef ORIGINAL_CODE
+  quant_mat = inter_q;
+  i_quant_mat = i_inter_q;
   for (i=0; i<64; i++)
   {
     val = src[i];
@@ -411,31 +400,63 @@ int mquant;
     }
 
     /* saturation */
-    dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
+     dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
+ }
+#else
+  quant_mat = inter_q_tbl[mquant];
+  
+  for (i=0; i<64; i++)
+  {
+    val = fastabs(src[i]);
+    if (val!=0)
+    {
+		val = ((val+val+1)*quant_mat[i]) >> 5;
+		/* mismatch control */
+		val -= (~(val&1))&(val!=0);
+		val = fastmin(val, 2047); /* Saturation */
+    }
+	dst[i] = samesign(src[i],val);
+	
   }
+  
+#endif
 }
 
 
-void iquant_non_intra(src,dst,quant_mat,i_quant_mat, mquant)
-short *src, *dst;
-unsigned short *quant_mat;
-unsigned short *i_quant_mat;
-int mquant;
+void iquant_non_intra(short *src, short *dst, int mquant )
 {
   int i, val, sum;
-
+  unsigned short *quant_mat;
   if (mpeg1)
-    iquant1_non_intra(src,dst,quant_mat,i_quant_mat, mquant);
+    iquant1_non_intra(src,dst, mquant);
   else
   {
-    sum = 0;
-    for (i=0; i<64; i++)
-    {
-      val = src[i];
-      if (val!=0)
-        val = (int)((2*val+(val>0 ? 1 : -1))*quant_mat[i]*mquant)/32;
-      sum+= dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
-    }
+	  sum = 0;
+#ifdef ORIGINAL_CODE
+
+	  for (i=0; i<64; i++)
+	  {
+		  val = src[i];
+		  if (val!=0)
+			  
+			  val = (int)((2*val+(val>0 ? 1 : -1))*inter_q[i]*mquant)/32;
+		  sum+= dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
+	  }
+#else
+	  quant_mat = inter_q_tbl[mquant];
+	  for (i=0; i<64; i++)
+	  {
+		  val = src[i];
+		  if( val != 0 )
+		  {
+			  val = fastabs(val);
+			  val = (int)((val+val+1)*quant_mat[i])>>5;
+			  val = fastmin( val, 2047);
+			  sum += val;
+		  }
+		  dst[i] = val;
+	  }
+#endif
 
     /* mismatch control */
     if ((sum&1)==0)

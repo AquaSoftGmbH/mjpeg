@@ -74,8 +74,6 @@ static int param_searchrad  = 0;
 static int param_mpeg       = 1;
 static int param_fieldpic   = 0;  /* 0: progressive, 1: bottom first, 2: top first */
 static int param_norm       = 0;  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
-static int param_drop_lsb   = 0;
-static int param_noise_filt = 0;
 static int param_fastmc     = 10;
 static int param_threshold  = 0;
 static int param_hfnoise_quant = 0;
@@ -172,24 +170,6 @@ int main(argc,argv)
 			}
 			break;
 
-		case 'd':
-			param_drop_lsb = atoi(optarg);
-			if(param_drop_lsb<0 || param_drop_lsb>3)
-			{
-				fprintf(stderr,"-d option requires arg 0..3\n");
-				nerr++;
-			}
-			break;
-		
-		case 'n':
-			param_noise_filt = atoi(optarg);
-			if(param_noise_filt<0 || param_noise_filt>2)
-			{
-				fprintf(stderr,"-n option requires arg 0..2\n");
-				nerr++;
-			}
-			break;
-
 
 		case 'f':
 			param_fastmc = atoi(optarg);
@@ -271,7 +251,6 @@ int main(argc,argv)
 	act_boost = param_act_boost;
   
 	if(param_bitrate==0 && param_quant==0) param_bitrate = 1152; /* Or 1150? */
-	if(param_searchrad==0) do_not_search = 1;
 
 	/* Read stdin until linefeed is seen */
 
@@ -394,7 +373,7 @@ static void init()
 	static int block_count_tab[3] = {6,8,12};
 	int lum_buffer_size, chrom_buffer_size;
 
-	initbits();
+	initbits(); 
 	init_fdct();
 	init_idct();
 
@@ -415,18 +394,23 @@ static void init()
 	chrom_width = (chroma_format==CHROMA444) ? width : width>>1;
 	chrom_height = (chroma_format!=CHROMA420) ? height : height>>1;
 
+
+
 	height2 = fieldpic ? height>>1 : height;
 	width2 = fieldpic ? width<<1 : width;
 	chrom_width2 = fieldpic ? chrom_width<<1 : chrom_width;
-  
+ 
 	block_count = block_count_tab[chroma_format-1];
-
 	lum_buffer_size = (width*height) + 
 					 sizeof(mcompuint) *(width/2)*(height/2) +
 					 sizeof(mcompuint) *(width/4)*(height/4+1);
 	chrom_buffer_size = chrom_width*chrom_height;
+
+
 	fsubsample_offset = (width)*(height) * sizeof(unsigned char);
 	qsubsample_offset =  fsubsample_offset + (width/2)*(height/2)*sizeof(mcompuint);
+
+	mb_per_pict = mb_width*mb_height2;
 
 #ifdef TEST_RCSEARCH
 	rowsums_offset = qsubsample_offset +  (width/4)*(height/4)*sizeof(mcompuint);
@@ -455,6 +439,7 @@ static void init()
 				 bufalloc( (i==0) ? lum_buffer_size : chrom_buffer_size );
 		 }
 	}
+
 
 	/* TODO: The ref and aux frame buffers are no redundant! */
 	for( i = 0 ; i<3; i++)
@@ -488,10 +473,13 @@ static void init()
 		error(errortext);
 	}
 
-	search_radius[x_crd] = param_searchrad*M;
+	/* This is expressed in half-pel units like the internal
+	   calculations in which it is used
+	*/
+	search_radius[x_crd] = param_searchrad*M*2;
 	search_radius[y_crd] = param_searchrad*M*height/width;
-	search_radius[y_crd] = (search_radius[y_crd] / 4 + 3) * 4;
-
+	search_radius[y_crd] = ((search_radius[y_crd] / 4 + 3) * 4)*2;
+	b_frame_jitter = param_searchrad * M / 9;
 }
 
 void error(text)
@@ -539,8 +527,6 @@ static void readparmfile()
 	 *     For MPEG1 aspect ratio is for the pixels:  1 means square Pixels */
 	aspectratio     = mpeg1 ? 1 : 2;
 	bit_rate        = MAX(1000,param_bitrate*1000);
-	drop_lsb        = param_drop_lsb;
-	noise_filt	  = param_noise_filt;
 	fast_mc_frac    = param_fastmc;
 	fast_mc_threshold = param_threshold;
 	pred_ratectl       = param_pred_ratectl;
@@ -920,7 +906,7 @@ static int quant_hfnoise_filt(int orgquant, int qmat_pos )
 
 static void readquantmat()
 {
-	int i,v;
+	int i,v, q;
 	FILE *fd;
 
 	if (iqname[0]=='-')
@@ -1023,6 +1009,19 @@ static void readquantmat()
 	{
 		i_intra_q[i] = (int)(((double)IQUANT_SCALE) / ((double)intra_q[i]));
 		i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)inter_q[i]));
+	}
+	
+	for( q = 2; q <= 112; ++q )
+	{
+		for (i=0; i<64; i++)
+		{
+			intra_q_tbl[q][i] = intra_q[i] * q;
+			inter_q_tbl[q][i] = inter_q[i] * q;
+			i_intra_q_tbl[q][i] = 
+				(int)(((double)IQUANT_SCALE) / (double)(intra_q[i]*q));
+			i_inter_q_tbl[q][i] = 
+				(int)(((double)IQUANT_SCALE) / (double)(inter_q[i]*q));
+		}
 	}
   
 }

@@ -31,6 +31,7 @@
 #include <math.h>
 #include "config.h"
 #include "global.h"
+#include "cpu_accel.h"
 
 #ifdef X86_CPU
 extern void fdct_mmx( short * blk );
@@ -74,9 +75,9 @@ static void (*psub_pred) (unsigned char *pred, unsigned char *cur,
 void init_transform()
 {
   int flags;
-#ifdef X86_CPU
-  flags = cpuid_flags();
-  if( (flags & (1 << 23)) != 0 ) /* MMX CPU */
+  flags = cpu_accel();
+
+  if( (flags & ACCEL_X86_MMX) ) /* MMX CPU */
 	{
 	  fprintf( stderr, "SETTING MMX for TRANSFORM!\n");
       pfdct = fdct_mmx;
@@ -85,7 +86,6 @@ void init_transform()
 	  psub_pred = sub_pred_mmx;
 	}
   else
-#endif
 	{
       pfdct = fdct;
 	  pidct = idct;

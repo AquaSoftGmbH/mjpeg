@@ -113,10 +113,6 @@ struct motion_comp
 	unsigned char *oldref, *newref;
 	unsigned char *cur, *curref;
 	int sxf, syf, sxb, syb;
-	int search_limits[2][2];
-	int lastIP_max_MV[2];		/* Maximum search in last P frame */
-								/* (Updated continually) */
-	int temp_ref_lastIP;		/* Temporal reference of last P frame */
 };
 
 typedef struct motion_comp motion_comp_s;
@@ -177,15 +173,11 @@ struct pict_data
 	int repeatfirst;			/* repeat first field after second field */
 	int prog_frame;				/* progressive frame */
 
-	int max_MV_x;				/* Sub squares non-local motion vector 	*/
-	int max_MV_y;				/* Sub squares non-local motion vector 	*/
-
 	/* 8*8 block data, raw (unquantised) and quantised */
 	short (*blocks)[64];
 	/* macroblock side information array */
 	struct mbinfo *mbinfo;
 	/* motion estimation parameters */
-	/* struct motion_data *motion_data; */
 };
 
 typedef struct pict_data pict_data_s;
