@@ -925,8 +925,8 @@ static int lavrec_software_init(lavrec_t *info)
    if ((info->geometry->w%(info->horizontal_decimation*16))!=0) 
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Image width not multiple of %d (required for JPEG encoding)!",
-	 info->horizontal_decimation*16);
+         "Image width (%d) not multiple of %d (required for JPEG encoding)!",
+	 info->geometry->w, info->horizontal_decimation*16);
       return 0;
    }
    if (info->geometry->h + info->geometry->y > (info->video_norm==1 ? 480 : 576)) 
@@ -943,8 +943,8 @@ static int lavrec_software_init(lavrec_t *info)
    if ((info->geometry->h%(info->vertical_decimation*16))!=0) 
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Image height not multiple of %d (required for JPEG encoding)!",
-         info->vertical_decimation*16);
+         "Image height (%d) not multiple of %d (required for JPEG encoding)!",
+         info->geometry->h, info->vertical_decimation*16);
       return 0;
    }
 
@@ -1091,8 +1091,8 @@ static int lavrec_hardware_init(lavrec_t *info)
       if ((info->geometry->w%(bparm.HorDcm*16))!=0) 
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Image width not multiple of %d (required for JPEG)!",
-            bparm.HorDcm*16);
+            "Image width (%d) not multiple of %d (required for JPEG)!",
+            info->geometry->w, bparm.HorDcm*16);
          return 0;
       }
       if (info->geometry->h + info->geometry->y > (info->video_norm==1 ? 480 : 576)) 
@@ -1110,8 +1110,8 @@ static int lavrec_hardware_init(lavrec_t *info)
       if ((info->geometry->h%(bparm.VerDcm*16))!=0) 
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Image height not multiple of %d (required for JPEG)!",
-            bparm.VerDcm*16);
+            "Image height (%d) not multiple of %d (required for JPEG)!",
+            info->geometry->h, bparm.VerDcm*16);
          return 0;
       }
 
@@ -1532,9 +1532,9 @@ static void lavrec_record(lavrec_t *info)
       x = 1;
       if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &x) < 0)
       {
-         lavrec_msg(LAVREC_MSG_ERROR, info,
+         lavrec_msg(LAVREC_MSG_WARNING, info,
             "Error starting streaming capture: %s", (char *)sys_errlist[errno]);
-         lavrec_change_state(info, LAVREC_STATE_STOP);
+         //lavrec_change_state(info, LAVREC_STATE_STOP);
       }
       settings->mm.width = settings->width;
       settings->mm.height = settings->height;
@@ -1874,9 +1874,9 @@ static void *lavrec_capture_thread(void *arg)
       n = 0;
       if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &n) < 0)
       {
-         lavrec_msg(LAVREC_MSG_ERROR, info,
+         lavrec_msg(LAVREC_MSG_WARNING, info,
             "Error stopping streaming capture: %s", (char *)sys_errlist[errno]);
-         lavrec_change_state(info, LAVREC_STATE_STOP);
+         //lavrec_change_state(info, LAVREC_STATE_STOP);
       }
    }
    else
