@@ -1129,7 +1129,7 @@ void ElementaryStream::Muxed (unsigned int bytes_muxed)
 	   another matter of course!
 	*/
 
-	decode_time = au->DTS + timestamp_delay;
+	decode_time = RequiredDTS();
 	while (au_unsent < bytes_muxed)
 	{	  
 
@@ -1138,7 +1138,7 @@ void ElementaryStream::Muxed (unsigned int bytes_muxed)
 		if( !NextAU() )
 			return;
 		new_au_next_sec = true;
-		decode_time = au->DTS + timestamp_delay;
+		decode_time = RequiredDTS();
 	};
 
 	// We've now reached a point where the current AU overran or

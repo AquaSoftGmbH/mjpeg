@@ -76,7 +76,7 @@ void AudioStream::OutputSector ( )
 	Pack_struc pack;
 	unsigned int old_au_then_new_payload;
 
-	PTS = au->DTS + timestamp_delay;
+	PTS = RequiredDTS();
 	old_au_then_new_payload = 
 		muxinto.PacketPayload( *this, buffers_in_header, false, false );
 
@@ -130,7 +130,7 @@ void AudioStream::OutputSector ( )
 		/* is there another access unit anyway ? */
 		if( !MuxCompleted()  )
 		{
-			PTS = au->DTS + timestamp_delay;
+			PTS = RequiredDTS();
 			actual_payload = 
 				muxinto.WritePacket ( max_packet_data,
 									  *this,

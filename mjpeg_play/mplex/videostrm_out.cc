@@ -172,8 +172,8 @@ void VideoStream::OutputSector ( )
 	old_au_then_new_payload = muxinto.PacketPayload( *this,
 													 buffers_in_header, 
 													 true, true);
-	PTS = au->PTS + timestamp_delay;
-	DTS = au->DTS + timestamp_delay;
+	PTS = RequiredPTS();
+	DTS = RequiredDTS();
 
 
 	/* CASE: Packet starts with new access unit			*/
@@ -239,8 +239,8 @@ void VideoStream::OutputSector ( )
 			if(  dtspts_for_all_au  && max_packet_payload == 0 )
 				max_packet_payload = prev_au_tail + au_unsent;
 
-			PTS = au->PTS + timestamp_delay;
-			DTS = au->DTS + timestamp_delay;
+			PTS = RequiredPTS();
+			DTS = RequiredDTS();
 
 			actual_payload = 
 				muxinto.WritePacket ( max_packet_payload,

@@ -138,11 +138,6 @@ void ElementaryStream::UpdateBufferMinMax()
 
 
 
-clockticks ElementaryStream::RequiredDTS()
-{
-	return au->DTS+timestamp_delay;
-}
-
 void ElementaryStream::AllDemuxed()
 {
 	bufmodel.Flushed();

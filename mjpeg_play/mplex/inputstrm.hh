@@ -166,12 +166,13 @@ public:
 	virtual bool MuxPossible();
 	void Muxed( unsigned int bytes_muxed );
 	void DemuxedTo( clockticks SCR );
-	clockticks RequiredDTS();
 	void SetTSOffset( clockticks baseTS );
 	void AllDemuxed();
 	inline stream_kind Kind() { return kind; }
     inline int BufferMin() { return buffer_min; }
     inline int BufferMax() { return buffer_max; }
+    inline clockticks RequiredDTS() { return au->DTS + timestamp_delay; };
+    inline clockticks RequiredPTS() { return au->PTS + timestamp_delay; };
     void UpdateBufferMinMax();
 
 	void SetSyncOffset( clockticks timestamp_delay );
