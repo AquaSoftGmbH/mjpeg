@@ -252,7 +252,8 @@ public:
 private:
     void AUBufferLookaheadFill( unsigned int look_ahead);
 
-protected:
+//protected:
+public:
 	virtual void FillAUbuffer(unsigned int frames_to_buffer) = 0;
     virtual void OutputSector() = 0;
 	AUStream aunits;

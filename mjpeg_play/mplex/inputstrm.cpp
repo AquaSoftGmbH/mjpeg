@@ -94,9 +94,9 @@ ElementaryStream::ElementaryStream( IBitStream &ibs,
 void 
 ElementaryStream::AUBufferLookaheadFill( unsigned int look_ahead)
 {
-    while( !eoscan 
-           && ( look_ahead > aunits.MaxAULookahead() 
-                || aunits.MaxPayloadLookahead() < muxinto.sector_size ) )
+    while( !eoscan &&
+           ( look_ahead+1 > aunits.MaxAULookahead() 
+             || bs.BufferedBytes() < muxinto.sector_size ) )
     {
         FillAUbuffer(FRAME_CHUNK);
     }

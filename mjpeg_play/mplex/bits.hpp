@@ -152,7 +152,6 @@ public:
 	void Flush( bitcount_t byte_position );
 
 	inline const char *StreamName() { return streamname; }
-
 protected:
 	bool ReadIntoBuffer( unsigned int to_read = BUFFER_SIZE );
 	virtual size_t ReadStreamBytes( uint8_t *buf, size_t number ) = 0;
