@@ -14,5 +14,7 @@ main()
 
 	for	(dft = disable_simd_flags; *dft; dft++)
 		printf("%s\n", *dft);
+
+	printf("\nall\n");
 	exit(0);
 	}
