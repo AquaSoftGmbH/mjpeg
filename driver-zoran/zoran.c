@@ -688,7 +688,7 @@ static struct tvnorm *lml33norms[] = {
 static struct tvnorm *buznorms[] = {
 	&f50ccir601,       /* PAL-BDGHI */
 	&f60ccir601,       /* NTSC      */
-	NULL,              /* SECAM     */
+	&f50ccir601,       /* SECAM     */
 };
 
 static struct tvnorm *unsupported[] = {

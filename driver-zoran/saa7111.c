@@ -235,6 +235,7 @@ static int saa7111_command(struct i2c_device * device, unsigned int cmd, void * 
          cap->flags
             = VIDEO_DECODER_PAL
             | VIDEO_DECODER_NTSC
+            | VIDEO_DECODER_SECAM
             | VIDEO_DECODER_AUTO
             | VIDEO_DECODER_CCIR;
          cap->inputs = 8;
@@ -284,16 +285,24 @@ static int saa7111_command(struct i2c_device * device, unsigned int cmd, void * 
 
          case VIDEO_MODE_NTSC:
             saa7111_write(decoder, 0x08, (decoder->reg[0x08] & 0x3f) | 0x40);
+            saa7111_write(decoder, 0x0e, (decoder->reg[0x0e] & 0x8f));
             break;
-
+ 
          case VIDEO_MODE_PAL:
             saa7111_write(decoder, 0x08, (decoder->reg[0x08] & 0x3f) | 0x00);
+            saa7111_write(decoder, 0x0e, (decoder->reg[0x0e] & 0x8f));
             break;
-
+ 
+         case VIDEO_MODE_SECAM:
+             saa7111_write(decoder, 0x08, (decoder->reg[0x0e] & 0x3f) |0x00);
+             saa7111_write(decoder, 0x0e, (decoder->reg[0x0e] & 0x8f) |0x50);
+            break;
+ 
          case VIDEO_MODE_AUTO:
             saa7111_write(decoder, 0x08, (decoder->reg[0x08] & 0x3f) | 0x80);
+            saa7111_write(decoder, 0x0e, (decoder->reg[0x0e] & 0x8f));
             break;
-
+         
          default:
             return -EINVAL;
 
