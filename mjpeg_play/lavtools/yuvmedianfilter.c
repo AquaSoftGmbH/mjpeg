@@ -50,6 +50,7 @@ double param_weight = 8.0;
 #define	NUMAVG	1024
 int	avg_replace[NUMAVG];
 
+int	chroma_mode;
 int     SS_H = 2;
 int     SS_V = 2;
 
@@ -154,34 +155,14 @@ main(int argc, char *argv[])
 	i = y4m_read_stream_header(input_fd, &istream);
 	if (i != Y4M_OK)
 	  mjpeg_error_exit1("Input stream error: %s", y4m_strerr(i));
-	else
-	  {
-	    /* try to find a chromass xtag... */
-	    y4m_xtag_list_t *xtags = y4m_si_xtags(&istream);
-	    const char *tag = NULL;
-	    int n;
-	    for (n = y4m_xtag_count(xtags) - 1; n >= 0; n--) 
-	      {
-		tag = y4m_xtag_get(xtags, n);
-		if (!strncmp("XYSCSS=", tag, 7)) break;
-	      }
-	    if ((tag != NULL) && (n >= 0))
-	      {
-		/* parse the tag */
-		tag += 7;
-		if (!strcmp("411", tag))
-		  {
-		    SS_H = 4;
-		    SS_V = 1;
-		  } 
-		else if (!strcmp(tag, "420") || !strcmp(tag, "420MPEG2") || 
-                         !strcmp(tag, "420PALDV") || !strcmp(tag,"420JPEG"))
-		  {
-		    SS_H = 2;
-		    SS_V = 2;
-		  } 
-	      }
-	  }
+
+	if (y4m_si_get_plane_count(&istream) != 3)
+	   mjpeg_error_exit1("Only 3 plane formats supported");
+
+	chroma_mode = y4m_si_get_chroma(&istream);
+	SS_H = y4m_chroma_ss_x_ratio(chroma_mode).d;
+	SS_V = y4m_chroma_ss_y_ratio(chroma_mode).d;
+
 	mjpeg_debug("chroma subsampling: %dH %dV\n",SS_H,SS_V);
 
 	if (interlace == -1)
