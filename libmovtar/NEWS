@@ -1,0 +1,14 @@
+                                      libmovtar
+				      --------
+
+New in version 0.2.0:
+---------------------
+
+** movtar read/write support, including manipulation tools (see movtar/)
+
+** movtar indexing
+
+** movtar-config and movtar.m4 (allows easy finding of installed libmovtars)
+
+
+

@@ -1,0 +1,115 @@
+movtar_play.o: movtar_play.c /usr/include/unistd.h \
+ /usr/include/features.h /usr/include/sys/cdefs.h \
+ /usr/include/gnu/stubs.h /usr/include/bits/posix_opt.h \
+ /usr/include/bits/types.h \
+ /usr/lib/gcc-lib/i586-pc-linux-gnu/2.95.2/include/stddef.h \
+ /usr/include/bits/confname.h /usr/include/getopt.h \
+ /usr/include/stdio.h \
+ /usr/lib/gcc-lib/i586-pc-linux-gnu/2.95.2/include/stdarg.h \
+ /usr/include/libio.h /usr/include/_G_config.h \
+ /usr/include/bits/stdio_lim.h /usr/include/stdlib.h \
+ /usr/include/sys/types.h /usr/include/time.h /usr/include/endian.h \
+ /usr/include/bits/endian.h /usr/include/sys/select.h \
+ /usr/include/bits/select.h /usr/include/bits/sigset.h \
+ /usr/include/sys/sysmacros.h /usr/include/alloca.h \
+ /usr/include/sys/mman.h /usr/include/bits/mman.h \
+ /usr/include/sys/stat.h /usr/include/bits/stat.h /usr/include/fcntl.h \
+ /usr/include/bits/fcntl.h /usr/include/signal.h \
+ /usr/include/bits/signum.h /usr/include/bits/siginfo.h \
+ /usr/include/bits/sigaction.h /usr/include/bits/sigcontext.h \
+ /usr/include/asm/sigcontext.h /usr/include/bits/sigstack.h \
+ /usr/include/string.h /usr/include/SDL/SDL.h \
+ /usr/include/SDL/SDL_main.h /usr/include/SDL/SDL_types.h \
+ /usr/include/SDL/SDL_error.h /usr/include/SDL/begin_code.h \
+ /usr/include/SDL/close_code.h /usr/include/SDL/SDL_rwops.h \
+ /usr/include/SDL/SDL_timer.h /usr/include/SDL/SDL_audio.h \
+ /usr/include/SDL/SDL_byteorder.h /usr/include/SDL/SDL_cdrom.h \
+ /usr/include/SDL/SDL_joystick.h /usr/include/SDL/SDL_events.h \
+ /usr/include/SDL/SDL_active.h /usr/include/SDL/SDL_keyboard.h \
+ /usr/include/SDL/SDL_keysym.h /usr/include/SDL/SDL_mouse.h \
+ /usr/include/SDL/SDL_video.h /usr/include/SDL/SDL_mutex.h \
+ /usr/include/SDL/SDL_quit.h /usr/include/SDL/SDL_version.h \
+ ../jpeg-6b-mmx/jinclude.h ../jpeg-6b-mmx/jconfig.h \
+ ../jpeg-6b-mmx/jpeglib.h ../jpeg-6b-mmx/jmorecfg.h \
+ ../jpeg-6b-mmx/jpegint.h ../jpeg-6b-mmx/jerror.h /usr/include/glib.h \
+ /usr/lib/glib/include/glibconfig.h /usr/include/limits.h \
+ /usr/include/bits/posix1_lim.h /usr/include/bits/local_lim.h \
+ /usr/include/linux/limits.h /usr/include/bits/posix2_lim.h \
+ /usr/lib/gcc-lib/i586-pc-linux-gnu/2.95.2/include/limits.h \
+ /usr/lib/gcc-lib/i586-pc-linux-gnu/2.95.2/include/float.h movtar.h
+movtar_play.c :
+/usr/include/unistd.h :
+/usr/include/features.h :
+/usr/include/sys/cdefs.h :
+/usr/include/gnu/stubs.h :
+/usr/include/bits/posix_opt.h :
+/usr/include/bits/types.h :
+/usr/lib/gcc-lib/i586-pc-linux-gnu/2.95.2/include/stddef.h :
+/usr/include/bits/confname.h :
+/usr/include/getopt.h :
+/usr/include/stdio.h :
+/usr/lib/gcc-lib/i586-pc-linux-gnu/2.95.2/include/stdarg.h :
+/usr/include/libio.h :
+/usr/include/_G_config.h :
+/usr/include/bits/stdio_lim.h :
+/usr/include/stdlib.h :
+/usr/include/sys/types.h :
+/usr/include/time.h :
+/usr/include/endian.h :
+/usr/include/bits/endian.h :
+/usr/include/sys/select.h :
+/usr/include/bits/select.h :
+/usr/include/bits/sigset.h :
+/usr/include/sys/sysmacros.h :
+/usr/include/alloca.h :
+/usr/include/sys/mman.h :
+/usr/include/bits/mman.h :
+/usr/include/sys/stat.h :
+/usr/include/bits/stat.h :
+/usr/include/fcntl.h :
+/usr/include/bits/fcntl.h :
+/usr/include/signal.h :
+/usr/include/bits/signum.h :
+/usr/include/bits/siginfo.h :
+/usr/include/bits/sigaction.h :
+/usr/include/bits/sigcontext.h :
+/usr/include/asm/sigcontext.h :
+/usr/include/bits/sigstack.h :
+/usr/include/string.h :
+/usr/include/SDL/SDL.h :
+/usr/include/SDL/SDL_main.h :
+/usr/include/SDL/SDL_types.h :
+/usr/include/SDL/SDL_error.h :
+/usr/include/SDL/begin_code.h :
+/usr/include/SDL/close_code.h :
+/usr/include/SDL/SDL_rwops.h :
+/usr/include/SDL/SDL_timer.h :
+/usr/include/SDL/SDL_audio.h :
+/usr/include/SDL/SDL_byteorder.h :
+/usr/include/SDL/SDL_cdrom.h :
+/usr/include/SDL/SDL_joystick.h :
+/usr/include/SDL/SDL_events.h :
+/usr/include/SDL/SDL_active.h :
+/usr/include/SDL/SDL_keyboard.h :
+/usr/include/SDL/SDL_keysym.h :
+/usr/include/SDL/SDL_mouse.h :
+/usr/include/SDL/SDL_video.h :
+/usr/include/SDL/SDL_mutex.h :
+/usr/include/SDL/SDL_quit.h :
+/usr/include/SDL/SDL_version.h :
+../jpeg-6b-mmx/jinclude.h :
+../jpeg-6b-mmx/jconfig.h :
+../jpeg-6b-mmx/jpeglib.h :
+../jpeg-6b-mmx/jmorecfg.h :
+../jpeg-6b-mmx/jpegint.h :
+../jpeg-6b-mmx/jerror.h :
+/usr/include/glib.h :
+/usr/lib/glib/include/glibconfig.h :
+/usr/include/limits.h :
+/usr/include/bits/posix1_lim.h :
+/usr/include/bits/local_lim.h :
+/usr/include/linux/limits.h :
+/usr/include/bits/posix2_lim.h :
+/usr/lib/gcc-lib/i586-pc-linux-gnu/2.95.2/include/limits.h :
+/usr/lib/gcc-lib/i586-pc-linux-gnu/2.95.2/include/float.h :
+movtar.h :

@@ -1,0 +1,10 @@
+2000-08-15  Gernot Ziegler  <gz@lysator.liu.se>
+
+* Created intial automake & autoconf files (still lot of bugs, I guess ;) )
+* Created libmovtar (read-write support not complete yet)
+* Create movtar-config.in
+* Created NEWS, ChangeLog, AUTHORS, README
+
+
+
+	

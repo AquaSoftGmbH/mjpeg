@@ -1,0 +1,57 @@
+Some notes about the current implementation of the movtar format:
+
+.) The first file needed in the stream is an INFO file 
+	(this is also how a movtar is recognized). 
+
+.) Structure of the INFO file:
+Each tag has a number, defined in "movtar.c". 
+The human description of the tag is completely ignored. 
+The colon ":" denotes the begin of the data section of a line. 
+Semicolons or hashes can be used for comments (_NOT_ tested yet !).
+Unparsable lines generate warnings (e.g. in buz_play).
+
+.) The number description of each JPEG from buz_rec output denotes 
+   (not parsed when reading):
+	{filename}_{framenumber}.jpeg
+
+.) The datatype of a file is recognized on its extension
+   (of course, of course, I could analyse the file, too - 
+    but why should I ? The content of a movtar is just generated
+    by smart programs, am I right ? ;P )
+
+.) Nothing is guaranteed to be working - I can't yet guarantee that recorded
+   files from this version will work with future versions - sorry.
+
+.) There are nearly no movtar manipulating tools, but have a look at "tar":
+   It is your friend, and a good friend of movtars, too :-) 
+
+.) If a JPEG contains two fields (interlaced mode), the even lines field must come first.
+
+.) Please use movtar_datatype to determine the type of data stored in a data
+   block in the movtar .... ".raw" would be otherwise hard to guess 
+   (it contains raw _sound_)
+
+Some remarks to the sound support
+=================================
+
+Audio files are saved as raw audio, the format is defined in the INFO file.
+(this saves me from saving e.g. .WAV-headers in every single audio snippet I
+generate and write into the file). 
+
+The sound sample formats are:
+8 bit: Unsigned 8-bit samples (most common 8-bit format)
+16 bit: Signed 16-bit Little Endian samples (most common 16-bit format) 
+
+The audio snippets should always be written after the frame it belongs to.
+The internal indexing allows it now to have flexible size.
+The accepted extension is ".raw".
+Each of the audio snippets must _not_ be longer than 2 Gigabyte.
+
+To the 2 Gigabyte filesize problem:
+I had some ideas to solve it, but I guess I just let the application handle the problem, 
+since it would otherwise mess up the internal file structures with references to 
+external files .. 
+
+Anyways: Have fun (as Rainer uses to say :-) )
+/gz
+ 

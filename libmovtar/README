@@ -1,0 +1,123 @@
+libmovtar: Support library & tools for the movtar video format
+==============================================================
+
+This package includes libmovtar, the support library, and various
+tools which together implement the movtar MJPEG video format.
+
+libmovtar
+---------
+
+has been implemented according to the quicktime4linux API
+(see http://heroine.linuxave.net/quicktime.html ).
+
+It supports reading and writing (read/write mode has been prepared, 
+but is not implemented yet) of MJPEG video in YUV 4:2:2 JPEG
+with mono/stereo, 8/16-bit, any sample rate sound. 
+
+It supports indexing files (always done when writing a new file, 
+old (or manually created) movtar files without index are indexed 
+internally during the opening process).
+
+You can freely jump forwards and backwards between the frames
+in an opened file. 
+
+movtar_tools
+------------
+
+They are there to help you understand the principles behind
+the movtar format, and do special tasks which aren't 
+possible with the library (like movtar_index, which 
+_removes_ a video index, for experimental and debugging
+purposes). Please see the respective help information 
+(e.g. movtar_index -h) for more details.
+
+What is MJPEG ? 
+---------------
+
+MJPEG (sometimes seen as M-JPEG) is an abbreviation of 
+"Motion JPEG", and is nothing more than a description of the 
+simple concept "Using a sequence of JPEGs to represent a
+video movie sequence". 
+
+It is _no_ fileformat, only a concept ! 
+Therefore there has never been _any_ standardization for 
+MJPEG recording/playback, and there are a lot of "container file formats"
+(= abstract file formats, which don't define their content), which 
+could also contain JPEG video sequences, and thus be called 
+"AVI MJPEG", or "Quicktime MJPEG". But not even these "container file formats" 
+had any description on how their MJPEG content had to look like, and
+therefore many recording applications in Windows remained incompatible 
+to each other, since each application wrote a bit of different MJPEG.
+
+movtar
+------
+
+The movtar MJPEG video format is addressing this 
+problem by being openly documented and _very_ simple to 
+debug and implement. 
+
+The simplicity has been accomplished by using:
+.) the tar file format for the whole file structure
+.) plain text files for all structural information
+   (like video size, framerate, general info, index, etc.)
+
+The main disadvantage of the movtar format is its
+size (+ 10% in comparison to AVI MJPEG). But even though movtar
+is streamable, it is not intended to become a distribution format - 
+it is mainly a format to conveniently process and record video data
+in an "open" way. 
+
+Please have a look at README.movtar.implement for 
+more implementation details. 
+
+Why is MJPEG still needed, if there is MPEG (which has better compression) ? 
+----------------------------------------------------------------------------
+
+The mainstream MPEG format is used for the _distribution_ of movies, 
+uses YUV 4:1:1 (which is inferior to YUV 4:2:2 in terms 
+of reusability of the video data), and does not encode each frame by itself, 
+but instead generate backwards and forwards references between the frames, which
+is indeed good for compression, but has a horrible effect on the complexity 
+of video editing implementations. 
+
+That's why all video editing applications either use MJPEG whilst working on the
+file, or a special version of MPEG, called I-frame YUV 4:2:2 MPEG (which
+uses YUV 4:2:2, as MJPEG, and codes each frame separately, like MJPEG).
+I-frame YUV 4:2:2 MPEG has approximately the same compression ratio as MJPEG.
+
+That's why MJPEG still has a reason for existence. further, most of the consumer 
+video hardware that is currently available needs to be feeded with MJPEG
+to be able to playback (and capture) video signals. 
+
+Other useful tools
+------------------
+
+libmovtar emerged from its implementation code in the buz_tools
+(which were hosted on http://www.lysator.liu.se/~gz/buz/buz_tools, but 
+ are discontinued), and is now a part of the lavtools
+(which can be found on http://mjpeg.sourceforge.net) - 
+the lavtools contain an abstraction layer for 
+different MJPEG formats (currently Quicktime MJPEG, AVI MJPEG and movtar), 
+which can be found in lav_io.c.
+
+More information
+----------------
+
+See the following pages for more information:
+
+The Buz/Linux page
+http://www.lysator.liu.se/~gz/buz
+
+The MJPEG/Linux square
+http://mjpeg.sourceforge.net
+
+The lavtools homepage:
+http://www.munich-vision.de/buz/appl.html
+
+or contact the author directly:
+Gernot Ziegler <gz@lysator.liu.se>
+
+
+
+
+
