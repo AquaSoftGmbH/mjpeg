@@ -485,15 +485,16 @@ that ensure 2 B frames appear between adjacent I/P frames.
 Several common MPEG-1 decoders can't handle streams where less than
 2 B-frames appear between I/P frames.
 .PP
-.BR -Q|--quantization-reduction \ 0.0..5.0 
+.BR -Q|--quantization-reduction \ -4.0..5.0 
 .PP
 This flag sets the amount quantization is reduced for
-blocks containing unusually large amounts of sharp image detail.
-Setting this value 0.0 produces the most efficient use of bits but may
-cause visible/artifacting around detailed sections.  A larger value
-may help suppress artifacts, however, on noisy source material this may cause
-a "swimming" effect on textured backgrounds as the noise cause blocks to
-be boosted at random.  The default is 0.0 (off).
+blocks containing large amounts of sharp image detail.
+Large values produces efficient use of bits but may
+cause visible artifacting around detailed sections.
+With noisy source material this option may cause
+a "swimming" effect on textured backgrounds as the noise cause the 
+quantization of blocks to be boosted at random.  The default is 0.0 (off).
+See also the \-X option.
 .PP
 .BR -X|--quant-reduction-max-var \ 0.0..2500.0
 .PP

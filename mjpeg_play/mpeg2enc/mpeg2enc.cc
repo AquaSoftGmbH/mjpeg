@@ -910,7 +910,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 			act_boost = atof(optarg);
 			if( act_boost <-4.0 || act_boost > 5.0)
 			{
-				mjpeg_error( "-q option requires arg -4.0 .. 5.0");
+				mjpeg_error( "-Q option requires arg -4.0 .. 5.0");
 				++nerr;
 			}
 			break;
