@@ -49,11 +49,11 @@ char enc_audiofile [FILELEN];
 char enc_videofile [FILELEN];
 char selected_player [FILELEN];       /* the player for the video playback */
 int  use_yuvplay_pipe;                          /* Encoding Preview on/off */
-int  encoding_syntax_style;	/* Used to set the syntax for the encoding */
 int  fourpelmotion;             /* Common Quality setting */
 int  twopelmotion;              /* Common Quality setting */
 int  use_bicubic;               /* Use bicubic algorithmus for the scaling */
-int  saveonexit;                 /* save the encoding options when exiting */
+int  saveonexit;                /* save the encoding options when exiting */
+int  encoding_syntax_style;	/* Used to set the syntax for the encoding */
 
 /* Structure that hat holds the encoding options */
 #define SHORTOPT 2
@@ -94,6 +94,7 @@ struct encodingoptions encoding2; /* for mpeg2 */
 struct encodingoptions encoding_vcd; /* for mpeg2 */
 struct encodingoptions encoding_svcd; /* for mpeg2 */
 struct encodingoptions encoding_divx; /* for divx */
+struct encodingoptions encoding_yuv2lav; /* for yuv2lav */
 
 char *record_dir;
 int scene_detection_width_decimation;

@@ -61,6 +61,7 @@ void do_preset_mpeg2(struct encodingoptions *point);
 void do_preset_vcd(struct encodingoptions *point);
 void do_preset_svcd(struct encodingoptions *point);
 void do_preset_divx(struct encodingoptions *point);
+void do_preset_yuv2lav(struct encodingoptions *point);
 void change_four(GtkAdjustment *adjust_scale);
 void change_two(GtkAdjustment *adjust_scale);
 void set_bicubicuse(GtkWidget *widget, gpointer data);
@@ -183,6 +184,14 @@ void do_preset_divx(struct encodingoptions *point)
   (*point).audiobitrate = 0;
   (*point).bitrate = 0;
   sprintf((*point).codec,"DIV3");
+}
+
+/* set some yuv2lav specific options */
+void do_preset_yuv2lav(struct encodingoptions *point)
+{
+  (*point).qualityfactor = 80;
+  (*point).minGop = 3;
+  sprintf((*point).codec,"AVI");
 }
 
 /* load the common things */
@@ -413,6 +422,10 @@ int have_config;
   set_structs_default(point);  /* set struct to the defaults */
   do_preset_divx(point);     /* set some DIVX specific options */
 
+  point = &encoding_yuv2lav;
+  set_structs_default(point);  /* set struct to the defaults */
+  do_preset_yuv2lav(point);     /* set some DIVX specific options */
+
   /* Saved but not in the structs */
   encoding_syntax_style = 0;
 
@@ -459,6 +472,12 @@ int have_config;
 
   strncpy(section,"DIVX",LONGOPT);
   point = &encoding_divx; 
+  load_section(section,point);
+  if (verbose)
+    print_encoding_options(section,point);
+
+  strncpy(section,"YUV2LAV",LONGOPT);
+  point = &encoding_yuv2lav; 
   load_section(section,point);
   if (verbose)
     print_encoding_options(section,point);
@@ -615,6 +634,9 @@ FILE *fp;
  
   point = &encoding_divx; 
   save_section(fp,point,"DIVX");
+ 
+  point = &encoding_yuv2lav; 
+  save_section(fp,point,"YUV2LAV");
  
   if (verbose) printf("Configuration of the encoding options saved\n");
 

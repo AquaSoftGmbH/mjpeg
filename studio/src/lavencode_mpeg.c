@@ -42,6 +42,7 @@ void open_mpeg_window(GtkWidget *widget, gpointer data);
 void accept_mpegoptions(GtkWidget *widget, gpointer data);
 void create_audio_mplex_layout(GtkWidget *hbox);
 void create_divx_options(GtkWidget *hbox);
+void create_yuv2lav_options(GtkWidget *hbox);
 void create_yuv2mpeg_layout(GtkWidget *hbox);
 void create_sound_encoding (GtkWidget *table, int *tx,int *ty);
 void create_mplex_encoding (GtkWidget *table, int *tx, int *ty);
@@ -50,6 +51,7 @@ void create_video_options_layout (GtkWidget *table, int *tx, int *ty);
 void create_yuvscaler_layout (GtkWidget *table, int *tx, int *ty);
 void create_video_layout (GtkWidget *table, int *tx, int *ty);
 void create_divx_layout (GtkWidget *table, int *tx, int *ty);
+void create_yuv2lav_layout (GtkWidget *table, int *tx, int *ty);
 void set_mplex_muxfmt (GtkWidget *widget, gpointer data);
 void set_audiobitrate (GtkWidget *widget, gpointer data);
 void set_samplebitrate (GtkWidget *widget, gpointer data);
@@ -61,6 +63,9 @@ void set_outputformat (GtkWidget *widget, gpointer data);
 void set_scalerstrings (GtkWidget *widget, gpointer data);
 void set_videobit (GtkWidget *widget, gpointer data);
 void set_searchrad (GtkWidget *widget, gpointer data);
+void set_format (GtkWidget *widget, gpointer data);
+void set_quality (GtkWidget *widget, gpointer data);
+void set_maxfilesize (GtkWidget *widget, gpointer data);
 void init_tempenco(gpointer task);
 void show_data_audiomp2(gpointer task);
 void show_data_lav2yuv(gpointer task);
@@ -68,6 +73,7 @@ void show_data_yuvtools(gpointer task);
 void show_data_mpeg2enc(gpointer task);
 void show_data_mplex(gpointer task);
 void show_data_divx(gpointer task);
+void show_data_yuv2lav(gpointer task);
 void set_decoderbuffer(GtkWidget *widget, gpointer data);
 void set_datarate (GtkWidget *widget, gpointer data);
 void set_vbr (GtkWidget *widget, gpointer data);
@@ -82,6 +88,7 @@ void set_use_yuvdenoise(GtkWidget *widget, gpointer data);
 void set_divxaudio (GtkWidget *widget, gpointer data);
 void set_divxvideo (GtkWidget *widget, gpointer data);
 void set_divxcodec (GtkWidget *widget, gpointer data);
+void set_2lav_interlacing (GtkWidget *widget, gpointer data);
 
 /* Some variables */
 GList *samples = NULL; 
@@ -89,6 +96,8 @@ GList *muxformat = NULL;
 GList *streamdata = NULL;
 GList *outputformat = NULL;
 GList *interlace_correct = NULL;
+GList *yuv2lav_interlace = NULL;
+GList *yuv2lav_format = NULL;
 struct encodingoptions tempenco;
 struct encodingoptions *point;    /* points to the encoding struct to change */
 int changed_streamdatarate;  /* shows if the rate was updated into the Glist */
@@ -102,8 +111,9 @@ GtkWidget *combo_entry_videobitrate, *combo_entry_decoderbuffer, *switch_vbr;
 GtkWidget *combo_entry_streamrate, *combo_entry_qualityfa, *combo_entry_minGop;
 GtkWidget *combo_entry_maxGop, *combo_entry_sequencemb, *combo_entry_nonvideo;
 GtkWidget *combo_streamrate, *combo_entry_interlacecorr, *switch_yuvdenoise;
-GtkWidget *combo_entry_divxaudio, *combo_entry_divxvideo; 
-GtkWidget *combo_entry_divxcodec;
+GtkWidget *combo_entry_divxaudio, *combo_entry_divxvideo, *combo_entry_quality; 
+GtkWidget *combo_entry_divxcodec, *combo_entry_format,*combo_entry_maxfilesize;
+GtkWidget *combo_entry_interlace;
 /* =============================================================== */
 /* Start of the code */
 
@@ -282,6 +292,40 @@ char val[LONGOPT];
   gtk_entry_set_text(GTK_ENTRY(combo_entry_divxvideo),val);
 
   gtk_entry_set_text(GTK_ENTRY(combo_entry_divxcodec),tempenco.codec);
+
+}
+
+/* setting the values of the GTK_ENTRY's for the lav2yuv options */
+void show_data_yuv2lav(gpointer task)
+{
+char val[LONGOPT];
+int i;
+
+i=0;
+
+  gtk_entry_set_text(GTK_ENTRY(combo_entry_format),tempenco.codec);
+
+  if (tempenco.qualityfactor != 80)
+    sprintf(val,"%i",tempenco.qualityfactor);
+  else
+    sprintf(val,"default");
+  gtk_entry_set_text(GTK_ENTRY(combo_entry_quality),val);
+
+  if (tempenco.sequencesize != 0)
+    sprintf(val,"%i",tempenco.sequencesize);
+  else
+    sprintf(val,"default");
+  gtk_entry_set_text(GTK_ENTRY(combo_entry_maxfilesize),val);
+
+  if (tempenco.minGop == 3) /* strange value calcualtion because I'd want */
+    tempenco.minGop=0;           /* that the value is the same as for the */
+  else                                     /* programm, and the ignore is 3. */
+    tempenco.minGop++;                           /* Didn't want to use -1 */
+  
+  yuv2lav_interlace = g_list_first (yuv2lav_interlace);
+  for (i = 0; i < tempenco.minGop ;i++)
+    yuv2lav_interlace = g_list_next (yuv2lav_interlace);
+  gtk_entry_set_text(GTK_ENTRY(combo_entry_interlace), yuv2lav_interlace->data);
 
 }
 
@@ -707,7 +751,7 @@ i=0;
     printf(" selected Maximum Gop size: %i \n", tempenco.maxGop);
 }
 
-/* set output bitrate for the video */
+/* set the search radius for the mpegencoder */
 void set_searchrad (GtkWidget *widget, gpointer data)
 {
 char *test;
@@ -945,6 +989,107 @@ void force_options (GtkWidget *widget, gpointer data)
     printf(" in mono select: %s, vcd: %s, stereo %s, mono %s \n",
      (char*)data, tempenco.forcevcd, tempenco.forcestereo, tempenco.forcemono);
 }
+
+/* Set the chosen output format for yuv2lav */
+void set_format (GtkWidget *widget, gpointer data)
+{ 
+  gchar *test;
+  int i;
+
+  i = 0;
+  test = gtk_entry_get_text(GTK_ENTRY(widget));
+
+  yuv2lav_format = g_list_last (yuv2lav_format);
+
+  for (i = (g_list_length (g_list_first(yuv2lav_format))-1) ; i > 0 ; i--)
+   { 
+     if (strcmp (test,yuv2lav_format->data) == 0)
+               break;
+  
+     yuv2lav_format = g_list_previous (yuv2lav_format);
+   }
+
+  strncpy(tempenco.codec,yuv2lav_format->data,LONGOPT);   
+  
+  yuv2lav_format = g_list_first (yuv2lav_format);
+    
+  if (verbose)
+    printf(" selected output format: %s \n", tempenco.codec);
+}   
+
+/* Set the quality of the picutres */
+void set_quality (GtkWidget *widget, gpointer data)
+{
+char *test;
+int i;
+i=0;
+
+  test = gtk_entry_get_text(GTK_ENTRY(widget));
+
+  if ( strncmp(test, "default", 7) == 0)
+    tempenco.qualityfactor = 80;
+  else
+    {
+      i = atoi (test);
+      if ( (i <= 100) && (i >= 1) )
+        tempenco.qualityfactor = i;
+    }
+
+  if (verbose)
+    printf(" selected quality factor : %i \n", tempenco.qualityfactor);
+}
+
+/* Set the maximal filesize of output mjpeg file */
+void set_maxfilesize (GtkWidget *widget, gpointer data)
+{
+char *test;
+int i;
+i=0;
+
+  test = gtk_entry_get_text(GTK_ENTRY(widget));
+
+  if ( strncmp(test, "default", 7) == 0)
+    tempenco.sequencesize = 0;
+  else
+    {
+      i = atoi (test);
+      if ( (i <= 60000) && (i >= 1) )
+        tempenco.sequencesize = i;
+    }
+
+  if (verbose)
+    printf(" selected output filesize : %i \n", tempenco.sequencesize);
+}
+
+/* Set the interlacing for the output mjpeg file */
+void set_2lav_interlacing (GtkWidget *widget, gpointer data)
+{
+char *test;
+int i;
+i=0;
+
+  test = gtk_entry_get_text(GTK_ENTRY(widget));
+
+  yuv2lav_interlace = g_list_last (yuv2lav_interlace);
+
+  for (i = (g_list_length (g_list_first(yuv2lav_interlace))-1) ; i > 0 ; i--)
+   {
+     if (strcmp (test,yuv2lav_interlace->data) == 0)
+               break;
+
+     yuv2lav_interlace = g_list_previous (yuv2lav_interlace);
+   }
+
+  if (i == 0)
+    tempenco.minGop = 3;
+  else 
+    tempenco.minGop = --i;
+
+  yuv2lav_interlace = g_list_first (yuv2lav_interlace);
+
+  if (verbose)
+    printf(" selected multiplexing format: %i \n", tempenco.minGop);
+} 
 
 /* Create Layout for the sound conversation */
 void create_sound_encoding (GtkWidget *table,int *tx,int *ty)
@@ -1399,8 +1544,91 @@ GList *maxGop = NULL;
 
 }
 
+/* create the video options for the yuv2lav specific options */
+void create_yuv2lav_layout (GtkWidget *table, int *tx, int *ty)
+{
+GtkWidget *label1, *combo_format, *combo_interlace, *combo_quality;
+GtkWidget *combo_maxfilesize;
+GList *yuv2lav_quality = NULL;
+GList *yuv2lav_filesize = NULL;
 
-/* create the video conversation  the mpeg2enc options */
+  yuv2lav_quality = g_list_append (yuv2lav_quality, "defaut");
+  yuv2lav_quality = g_list_append (yuv2lav_quality, "50");
+  yuv2lav_quality = g_list_append (yuv2lav_quality, "70");
+  yuv2lav_quality = g_list_append (yuv2lav_quality, "100");
+
+  yuv2lav_filesize = g_list_append (yuv2lav_filesize, "default");
+  yuv2lav_filesize = g_list_append (yuv2lav_filesize, "640");
+  yuv2lav_filesize = g_list_append (yuv2lav_filesize, "700");
+  yuv2lav_filesize = g_list_append (yuv2lav_filesize, "1990");
+
+  label1 = gtk_label_new ("  Output Format: ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (label1);
+
+  combo_format = gtk_combo_new();
+  gtk_combo_set_popdown_strings (GTK_COMBO (combo_format), yuv2lav_format);
+  combo_entry_format = GTK_COMBO (combo_format)->entry;
+  gtk_widget_set_usize (combo_format, 50, -2 );
+  gtk_signal_connect(GTK_OBJECT(combo_entry_format), "changed",
+                      GTK_SIGNAL_FUNC (set_format), NULL);
+  gtk_table_attach_defaults (GTK_TABLE (table), combo_format,
+                                             *tx+1,*tx+2,*ty,*ty+1);
+  gtk_widget_show (combo_format);
+  (*ty)++;
+
+  label1 = gtk_label_new ("  Output Quality: ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (label1);
+
+  combo_quality = gtk_combo_new();
+  gtk_combo_set_popdown_strings (GTK_COMBO (combo_quality), yuv2lav_quality);
+  combo_entry_quality = GTK_COMBO (combo_quality)->entry;
+  gtk_widget_set_usize (combo_quality, 50, -2 );
+  gtk_signal_connect(GTK_OBJECT(combo_entry_quality), "changed",
+                      GTK_SIGNAL_FUNC (set_quality), NULL);
+  gtk_table_attach_defaults (GTK_TABLE (table), combo_quality,
+                                             *tx+1,*tx+2,*ty,*ty+1);
+  gtk_widget_show (combo_quality);
+  (*ty)++;
+
+  label1 = gtk_label_new ("  Output File Size: ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (label1);
+  
+  combo_maxfilesize = gtk_combo_new();
+  gtk_combo_set_popdown_strings(GTK_COMBO(combo_maxfilesize),yuv2lav_filesize);
+  combo_entry_maxfilesize = GTK_COMBO (combo_maxfilesize)->entry;
+  gtk_widget_set_usize (combo_maxfilesize, 50, -2 );
+  gtk_signal_connect(GTK_OBJECT(combo_entry_maxfilesize), "changed",
+                      GTK_SIGNAL_FUNC (set_maxfilesize), NULL);
+  gtk_table_attach_defaults (GTK_TABLE (table), combo_maxfilesize,
+                                             *tx+1,*tx+2,*ty,*ty+1);
+  gtk_widget_show (combo_maxfilesize);
+  (*ty)++;
+
+  label1 = gtk_label_new ("  Force Interlacing to: ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (label1);
+
+  combo_interlace = gtk_combo_new();
+  gtk_combo_set_popdown_strings(GTK_COMBO(combo_interlace),yuv2lav_interlace);
+  combo_entry_interlace = GTK_COMBO (combo_interlace)->entry;
+  gtk_widget_set_usize (combo_interlace, 50, -2 );
+  gtk_signal_connect(GTK_OBJECT(combo_entry_interlace), "changed",
+                      GTK_SIGNAL_FUNC (set_2lav_interlacing), NULL);
+  gtk_table_attach_defaults (GTK_TABLE (table), combo_interlace,
+                                             *tx+1,*tx+2,*ty,*ty+1);
+  gtk_widget_show (combo_interlace);
+  (*ty)++;
+
+}
+
+/* create the divx specific options */
 void create_divx_layout (GtkWidget *table, int *tx, int *ty)
 {
 GtkWidget *label1, *combo_divxaudio, *combo_divxvideo, *combo_divxcodec;
@@ -1567,6 +1795,34 @@ ty = 9;
   gtk_widget_show(table); 
 }
 
+void create_yuv2lav_options(GtkWidget *hbox)
+{GtkWidget *label, *table;
+int tx, ty;  /* table size x, y */
+
+tx = 2;
+ty = 9;
+
+  table = gtk_table_new (tx, ty, FALSE);
+  tx = 0;
+  ty = 0;
+
+  label = gtk_label_new (" yuv2lav options: ");
+  gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+1, ty, ty+1);
+  gtk_widget_show(label);
+  ty++;
+ 
+  create_video_options_layout(table, &tx, &ty);
+
+  create_yuvscaler_layout (table, &tx, &ty);
+
+  create_denoise_layout(table, &tx, &ty);
+
+  create_yuv2lav_layout(table, &tx, &ty);
+   
+  gtk_box_pack_start (GTK_BOX (hbox), table, FALSE, FALSE, 0);
+  gtk_widget_show(table); 
+}
+
 /* This is done when the OK Button was pressed */
 void accept_mpegoptions(GtkWidget *widget, gpointer data)
 {
@@ -1633,11 +1889,27 @@ if (g_list_length(streamdata) == 5)
 else
   changed_streamdatarate=1;
 
+if (g_list_length (yuv2lav_format) == 0)
+  {
+    yuv2lav_format = g_list_append (yuv2lav_format, "AVI");
+    yuv2lav_format = g_list_append (yuv2lav_format, "AVI fields reversed");
+    yuv2lav_format = g_list_append (yuv2lav_format, "Quicktime");
+    yuv2lav_format = g_list_append (yuv2lav_format, "Movtar");
+  }
+
+if (g_list_length (yuv2lav_interlace) == 0)
+  {
+    yuv2lav_interlace = g_list_append (yuv2lav_interlace, "stream default");
+    yuv2lav_interlace = g_list_append (yuv2lav_interlace, "not interlaced");
+    yuv2lav_interlace = g_list_append (yuv2lav_interlace, "top field first");
+    yuv2lav_interlace = g_list_append (yuv2lav_interlace, "bottom field first");
+  }
+
   /* Here we set the struct we have to use */
   if (verbose)
     printf("Which task to do :%s \n",(char*)data);
 
-  if (strcmp ((char*)data,"MPEG1") == 0)
+  if      (strcmp ((char*)data,"MPEG1") == 0)
     point = &encoding;
   else if (strcmp ((char*)data,"MPEG2") == 0)
     point = &encoding2;
@@ -1647,6 +1919,8 @@ else
     point = &encoding_svcd;
   else if (strcmp ((char*)data,"DIVx") == 0)
     point = &encoding_divx;
+  else if (strcmp ((char*)data,"yuv2lav") == 0)
+    point = &encoding_yuv2lav;
   else 
     point = &encoding; /* fallback should never be used ;) */
 
@@ -1664,6 +1938,14 @@ else
       show_data_lav2yuv  (data);
       show_data_yuvtools (data);
       show_data_divx     (data);
+    }
+  else if ( strcmp(data,"yuv2lav") == 0)
+    {
+      create_yuv2lav_options(hbox);
+
+      show_data_lav2yuv  (data);
+      show_data_yuvtools (data);
+      show_data_yuv2lav  (data);
     }
   else
     { 

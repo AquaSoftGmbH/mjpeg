@@ -47,6 +47,7 @@ GtkWidget *execute_status;
    /* Used Buttons  but they need to be deactivated from everywhere */
 GtkWidget *create_sound, *do_video, *mplex_only;
 GtkWidget *remove_files_after_completion;
+GtkWidget *button_divx;
 
 /* For progress-meter */
 GtkWidget *progress_label;
@@ -112,6 +113,7 @@ void play_video_stream ( GtkWidget *widget, gpointer data);
 void check_mpegname(gpointer data);
 void create_command_mpeg2enc(char *mpeg2enc_command[256]);
 void create_command_yuv2divx(char *mpeg2enc_command[256]);
+void create_command_yuv2lav(char *yuv2lav_command[256]);
 
 /*************************** Programm starts here **************************/
 
@@ -473,6 +475,55 @@ void audio_convert()
 }
 
 /* Here the yuv2divx command is set together with all options */
+void create_command_yuv2lav(char *yuv2lav_command[256])
+{
+int n;
+static char temp1[4], temp2[4], temp3[6];
+n=0;
+
+yuv2lav_command[n] = app_name(YUV2LAV); n++;
+
+if (strlen((*pointenc).codec) > 3)
+  {
+    yuv2lav_command[n] = "-f"; n++;
+
+    if (strcmp ((*pointenc).codec, "AVI fields reversed") == 0) 
+      yuv2lav_command[n] = "A";
+    else if (strcmp ((*pointenc).codec, "Quicktime") == 0)
+      yuv2lav_command[n] = "q";
+    else if (strcmp ((*pointenc).codec, "Movtar") == 0)
+      yuv2lav_command[n] = "m";
+    
+    n++;
+  } 
+
+if ( (*pointenc).minGop != 3 )
+  {
+    yuv2lav_command[n] = "-I"; n++;
+    sprintf(temp1, "%i", (*pointenc).minGop);
+    yuv2lav_command[n] = temp1; n++; 
+  }
+
+if ( (*pointenc).qualityfactor != 80)
+  {
+    yuv2lav_command[n] = "-q"; n++;
+    sprintf(temp2, "%i", (*pointenc).qualityfactor);
+    yuv2lav_command[n] = temp2; n++;
+  }
+
+if ( (*pointenc).sequencesize != 0)
+  { 
+    yuv2lav_command[n] = "-m"; n++;
+    sprintf(temp3, "%i", (*pointenc).sequencesize);
+    yuv2lav_command[n] = temp3; n++;
+  }
+
+yuv2lav_command[n] = "-o"; n++;
+yuv2lav_command[n] = enc_outputfile; n++;
+yuv2lav_command[n] = NULL;
+}
+
+/* Here the yuv2divx command is set together with all options */
 void create_command_yuv2divx(char *yuv2divx_command[256])
 {
 int n;
@@ -605,8 +656,6 @@ if (encoding_syntax_style == 150)
 mpeg2enc_command[n] = "-o"; n++;
 mpeg2enc_command[n] = enc_videofile; n++;
 mpeg2enc_command[n] = NULL;
- 
-
 }
 
 /* video encoding */
@@ -619,6 +668,7 @@ void video_convert()
    char *yuvscaler_command[256];
    char *yuvplay_command[256];
    char *yuvdenoise_command[256];
+   char *yuv2lav_command[256];
    char command[600];
    char command_temp[256];
    char command_progress[256];
@@ -643,6 +693,11 @@ void video_convert()
        create_command_yuv2divx(yuv2divx_command);
 
        start_pipe_command(yuv2divx_command, YUV2DIVX);
+     }
+   else if (studio_enc_format == STUDIO_ENC_FORMAT_MJPEG)
+     {
+       create_command_yuv2lav(yuv2lav_command);
+       start_pipe_command(yuv2lav_command, YUV2LAV);
      }
  
    /* let's start yuvplay to show video while it's being encoded */
@@ -814,6 +869,12 @@ void video_convert()
      command2string(yuv2divx_command, command_temp);
      sprintf(command, "%s %s ", command, command_temp);
      sprintf(command_progress, "%s yuv2divx", command_progress);
+   }
+   else if (studio_enc_format == STUDIO_ENC_FORMAT_MJPEG)
+   {
+     command2string(yuv2lav_command, command_temp);
+     sprintf(command, "%s %s ", command, command_temp);
+     sprintf(command_progress, "%s yuv2lav", command_progress);
    }
 
    gtk_label_set_text(GTK_LABEL(progress_label), command_progress);
@@ -1215,6 +1276,11 @@ else if (studio_enc_format == STUDIO_ENC_FORMAT_DIVX)
     status_progress_window();
     video_convert();
   }
+else if (studio_enc_format == STUDIO_ENC_FORMAT_MJPEG)
+  {
+    status_progress_window();
+    video_convert();
+  }
 }
 
 /* Create the first line of the buttons shown */
@@ -1421,6 +1487,31 @@ for (i = 0; i < 3; i++)
         }
       gtk_entry_set_text(GTK_ENTRY(output_entry), enc_outputfile);
    }
+  else if (strcmp ((char*)data,"yuv2lav")  == 0)
+   {
+      pointenc = &encoding_yuv2lav;
+      gtk_widget_set_sensitive(create_sound, FALSE); 
+      gtk_widget_set_sensitive(do_video, FALSE); 
+      gtk_widget_set_sensitive(mplex_only, FALSE);
+      gtk_widget_set_sensitive(sound_entry, FALSE);
+      gtk_widget_set_sensitive(sound_select, FALSE);
+      gtk_widget_set_sensitive(video_entry, FALSE);
+      gtk_widget_set_sensitive(video_select, FALSE);
+      gtk_widget_set_sensitive(remove_files_after_completion, FALSE);
+
+      studio_enc_format = STUDIO_ENC_FORMAT_MJPEG;
+
+      sprintf(temp,"%c%c%c",enc_outputfile[strlen(enc_outputfile)-3],
+                            enc_outputfile[strlen(enc_outputfile)-2], 
+                            enc_outputfile[strlen(enc_outputfile)-1] );
+      if ( strcmp(temp,"mpg") == 0)
+        {
+          enc_outputfile[strlen(enc_outputfile)-3] = 'a';
+          enc_outputfile[strlen(enc_outputfile)-2] = 'v';
+          enc_outputfile[strlen(enc_outputfile)-1] = 'i';
+        }
+      gtk_entry_set_text(GTK_ENTRY(output_entry), enc_outputfile);
+   }
 
   if (verbose)
     printf(" Set encoding task to %s \n",(char*)data);
@@ -1431,8 +1522,7 @@ for (i = 0; i < 3; i++)
 void create_task_layout(GtkWidget *table)
 {
 int encx, ency;
-GtkWidget *button_mpeg1, *button_mpeg2, *button_vcd, *button_svcd;
-GtkWidget *button_divx;
+GtkWidget *button_mpeg1, *button_mpeg2, *button_vcd, *button_svcd, *button_2lav;
 GSList *task_group;
 
 encx=0;
@@ -1488,6 +1578,17 @@ ency=5;
   gtk_widget_show (button_divx);
   create_option_button(task_group, table, "DIVx", encx+1, ency);
   ency++;
+
+  button_2lav = gtk_radio_button_new_with_label(task_group, "yuv2lav ");
+  gtk_signal_connect (GTK_OBJECT (button_2lav), "toggled",
+                      GTK_SIGNAL_FUNC (set_task), (gpointer) "yuv2lav");
+  gtk_table_attach_defaults (GTK_TABLE (table), button_2lav, 
+                                    encx, encx+1, ency, ency+1);
+  task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_2lav));
+  gtk_widget_show (button_2lav);
+  create_option_button(task_group, table, "yuv2lav", encx+1, ency);
+  ency++;
+
 }
 
 /* Here all the work is distributed, and some basic parts of the layout done */
@@ -1577,6 +1678,10 @@ int enc_x,enc_y;
 
   /* loading the configuration */
   do_defaults(NULL, "load");
+
+  /* hiding or unhiding some some options */
+  if (encoding_syntax_style == 140)
+    gtk_widget_hide(button_divx);
 
   return (vbox_main);
 }
