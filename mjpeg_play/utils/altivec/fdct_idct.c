@@ -219,7 +219,7 @@ static const vector signed short PostScale[8] = {
  * of lvx which is more efficient given the remainder of the instruction mix.
  */
 static const vector signed short SpecialConstants =
-  (vector signed short)VCONST(23170, 13573, 6518, 21895, -23170, -21895, 0, 0);
+  (const vector signed short)VCONST(23170, 13573, 6518, 21895, -23170, -21895, 0, 0);
 
 #ifdef ORIGINAL_SOURCE
 void DCT(short *input, short *output) {
