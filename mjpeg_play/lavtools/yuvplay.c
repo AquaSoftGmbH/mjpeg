@@ -71,7 +71,6 @@ int main(int argc, char *argv[])
    int frame;
    int frame_rate_code;
    double framerate;
-   int jpegsize = 0;
    unsigned char *yuv[3];
    int fd_in = 0;
    int screenwidth=0, screenheight=0;

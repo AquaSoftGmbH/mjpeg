@@ -34,7 +34,7 @@
 #define FOURCC_FMT      FOURCC ('f', 'm', 't', ' ')
 #define FOURCC_DATA     FOURCC ('d', 'a', 't', 'a')
 
-int verbose = 0;
+int verbose = 1;
 
 int main(int argc, char **argv)
 {

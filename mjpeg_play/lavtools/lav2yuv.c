@@ -613,6 +613,10 @@ char *argv[];
 
       case 'v':
          verbose = atoi(optarg);
+         if (verbose < 0 ||verbose > 2) {
+            mjpeg_error( "-v option requires arg 0, 1, or 2\n");
+            nerr++;
+         }
          break;
 
       case 'd':

@@ -21,6 +21,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+
+#include "mjpeg_logging.h"
+
 #include "yuv4mpeg.h"
 #include "jpegutils.h"
 #include "lav_io.h"
@@ -32,10 +35,13 @@ static int   param_bufsize = 256*1024; /* 256 kBytes */
 
 static int got_sigint = 0;
 
+static int verbose = 1;
+
 static void usage (){
   
    fprintf (stderr, "Usage:  yuv2lav [params] -o <filename>\n"
                     "where possible params are:\n"
+			        "   -v num      Verbosity [0..2] (default 1)\n"
                     "   -f [aAqm]   output format (AVI/Quicktime/movtar) [%c]\n"
                     "   -q num      JPEG encoding quality [%d%%]\n"
                     "   -b num      size of MJPEG buffer [%d kB]\n"
@@ -46,7 +52,7 @@ static void usage (){
 
 static void sigint_handler (int signal) {
  
-   fprintf (stderr, "Caught SIGINT, exiting...\n");
+   mjpeg_debug( "Caught SIGINT, exiting...\n");
    got_sigint = 1;
    
 }
@@ -65,8 +71,16 @@ int main(int argc, char *argv[])
    unsigned char *yuv[3];
 
 
-   while ((n = getopt(argc, argv, "f:q:b:o:")) != -1) {
+   while ((n = getopt(argc, argv, "v:f:q:b:o:")) != -1) {
       switch (n) {
+      case 'v':
+         verbose = atoi(optarg);
+         if (verbose < 0 || verbose > 2) {
+            mjpeg_error( "-v option requires arg 0, 1, or 2\n");
+			usage();
+         }
+         break;
+
       case 'f':
          switch (param_format = optarg[0]) {
          case 'a':
@@ -76,7 +90,7 @@ int main(int argc, char *argv[])
             /* do interlace setting here? */
             continue;
          default:
-            fprintf (stderr, "-f parameter must be one of [aAqm]\n");
+            mjpeg_error( "-f parameter must be one of [aAqm]\n");
             usage ();
             exit (1);
          }
@@ -84,7 +98,7 @@ int main(int argc, char *argv[])
       case 'q':
          param_quality = atoi (optarg);
          if ((param_quality<24)||(param_quality>100)) {
-            fprintf (stderr, "quality parameter (%d) out of range [24..100]!\n", param_quality);
+            mjpeg_error( "quality parameter (%d) out of range [24..100]!\n", param_quality);
             exit (1);
          }
          break;
@@ -102,15 +116,16 @@ int main(int argc, char *argv[])
    }
    
    if (!param_output) {
-      fprintf (stderr, "yuv2lav needs an output filename\n");
+      mjpeg_error( "yuv2lav needs an output filename\n");
       usage ();
       exit (1);
    }
-   
+
+   (void)mjpeg_default_handler_verbosity(verbose);   
    fd_in = 0;                   /* stdin */
 
    if (yuv_read_header(fd_in, &width, &height, &frame_rate_code)) {
-      fprintf (stderr, "Could'nt read YUV4MPEG header!\n");
+      mjpeg_error( "Could'nt read YUV4MPEG header!\n");
       exit (1);
    }
    
@@ -127,7 +142,7 @@ int main(int argc, char *argv[])
                                   0, 0, 0);
 //                                audio_bits, audio_chans, audio_rate);
    if (!output) {
-      fprintf (stderr, "Error opening output file %s: %s\n", param_output, lav_strerror ());
+      mjpeg_error( "Error opening output file %s: %s\n", param_output, lav_strerror ());
       exit(1);
    }
 
@@ -147,11 +162,11 @@ int main(int argc, char *argv[])
                                   n /* itype */, 0 /* ctype */,
                                   width, height, yuv[0], yuv[1], yuv[2]);
       if (jpegsize==-1) {
-         fprintf (stderr, "Couldn't compress YUV to JPEG\n");
+         mjpeg_error( "Couldn't compress YUV to JPEG\n");
          exit(1);
       }
       if (lav_write_frame (output, jpeg, jpegsize, 1)) {
-         fprintf (stderr, "Error writing output: %s\n", lav_strerror());
+         mjpeg_error( "Writing output: %s\n", lav_strerror());
          exit(1);
       }
       frame++;
@@ -159,7 +174,7 @@ int main(int argc, char *argv[])
    }
 
    if (lav_close (output)) {
-      fprintf(stderr,"Error closing output file: %s\n",lav_strerror());
+      mjpeg_error("Closing output file: %s\n",lav_strerror());
       exit(1);
    }
       

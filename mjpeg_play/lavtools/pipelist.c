@@ -21,6 +21,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "mjpeg_logging.h"
+
 #include "pipelist.h"
 
 extern int verbose;
