@@ -148,7 +148,7 @@ void quant_intra(
   int x, y, d;
   int clipping;
   int clipvalue  = dctsatlim;
-  uint16_t *quant_mat = /*intra_q_tbl[mquant] */ intra_q ;
+  uint16_t *quant_mat = intra_q_tbl[mquant] /* intra_q */;
 
 
   /* Inspired by suggestion by Juan.  Quantize a little harder if we clip...
@@ -185,13 +185,14 @@ void quant_intra(
 			  }
 #else
 			/* RJ: save one divide operation */
-			y = /*((intabs(x)<<5)+ ((3*quant_mat[i])>>2))/(quant_mat[i]<<1)*/
-				(32*intabs(x) + (d>>1) + d*((3*mquant+2)>>2))/(quant_mat[i]*2*mquant);
+			y = ((intabs(x)<<5)+ ((3*quant_mat[i])>>2))/(quant_mat[i]<<1)
+				/*(32*intabs(x) + (d>>1) + d*((3*mquant+2)>>2))/(quant_mat[i]*2*mquant) */
+				;
 			if ( y > clipvalue )
 			  {
 				clipping = 1;
 				mquant = next_larger_quant( picture, mquant );
-				/*quant_mat = intra_q_tbl[mquant];*/
+				quant_mat = intra_q_tbl[mquant];
 				break;
 			  }
 #endif
@@ -345,7 +346,7 @@ void iquant_intra(int16_t *src, int16_t *dst, int dc_prec, int mquant)
 {
   int i, val, sum;
 
-  if (mpeg1)
+  if ( mpeg1  )
     iquant1_intra(src,dst,dc_prec, mquant);
   else
   {
@@ -410,7 +411,8 @@ void iquant_non_intra(int16_t *src, int16_t *dst, int mquant )
 {
   int i, val, sum;
   uint16_t *quant_mat;
-  if (mpeg1)
+
+  if ( mpeg1 )
     (*piquant_non_intra_m1)(src,dst,inter_q_tbl[mquant]);
   else
   {
@@ -437,7 +439,7 @@ void iquant_non_intra(int16_t *src, int16_t *dst, int mquant )
 			  val = intmin( val, 2047);
 			  sum += val;
 		  }
-		  dst[i] = val;
+		  dst[i] = intsamesign(src[i],val);
 	  }
 #endif
 

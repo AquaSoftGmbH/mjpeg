@@ -37,7 +37,7 @@
 
 /* private prototypes */
 
-static double calc_actj _ANSI_ARGS_((void));
+static double calc_actj ( pict_data_s *picture);
 
 /*Constant bit-rate rate control variables */
 /* X's global complexity (Chi! not X!) measures.
@@ -130,49 +130,56 @@ static double AQ = 0.0;
 
 
 /* Scaling and clipping of quantisation factors
-   One floating point for predictive calculations
-   one producing actual quantisation factors...
+   One floating point used in predictive calculations.  
+   The second integerises the results of the first for use in the
+   actual stream...
 */
 
-static double scale_quant( pict_data_s *picture, double quant )
+static double scale_quantf( pict_data_s *picture, double quant )
 {
-	double squant;
-	int iquant;
-	if (picture->q_scale_type)
+	double quantf;
+
+	if ( picture->q_scale_type )
 	{
+		int iquantl, iquanth;
+		double wl, wh;
+
 		/* BUG TODO: This should interpolate the table... */
-		iquant = (int) floor(quant + 0.5);
-
-		/* clip mquant to legal (linear) range */
-		if (iquant<1)
-			iquant = 1;
-		if (iquant>112)
-			iquant = 112;
-
-		squant = (double)
-			non_linear_mquant_table[map_non_linear_mquant[iquant]];
+		wh = quant-floor(quant);
+		wl = 1.0 - wh;
+		iquantl = (int) floor(quant);
+		iquanth = iquantl+1;
+		/* clip to legal (linear) range */
+		if (iquantl<1)
+			iquantl = 1;
+		if (iquanth>112)
+			iquanth = 112;
+		
+		quantf = (double)
+		  wl * (double)non_linear_mquant_table[map_non_linear_mquant[iquantl]] 
+			+ 
+		  wh * (double)non_linear_mquant_table[map_non_linear_mquant[iquantl]]
+			;
 	}
 	else
 	{
 		/* clip mquant to legal (linear) range */
-		squant = quant;
-		if (squant<2.0)
-			squant = 2;
-		if (squant>62.0)
-			squant = 62.0;
+		quantf = quant;
+		if (quantf<2.0)
+			quantf = 2;
+		if (quantf>62.0)
+			quantf = 62.0;
 	}
-	return squant;
+	return quantf;
 }
 
-static int iscale_quant( pict_data_s *picture, double quant )
+static int scale_quant( pict_data_s *picture, double quant )
 {
 	int iquant;
-	if (picture->q_scale_type)
+	
+	if ( picture->q_scale_type  )
 	{
-		/* BUG TODO: This should interpolate the table... 
-		   PROBABLY A PROBLEM IN MPEG-2...
-		 */
-		iquant = (int) floor(quant + 0.5);
+		iquant = (int) floor(quant+0.5);
 
 		/* clip mquant to legal (linear) range */
 		if (iquant<1)
@@ -204,6 +211,7 @@ void rc_init_seq()
 	   rate as encoder is currently tending to under/over-shoot... in
 	   rate TODO: Reaction parameter is *same* for every frame type
 	   despite different weightings...  */
+	printf( "Frame rate = %.0f\n", frame_rate );
 	if (r==0)  
 		r = (int)floor(2.0*bit_rate/frame_rate + 0.5);
 
@@ -330,7 +338,7 @@ void rc_init_pict(pict_data_s *picture)
 	   We use this to try to predict the activity of each frame.
 	*/
 
-	actsum =  calc_actj( );
+	actsum =  calc_actj(picture );
 	avg_act = (double)actsum/(double)(mb_width*mb_height2);
 	actcovered = 0.0;
 
@@ -387,15 +395,11 @@ void rc_init_pict(pict_data_s *picture)
 #ifdef DEBUG
 	if( !quiet )
 	{
-		printf( "AA=%3.1f T=%6.0f K=%.1f ",avg_act, (double)T, avg_K  );
+		printf( "AA=%3.4f T=%6.0f K=%.1f ",avg_act, (double)T, avg_K  );
 	}
 #endif	
 	
-	/* We can only carry over as much total undershoot as
-	   buffering permits */
-	
-
-	if ( current_Q < 2.5 && target_Q > 12.0 )
+	if ( current_Q < 3 && target_Q > 12 )
 	{
 		/* We're undershooting and a serious surge in the data_flow
 		   due to lagging adjustment is possible...
@@ -414,7 +418,7 @@ void rc_init_pict(pict_data_s *picture)
 
 
 
-static double calc_actj(void)
+static double calc_actj(pict_data_s *picture)
 {
 	int i,j,k,l;
 	double actj,sum;
@@ -434,7 +438,7 @@ static double calc_actj(void)
 			   So.... we use the absolute sum of DCT coefficients as our
 			   variance measure.  
 			*/
-			if( cur_picture.mbinfo[k].mb_type  & MB_INTRA )
+			if( picture->mbinfo[k].mb_type  & MB_INTRA )
 			{
 				i_q_mat = i_intra_q;
 				/* EXPERIMENT: See what happens if we compensate for
@@ -460,12 +464,10 @@ static double calc_actj(void)
 					(*pquant_weight_coeff_sum)
 					    ( &cur_picture.mbinfo[k].dctblocks[l], i_q_mat ) ;
 			actj = (double)actsum / (double)COEFFSUM_SCALE;
-			/* DEBUG: See what happens if we correct for the disproportionate
-			   weight of intra-blocks. DC coefficients */
 			if( actj < 12.0 )
 				actj = 12.0;
 
-			cur_picture.mbinfo[k].act = (double)actj;
+			picture->mbinfo[k].act = (double)actj;
 			sum += (double)actj;
 			++k;
 		}
@@ -537,7 +539,7 @@ void rc_update_pict(pict_data_s *picture)
 	Qsum = 0;
 	for( i = 0; i < mb_per_pict; ++i )
 	{
-		Qsum += cur_picture.mbinfo[i].mquant;
+		Qsum += picture->mbinfo[i].mquant;
 	}
 
 
@@ -619,7 +621,7 @@ void rc_update_pict(pict_data_s *picture)
 			" global complexity measures (I,P,B): Xi=%.0f, Xp=%.0f, Xb=%.0f\n",
 			Xi, Xp, Xb);
 	fprintf(statfile,
-			" virtual buffer fullness (I,PB): d0i=%d, d0pb=%d, d0pb=%d\n",
+			" virtual buffer fullness (I,PB): d0i=%d, d0pb=%d\n",
 			d0i, d0pb);
 	fprintf(statfile," remaining number of P pictures in GOP: Np=%d\n",Np);
 	fprintf(statfile," remaining number of B pictures in GOP: Nb=%d\n",Nb);
@@ -636,7 +638,7 @@ void rc_update_pict(pict_data_s *picture)
 int rc_start_mb(pict_data_s *picture)
 {
 	
-	int mquant = iscale_quant( picture, d*62.0/r );
+	int mquant = scale_quant( picture, d*62.0/r );
 	mquant = intmax(mquant, quant_floor);
 
 /*
@@ -659,12 +661,16 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 
 	*/
 
-	actj = cur_picture.mbinfo[j].act;
+	actj = picture->mbinfo[j].act;
 	/* Guesstimate a virtual buffer fullness based on
 	   bits used vs. bits in proportion to activity encoded
 	*/
+
+
 	dj = ((double)d) + 
 		((double)(bitcount()-S) - actcovered * ((double)T) / actsum);
+
+
 
 	/* scale against dynamic range of mquant and the bits/picture count.
 	   quant_floor != 0.0 is the VBR case where we set a bitrate as a (high)
@@ -675,7 +681,7 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 	*/
 
 	Qj = dj*62.0/r;
-	
+
 	Qj = (Qj > quant_floor) ? Qj : quant_floor;
 	/*  Heuristic: Decrease quantisation for blocks with lots of
 		sizeable coefficients.  We assume we just get a mess if
@@ -686,7 +692,7 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 		1.0 : 
 		(actj + act_boost*avg_act)/(act_boost*actj +  avg_act);
    
-	mquant = iscale_quant(picture,Qj*N_actj);
+	mquant = scale_quant(picture,Qj*N_actj);
 
 
 	/* Update activity covered */
@@ -699,7 +705,7 @@ int rc_calc_mquant( pict_data_s *picture,int j)
   fprintf(statfile,"dj=%.0f, Qj=%1.1f, actj=3.1%f, N_actj=1.1%f, mquant=%03d\n",
   dj,Qj,actj,N_actj,mquant);
 */
-	cur_picture.mbinfo[j].N_act = N_actj;
+	picture->mbinfo[j].N_act = N_actj;
 #endif
 	return mquant;
 }
@@ -890,7 +896,7 @@ void calc_vbv_delay(pict_data_s *picture)
 #ifdef OUTPUT_STAT
 	fprintf(statfile,
 			"\nvbv_delay=%d (bitcount=%lld, decoding_time=%.2f, bitcnt_EOP=%lld)\n",
-			cur_picture.vbv_delay,bitcount(),decoding_time,bitcnt_EOP);
+			picture->vbv_delay,bitcount(),decoding_time,bitcnt_EOP);
 #endif
 
 	if (picture->vbv_delay<0)

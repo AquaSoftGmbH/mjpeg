@@ -319,7 +319,7 @@ int round_search_radius( int radius )
  *  mv_field_sel: top/bottom field (for field prediction)
  *  motion_type: MC_FRAME, MC_FIELD
  *
- * uses global vars: pict_type, frame_pred_dct
+ *
  */
 
 

@@ -81,9 +81,8 @@ int quant_non_intra_3dnow(
 	int mquant,
 	int *nonsat_mquant)
 {
-	/*int satshift = mpeg1 ? 8 : 4;*/
 	int saturated;
-	int satlim = mpeg1 ? 255 : 2047;
+	int satlim = dctsatlim;
 	float *i_quant_matf; 
 	int   coeff_count = 64*block_count;
 	uint32_t nzflag, flags;

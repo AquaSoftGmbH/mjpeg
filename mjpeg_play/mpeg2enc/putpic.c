@@ -169,7 +169,7 @@ void putpict(pict_data_s *picture, short (*quant_blocks)[64] )
 	/* picture header and picture coding extension */
 	putpicthdr(picture);
 
-	if (!mpeg1)
+	if ( !mpeg1 )
 		putpictcodext(picture);
 
 	prev_mquant = rc_start_mb(picture); /* initialize quantization parameter */

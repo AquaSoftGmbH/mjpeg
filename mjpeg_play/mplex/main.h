@@ -62,8 +62,8 @@ typedef uint64_t clockticks;
     Definitionen
 *************************************************************************/
  
-#define MPLEX_VER    " 1.4"
-#define MPLEX_DATE   "1.11.2000"
+#define MPLEX_VER    " 1.4.1"
+#define MPLEX_DATE   "7.12.2000"
 
 /* Buffer size parameters */
 
@@ -109,6 +109,14 @@ typedef uint64_t clockticks;
 	 */
 	 
 #define MINIMUM_PADDING_PACKET_SIZE 10
+
+	/* 
+	   A "safety margin" for the audio buffer just in case the
+	   player doesn't *quite* clear it as quickly as we guess.
+	   We don't send a new audio packet until there ought to be at least this
+	   much space.
+	*/
+#define AUDIO_BUFFER_FILL_MARGIN 300
 
 /* The following values for sys_header_length & size are only valid for */
 /* System streams consisting of two basic streams. When wrapping around */

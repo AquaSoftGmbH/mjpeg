@@ -633,7 +633,8 @@ void outputstream ( char 		*video_file,
 		   and audio under-run
 		   	   
 		*/
-		if ( (buffer_space (&audio_buffer) > audio_max_packet_data)
+		if ( (buffer_space (&audio_buffer)-AUDIO_BUFFER_FILL_MARGIN
+			  > audio_max_packet_data)
 			 && (audio_au.length>0)
 			 && ! (  video_au.length !=0 &&
 					 video_next_SCR >= video_au.DTS+SCR_video_delay &&

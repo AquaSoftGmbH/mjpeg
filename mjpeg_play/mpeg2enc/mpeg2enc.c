@@ -508,11 +508,7 @@ static void readparmfile()
 	strcpy(tplref,"-");
 	strcpy(iqname,"-");
 	strcpy(niqname,"-");
-#ifdef OUTPUT_STAT
-	strcpy(statname,"stats.log");
-#else
-	strcpy(statname,"-");
-#endif
+
 	inputtype = 0;  /* doesnt matter */
 	nframes = 999999999; /* determined by EOF of stdin */
 	frame0  = 0;
@@ -528,8 +524,14 @@ static void readparmfile()
 	 *     For MPEG1 aspect ratio is for the pixels:  1 means square Pixels */
 	aspectratio     = mpeg1 ? 1 : 2;
 	dctsatlim		= mpeg1 ? 255 : 2047;
+	dctsatlim = 255;
 	/* If we're using a non standard (VCD?) profile bit-rate adjust	the vbv
 		buffer accordingly... */
+#ifdef OUTPUT_STAT
+	strcpy(statname, mpeg1 ? "mp1stats.log" : "mp2stats.log" );
+#else
+	strcpy(statname,"-");
+#endif
 
 	if( mpeg1 )
 	{
@@ -566,7 +568,8 @@ static void readparmfile()
 	
 
 	low_delay       = 0;
-	constrparms     = mpeg1;             /* Will be reset, if not coompliant */
+	constrparms     = mpeg1;       /* Will be reset, if not coompliant */
+	constrparms = 1;
 	profile         = param_422 ? 1 : 4; /* High or Main profile resp. */
 	level           = 8;                 /* Main Level      CCIR 601 rates */
 	prog_seq        = (fieldpic==0);
@@ -596,18 +599,30 @@ static void readparmfile()
 	frame_pred_dct_tab[0] = mpeg1 ? 1 : 0;
 	frame_pred_dct_tab[1] = mpeg1 ? 1 : 0;
 	frame_pred_dct_tab[2] = mpeg1 ? 1 : 0;
+
 	conceal_tab[0]  = 0; /* not implemented */
 	conceal_tab[1]  = 0;
 	conceal_tab[2]  = 0;
+
 	qscale_tab[0]   = mpeg1 ? 0 : 1;
 	qscale_tab[1]   = mpeg1 ? 0 : 1;
 	qscale_tab[2]   = mpeg1 ? 0 : 1;
+
 	intravlc_tab[0] = mpeg1 ? 0 : 1;
 	intravlc_tab[1] = mpeg1 ? 0 : 1;
 	intravlc_tab[2] = mpeg1 ? 0 : 1;
+
+	intravlc_tab[0] = 0;
+	intravlc_tab[1] = 0;
+	intravlc_tab[2] = 0;
+
 	altscan_tab[0]  = mpeg1 ? 0 : (fieldpic!=0);
 	altscan_tab[1]  = mpeg1 ? 0 : (fieldpic!=0);
 	altscan_tab[2]  = mpeg1 ? 0 : (fieldpic!=0);
+
+	altscan_tab[0]  = 0;
+	altscan_tab[1]  = 0;
+	altscan_tab[2]  = 0;
 	opt_repeatfirst     = 0;
 	opt_prog_frame      = prog_seq;
 
@@ -633,7 +648,7 @@ static void readparmfile()
 		int radius_x = ((param_searchrad+4)/8)*8;
 		int radius_y = ((param_searchrad*vertical_size/horizontal_size+4)/8)*8;
 
-		/* TODO: These f-codes should really be adjust for each
+		/* TODO: These f-codes should really be adjusted for each
 		   picture type... */
 		c=5;
 		if( radius_x*M < 64) c = 4;
@@ -674,11 +689,11 @@ static void readparmfile()
 	low_delay = !!low_delay;
 	constrparms = !!constrparms;
 	prog_seq = !!prog_seq;
-#ifdef TODO_RESTORE
+/*
 	topfirst = !!topfirst;
 	repeatfirst = !!repeatfirst;
 	prog_frame = !!prog_frame;
-#endif
+*/
 	for (i=0; i<3; i++)
 	{
 		frame_pred_dct_tab[i] = !!frame_pred_dct_tab[i];
@@ -699,7 +714,7 @@ static void readparmfile()
 	tc0 = 60*tc0 + s;
 	tc0 = (int)(frame_rate+0.5)*tc0 + f;
 
-	if (!mpeg1)
+	if ( !mpeg1)
 	{
 		profile_and_level_checks();
 	}
@@ -763,8 +778,7 @@ static void readparmfile()
 	}
 
 	/* relational checks */
-
-	if (mpeg1)
+	if ( mpeg1 )
 	{
 		if (!prog_seq)
 		{
@@ -812,7 +826,7 @@ static void readparmfile()
 			}
 	}
 
-	if (!mpeg1 && constrparms)
+	if ( !mpeg1 && constrparms)
 	{
 		if (!quiet)
 			fprintf(stderr,"Warning: not mpeg1 - setting constrained_parameters_flag = 0\n");
@@ -1038,7 +1052,7 @@ static void readquantmat()
 		i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)inter_q[i]));
 	}
 	
-	for( q = 2; q <= 112; ++q )
+	for( q = 1; q <= 112; ++q )
 	{
 		for (i=0; i<64; i++)
 		{
