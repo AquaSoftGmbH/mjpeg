@@ -856,41 +856,39 @@ static void toggle_fullscreen_cb(GtkWidget *w, gpointer d)
 static GtkWidget *get_settings_button_widget()
 {
    GtkWidget *button, *vbox, *hbox;
-   GtkTooltips *tooltip;
 
-   tooltip = gtk_tooltips_new();
    vbox = gtk_vbox_new(FALSE, 20);
    hbox = gtk_hbox_new(TRUE, 0);
 
    /* preferences */
-   button = gtk_image_label_button(NULL, preferences_xpm, 0, 0);
+   button = gtk_image_label_button(NULL, "Settings",
+			preferences_xpm, 0, 0);
    gtk_signal_connect(GTK_OBJECT(button), "clicked",
       GTK_SIGNAL_FUNC (show_channel_editor), NULL);
-   gtk_tooltips_set_tip(tooltip, button, "Settings", NULL);
    gtk_box_pack_start(GTK_BOX(hbox), button, TRUE, FALSE, 0);
    gtk_widget_show(button);
 
    /* fullscreen */
-   button = gtk_image_label_button(NULL, stv_fullscreen_xpm, 0, 0);
+   button = gtk_image_label_button(NULL, "Toggle Full-Screen",
+			stv_fullscreen_xpm, 0, 0);
    gtk_signal_connect(GTK_OBJECT(button), "clicked",
       GTK_SIGNAL_FUNC (toggle_fullscreen_cb), NULL);
-   gtk_tooltips_set_tip(tooltip, button, "Toggle fullscreen", NULL);
    gtk_box_pack_start(GTK_BOX(hbox), button, TRUE, FALSE, 0);
    gtk_widget_show(button);
 
    /* mute */
-   button = gtk_image_label_button(NULL, slider_volume_xpm, 0, 0);
+   button = gtk_image_label_button(NULL, "(Un)mute Audio",
+			slider_volume_xpm, 0, 0);
    gtk_signal_connect(GTK_OBJECT(button), "clicked",
       GTK_SIGNAL_FUNC (toggle_audio_cb), NULL);
-   gtk_tooltips_set_tip(tooltip, button, "(Un)mute Audio", NULL);
    gtk_box_pack_start(GTK_BOX(hbox), button, TRUE, FALSE, 0);
    gtk_widget_show(button);
 
    /* screenshot */
-   button = gtk_image_label_button(NULL, stv_screenshot_xpm, 0, 0);
+   button = gtk_image_label_button(NULL, "Create Screenshot",
+			stv_screenshot_xpm, 0, 0);
    gtk_signal_connect(GTK_OBJECT(button), "clicked",
       GTK_SIGNAL_FUNC (create_screenshot_cb), NULL);
-   gtk_tooltips_set_tip(tooltip, button, "Create screenshot", NULL);
    gtk_box_pack_start(GTK_BOX(hbox), button, TRUE, FALSE, 0);
    gtk_widget_show(button);
 

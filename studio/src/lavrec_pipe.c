@@ -540,10 +540,8 @@ void write_result(GtkWidget *widget, gpointer data)
 
 GtkWidget *create_buttons(GtkWidget *vbox, GtkWidget *window)
 {
-	GtkWidget *hbox, *label, *button, *pixmap_widget, *hbox2;
-	GtkTooltips *tooltip;
+	GtkWidget *hbox, *label, *button;
 
-	tooltip = gtk_tooltips_new();
 	lavrec_label = gtk_label_new("Welcome to Linux Video Studio\nPress \"Initialize Capture\" to start");
 	gtk_box_pack_start (GTK_BOX (vbox), lavrec_label, TRUE, TRUE, 10);
 	gtk_widget_show (lavrec_label);
@@ -560,57 +558,38 @@ GtkWidget *create_buttons(GtkWidget *vbox, GtkWidget *window)
 	gtk_box_pack_start (GTK_BOX (hbox), textfield, TRUE, TRUE, 0);
 	gtk_widget_show(textfield);
 
-	//button = gtk_button_new_with_label("Select");
-	button = gtk_button_new();
-	pixmap_widget = gtk_widget_from_xpm_data(file_widget_open_xpm);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Select Recording Location", NULL);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
+	button = gtk_image_label_button(NULL,
+				"Select Recording Location",
+				file_widget_open_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC(create_filesel1), NULL);
 	gtk_box_pack_start (GTK_BOX (hbox), button, FALSE, FALSE, 0);
 	gtk_widget_show(button);
 	gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 10);
 	gtk_widget_show(hbox);
 
-	hbox = gtk_hbox_new(FALSE,25);
+	hbox = gtk_hbox_new(TRUE,25);
 
 	init_button = gtk_button_new_with_label("Initialize capture");
 	gtk_signal_connect(GTK_OBJECT(init_button), "clicked",
 		GTK_SIGNAL_FUNC(write_result), NULL);
-	gtk_box_pack_start (GTK_BOX (hbox), init_button, TRUE, FALSE, 0);
+	gtk_box_pack_start (GTK_BOX (hbox), init_button, TRUE, TRUE, 0);
 	gtk_widget_show(init_button);
 
-	start_button = gtk_button_new(); //_with_label("[Start]");
-	hbox2 = gtk_hbox_new(FALSE,10);
-	pixmap_widget = gtk_widget_from_xpm_data(editor_record_xpm);
-	gtk_box_pack_start (GTK_BOX (hbox2), pixmap_widget, FALSE, FALSE, 0);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, start_button, "Start Recording", NULL);
-	label = gtk_label_new("Record");
-	gtk_box_pack_start (GTK_BOX (hbox2), label, FALSE, FALSE, 0);
-	gtk_widget_show (label);
-	gtk_container_add(GTK_CONTAINER(start_button), hbox2);
-	gtk_widget_show(hbox2);
+	start_button = gtk_image_label_button("Start",
+				"Start Recording",
+				editor_record_xpm, 0, GTK_POS_RIGHT);
 	gtk_signal_connect(GTK_OBJECT(start_button), "clicked",
 		GTK_SIGNAL_FUNC(emulate_enter), NULL);
-	gtk_box_pack_start (GTK_BOX (hbox), start_button, TRUE, FALSE, 0);
+	gtk_box_pack_start (GTK_BOX (hbox), start_button, TRUE, TRUE, 0);
 	gtk_widget_set_usize(start_button, -1, 32);
 	gtk_widget_show(start_button);
 
-	stop_button = gtk_button_new(); //_with_label("[Stop]");
-	hbox2 = gtk_hbox_new(FALSE,10);
-	pixmap_widget = gtk_widget_from_xpm_data(editor_stop_xpm);
-	gtk_box_pack_start (GTK_BOX (hbox2), pixmap_widget, FALSE, FALSE, 0);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, stop_button, "Stop Recording", NULL);
-	label = gtk_label_new("Stop");
-	gtk_box_pack_start (GTK_BOX (hbox2), label, FALSE, FALSE, 0);
-	gtk_widget_show (label);
-	gtk_container_add(GTK_CONTAINER(stop_button), hbox2);
-	gtk_widget_show(hbox2);
+	stop_button = gtk_image_label_button("Stop",
+				"Stop Recording",
+				editor_stop_xpm, 0, GTK_POS_RIGHT);
 	gtk_signal_connect(GTK_OBJECT(stop_button), "clicked",
 		GTK_SIGNAL_FUNC(emulate_ctrl_c), NULL);
-	gtk_box_pack_start (GTK_BOX (hbox), stop_button, TRUE, FALSE, 0);
+	gtk_box_pack_start (GTK_BOX (hbox), stop_button, TRUE, TRUE, 0);
 	gtk_widget_set_usize(stop_button, -1, 32);
 	gtk_widget_show(stop_button);
 

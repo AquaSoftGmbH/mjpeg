@@ -176,39 +176,57 @@ void set_background_color(GtkWidget *widget, int r, int g, int b)
 	gtk_rc_style_unref(rc_style);
 }
 
-GtkWidget *gtk_image_label_button(char *text, gchar **imagedata, gint spacing, GtkPositionType pos)
+GtkWidget *gtk_image_label_button(gchar *text, gchar *tttext, gchar **imagedata, gint spacing, GtkPositionType pos)
 {
    GtkWidget *button, *box, *pixmap=NULL, *label;
+   GtkTooltips *tooltip;
 
    button = gtk_button_new();
-   if (pos == GTK_POS_BOTTOM || pos == GTK_POS_TOP)
-      box = gtk_vbox_new(FALSE, spacing);
-   else if (pos == GTK_POS_LEFT || pos == GTK_POS_RIGHT)
-      box = gtk_hbox_new(FALSE, spacing);
-   else
-      return NULL;
+   if (text && imagedata)
+   {
+      if (pos == GTK_POS_BOTTOM || pos == GTK_POS_TOP)
+         box = gtk_vbox_new(FALSE, spacing);
+      else if (pos == GTK_POS_LEFT || pos == GTK_POS_RIGHT)
+         box = gtk_hbox_new(FALSE, spacing);
+      else
+         return NULL;
+   }
+   tooltip = gtk_tooltips_new();
+   gtk_tooltips_set_tip(tooltip, button, tttext, NULL);
    if (imagedata)
    {
       pixmap = gtk_widget_from_xpm_data(imagedata);
       if (pos == GTK_POS_RIGHT || pos == GTK_POS_BOTTOM)
       {
-         gtk_box_pack_start(GTK_BOX (box), pixmap, FALSE, TRUE, 0);
+         if (text)
+            gtk_box_pack_start(GTK_BOX (box), pixmap, TRUE, FALSE, 0);
+         else
+            gtk_container_add(GTK_CONTAINER(button), pixmap);
          gtk_widget_show(pixmap);
       }
    }
    if (text)
    {
       label = gtk_label_new(text);
-      gtk_box_pack_start(GTK_BOX (box), label, FALSE, TRUE, 0);
+      if (imagedata)
+         gtk_box_pack_start(GTK_BOX (box), label, TRUE, FALSE, 0);
+      else
+         gtk_container_add(GTK_CONTAINER(button), label);
       gtk_widget_show(label);
    }
    if (imagedata && (pos == GTK_POS_LEFT || pos == GTK_POS_TOP))
    {
-      gtk_box_pack_start(GTK_BOX (box), pixmap, FALSE, TRUE, 0);
+      if (text)
+         gtk_box_pack_start(GTK_BOX (box), pixmap, FALSE, TRUE, 0);
+      else
+         gtk_container_add(GTK_CONTAINER(button), pixmap);
       gtk_widget_show(pixmap);
    }
-   gtk_container_add (GTK_CONTAINER (button), box);
-   gtk_widget_show(box);
+   if (text && imagedata)
+   {
+      gtk_container_add (GTK_CONTAINER (button), box);
+      gtk_widget_show(box);
+   }
 
    return button;
 }

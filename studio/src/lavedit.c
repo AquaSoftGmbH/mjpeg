@@ -183,10 +183,7 @@ char *check_editlist(char *editlist)
 
 GtkWidget *create_tv_stuff(GtkWidget *window)
 {
-	GtkWidget *vbox2, *hbox3, *pixmap_widget, *scrollbar, *button;
-	GtkTooltips *tooltip;
-
-	tooltip = gtk_tooltips_new();
+	GtkWidget *vbox2, *hbox3, *scrollbar, *button;
 
 	vbox2 = gtk_vbox_new(FALSE,0);
 
@@ -207,84 +204,63 @@ GtkWidget *create_tv_stuff(GtkWidget *window)
 
 	hbox3 = gtk_hbox_new(TRUE, 5);
 
-	button = gtk_button_new();
-	pixmap_widget = gtk_widget_from_xpm_data(editor_fast_i_xpm);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Play Fast Backwards", NULL);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
+	button = gtk_image_label_button(NULL, "Play Fast Backwards",
+				editor_fast_i_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(command_to_lavplay_edit),"p-3");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, FALSE, 0);
 	gtk_widget_set_usize(button, 32, 32);
 	gtk_widget_show(button);
 
-	button = gtk_button_new();
-	pixmap_widget = gtk_widget_from_xpm_data(editor_play_i_xpm);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Play Backwards", NULL);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
+	button = gtk_image_label_button(NULL, "Play Backwards",
+				editor_play_i_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(command_to_lavplay_edit),"p-1");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, FALSE, 0);
 	gtk_widget_set_usize(button, 32, 32);
 	gtk_widget_show(button);
 
-	button = gtk_button_new();
-	pixmap_widget = gtk_widget_from_xpm_data(editor_step_i_xpm);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "One Frame Backwards", NULL);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
+	button = gtk_image_label_button(NULL, "One Frame Backwards",
+				editor_step_i_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(command_to_lavplay_edit),"-");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, FALSE, 0);
 	gtk_widget_set_usize(button, 32, 32);
 	gtk_widget_show(button);
 
-	button = gtk_button_new();
-	pixmap_widget = gtk_widget_from_xpm_data(editor_pause_xpm);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Pause", NULL);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
+	button = gtk_image_label_button(NULL, "Pause",
+				editor_pause_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(command_to_lavplay_edit),"p0");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, FALSE, 0);
 	gtk_widget_set_usize(button, 32, 32);
 	gtk_widget_show(button);
 
-	button = gtk_button_new();
-	pixmap_widget = gtk_widget_from_xpm_data(editor_step_xpm);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "One Frame Forward", NULL);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
+	button = gtk_image_label_button(NULL, "One Frame Forward",
+				editor_step_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(command_to_lavplay_edit),"+");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, FALSE, 0);
 	gtk_widget_set_usize(button, 32, 32);
 	gtk_widget_show(button);
 
-	button = gtk_button_new();
-	pixmap_widget = gtk_widget_from_xpm_data(editor_play_xpm);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Play Forward", NULL);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
+	button = gtk_image_label_button(NULL, "Play Forward",
+				editor_play_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(command_to_lavplay_edit),"p1");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, FALSE, 0);
 	gtk_widget_set_usize(button, 32, 32);
 	gtk_widget_show(button);
 
-	button = gtk_button_new();
-	pixmap_widget = gtk_widget_from_xpm_data(editor_fast_xpm);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Play Fast Forward", NULL);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
+	button = gtk_image_label_button(NULL, "Play Fast Forward",
+				editor_fast_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(command_to_lavplay_edit),"p3");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, FALSE, 0);
-	gtk_widget_show(button);
-
 	gtk_box_pack_start (GTK_BOX (vbox2), hbox3, FALSE, FALSE, 10);
 	gtk_widget_set_usize(button, 32, 32);
+	gtk_widget_show(button);
+
 	gtk_widget_show(hbox3);
 
 	return vbox2;
@@ -973,10 +949,7 @@ void delete_scene(GtkWidget *widget, gpointer data)
 
 GtkWidget *get_editing_routines_notebook_page()
 {
-	GtkWidget *hbox3, *vbox2, *button, *box, *pixmap_widget, *label;
-	GtkTooltips *tooltip;
-
-	tooltip = gtk_tooltips_new();
+	GtkWidget *hbox3, *vbox2, *button;
 
 	vbox2 = gtk_vbox_new(FALSE, 12);
 	hbox3 = gtk_hbox_new(TRUE, 10);
@@ -998,49 +971,25 @@ GtkWidget *get_editing_routines_notebook_page()
 
 	hbox3 = gtk_hbox_new(TRUE, 10);
 
-	button = gtk_button_new(); //_with_label("New");
-	box = gtk_vbox_new(FALSE, 0);
-	pixmap_widget = gtk_widget_from_xpm_data(file_new_xpm);
-	gtk_tooltips_set_tip(tooltip, button, "Create New Empty Editlist", NULL);
-	gtk_box_pack_start (GTK_BOX (box), pixmap_widget, FALSE, FALSE, 0);
-	gtk_widget_show(pixmap_widget);
-	label = gtk_label_new(" New Editlist ");
-	gtk_box_pack_start (GTK_BOX (box), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_container_add(GTK_CONTAINER(button), box);
-	gtk_widget_show(box);
+	button = gtk_image_label_button(" New Editlist ",
+				"Create New Empty Editlist",
+				file_new_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(clear_editlist), NULL);
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, TRUE, 0);
 	gtk_widget_show(button);
 
-	button = gtk_button_new(); //_with_label("Open");
-	box = gtk_vbox_new(FALSE, 0);
-	pixmap_widget = gtk_widget_from_xpm_data(file_open_xpm);
-	gtk_tooltips_set_tip(tooltip, button, "Open Editlist from File", NULL);
-	gtk_box_pack_start (GTK_BOX (box), pixmap_widget, FALSE, FALSE, 0);
-	gtk_widget_show(pixmap_widget);
-	label = gtk_label_new(" Open Editlist ");
-	gtk_box_pack_start (GTK_BOX (box), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_container_add(GTK_CONTAINER(button), box);
-	gtk_widget_show(box);
+	button = gtk_image_label_button(" Open Editlist ",
+				"Open Editlist from File",
+				file_open_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(create_filesel3), "open");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, TRUE, 0);
 	gtk_widget_show(button);
 
-	button = gtk_button_new(); //_with_label("Save As");
-	box = gtk_vbox_new(FALSE, 0);
-	pixmap_widget = gtk_widget_from_xpm_data(file_save_xpm);
-	gtk_tooltips_set_tip(tooltip, button, "Save Current Editlist to File", NULL);
-	gtk_box_pack_start (GTK_BOX (box), pixmap_widget, FALSE, FALSE, 0);
-	gtk_widget_show(pixmap_widget);
-	label = gtk_label_new(" Save Editlist ");
-	gtk_box_pack_start (GTK_BOX (box), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_container_add(GTK_CONTAINER(button), box);
-	gtk_widget_show(box);
+	button = gtk_image_label_button(" Save Editlist ",
+				"Save Editlist to File",
+				file_save_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(create_filesel3), "save_as");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, TRUE, 0);
@@ -1051,76 +1000,38 @@ GtkWidget *get_editing_routines_notebook_page()
 
 	hbox3 = gtk_hbox_new(TRUE, 10);
 
-	button = gtk_button_new(); //_with_label("Delete");
-	box = gtk_vbox_new(FALSE, 0);
-	pixmap_widget = gtk_widget_from_xpm_data(scene_delete_xpm);
-	gtk_tooltips_set_tip(tooltip, button, "Delete Scene from Editlist", NULL);
-	gtk_box_pack_start (GTK_BOX (box), pixmap_widget, FALSE, FALSE, 0);
-	gtk_widget_show(pixmap_widget);
-	label = gtk_label_new(" Delete Scene ");
-	gtk_box_pack_start (GTK_BOX (box), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_container_add(GTK_CONTAINER(button), box);
-	gtk_widget_show(box);
+	button = gtk_image_label_button(" Delete Scene ",
+				"Delete Scene from Editlist",
+				scene_delete_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(delete_scene), NULL);
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, TRUE, 0);
 	gtk_widget_show(button);
 
-	button = gtk_button_new(); //_with_label("Split");
-	box = gtk_vbox_new(FALSE, 0);
-	pixmap_widget = gtk_widget_from_xpm_data(scene_split_xpm);
-	gtk_tooltips_set_tip(tooltip, button, "Split Scene into Two Scenes", NULL);
-	gtk_box_pack_start (GTK_BOX (box), pixmap_widget, FALSE, FALSE, 0);
-	gtk_widget_show(pixmap_widget);
-	label = gtk_label_new(" Split Scene ");
-	gtk_box_pack_start (GTK_BOX (box), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_container_add(GTK_CONTAINER(button), box);
-	gtk_widget_show(box);
+	button = gtk_image_label_button(" Split Scene ",
+				"Split Scene into Two Scenes",
+				scene_split_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(split_scene), (gpointer) 1);
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, TRUE, 0);
 	gtk_widget_show(button);
-#if 0
-	button = gtk_button_new_with_label("Add new scene");
-	gtk_signal_connect(GTK_OBJECT(button), "clicked",
-		GTK_SIGNAL_FUNC(create_filesel3), "add_new");
-	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
-	gtk_widget_show(button);
-#endif
+
 	gtk_box_pack_start (GTK_BOX (vbox2), hbox3, FALSE, FALSE, 0);
 	gtk_widget_show(hbox3);
 
 	hbox3 = gtk_hbox_new(TRUE, 10);
 
-	button = gtk_button_new(); //_with_label(" Move Scene to Left ");
-	box = gtk_vbox_new(FALSE, 0);
-	pixmap_widget = gtk_widget_from_xpm_data(scene_left_xpm);
-	gtk_tooltips_set_tip(tooltip, button, "Move Scene One Position to the Left", NULL);
-	gtk_box_pack_start (GTK_BOX (box), pixmap_widget, FALSE, FALSE, 0);
-	gtk_widget_show(pixmap_widget);
-	label = gtk_label_new(" Move Scene to Left ");
-	gtk_box_pack_start (GTK_BOX (box), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_container_add(GTK_CONTAINER(button), box);
-	gtk_widget_show(box);
+	button = gtk_image_label_button(" Move Scene to Left ",
+				"Move Scene One Position to the Left",
+				scene_left_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(scene_move), (gpointer) -1);
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, TRUE, 0);
 	gtk_widget_show(button);
 
-	button = gtk_button_new(); //_with_label(" Move Scene to Right ");
-	box = gtk_vbox_new(FALSE, 0);
-	pixmap_widget = gtk_widget_from_xpm_data(scene_right_xpm);
-	gtk_tooltips_set_tip(tooltip, button, "Move Scene One Position to the Right", NULL);
-	gtk_box_pack_start (GTK_BOX (box), pixmap_widget, FALSE, FALSE, 0);
-	gtk_widget_show(pixmap_widget);
-	label = gtk_label_new(" Move Scene to Right ");
-	gtk_box_pack_start (GTK_BOX (box), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_container_add(GTK_CONTAINER(button), box);
-	gtk_widget_show(box);
+	button = gtk_image_label_button(" Move Scene to Right ",
+				"Move Scene One Position to the Right",
+				scene_right_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(scene_move), (gpointer) 1);
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, TRUE, 0);
@@ -1131,37 +1042,17 @@ GtkWidget *get_editing_routines_notebook_page()
 
 	hbox3 = gtk_hbox_new(TRUE, 10);
 
-	button = gtk_button_new(); //_with_label(" Create Screenshot ");
-	box = gtk_vbox_new(FALSE, 0);
-	pixmap_widget = gtk_widget_from_xpm_data(scene_screenshot_xpm);
-	gtk_tooltips_set_tip(tooltip, button, "Create a Screenshot of the Current Frame", NULL);
-	gtk_box_pack_start (GTK_BOX (box), pixmap_widget, FALSE, FALSE, 0);
-	gtk_widget_show(pixmap_widget);
-	label = gtk_label_new(" Create Screenshot ");
-	gtk_box_pack_start (GTK_BOX (box), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_container_add(GTK_CONTAINER(button), box);
-	gtk_widget_show(box);
+	button = gtk_image_label_button(" Create Screenshot ",
+				"Create Screenshot of the Current Frame",
+				scene_screenshot_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(create_filesel3), "screen");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, TRUE, 0);
 	gtk_widget_show(button);
 
-/*	gtk_box_pack_start (GTK_BOX (vbox2), hbox3, FALSE, FALSE, 0);
-	gtk_widget_show(hbox3);
-	hbox3 = gtk_hbox_new(TRUE, 10);*/
-
-	button = gtk_button_new(); //_with_label("Do Scene Detection");
-	box = gtk_vbox_new(FALSE, 0);
-	pixmap_widget = gtk_widget_from_xpm_data(scene_detection_xpm);
-	gtk_tooltips_set_tip(tooltip, button, "Do Scene Detection on a New Movie", NULL);
-	gtk_box_pack_start (GTK_BOX (box), pixmap_widget, FALSE, FALSE, 0);
-	gtk_widget_show(pixmap_widget);
-	label = gtk_label_new(" Scene Detection ");
-	gtk_box_pack_start (GTK_BOX (box), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_container_add(GTK_CONTAINER(button), box);
-	gtk_widget_show(box);
+	button = gtk_image_label_button(" Scene Detection ",
+				"Do Scene Detection on a New Movie",
+				scene_detection_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(create_filesel3), "scene_detection");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, TRUE, 0);
@@ -1175,12 +1066,8 @@ GtkWidget *get_editing_routines_notebook_page()
 
 GtkWidget *get_add_movie_notebook_page()
 {
-	GtkWidget *hbox3, *vbox2, *button, *label, *pixmap_widget, *box; //, *table;
-/*	GdkPixbuf *bg;*/
+	GtkWidget *hbox3, *vbox2, *button;
 	int i;
-	GtkTooltips *tooltip;
-
-	tooltip = gtk_tooltips_new();
 
 	vbox2 = gtk_vbox_new(FALSE, 2);
 	hbox3 = gtk_hbox_new(FALSE, 10);
@@ -1192,8 +1079,6 @@ GtkWidget *get_add_movie_notebook_page()
 	gtk_widget_show(label);
 */
 	current_open_movies_combo = gtk_combo_new();
-	/*gtk_combo_set_popdown_strings (GTK_COMBO (current_open_movies_combo),
-		current_open_movies);*/
 	for (i=0;i<5;i++)
 		current_open_movies[i][0] = '\0';
 	gtk_signal_connect(GTK_OBJECT(GTK_COMBO(current_open_movies_combo)->entry),
@@ -1202,11 +1087,9 @@ GtkWidget *get_add_movie_notebook_page()
 		TRUE, TRUE, 0);
 	gtk_widget_show (current_open_movies_combo);
 
-	button = gtk_button_new(); //_with_label("Open");
-	pixmap_widget = gtk_widget_from_xpm_data(file_widget_open_xpm);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Open movie or editlist", NULL);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
+	button = gtk_image_label_button(NULL,
+				"Open Movie or Editlist",
+				file_widget_open_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(create_filesel3), "add_movie_selection");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, FALSE, 0);
@@ -1216,9 +1099,6 @@ GtkWidget *get_add_movie_notebook_page()
 	gtk_widget_show(hbox3);
 
 	/* Now a table consisting of the scenes of a movie */
-	//table = gtk_table_new (1, NUM_ADD_MOVIE_SCENES, TRUE);
-
-	/*bg = gdk_pixbuf_new_from_xpm_data ((const char **)film_xpm);*/
 	for (i=0;i<NUM_ADD_MOVIE_SCENES;i++)
 	{
 		if (i%2 == 0)
@@ -1229,8 +1109,6 @@ GtkWidget *get_add_movie_notebook_page()
 		add_movie_images[i] = gtk_imageplug_new_from_video("",0,0,0,0,0,NULL,i);
 		gtk_signal_connect(GTK_OBJECT(add_movie_images[i]), "button_press_event",
 			GTK_SIGNAL_FUNC(add_movie_scene_image_clicked), NULL);
-		//gtk_table_attach_defaults (GTK_TABLE (table), add_movie_images[i],
-			//i, i+1, 0, 1);
 		gtk_box_pack_start (GTK_BOX (hbox3), add_movie_images[i], FALSE, FALSE, 0);
 		gtk_widget_show(add_movie_images[i]);
 
@@ -1244,44 +1122,25 @@ GtkWidget *get_add_movie_notebook_page()
 	/* and at last a button "add scene" and two buttons to see more scenes */
 	hbox3 = gtk_hbox_new(FALSE, 10);
 
-	button = gtk_button_new(); //_with_label("<=");
-	box = gtk_vbox_new(FALSE, 0);
-	pixmap_widget = gtk_widget_from_xpm_data(arrow_left_xpm);
-	gtk_tooltips_set_tip(tooltip, button, "Go One Page Back", NULL);
-	gtk_box_pack_start (GTK_BOX (box), pixmap_widget, FALSE, FALSE, 0);
-	gtk_widget_show(pixmap_widget);
-	gtk_container_add(GTK_CONTAINER(button), box);
-	gtk_widget_show(box);
+	button = gtk_image_label_button(NULL,
+				"Go One Page Back",
+				arrow_left_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(add_scene_movie_change_page), "-1");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
 	gtk_widget_show(button);
 
-	button = gtk_button_new(); //_with_label("Add selected scene");
-	box = gtk_hbox_new(FALSE, 0);
-	pixmap_widget = gtk_widget_from_xpm_data(scene_add_xpm);
-	gtk_tooltips_set_tip(tooltip, button, "Add Scene to Editlist", NULL);
-	gtk_box_pack_start (GTK_BOX (box), pixmap_widget, FALSE, FALSE, 0);
-	gtk_widget_show(pixmap_widget);
-	label = gtk_label_new(" Add Scene ");
-	gtk_box_pack_start (GTK_BOX (box), label, TRUE, TRUE, 0);
-	gtk_widget_show(label);
-	gtk_container_add(GTK_CONTAINER(button), box);
-	gtk_widget_show(box);
-
+	button = gtk_image_label_button(" Add Scene ",
+				"Add Scene to Editlist",
+				scene_add_xpm, 0, GTK_POS_RIGHT);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(add_scene_to_editlist), NULL);
 	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
 	gtk_widget_show(button);
 
-	button = gtk_button_new(); //_with_label("=>");
-	box = gtk_vbox_new(FALSE, 0);
-	pixmap_widget = gtk_widget_from_xpm_data(arrow_right_xpm);
-	gtk_tooltips_set_tip(tooltip, button, "Go One Page Further", NULL);
-	gtk_box_pack_start (GTK_BOX (box), pixmap_widget, FALSE, FALSE, 0);
-	gtk_widget_show(pixmap_widget);
-	gtk_container_add(GTK_CONTAINER(button), box);
-	gtk_widget_show(box);
+	button = gtk_image_label_button(NULL,
+				"Go One Page Forward",
+				arrow_right_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(add_scene_movie_change_page), "+1");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);

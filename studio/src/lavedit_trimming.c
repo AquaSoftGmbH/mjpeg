@@ -67,12 +67,9 @@ void create_lavplay_edit_child();
 
 static GtkWidget *create_tv_stuff_for_trimming(GtkWidget *window)
 {
-	GtkWidget *vbox2, *hbox3, *pixmap_widget, *scrollbar, *button;
-	GtkTooltips *tooltip;
+	GtkWidget *vbox2, *hbox3, *scrollbar, *button;
 	GtkScene *scene;
 	int i;
-
-	tooltip = gtk_tooltips_new();
 
 	vbox2 = gtk_vbox_new(FALSE,0);
 
@@ -100,67 +97,53 @@ static GtkWidget *create_tv_stuff_for_trimming(GtkWidget *window)
 
 	hbox3 = gtk_hbox_new(TRUE, 20);
 
-	button = gtk_button_new();
-	pixmap_widget = gtk_widget_from_xpm_data(editor_fast_i_xpm);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Play Fast Backwards", NULL);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
+
+	button = gtk_image_label_button(NULL, "Play Fast Backwards",
+				editor_fast_i_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(command_to_lavplay_trimming_set),"p-3");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
 	gtk_widget_show(button);
 
-	button = gtk_button_new();
-	pixmap_widget = gtk_widget_from_xpm_data(editor_play_i_xpm);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Play Backwards", NULL);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
-	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC(command_to_lavplay_trimming_set),"p-1");
+	button = gtk_image_label_button(NULL, "Play Backwards",
+				editor_play_i_xpm, 0, GTK_POS_BOTTOM);
+	gtk_signal_connect(GTK_OBJECT(button), "clicked",
+		GTK_SIGNAL_FUNC(command_to_lavplay_trimming_set),"p-1");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
 	gtk_widget_show(button);
 
-	button = gtk_button_new();
-	pixmap_widget = gtk_widget_from_xpm_data(editor_step_i_xpm);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "One Frame Backwards", NULL);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
-	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC(command_to_lavplay_trimming_set),"-");
+	button = gtk_image_label_button(NULL, "One Frame Backwards",
+				editor_step_i_xpm, 0, GTK_POS_BOTTOM);
+	gtk_signal_connect(GTK_OBJECT(button), "clicked",
+		GTK_SIGNAL_FUNC(command_to_lavplay_trimming_set),"-");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
 	gtk_widget_show(button);
 
-	button = gtk_button_new();
-	pixmap_widget = gtk_widget_from_xpm_data(editor_pause_xpm);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Pause", NULL);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
-	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC(command_to_lavplay_trimming_set),"p0");
+	button = gtk_image_label_button(NULL, "Pause",
+				editor_pause_xpm, 0, GTK_POS_BOTTOM);
+	gtk_signal_connect(GTK_OBJECT(button), "clicked",
+		GTK_SIGNAL_FUNC(command_to_lavplay_trimming_set),"p0");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
 	gtk_widget_show(button);
 
-	button = gtk_button_new();
-	pixmap_widget = gtk_widget_from_xpm_data(editor_step_xpm);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "One Frame Forward", NULL);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
-	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC(command_to_lavplay_trimming_set),"+");
+	button = gtk_image_label_button(NULL, "One Frame Forward",
+				editor_step_xpm, 0, GTK_POS_BOTTOM);
+	gtk_signal_connect(GTK_OBJECT(button), "clicked",
+		GTK_SIGNAL_FUNC(command_to_lavplay_trimming_set),"+");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
 	gtk_widget_show(button);
 
-	button = gtk_button_new();
-	pixmap_widget = gtk_widget_from_xpm_data(editor_play_xpm);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Play Forward", NULL);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
-	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC(command_to_lavplay_trimming_set),"p1");
+	button = gtk_image_label_button(NULL, "Play Forward",
+				editor_play_xpm, 0, GTK_POS_BOTTOM);
+	gtk_signal_connect(GTK_OBJECT(button), "clicked",
+		GTK_SIGNAL_FUNC(command_to_lavplay_trimming_set),"p1");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
 	gtk_widget_show(button);
 
-	button = gtk_button_new();
-	pixmap_widget = gtk_widget_from_xpm_data(editor_fast_xpm);
-	gtk_widget_show(pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Play Fast Forward", NULL);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
-	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC(command_to_lavplay_trimming_set),"p3");
+	button = gtk_image_label_button(NULL, "Play Fast Forward",
+				editor_fast_xpm, 0, GTK_POS_BOTTOM);
+	gtk_signal_connect(GTK_OBJECT(button), "clicked",
+		GTK_SIGNAL_FUNC(command_to_lavplay_trimming_set),"p3");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
 	gtk_widget_show(button);
 

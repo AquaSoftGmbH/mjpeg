@@ -254,30 +254,38 @@ GtkWidget *get_channel_list_notebook_page(GtkWidget *channellist)
    gtk_widget_show(chanlist_entry);
 
    hbox = gtk_hbox_new(FALSE, 5);
-   button = gtk_image_label_button("Add", stv_accept_xpm, 5, GTK_POS_RIGHT);
-   gtk_tooltips_set_tip(tooltip, button, "Add Current Entry to Channel List", NULL);
+   button = gtk_image_label_button("Add",
+			"Add Current Entry to Channel List",
+			stv_accept_xpm, 5, GTK_POS_RIGHT);
    gtk_signal_connect(GTK_OBJECT(button), "clicked",
       GTK_SIGNAL_FUNC(save_data), GTK_CLIST(channellist));
    gtk_box_pack_start(GTK_BOX (hbox), button, FALSE, FALSE, 0);
    gtk_widget_show(button);
-   button = gtk_image_label_button("Del", stv_reject_xpm, 5, GTK_POS_RIGHT);
-   gtk_tooltips_set_tip(tooltip, button, "Remove Current Entry from Channel List", NULL);
+
+   button = gtk_image_label_button("Del",
+			"Remove Current Entry from Channel List",
+			stv_reject_xpm, 5, GTK_POS_RIGHT);
    gtk_signal_connect(GTK_OBJECT(button), "clicked",
       GTK_SIGNAL_FUNC(del_data), GTK_CLIST(channellist));
    gtk_box_pack_start(GTK_BOX (hbox), button, FALSE, FALSE, 0);
    gtk_widget_show(button);
-   button = gtk_image_label_button("Up", stv_arrow_up_xpm, 5, GTK_POS_RIGHT);
-   gtk_tooltips_set_tip(tooltip, button, "Push Current Entry One Position Up", NULL);
+
+   button = gtk_image_label_button("Up",
+			"Push Current Entry One Position Up",
+			stv_arrow_up_xpm, 5, GTK_POS_RIGHT);
    gtk_signal_connect(GTK_OBJECT(button), "clicked",
       GTK_SIGNAL_FUNC(move_data_up), GTK_CLIST(channellist));
    gtk_box_pack_start(GTK_BOX (hbox), button, FALSE, FALSE, 0);
    gtk_widget_show(button);
-   button = gtk_image_label_button("Down", stv_arrow_down_xpm, 5, GTK_POS_RIGHT);
-   gtk_tooltips_set_tip(tooltip, button, "Pull Current Entry One Position Down", NULL);
+
+   button = gtk_image_label_button("Down",
+			"Pull Current Entry One Position Down",
+			stv_arrow_down_xpm, 5, GTK_POS_RIGHT);
    gtk_signal_connect(GTK_OBJECT(button), "clicked",
       GTK_SIGNAL_FUNC(move_data_down), GTK_CLIST(channellist));
    gtk_box_pack_start(GTK_BOX (hbox), button, FALSE, FALSE, 0);
    gtk_widget_show(button);
+
    gtk_box_pack_start(GTK_BOX (vbox), hbox, TRUE, FALSE, 0);
    gtk_widget_show(hbox);
 

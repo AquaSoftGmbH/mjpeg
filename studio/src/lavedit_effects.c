@@ -40,6 +40,10 @@
 #include "editor_stop.xpm"
 #include "file_widget_open.xpm"
 
+#include "effect_text.xpm"
+#include "effect_picture.xpm"
+#include "effect_transition.xpm"
+
 #define min(a,b) ((a) < (b) ? (a) : (b))
 
 /* structs for the various effect utilities here */
@@ -316,10 +320,8 @@ void create_progress_window(int length)
 
 GtkWidget *effects_tv(gpointer options, GtkSignalFunc play)
 {
-	GtkWidget *vbox2, *button, *pixmap_widget, *hbox2;
-	GtkTooltips *tooltip;
-	
-	tooltip = gtk_tooltips_new();
+	GtkWidget *vbox2, *button, *hbox2;
+
 	vbox2 = gtk_vbox_new(FALSE, 5);
 
 	/* tv preview window */
@@ -333,22 +335,18 @@ GtkWidget *effects_tv(gpointer options, GtkSignalFunc play)
 	/* a play and a stop button in a new hbox */
 	hbox2 = gtk_hbox_new(FALSE, 10);
 
-	button = gtk_button_new(); //_with_label("Stop []"); /* kill */
-	pixmap_widget = gtk_widget_from_xpm_data(editor_stop_xpm);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
-	gtk_widget_show (pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Stop Preview Video Stream", NULL);
+	button = gtk_image_label_button(NULL,
+				"Stop Preview Video Stream",
+				editor_stop_xpm, 0, GTK_POS_BOTTOM);
 	gtk_widget_set_usize(button, 32, 32);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(stop_scene_transition), NULL);
 	gtk_box_pack_start (GTK_BOX (hbox2), button, TRUE,FALSE, 0);
 	gtk_widget_show (button);
 
-	button = gtk_button_new(); //_with_label("Play |>"); /* lavpipe | yuvplay */
-	pixmap_widget = gtk_widget_from_xpm_data(editor_play_xpm);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
-	gtk_widget_show (pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Preview the Scene Transition", NULL);
+	button = gtk_image_label_button(NULL,
+				"Preview the Scene Transition",
+				editor_play_xpm, 0, GTK_POS_BOTTOM);
 	gtk_widget_set_usize(button, 32, 32);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		play, (gpointer)options);
@@ -1668,8 +1666,7 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 	/* Create a preview (lavpipe | yuvplay) for the image overlay in *options */
 
 	GtkWidget *window, *vbox, *hbox, *vbox2, *hbox2, *hseparator,*button=NULL;
-	GtkWidget *vbox3, *pixmap_widget, *scrollbar, *label;
-	GtkTooltips *tooltip;
+	GtkWidget *vbox3, *scrollbar, *label;
 	GtkObject *adj;
 	int i;
 
@@ -1679,8 +1676,6 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 			"Unknown overlay type (options->type = %d)", options->type);
 		return;
 	}
-
-	tooltip = gtk_tooltips_new();
 
 	window = gtk_window_new(GTK_WINDOW_DIALOG);
 	vbox = gtk_vbox_new(FALSE, 5);
@@ -1727,11 +1722,9 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 	gtk_widget_show(options->image_file_textbox);
 	if (options->type == GTK_EFFECT_IMAGE)
 	{
-		button = gtk_button_new();
-		pixmap_widget = gtk_widget_from_xpm_data(file_widget_open_xpm);
-		gtk_widget_show(pixmap_widget);
-		gtk_tooltips_set_tip(tooltip, button, "Select Image for Image Overlay", NULL);
-		gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
+		button = gtk_image_label_button(NULL,
+					"Select Image for Image Overlay",
+					file_widget_open_xpm, 0, GTK_POS_BOTTOM);
 		gtk_signal_connect(GTK_OBJECT(button), "clicked",
 			GTK_SIGNAL_FUNC(select_image_overlay_file), (gpointer)options);
 	}
@@ -1957,24 +1950,14 @@ void lavedit_effects_create_overlay(GtkWidget *widget, char *data)
 
 GtkWidget *get_effects_notebook_page()
 {
-	GtkWidget *hbox3, *vbox2, *button, *box; //*label, *pixmap_widget;
-	GtkTooltips *tooltip;
-
-	tooltip = gtk_tooltips_new();
+	GtkWidget *hbox3, *vbox2, *button;
 
 	vbox2 = gtk_vbox_new(FALSE, 2);
 	hbox3 = gtk_hbox_new(FALSE, 10);
 
-	button = gtk_button_new_with_label("Create Scene Transition");
-	box = gtk_vbox_new(FALSE, 0);
-	//pixmap_widget = gtk_widget_from_xpm_data(arrow_right_xpm);
-	gtk_tooltips_set_tip(tooltip, button,
-		"Create a Scene Transition between current and next Scene",
-		NULL);
-	//gtk_box_pack_start (GTK_BOX (box), pixmap_widget, FALSE, FALSE, 0);
-	//gtk_widget_show(pixmap_widget);
-	//gtk_container_add(GTK_CONTAINER(button), box);
-	//gtk_widget_show(box);
+	button = gtk_image_label_button("Create Scene Transition",
+			"Create a Scene Transition between current and next Scene",
+			(gchar**)effect_transition_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(lavedit_effects_create_scene_transition), NULL);
 	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
@@ -1985,16 +1968,9 @@ GtkWidget *get_effects_notebook_page()
 
 	hbox3 = gtk_hbox_new(FALSE, 10);
 
-	button = gtk_button_new_with_label("Create Image Overlay");
-	box = gtk_vbox_new(FALSE, 0);
-	//pixmap_widget = gtk_widget_from_xpm_data(arrow_right_xpm);
-	gtk_tooltips_set_tip(tooltip, button,
-		"Create an Image Overlay over a Video Scene",
-		NULL);
-	//gtk_box_pack_start (GTK_BOX (box), pixmap_widget, FALSE, FALSE, 0);
-	//gtk_widget_show(pixmap_widget);
-	//gtk_container_add(GTK_CONTAINER(button), box);
-	//gtk_widget_show(box);
+	button = gtk_image_label_button("Create Image Overlay",
+			"Create an Image Overlay over a Video Scene",
+			(gchar**)effect_picture_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(lavedit_effects_create_overlay), "image");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
@@ -2005,16 +1981,9 @@ GtkWidget *get_effects_notebook_page()
 
 	hbox3 = gtk_hbox_new(FALSE, 10);
 
-	button = gtk_button_new_with_label("Create Text Overlay");
-	box = gtk_vbox_new(FALSE, 0);
-	//pixmap_widget = gtk_widget_from_xpm_data(arrow_right_xpm);
-	gtk_tooltips_set_tip(tooltip, button,
-		"Create an Text Overlay over a Video Scene",
-		NULL);
-	//gtk_box_pack_start (GTK_BOX (box), pixmap_widget, FALSE, FALSE, 0);
-	//gtk_widget_show(pixmap_widget);
-	//gtk_container_add(GTK_CONTAINER(button), box);
-	//gtk_widget_show(box);
+	button = gtk_image_label_button("Create Text Overlay",
+			"Create an Text Overlay over a Video Scene",
+			(gchar**)effect_text_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(lavedit_effects_create_overlay), "text");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
