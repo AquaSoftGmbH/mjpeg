@@ -1478,8 +1478,6 @@ GtkWidget *button_option;
                                     encx, encx+1, ency, ency+1);
   gtk_widget_show(button_option);
 
-  sprintf(text_task,"%s",task);
-
 }
 
 /* Check the name for the mpeg */
@@ -1539,30 +1537,35 @@ for (i = 0; i < 3; i++)
    {
       pointenc = &encoding;
       pointdist = &machine4mpeg1;
+      sprintf(text_task,"%s",(char*)data);
       check_mpegname(data);
    }
   else if (strcmp ((char*)data,"MPEG2") == 0)
    {
       pointenc = &encoding2;
       pointdist = &machine4mpeg2;
+      sprintf(text_task,"%s",(char*)data);
       check_mpegname(data);
    }
   else if (strcmp ((char*)data,"VCD")   == 0)
    {
       pointenc = &encoding_vcd;
       pointdist = &machine4vcd;
+      sprintf(text_task,"%s",(char*)data);
       check_mpegname(data);
    }
   else if (strcmp ((char*)data,"SVCD")  == 0)
    {
       pointenc = &encoding_svcd;
       pointdist = &machine4svcd;
+      sprintf(text_task,"%s",(char*)data);
       check_mpegname(data);
    }
   else if (strcmp ((char*)data,"DivX")  == 0)
    {
       pointenc = &encoding_divx;
       pointdist = &machine4divx;
+      sprintf(text_task,"%s",(char*)data);
       gtk_widget_set_sensitive(create_sound, FALSE); 
       gtk_widget_set_sensitive(do_video, FALSE); 
       gtk_widget_set_sensitive(mplex_only, FALSE);
@@ -1589,6 +1592,7 @@ for (i = 0; i < 3; i++)
    {
       pointenc = &encoding_yuv2lav;
       pointdist = &machine4yuv2lav;
+      sprintf(text_task,"%s",(char*)data);
       gtk_widget_set_sensitive(create_sound, FALSE); 
       gtk_widget_set_sensitive(do_video, FALSE); 
       gtk_widget_set_sensitive(mplex_only, FALSE);
