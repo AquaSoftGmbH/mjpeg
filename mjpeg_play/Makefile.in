@@ -69,6 +69,8 @@ JPEG = @JPEG@
 MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
+QUICKTIME_LD = @QUICKTIME_LD@
+QUICKTIME_PATH = @QUICKTIME_PATH@
 RANLIB = @RANLIB@
 SDL = @SDL@
 SDL_CFLAGS = @SDL_CFLAGS@
@@ -79,26 +81,25 @@ X_CFLAGS = @X_CFLAGS@
 X_EXTRA_LIBS = @X_EXTRA_LIBS@
 X_LIBS = @X_LIBS@
 X_PRE_LIBS = @X_PRE_LIBS@
-build_MJPEG = @build_MJPEG@
 x_libraries = @x_libraries@
 
-INCLUDES = -I./mjpeg -I./movtar -I./quicktime/quicktime -I/usr/X11R6/lib @GLIB_CFLAGS@ 
-SUBDIRS = mjpeg movtar quicktime . aenc mpegjoin mplex utils xlav
+INCLUDES = -I./mjpeg -I./movtar -I@QUICKTIME_PATH@ -I/usr/X11R6/lib @GLIB_CFLAGS@ 
+SUBDIRS = mjpeg movtar @QUICKTIME_PATH@ . aenc mpegjoin mplex utils xlav
 
 bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf
 lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c
-lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/ -L./quicktime/quicktime @GLIB_LIBS@
-lavplay_LDADD = -lmovtar -lmjpeg -lquicktime -lpng -lpthread @SDL@ @JPEG@ 
+lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/ -L@QUICKTIME_PATH@ @GLIB_LIBS@
+lavplay_LDADD = -lmovtar -lmjpeg @QUICKTIME_LD@ -lpng -lpthread @SDL@ @JPEG@ 
 
 lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c
-lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/ -L./quicktime/quicktime @GLIB_LIBS@
-lavrec_LDADD = -lmovtar -lmjpeg -lquicktime -lpng -lpthread @JPEG@ 
+lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/ -L@QUICKTIME_PATH@ @GLIB_LIBS@
+lavrec_LDADD = -lmovtar -lmjpeg @QUICKTIME_LD@ -lpng -lpthread @JPEG@ 
 
 lavvideo_SOURCES = lavvideo.c
 
 v4l_conf_SOURCES = v4l-conf.c 
 v4l_conf_INCLUDES = -I./.. -I.. -I/usr/X11R6/lib 
-v4l_conf_LINK = gcc -Wall -Wstrict-prototypes -g -O2 -D_REENTRANT -o v4l-conf v4l-conf.o -L/usr/X11R6/lib -lXdpms -lXxf86vm -lXxf86dga -lXext -lX11 -I
+v4l_conf_LINK = gcc -Wall -Wstrict-prototypes -g -O2 -D_REENTRANT -o v4l-conf v4l-conf.o -L/usr/X11R6/lib @X_LIBS@ -lXext -lX11 @X_EXTRA_LIBS@ -I
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES = 

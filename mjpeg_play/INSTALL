@@ -1,21 +1,28 @@
-                                   XMPS
-				   ----
+Linux Audio/Video tools - LAVTOOLS
+==================================
 
-XMPS stands for the X MPEG Player System and is ditributed under the General GNU Public Licence, see the COPYING file for details.
+The lavtools stand for "Linux/Audio video tools" and are released under the General GNU Public Licence, see the COPYING file for details.
 
-Instalation:
-------------
+Installation:
+-------------
 
-To install XMPS you will need GTK 1.2 or later, SDL 1.0.5 or later and any version of the SMPEG library (prefer 0.3.3 or later).
+Please see REQUIRED_SOFTWARE to find out which software you will need to compile and install this package.
 
-To build the pakage just type :
+To build the package just type :
 
-./configure -prefix=/where/you/want/to/install
+./configure 
 make
 
 Then (with root privileges if needed) :
 
 make install
 
-And then you are ready to launch xmps.
+You should now be able to run the lavtools, at least. 
+(The installing of the movtartools will follow soon)
+
+Have a look at the README to see how the lavtools (ought to ;) ) work ...
+
+/Gernot <gz@lysator.liu.se>
+
+
 

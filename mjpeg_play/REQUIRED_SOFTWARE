@@ -1,14 +1,32 @@
 This is the required software for compiling the tools here:
 
-.) A 2.2.x kernel (the driver needs it). 
+.) Quicktime4Linux 1.2.0 - http://heroine.linuxave.net/quicktime.html
 
-.) libjpeg6 (preferrably libjpeg6b)
-(libjpeg .... is included in the standard distributions)
+.) libjpeg6 (preferrably libjpeg6b, an alpha, MMX patched version is included )
+(libjpeg6a or 6b is included in the standard distributions)
 
 .) The GLib library - http://www.gtk.org
 (libglib .... is included in the standard distributions)
 
-And for people who want to use ALSA support (currently non-working):
+.) The SDL library -  http://www.libsdl.org/
+   I used SDL 1.1.3 for development, please tell me if the 
+   new SDL versions won't compile with this software ! 
+
+A remark regarding RPM packages:
+If you want to install RPM packages instead, always keep in mind that 
+you need to install the developing 
+---
+.) libmovtar (movtar video format library)
+   and
+   libmjpeg (MJPEG hardware/software playback) 
+   are currently included, but being prepared to become separate packages.
+
+And for people who want to use ALSA support (currently not useful, since it only uses emulation):
 .) ALSA driver/lib (http://alsa.jcu.cz)
 
+(www.freshmeat.net is also a good source for all kind of Linux soft !)
+
 /Gernot (gz@lysator.liu.se)
+
+
+

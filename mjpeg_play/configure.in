@@ -8,14 +8,6 @@ dnl Checks for programs.
 AC_PROG_CC
 AC_PROG_RANLIB
 
-AC_SUBST(JPEG)
-JPEG=""
-if test "$enable_jpeg" != "no"; then
-    AC_CHECK_LIB(jpeg, jpeg_start_compress,JPEG="-ljpeg" have_jpeg="yes",,)
-else
-    echo "*** jpeg disabled"
-fi
-
 dnl ---------------------------------------------------------------------       
 dnl X11 checks                                                                                                                                                  
 AC_PATH_XTRA                                                                    
@@ -49,6 +41,38 @@ AC_SUBST(SDL)
 dnl Check for SDL
 AM_PATH_SDL(1.1.3, have_SDL="yes" SDL="-lSDL -lpthread")
 
+AC_SUBST(JPEG)
+JPEG=""
+if test "$enable_jpeg" != "no"; then
+    AC_CHECK_LIB(jpeg, jpeg_start_compress,JPEG="-ljpeg" have_jpeg="yes",,)
+else
+    echo "*** jpeg disabled"
+fi
+
+
+dnl -- Quicktime checks --
+AC_SUBST(QUICKTIME_LD)
+AC_SUBST(QUICKTIME_PATH)
+export QUICKTIME_PATH=./quicktime
+AC_ARG_WITH(quicktime, [  --with-quicktime=PFX  Where to find the quicktime source dir [./quicktime] ], \
+    QUICKTIME_PATH=$withval)
+
+dnl is the header file really there ? 
+if test -f $QUICKTIME_PATH/quicktime.h; then
+    echo "Found quicktime library source. Quicktime support will be built." 
+    have_quicktime="yes"
+    export QUICKTIME_LD =-lquicktime
+else
+    echo "*** quicktime library source not found in $QUICKTIME_PATH."
+    echo "    No quicktime support will be built." 
+    export -n QUICKTIME_PATH
+    have_quicktime="no"
+fi
+
+if test "$have_quicktime" = "yes"; then
+    AC_DEFINE(BUILD_QUICKTIME)
+fi
+
 if test "$have_jpeg" = "yes"; then
 if test "$have_SDL" = "yes"; then
     build_MJPEG="yes"
@@ -62,8 +86,6 @@ else
     build_MJPEG="no"
 fi
 
-
-AC_SUBST(build_MJPEG)
 AC_OUTPUT(Makefile
 	movtar/Makefile
 	mjpeg/Makefile)
@@ -72,6 +94,7 @@ echo ""
 echo " lavtools ${VERSION} build configuration :"
 echo ""
 echo "    - software MJPEG playback     : ${build_MJPEG}"
+echo "    - Quicktime playback/recording: ${have_quicktime}"
 echo ""
 
 

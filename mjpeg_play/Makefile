@@ -69,6 +69,8 @@ JPEG = -ljpeg
 MAINT = #
 MAKEINFO = /usr/src/mjpeg_play/missing makeinfo
 PACKAGE = lavtools
+QUICKTIME_LD = 
+QUICKTIME_PATH = /usr/src/qui
 RANLIB = ranlib
 SDL = -lSDL -lpthread
 SDL_CFLAGS = -I/usr/include/SDL -D_REENTRANT
@@ -79,26 +81,25 @@ X_CFLAGS =  -I/usr/X11R6/include
 X_EXTRA_LIBS = 
 X_LIBS =  -L/usr/X11R6/lib
 X_PRE_LIBS =  -lSM -lICE
-build_MJPEG = yes
 x_libraries = /usr/X11R6/lib
 
-INCLUDES = -I./mjpeg -I./movtar -I./quicktime/quicktime -I/usr/X11R6/lib -I/usr/lib/glib/include 
-SUBDIRS = mjpeg movtar quicktime . aenc mpegjoin mplex utils xlav
+INCLUDES = -I./mjpeg -I./movtar -I/usr/src/qui -I/usr/X11R6/lib -I/usr/lib/glib/include 
+SUBDIRS = mjpeg movtar /usr/src/qui . aenc mpegjoin mplex utils xlav
 
 bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf
 lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c
-lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/ -L./quicktime/quicktime -L/usr/lib -lglib
-lavplay_LDADD = -lmovtar -lmjpeg -lquicktime -lpng -lpthread -lSDL -lpthread -ljpeg 
+lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/ -L/usr/src/qui -L/usr/lib -lglib
+lavplay_LDADD = -lmovtar -lmjpeg  -lpng -lpthread -lSDL -lpthread -ljpeg 
 
 lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c
-lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/ -L./quicktime/quicktime -L/usr/lib -lglib
-lavrec_LDADD = -lmovtar -lmjpeg -lquicktime -lpng -lpthread -ljpeg 
+lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/ -L/usr/src/qui -L/usr/lib -lglib
+lavrec_LDADD = -lmovtar -lmjpeg  -lpng -lpthread -ljpeg 
 
 lavvideo_SOURCES = lavvideo.c
 
 v4l_conf_SOURCES = v4l-conf.c 
 v4l_conf_INCLUDES = -I./.. -I.. -I/usr/X11R6/lib 
-v4l_conf_LINK = gcc -Wall -Wstrict-prototypes -g -O2 -D_REENTRANT -o v4l-conf v4l-conf.o -L/usr/X11R6/lib -lXdpms -lXxf86vm -lXxf86dga -lXext -lX11 -I
+v4l_conf_LINK = gcc -Wall -Wstrict-prototypes -g -O2 -D_REENTRANT -o v4l-conf v4l-conf.o -L/usr/X11R6/lib  -L/usr/X11R6/lib -lXext -lX11  -I
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES = 
