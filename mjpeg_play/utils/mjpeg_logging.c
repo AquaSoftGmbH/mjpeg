@@ -41,8 +41,8 @@ extern const char *__progname;
 #endif
 
 static log_level_t mjpeg_log_verbosity = 0;
-static char *default_handler_id = NULL;
-
+static char default_handler_id[MAX_DEFAULT_ID_SIZE];
+static char default_handler_id_is_set = 0;
 
 static int default_mjpeg_log_filter( log_level_t level )
 {
@@ -65,12 +65,13 @@ static mjpeg_log_filter_t _filter = default_mjpeg_log_filter;
 static void
 default_mjpeg_log_handler(log_level_t level, const char message[])
 {
-  const char *ids = default_handler_id;
+  const char *ids;
 
   if( (*_filter)( level ) )
     return;
-
-  if (ids == NULL) {
+  if (default_handler_id_is_set) {
+    ids = default_handler_id;
+  } else {
 #ifdef HAVE___PROGNAME
     ids = __progname;
 #else
@@ -127,20 +128,23 @@ mjpeg_default_handler_verbosity(int verbosity)
  * Set identifier string used by default handler
  *
  */
-
 int
 mjpeg_default_handler_identifier(const char *new_id)
 {
   const char *s;
-  if (default_handler_id != NULL) free(default_handler_id);
   if (new_id == NULL) {
-    default_handler_id = NULL;
+    default_handler_id_is_set = 0;
     return 0;
   }
   /* find basename of new_id (remove any directory prefix) */
-  if ((s = strrchr(new_id, '/')) == NULL) s = new_id;
-  default_handler_id = strndup(s, MAX_DEFAULT_ID_SIZE);
-  return (default_handler_id == NULL);
+  if ((s = strrchr(new_id, '/')) == NULL)
+    s = new_id;
+  else
+    s = s + 1;
+  strncpy(default_handler_id, s, MAX_DEFAULT_ID_SIZE);
+  default_handler_id[MAX_DEFAULT_ID_SIZE-1] = '\0';
+  default_handler_id_is_set = 1;
+  return 0;
 }
 
 
