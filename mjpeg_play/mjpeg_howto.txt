@@ -167,6 +167,76 @@ visually "perfect".  -d 2 is already better than VHS video (a *lot*!).
 If you're aiming to create VCD's then there is little to be gained recording
 at full resolution as you need to reduce to -d 2 resolution later anyway.
 
+Notes about: "interlace field order - what can go wrong and how to fix it"
+
+Firstly, what does it mean for interlace field order to be wrong.
+
+The whole mjpegtools image processing chain is frame-orientated.  Since it is 
+video material that is captured each frame comprised a top field (the 0th, 
+2nd, 4th and so lines) and a bottom field (the 1st, 3rd, 5th and son on lines).
+
+There are three bad things that can happen with fields:
+
+1. Somewhere in capturing/processing the *order* in time of the two fields in 
+each frame can get mislabelled somehow.  This is not good as it means that 
+when playback eventually takes place a field containing an image sampled 
+earlier in time comes after an image sampled later.   Weird "juddering" 
+effects are the results.   
+
+2. The two fields can simply be swapped somehow so that top gets treat as 
+bottom and bottom treat as top.   Juddering and "slicing" is the result.
+
+3.  This the subtle one... the assignment of fields to frames in the stream 
+may not match the video captured.    Consider a PAL broadcast of a movie.
+25 frame are sent a second - each frame sent as 2 fields.  Now either each 
+frame can be sent top or bottom field first.  If you capture with the wrong 
+field order (you start each from with a bottom rather than a top or vice 
+versa).  The frames of the movie are now split *between* frames in the stream.
+Played back on a TV where each field is displayed on its own this is harmless.
+The sequence of fields played back is exactly the same as the sequence of 
+fields broadcast.  Unfortunately, playing back on a Computer monitor where 
+both fields of a frame appear at once it looks *terrible* because each frame 
+is effectively mixing two moments in time 1/25sec aparent.
+
+
+How can you fix it?
+
+1.  Is easy to fix.  Either tell a tool someplace to relabel or simply tell 
+the player to play back in swapped order (the latter can be done "indirectly" 
+by telling mpeg2enc to reverse the flag (-z b|t) that tells the decoder which 
+field order to use.
+
+2.   This isn't too bad either.  Use a tool that simply swaps the top and 
+bottom fields a second time. lav2yuv and yuvscaler can do this.
+Use the lav2yuv -x switch or yuvscaler -M LINE_SWITCH. 
+
+3.   To fix this one the fields need to be "shifted" through the frames. 
+Sadly unless someone has recently beefed up the tools there isn't a tool that
+can correct it.   The only cure is to get the capture right.   For PAL 
+"bottom first" capture for AVI should be correct.  I believe the same applies 
+to NTSC.
+
+Hey, what about NTSC movies?
+
+Movies are broadcast in NTSC  using "3:2" pulldown which means that half the 
+capture frames contain fields from 1 movie frame and half fields from 2 
+frames.  To undo this effect for efficient MPEG encoding you need to use 
+Hitoshi's tools!
+
+as the
+interesting effect that field order constant changes.   You need to use 
+Hitoshi's tools to undo this 
+
+Firstly, the the video stream may have *correct* field order but be displayed 
+wrongly.   
+
+I believe the issue with the driver patch cause a combination of problems 2 
+and 3.  The driver is doing the opposite of what is being asked of it. So the 
+fields come out physically swapped, and the frames start with the opposite 
+kind of field that you asked it to.  If you capture top (i.e. bottom) first 
+and then swap all should be well.
+
+
 CREATING VIDEOS FROM IMAGES
 =============================
 
@@ -229,6 +299,12 @@ with one (-n 1) argument per call, and feeds the output into ppmtoy4m. This
 time the video is only shown on the screen. 
 The xargs is only needed if the converter (tgatoppm), can only operate on a
 single image at a time.
+
+If you want to use the ImageMagick 'convert' tool (a Swiss Army Knife) try:
+> convert *.jpg ppm:- | ppmtoy4m | yuvplay
+
+That means take all '.jpg' images in directory, convert to PPM format,
+and pipe to stdout, then ppmtoy4m processes them ....
 
 CHECKING IF RECORDING WAS SUCCESFUL
 =====================================
@@ -437,6 +513,10 @@ in the scripts directory.
 However, better results can be accomplished by trying out various options
 and find out which one works best for you.
 
+For the creation of VCD/SVCD Stills sequences (-f 6, -f 7 in mpeg2enc) you 
+have to look at: http://www.mir.com/DMG/
+Still sequences are needed for the creation of menus in VCD/SVCD. The creation
+of menus is described in the doku of vcdimager. 
 
 CREATING SOUND
 =====================================
