@@ -17,3 +17,6 @@ echo "Running autoconf..."
 autoconf
 echo "Running automake..."
 automake --add-missing --gnu
+echo "Running ./configure..."
+conf_flags="--enable-maintainer-mode --enable-compile-warnings"
+./configure $conf_flags "$@"

@@ -29,6 +29,7 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <pthread.h>
 
 #include "pipes.h"
 #include "y4m12.h"
@@ -42,6 +43,9 @@ int pipe_out[NUM], pipe_in[NUM];
 int pid[NUM];
 int reader[NUM];
 int active[NUM];
+
+/* lav2yuv reading thread */
+pthread_t lav2yuv_reading_thread;
 
 /* external callbacks, I'll make void-variables later on */
 void continue_encoding(void);
@@ -64,7 +68,7 @@ void effects_callback(int number, char *msg);
 
 /* some static private functions */
 static void callback_pipes(gpointer data, gint source,GdkInputCondition condition);
-static void read_lav2yuv_data(gint source);
+static int read_lav2yuv_data(gint source);
 
 int pipe_is_active(int number) {
    return active[number];
@@ -126,6 +130,9 @@ char *app_name(int number) {
       case YUV2LAV:
         app = "yuv2lav";
         break;
+      case YUVDENOISE:
+        app = "yuvdenoise";
+        break;
       default:
         app = "unknown";
         break;
@@ -134,25 +141,31 @@ char *app_name(int number) {
    return app;
 }
 
-static void read_lav2yuv_data(gint source)
+static int read_lav2yuv_data(gint source)
 {
    /* read lav2yuv data and write() it to mpeg2enc/yuvscaler and yuvplay */
+   extern int use_yuvdenoise_pipe;
    extern int use_yuvscaler_pipe;
    extern int use_yuvplay_pipe;
 
    if (!active[LAV2YUV_DATA])
    {
-      int f;
+      /*int f;*/
       if (y4m12_read_header (l2y_y4m12, source)<0)
       {
          /* auch, bad */
+         gdk_threads_enter();
          gtk_show_text_window(STUDIO_ERROR,
-            "Error reading the header from lav2yuv");
+           "Error reading the header from lav2yuv\n");
+         gdk_threads_leave();
          close_pipe(LAV2YUV); /* let's quit - TODO: better solution */
          active[LAV2YUV_DATA] = 0;
+         return 0;
       }
       else
       {
+         int n;
+
          l2y_y4m12->buffer[0] = malloc(l2y_y4m12->width * l2y_y4m12->height
                            * sizeof(unsigned char));
          l2y_y4m12->buffer[1] = malloc(l2y_y4m12->width * l2y_y4m12->height
@@ -160,13 +173,20 @@ static void read_lav2yuv_data(gint source)
          l2y_y4m12->buffer[2] = malloc(l2y_y4m12->width * l2y_y4m12->height
                            * sizeof(unsigned char) / 4);
 
-         /* write header to mpeg2enc/yuvscaler and yuvplay */
-         if (use_yuvplay_pipe) {
-            y4m12_write_header (l2y_y4m12, pipe_out[YUVPLAY]); }
-         if (use_yuvscaler_pipe)
-            y4m12_write_header (l2y_y4m12, pipe_out[YUVSCALER]);
+         /* write header to mpeg2enc/yuvscaler/yuvdenoise and yuvplay */
+         if (use_yuvplay_pipe)
+         {
+            y4m12_write_header (l2y_y4m12, pipe_out[YUVPLAY]);
+         }
+
+         if (use_yuvdenoise_pipe)
+            n = pipe_out[YUVDENOISE];
+         else if (use_yuvscaler_pipe)
+            n = pipe_out[YUVSCALER];
          else
-            y4m12_write_header (l2y_y4m12, pipe_out[MPEG2ENC]);
+            n = pipe_out[MPEG2ENC];
+
+         y4m12_write_header (l2y_y4m12, n);
       }
    }
    else
@@ -177,28 +197,62 @@ static void read_lav2yuv_data(gint source)
          if (active[LAV2YUV])
          {
             /* bad, bad, bad, something is wrong */
+            gdk_threads_enter();
             gtk_show_text_window(STUDIO_ERROR,
-               "Error reading frame data from lav2yuv");
+              "Error reading frame data from lav2yuv\n");
+            gdk_threads_leave();
             close_pipe(LAV2YUV); /* let's quit - TODO: better solution */
          }
          else
          {
             /* we're finished */
             close(pipe_in[LAV2YUV_DATA]);
-            gdk_input_remove(reader[LAV2YUV_DATA]);
          }
          active[LAV2YUV_DATA] = 0;
+         return 0;
       }
       else
       {
-         if (use_yuvscaler_pipe)
-            y4m12_write_frame (l2y_y4m12, pipe_out[YUVSCALER]);
+         int n;
+
+         if (use_yuvdenoise_pipe)
+            n = pipe_out[YUVDENOISE];
+         else if (use_yuvscaler_pipe)
+            n = pipe_out[YUVSCALER];
          else
-            y4m12_write_frame (l2y_y4m12, pipe_out[MPEG2ENC]);
+            n = pipe_out[MPEG2ENC];
+
+         y4m12_write_frame (l2y_y4m12, n);
+
          if (use_yuvplay_pipe)
+         {
             y4m12_write_frame (l2y_y4m12, pipe_out[YUVPLAY]);
+         }
       }
    }
+
+   return 1;
+}
+
+static void * lav2yuv_read_thread(void *arg)
+{
+   int fd = (int)arg;
+   int n;
+
+   /* Allow easy shutting down by other processes... */
+   pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, NULL );
+   pthread_setcanceltype( PTHREAD_CANCEL_ASYNCHRONOUS, NULL );
+
+   while(1)
+   {
+      n = read_lav2yuv_data(fd);
+      active[LAV2YUV_DATA]++;
+      if (active[LAV2YUV_DATA]==3)
+         active[LAV2YUV_DATA] = 1;
+      if (!n) break;
+   }
+
+   pthread_exit(NULL);
 }
 
 static void callback_pipes(gpointer data, gint source,
@@ -210,20 +264,16 @@ static void callback_pipes(gpointer data, gint source,
 
    number = (int)data;
 
-   if (number == LAV2YUV_DATA) {
-      if (active[LAV2YUV_DATA]<2)
-         read_lav2yuv_data(source);
-      active[LAV2YUV_DATA]++;
-      if (active[LAV2YUV_DATA]==3)
-         active[LAV2YUV_DATA] = 1;
-      return;
-   }
-
    app = app_name(number);
 
    n = read(source, input, 4095);
+   if (n<=0)
+   {
+      gdk_input_remove(reader[number]);
+   }
    if (n==0)
    {
+      extern int use_yuvdenoise_pipe;
       extern int use_yuvscaler_pipe;
       extern int use_yuvplay_pipe;
       extern int preview_or_render;
@@ -234,7 +284,7 @@ static void callback_pipes(gpointer data, gint source,
       /* close pipes/app */
       close(pipe_in[number]);
       if (number != MP2ENC && number != MPEG2ENC && number != YUVSCALER && number != YUVPLAY &&
-         number != YUVPLAY_E && number != YUV2LAV) {
+         number != YUVPLAY_E && number != YUV2LAV && number != YUVDENOISE) {
          close(pipe_out[number]);
       }
       close_pipe(number);
@@ -243,12 +293,21 @@ static void callback_pipes(gpointer data, gint source,
          close(pipe_out[MP2ENC]);
       }
       if (number == LAV2YUV) {
+         if (use_yuvdenoise_pipe)
+            close(pipe_out[YUVDENOISE]);
+         else if (use_yuvscaler_pipe)
+            close(pipe_out[YUVSCALER]);
+         else
+            close(pipe_out[MPEG2ENC]);
+
+         if (use_yuvplay_pipe)
+            close(pipe_out[YUVPLAY]);
+      }
+      if (number == YUVDENOISE) {
          if (use_yuvscaler_pipe)
             close(pipe_out[YUVSCALER]);
          else
             close(pipe_out[MPEG2ENC]);
-         if (use_yuvplay_pipe)
-            close(pipe_out[YUVPLAY]);
       }
       if (number == YUVSCALER) {
          close(pipe_out[MPEG2ENC]);
@@ -313,6 +372,8 @@ static void callback_pipes(gpointer data, gint source,
             if (number == LAV2YUV_S && strncmp(temp, "--DEBUG: frame", 14)==0)
                endsign = '\r';
             if (number == MPEG2ENC && strncmp(temp, "   INFO: Frame", 14)==0)
+               endsign = '\r';
+            if (number == MP2ENC && strncmp(temp, "--DEBUG: ", 9)==0)
                endsign = '\r';
 
             if(!(number == LAVPLAY && strncmp(temp, "--DEBUG: frame=", 15)==0)) {
@@ -405,8 +466,8 @@ void start_pipe_command(char *command[], int number)
             active[LAV2YUV_DATA] = 0;
             pipe_in[LAV2YUV_DATA] = spipe[0];
             close(spipe[1]);
-            reader[LAV2YUV_DATA] = gdk_input_add (pipe_in[LAV2YUV_DATA],
-               GDK_INPUT_READ, callback_pipes, (gpointer)LAV2YUV_DATA);
+            pthread_create(&lav2yuv_reading_thread, NULL,
+               lav2yuv_read_thread, (void *) pipe_in[LAV2YUV_DATA]);
          }
 
          pipe_out[number] = ipipe[1]; /* don't O_NONBLOCK it! */
@@ -414,7 +475,8 @@ void start_pipe_command(char *command[], int number)
       }
       else /* This is the child process (i.e. lav2wav/mp2enc) */
       {
-/*         extern int use_yuvscaler_pipe;*/
+         extern int use_yuvscaler_pipe;
+         /*extern int use_yuvdenoise_pipe;*/
          extern int preview_or_render;
 
          /* child */
@@ -430,10 +492,12 @@ void start_pipe_command(char *command[], int number)
          }
 #if 0
          else if (number == LAV2YUV) {
-            if (use_yuvscaler_pipe)
-               n = dup2(pipe_out[YUVSCALER],1); /* writes lav2wav directly to yuvscaler */
+            if (use_yuvdenoise_pipe)
+               n = dup2(pipe_out[YUVDENOISE],1); /* writes lav2yuv directly to yuvdenoise */
+            else if (use_yuvscaler_pipe)
+               n = dup2(pipe_out[YUVSCALER],1); /* writes lav2yuv directly to yuvscaler */
             else
-               n = dup2(pipe_out[MPEG2ENC],1); /* writes lav2wav directly to mpeg2enc */
+               n = dup2(pipe_out[MPEG2ENC],1); /* writes lav2yuv directly to mpeg2enc */
          }
 #endif
          else if (number == LAV2YUV) {
@@ -443,6 +507,12 @@ void start_pipe_command(char *command[], int number)
          }
          else if (number == YUVSCALER) {
             n = dup2(pipe_out[MPEG2ENC],1); /* writes yuvscaler directly to mpeg2enc */
+         }
+         else if (number == YUVDENOISE) {
+           if (use_yuvscaler_pipe)
+              n = dup2(pipe_out[YUVSCALER],1); /* writes yuvdenoise directly to yuvscaler */
+           else
+              n = dup2(pipe_out[MPEG2ENC],1); /* writes yuvdenoise directly to mpeg2enc */
          }
          else if (number == LAVPIPE) {
             if (preview_or_render)

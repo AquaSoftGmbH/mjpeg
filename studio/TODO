@@ -1,3 +1,9 @@
+Reported bugs:
+==============
+* Encoding syntax style (and probably other encoding options) are
+    not saved on exit? This should probably be changed to behave
+    just like the rest (save-on-exit).
+
 Short term:
 ===========
 * new lavrec options: channel (just as in stv?)

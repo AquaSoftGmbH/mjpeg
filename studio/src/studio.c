@@ -91,6 +91,9 @@ void signal_handler(int signal_type)
 {
 	int i;
 
+	if (signal_type == SIGPIPE)
+		return;
+
 	if (signal_type == SIGSEGV)
 	{
 		printf("*** WARNING *** - Got segmentation fault (SIGSEGV)\n");
@@ -422,6 +425,7 @@ int main( int argc, char *argv[] )
 	signal(SIGSEGV, signal_handler);
 	signal(SIGTERM, signal_handler);
 	signal(SIGINT, signal_handler);
+	signal(SIGPIPE, signal_handler);
 
 	window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
 

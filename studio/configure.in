@@ -130,6 +130,11 @@ if test x$MP2ENC_LOCATION = xno; then
   AC_MSG_ERROR(Could not find mp2enc - please reinstall the MJPEG-tools)
 fi
 
+AC_PATH_PROG(YUVDENOISE_LOCATION, yuvdenoise, no)
+if test x$YUVDENOISE_LOCATION = xno; then
+  AC_MSG_WARN(Could not find yuvdenoise - Denoising functionality disabled)
+fi
+
 AC_PATH_PROG(YUVSCALER_LOCATION, yuvscaler, no)
 if test x$YUVSCALER_LOCATION = xno; then
   AC_MSG_ERROR(Could not find yuvscaler - please reinstall the MJPEG-tools)
@@ -194,6 +199,8 @@ fi
 dnl **********************************************************************
 dnl Configure the things
 dnl
+AC_DEFINE_UNQUOTED(YUVDENOISE_LOCATION, "${YUVDENOISE_LOCATION}")
+AC_SUBST(YUVDENOISE_LOCATION)
 AC_DEFINE_UNQUOTED(YUVSCALER_LOCATION, "${YUVSCALER_LOCATION}")
 AC_SUBST(YUVSCALER_LOCATION)
 AC_DEFINE_UNQUOTED(LAV2WAV_LOCATION, "${LAV2WAV_LOCATION}")

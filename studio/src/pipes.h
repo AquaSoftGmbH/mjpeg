@@ -16,9 +16,9 @@
 #define YUVPLAY_E 12    /* for the effects notebook page in lavedit_effects.c */
 #define LAVPIPE 13      /* for the effects notebook page in lavedit_effects.c */
 #define YUV2LAV 14      /* for the effects notebook page in lavedit_effects.c */
-#define NUM 15          /* total number of pipes */
-#define LAV2YUV_DATA 16 /* a special case for lav2yuv-data-processing */
-#define YUVDENOISE 17   /* video encoding, lavencode.c */
+#define YUVDENOISE 15   /* video encoding, lavencode.c */
+#define NUM 16          /* total number of pipes */
+#define LAV2YUV_DATA 17 /* a special case for lav2yuv-data-processing */
 
 /* Shared functions for pipes.c */
 void start_pipe_command(char *command[], int number);

@@ -275,6 +275,7 @@ void stop_encoding_process(GtkWidget *widget, gpointer data) {
       break;
    case 2:
       close_pipe(LAV2YUV);
+      if (use_yuvdenoise_pipe) close_pipe(YUVDENOISE);
       if (use_yuvscaler_pipe) close_pipe(YUVSCALER);
       close_pipe(MPEG2ENC);
       break;
@@ -383,12 +384,9 @@ void command2string(char **command, char *string)
    int i;
 
    string[0] = '\0';
-   for (i=0;;i++)
+   for (i=0;command[i]!=NULL;i++)
    {
-      if(command[i]!=NULL)
-         sprintf(string,"%s %s",string, command[i]); 
-      else
-         return;
+      sprintf(string, "%s %s", string, command[i]); 
    }
 }
 
@@ -669,10 +667,11 @@ void video_convert()
    /* Here, the command for the pipe for yuvdenoise may be added */
    if ( ((*pointenc).use_yuvdenoise == 1) && (encoding_syntax_style == 150) )
      {
+      n = 0;
       yuvdenoise_command[n] = YUVDENOISE_LOCATION; n++;     
       yuvdenoise_command[n] = NULL;
  
-      start_pipe_command(yuvscaler_command, YUVDENOISE);
+      start_pipe_command(yuvdenoise_command, YUVDENOISE);
       use_yuvdenoise_pipe = 1;
      }
    else 
@@ -734,21 +733,23 @@ void video_convert()
    command2string(lav2yuv_command, command_temp);
    sprintf(command, "%s |", command_temp);
    sprintf(command_progress, "lav2yuv |");
- 
+
    if (use_yuvdenoise_pipe)
    {
       command2string(yuvdenoise_command, command_temp);
       sprintf(command,"%s %s |", command, command_temp);
-      sprintf(command_progress, " %s yuvdenoise |", command_progress);
+      sprintf(command_progress, "%s yuvdenoise |", command_progress);
    }
-   else if (use_yuvscaler_pipe)
+
+   if (use_yuvscaler_pipe)
    {
       command2string(yuvscaler_command, command_temp);
       sprintf(command, "%s %s |", command, command_temp);
-      sprintf(command_progress, " %s yuvscaler |", command_progress);
+      sprintf(command_progress, "%s yuvscaler |", command_progress);
    }
+
    
-   sprintf(command_progress, " %s mpeg2enc", command_progress);
+   sprintf(command_progress, "%s mpeg2enc", command_progress);
 
    gtk_label_set_text(GTK_LABEL(progress_label), command_progress);
 
