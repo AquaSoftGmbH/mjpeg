@@ -60,7 +60,7 @@ static void usage (){
                                                                "/movtar"
 #endif
                                                                       ") [%c]\n"
-                    "   -I num      force output interlacing 0:no 1:odd 2:even field first\n"
+                    "   -I num      force output interlacing 0:no 1:top 2:bottom field first\n"
                     "   -q num      JPEG encoding quality [%d%%]\n"
                     "   -b num      size of MJPEG buffer [%d kB]\n"
                     "   -o file     output mjpeg file (REQUIRED!) \n",
@@ -178,12 +178,12 @@ int main(int argc, char *argv[])
       via the input frame height, but this relies on PAL/NTSC standard input: */
    if (((height >  288) && (frame_rate_code == 3)) ||  /* PAL */
        ((height >  240) && (frame_rate_code == 4))) {  /* NTSC */
-       n = (param_format == 'A') ? LAV_INTER_EVEN_FIRST : LAV_INTER_ODD_FIRST;
+       n = (param_format == 'A') ? LAV_INTER_BOTTOM_FIRST : LAV_INTER_TOP_FIRST;
    } else                                              /* 24fps movie, etc. */
        n = LAV_NOT_INTERLACED;
-   if      (n == LAV_INTER_ODD_FIRST  && param_format == 'A')
+   if      (n == LAV_INTER_TOP_FIRST  && param_format == 'A')
       param_format = 'a';
-   else if (n == LAV_INTER_EVEN_FIRST && param_format == 'a')
+   else if (n == LAV_INTER_BOTTOM_FIRST && param_format == 'a')
       param_format = 'A';
 
    output = lav_open_output_file (param_output, param_format, width, height, n,

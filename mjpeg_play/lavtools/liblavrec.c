@@ -1172,7 +1172,7 @@ static int lavrec_hardware_init(lavrec_t *info)
 
       /* There seems to be some confusion about what is the even and odd field ... */
       /* madmac: 20010810: According to Ronald, this is wrong - changed now to EVEN */
-      bparm.odd_even = lav_query_polarity(info->video_format) == LAV_INTER_EVEN_FIRST;
+      bparm.odd_even = lav_query_polarity(info->video_format) == LAV_INTER_TOP_FIRST;
       for(n=0; n<bparm.APP_len && n<60; n++) bparm.APP_data[n] = 0;
    }
 

@@ -19,7 +19,7 @@
                unless single images are produced.
 
     -f [amqiw]  Format of output
-               a: AVI (no selection of even/odd frame first possible)
+               a: AVI (no selection of bottom/top frame first possible)
                q: Quicktime (if the input is interlaced, then all input files
                              must be Quicktime, too)
                m: movtar format
@@ -178,9 +178,9 @@ int main(int argc, char ** argv)
    read_video_files(argv + optind, argc - optind, &el);
 
 
-   if(format == 'a' && el.video_inter == LAV_INTER_ODD_FIRST) format = 'A';
+   if(format == 'a' && el.video_inter == LAV_INTER_TOP_FIRST) format = 'A';
 
-   if(format == 'q' && el.video_inter == LAV_INTER_ODD_FIRST)
+   if(format == 'q' && el.video_inter == LAV_INTER_TOP_FIRST)
    {
       mjpeg_error_exit1("Output is Quicktime - wrong interlacing order\n");
    }

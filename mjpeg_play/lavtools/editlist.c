@@ -96,11 +96,11 @@ int open_video_file(char *filename, EditList *el)
 	   case LAV_NOT_INTERLACED :
 		   int_msg = "not interlaced";
 		   break;
-	   case LAV_INTER_ODD_FIRST :
-		   int_msg = "odd first";	 
+	   case LAV_INTER_TOP_FIRST :
+		   int_msg = "top field first";	 
 		   break;
-	   case LAV_INTER_EVEN_FIRST :
-		   int_msg = "even first";
+	   case LAV_INTER_BOTTOM_FIRST :
+		   int_msg = "bottom field first";
 		   break;
 	   default:
 		   int_msg = "Unknown!";

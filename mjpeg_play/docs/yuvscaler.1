@@ -56,11 +56,11 @@ multiple \fB-I\fP flags. Possible \fIinput_keyword\fPs are:
 \fBUSE_WidthxHeight+WidthOffset+HeightOffset\fP - select the area of
 input frames to be processed (the rest is ignored).
 .IP
-\fBINTERLACED_ODD_FIRST\fP  to treat stdin input as interlaced, odd  first frame input stream.
+\fBINTERLACED_TOP_FIRST\fP  to treat stdin input as interlaced, top-field-first input stream.
 
-\fBINTERLACED_EVEN_FIRST\fP to treat stdin input as interlaced, even first frame input stream.
+\fBINTERLACED_BOTTOM_FIRST\fP to treat stdin input as interlaced, bottom-field-first input stream.
 
-\fBNOT_INTERLACED\fP to force non interlaced input frames.
+\fBNOT_INTERLACED\fP to force non-interlaced input frames.
 
 .IP
 \fBNote:\fP Due to a deficiency in the current version of YUV4MPEG
@@ -71,7 +71,7 @@ options to switch \fByuvscaler\fP to the correct scaling mode.
 - if neither input interlacing nor output interlacing is specified,
 both are taken not interlaced
 - if only one is specified, the other is taken of the same type,
-even_first for output by default
+bottom-field-first for output by default
 
 .TP 
 .B -M \fImode_keyword\fP
@@ -130,15 +130,15 @@ show annonying chrominance artefacts unless this is done.
 PAL and NTSC standards). Non-interlaced output.
 .IP
 \fBSVCD\fP to generate SVCD compliant frames on output (taking care of
-PAL and NTSC standards). Even-interlaced frames.
+PAL and NTSC standards). Bottom-field-first interlaced frames.
 .IP
 \fBSIZE_WidthxHeight\fP to generate frames of size WidthxHeight on
 output (multiple of 4)
 .IP
-\fBINTERLACED_ODD_FIRST\fP force interlaced, odd field first frame
+\fBINTERLACED_TOP_FIRST\fP force interlaced, top field first frame
 output stream.
 
-\fBINTERLACED_EVEN_FIRST\fP force interlaced, even field first frame
+\fBINTERLACED_BOTTOM_FIRST\fP force interlaced, bottom field first frame
 output stream.
 
 \fBNOT_INTERLACED\fP to force non-interlaced output frames.

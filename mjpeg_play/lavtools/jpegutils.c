@@ -37,8 +37,8 @@
  * jpeg_data:       buffer with input / output jpeg
  * len:             Length of jpeg buffer
  * itype:           0: Not interlaced
- *                  1: Interlaced, Odd first
- *                  2: Interlaced, even first
+ *                  1: Interlaced, Top field first
+ *                  2: Interlaced, Bottom field first
  * ctype            Chroma format for decompression.
  *                  Currently always 420 and hence ignored.
  * raw0             buffer with input / output raw Y channel
@@ -422,8 +422,8 @@ static void guarantee_huff_tables(j_decompress_ptr dinfo)
  * jpeg_data:       Buffer with jpeg data to decode
  * len:             Length of buffer
  * itype:           0: Not interlaced
- *                  1: Interlaced, Odd first
- *                  2: Interlaced, even first
+ *                  1: Interlaced, Top field first
+ *                  2: Interlaced, Bottom field first
  * ctype            Chroma format for decompression.
  *                  Currently always 420 and hence ignored.
  */
@@ -554,11 +554,11 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
 
       if (numfields == 2) {
          switch (itype) {
-         case LAV_INTER_ODD_FIRST:
-            yl = yc = (1 - field);
-            break;
-         case LAV_INTER_EVEN_FIRST:
+         case LAV_INTER_TOP_FIRST:
             yl = yc = field;
+            break;
+         case LAV_INTER_BOTTOM_FIRST:
+            yl = yc = (1 - field);
             break;
          default:
             mjpeg_error(
@@ -663,8 +663,8 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
  * jpeg_data:       Buffer to hold output jpeg
  * len:             Length of buffer
  * itype:           0: Not interlaced
- *                  1: Interlaced, Odd first
- *                  2: Interlaced, even first
+ *                  1: Interlaced, Top field first
+ *                  2: Interlaced, Bottom field first
  * ctype            Chroma format for decompression.
  *                  Currently always 420 and hence ignored.
  */
@@ -737,8 +737,8 @@ int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
    }
    cinfo.image_width = width;
    switch (itype) {
-   case 1:
-   case 2: /* interlaced */
+   case LAV_INTER_TOP_FIRST:
+   case LAV_INTER_BOTTOM_FIRST: /* interlaced */
       numfields = 2;
       break;
    default:
@@ -763,11 +763,11 @@ int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
 	 jpeg_write_marker(&cinfo, JPEG_APP0+1, marker0, 40);
 
          switch (itype) {
-         case 2: /* even field first */
-            yl = yc = (1 - field);
-            break;
-         case 1: /* odd field first */
+         case LAV_INTER_TOP_FIRST: /* top field first */
             yl = yc = field;
+            break;
+         case LAV_INTER_BOTTOM_FIRST: /* bottom field first */
+            yl = yc = (1 - field);
             break;
          default:
             mjpeg_error(

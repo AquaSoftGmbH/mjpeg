@@ -94,7 +94,7 @@ int sad_11_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
 
 
 int sad_sub22_mmxe ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh);
-int sad_sub44_mmxe ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh);
+int sad_sub44_mmxe ( uint8_t *blk1, uint8_t *blk2,  int qrowstride, int qh);
 int sumsq_mmx( uint8_t *blk1, uint8_t *blk2,
 			   int rowstride, int hx, int hy, int h);
 int sumsq_sub22_mmx( uint8_t *blk1, uint8_t *blk2,

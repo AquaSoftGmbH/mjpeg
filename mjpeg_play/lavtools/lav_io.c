@@ -245,15 +245,15 @@ int lav_query_APP_length(char format)
 
 int lav_query_polarity(char format)
 {
-   /* Quicktime needs ODD_FIRST, for AVI we have the choice */
+   /* Quicktime needs TOP_FIRST, for AVI we have the choice */
 
    switch(format)
    {
-      case 'a': return LAV_INTER_ODD_FIRST;
-      case 'A': return LAV_INTER_EVEN_FIRST;
-      case 'q': return LAV_INTER_ODD_FIRST;
-      case 'm': return LAV_INTER_ODD_FIRST;
-      default:  return LAV_INTER_ODD_FIRST;
+      case 'a': return LAV_INTER_TOP_FIRST;
+      case 'A': return LAV_INTER_BOTTOM_FIRST;
+      case 'q': return LAV_INTER_TOP_FIRST;
+      case 'm': return LAV_INTER_TOP_FIRST;
+      default:  return LAV_INTER_TOP_FIRST;
    }
 }
 lav_file_t *lav_open_output_file(char *filename, char format,
@@ -1172,24 +1172,24 @@ lav_file_t *lav_open_input_file(char *filename)
                strncasecmp(frame + jpeg_app0_offset + 4,"AVI1",4)==0 )
             {
                 if (frame[jpeg_app0_offset+8]==1)
-                   lav_fd->interlacing = LAV_INTER_ODD_FIRST;
+                   lav_fd->interlacing = LAV_INTER_TOP_FIRST;
                 else
-                   lav_fd->interlacing = LAV_INTER_EVEN_FIRST;
+                   lav_fd->interlacing = LAV_INTER_BOTTOM_FIRST;
             }
             else
             {
                /* There is no default, it really depends on the
                   application which produced the AVI */
-               lav_fd->interlacing = LAV_INTER_ODD_FIRST;
+               lav_fd->interlacing = LAV_INTER_TOP_FIRST;
             }
-            lav_fd->format = lav_fd->interlacing == LAV_INTER_EVEN_FIRST ? 'A' : 'a';
+            lav_fd->format = lav_fd->interlacing == LAV_INTER_BOTTOM_FIRST ? 'A' : 'a';
             break;
 
          case 'q':
-            lav_fd->interlacing = LAV_INTER_ODD_FIRST;
+            lav_fd->interlacing = LAV_INTER_TOP_FIRST;
 
          case 'm':
-            lav_fd->interlacing = LAV_INTER_ODD_FIRST;
+            lav_fd->interlacing = LAV_INTER_TOP_FIRST;
       }
    }
    else

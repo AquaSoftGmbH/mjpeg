@@ -86,7 +86,7 @@ typedef struct {
    int    old_buff_no;
    int    currently_processed_frame;          /* changes constantly */
    int    currently_synced_frame;             /* changes constantly */
-   int    show_odd;                           /* changes constantly */
+   int    show_top;                           /* changes constantly */
    int    first_frame;                        /* software sync variable */
    struct timeval lastframe_completion;       /* software sync variable */
 
@@ -743,7 +743,7 @@ static void *lavplay_mjpeg_playback_thread(void * arg)
 
       /* Now update the internal variables */
       settings->currently_processed_frame = (settings->currently_processed_frame + 1) % settings->br.count;
-      settings->show_odd = (settings->show_odd) ? 0 : 1;
+      settings->show_top = (settings->show_top) ? 0 : 1;
    }
 
    lavplay_msg(LAVPLAY_MSG_DEBUG, info,
@@ -837,7 +837,7 @@ static int lavplay_mjpeg_open(lavplay_t *info)
 
          /* Now do the thread magic */
          settings->currently_processed_frame = 0;
-         settings->show_odd = 1; /* start with odd frames as default, change with mjpeg_set_params */
+         settings->show_top = 1; /* start with top frames as default, change with mjpeg_set_params */
        
          if (pthread_create(&(settings->software_playback_thread), NULL, 
             lavplay_mjpeg_playback_thread, (void *)info))
@@ -978,7 +978,7 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
    }
    else /* software */
    {
-      settings->show_odd = (bp->odd_even) ? 1 : 0; /* odd_even = 1: show even first */
+      settings->show_top = (bp->odd_even) ? 1 : 0; /* odd_even = 1: show top field first */
    }
 
    return 1;
@@ -1427,7 +1427,7 @@ static int lavplay_init(lavplay_t *info)
       bp.HorDcm,bp.VerDcm*bp.TmpDcm);
    
    /* Set field polarity for interlaced video */
-   bp.odd_even = (editlist->video_inter==LAV_INTER_ODD_FIRST);
+   bp.odd_even = (editlist->video_inter==LAV_INTER_TOP_FIRST);
    if (info->exchange_fields) bp.odd_even = !bp.odd_even;
 
    /* Set these settings */

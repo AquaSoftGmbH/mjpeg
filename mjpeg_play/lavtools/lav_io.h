@@ -18,10 +18,10 @@ typedef void quicktime_t;
 typedef void movtar_t;
 #endif
 
+#define LAV_INTER_UNKNOWN      -1
 #define LAV_NOT_INTERLACED      0
-#define LAV_INTER_ODD_FIRST     1
-#define LAV_INTER_EVEN_FIRST    2
-#define LAV_INTER_UNKNOWN      99
+#define LAV_INTER_TOP_FIRST     1
+#define LAV_INTER_BOTTOM_FIRST  2
 
 /* chroma_format */
 #define CHROMAUNKNOWN 0
