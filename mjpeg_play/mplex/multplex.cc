@@ -479,7 +479,7 @@ void OutputStream::MuxStatus(log_level_t level)
 		{
 		case ElementaryStream::video :
 			mjpeg_log( level,
-					   "Video %02x: buf=%7d frame=%06d sector=%08d\n",
+					   "Video %02x: buf=%7d frame=%06d sector=%08d",
 					   (*str)->stream_id,
 					   (*str)->bufmodel.Space(),
 					   (*str)->au->dorder,
@@ -488,7 +488,7 @@ void OutputStream::MuxStatus(log_level_t level)
 			break;
 		case ElementaryStream::audio :
 			mjpeg_log( level,
-					   "Audio %02x: buf=%7d frame=%06d sector=%08d\n",
+					   "Audio %02x: buf=%7d frame=%06d sector=%08d",
 					   (*str)->stream_id,
 					   (*str)->bufmodel.Space(),
 					   (*str)->au->dorder,
@@ -497,7 +497,7 @@ void OutputStream::MuxStatus(log_level_t level)
 			break;
 		default :
 			mjpeg_log( level,
-					   "Other %02x: buf=%7d sector=%08d\n",
+					   "Other %02x: buf=%7d sector=%08d",
 					   (*str)->stream_id,
 					   (*str)->bufmodel.Space(),
 					   (*str)->nsec
