@@ -221,6 +221,8 @@ int quant_non_intra_3dnow(
  * (b) give up in tough cases and fall back on the reference code. Fortunately, the
  * latter happens *very* rarely.
  *
+ * TODO Replace the inefficient block-by-block call to the assembler by a sweep
+ * through the whole lot...
  */
 																							     											     
 int quant_non_intra_mmx(
@@ -229,10 +231,8 @@ int quant_non_intra_mmx(
 	int mquant,
 	int *nonsat_mquant)
 {
-	int i;
-	int x, y, d;
+
 	int nzflag;
-	int coeff_count;
 	int clipvalue  = dctsatlim;
 	int flags = 0;
 	int saturated = 0;
@@ -242,6 +242,11 @@ int quant_non_intra_mmx(
 	int imquant;
 	int16_t *psrc, *pdst;
 
+	/* MMX routine does not work right for MQ=2 ... (no unsigned mult) */
+	if( mquant == 2 )
+	{
+		return quant_non_intra(picture, src, dst, mquant, nonsat_mquant);
+	}
 	/* If available use the fast MMX quantiser.  It returns
 	   flags to signal if coefficients are outside its limited range or
 	   saturation would occur with the specified quantisation
@@ -295,55 +300,16 @@ int quant_non_intra_mmx(
 			non 32-bit int machines ;-)) if out of dynamic range for MMX...
 		*/
 	}
-	while( comp < block_count  && (flags & 0xff) == 0 );
-
+	while( comp < block_count  && (flags & 0xff) == 0  );
 
 
 	/* Coefficient out of range or can't avoid saturation:
 	fall back to the original 32-bit int version: this is rare */
 	if(  (flags & 0xff) != 0 || saturated)
 	{
-	coeff_count = 64*block_count;
-	flags = 0;
-	nzflag = 0;
-	for (i=0; i<coeff_count; ++i)
-	{
-		if( (i%64) == 0 )
-		{
-			nzflag = (nzflag<<1) | !!flags;
-			flags = 0;
-			  
-		}
-		/* RJ: save one divide operation */
+		return quant_non_intra(picture, src, dst, mquant, nonsat_mquant);
+	}
 
-		x = (src[i] >= 0 ? src[i] : -src[i]);
-		d = (int)quant_mat[(i&63)]; 
-		y = (32*x + (d>>1))/(d*2*mquant);
-		if ( y > clipvalue )
-		{
-			if( saturated )
-			{
-				y = clipvalue;
-			}
-			else
-			{
-				int new_mquant = next_larger_quant( picture, mquant );
-				if( new_mquant != mquant )
-					mquant = new_mquant;
-				else
-				{
-					saturated = 1;
-				}
-				i=0;
-				nzflag =0;
-				continue;
-			}
-		}
-		dst[i] = (src[i] >= 0 ? y : -y);
-		flags |= dst[i];
-	}
-	nzflag = (nzflag<<1) | !!flags;
-	}
 	*nonsat_mquant = mquant;
 	return nzflag;
 }

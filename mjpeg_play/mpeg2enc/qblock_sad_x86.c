@@ -243,6 +243,16 @@ __inline__ int fastmin( register int x, register int y )
 	return x;
 }
 
+__inline__ int fastabs( register int x )
+{
+	register int neg = -x;
+	asm( "cmpl %1, %0\n"
+	     "cmovl %1, %0\n"
+         : "+r" (x) :  "r" (neg)
+       );
+	return x;
+}
+
 /*
  * Do the Extended MMX versions
  */

@@ -175,7 +175,7 @@ static int fdist1 ( uint8_t *blk1, uint8_t *blk2,  int flx, int fh);
 
 int (*pqblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
 							int ilow, int jlow,
-							uint32_t width, uint32_t depth, 
+							int ihigh, int jhigh, 
 							int h, int rowstride, 
 							int threshold,
 							mc_result_s *resvec);
@@ -322,7 +322,7 @@ thresholdrec twopel_threshold;
 thresholdrec onepel_threshold;
 thresholdrec quadpel_threshold;
 
-#if defined(HALF_HEAPS)
+#if HALF_HEAPS
 static void update_threshold( thresholdrec *rec, int match_dist )
 {
   
@@ -2458,9 +2458,10 @@ static int sub44_heap_size;
   matches found so it is a no-no in my book...
 
 */
-#if ! HEAPS
-static void sub_mean_reduction( mc_result_s *matches, int len, int times,
-								    int *newlen_res, int *minweight_res)
+#if ! HEAPS || ! HALF_HEAPS
+static void sub_mean_reduction( mc_result_s *matches, int len, 
+								int times,
+							    int *newlen_res, int *minweight_res)
 {
 	int i,j;
 	int weight_sum;
@@ -2473,7 +2474,7 @@ static void sub_mean_reduction( mc_result_s *matches, int len, int times,
 		return;
 	}
 
-	while( times > 0 )
+	while( times > 0)
 	{
 		weight_sum = 0;
 		for( i = 0; i < len ; ++i )
@@ -2496,6 +2497,7 @@ static void sub_mean_reduction( mc_result_s *matches, int len, int times,
 		len = j;
 		--times;
 	}
+
 	*newlen_res = len;
 	*minweight_res = min_weight;
 }
@@ -2522,8 +2524,11 @@ static int build_sub44_heap( int ilow, int ihigh, int jlow, int jhigh,
 	blockxy matchrec;
 	int searched_rough_size;
 #else
-	int ilim = ihigh-ilow;
-	int jlim = jhigh-jlow;
+	int istrt = ilow-i0;
+	int jstrt = jlow-j0;
+	int iend = ihigh-i0;
+	int jend = jhigh-j0;
+	
 	int mean_weight;
 	int rangex, rangey;
 	static mc_result_s roughres[50*50];
@@ -2550,7 +2555,7 @@ static int build_sub44_heap( int ilow, int ihigh, int jlow, int jhigh,
 			for( i = ilow; i <= ihigh; i += 4 )
 			{
 				s1 = ((*pqdist1)( qorgblk,qblk,qlx,qh) & 0xffff)
-					+ fastabs(i-i0) + fastabs(j-j0);
+					+ intabs(i-i0) + intabs(j-j0);
 				sub44_matches[sub44_heap_size].x = i;
 				sub44_matches[sub44_heap_size].y = j;
 				sub44_match_heap[sub44_heap_size].index = sub44_heap_size;
@@ -2576,8 +2581,8 @@ static int build_sub44_heap( int ilow, int ihigh, int jlow, int jhigh,
 				s1 = (*pqdist1)( qorgblk,qblk,qlx,qh);
 				s2 = ((s1 >> 16) & 0xffff);
 				s1 = (s1 & 0xffff);
-				s2 += fastabs(i+8-i0) + fastabs(j-j0);
-				s1 += fastabs(i-i0) + fastabs(j-j0);
+				s2 += intabs(i+8-i0) + intabs(j-j0);
+				s1 += intabs(i-i0) + intabs(j-j0);
 				dist_sum += s1+s2;
 				rough_match_heap[rough_heap_size].weight = s1;
 				rough_match_heap[rough_heap_size].index = rough_heap_size;	
@@ -2676,16 +2681,19 @@ static int build_sub44_heap( int ilow, int ihigh, int jlow, int jhigh,
 		qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
 		rough_heap_size
 			= (*pqblock_8grid_dists)( qorgblk, qblk,
-								  ilow, jlow,
-								  ilim, jlim, 
+								  istrt, jstrt,
+								  iend, jend, 
 								  qh, qlx, 
 								  sub44_coarse_threshold,
 								  roughres);
-
-		sub_mean_reduction( roughres, rough_heap_size, 1, 
+		
+		/* If the initial thresholding didn't filter out much (very self-similar image)
+			we reduce twice, otherwise only once */
+			
+		sub_mean_reduction( roughres, rough_heap_size, 1,
 							&rough_heap_size, &mean_weight);
 		sub44_coarse_threshold = 
-			fastmin( COARSE_44_SAD_THRESHOLD, 3/2*mean_weight );
+			intmin( COARSE_44_SAD_THRESHOLD, 3/2*mean_weight );
 		/* 
 		   We now use the good matches on 8-pel boundaries 
 		   as starting points for matches on 4-pel boundaries...
@@ -2695,8 +2703,8 @@ static int build_sub44_heap( int ilow, int ihigh, int jlow, int jhigh,
 		for( k = 0; k < rough_heap_size; ++k )
 		{
 			finalres[sub44_heap_size] = roughres[k];
-			rangex = (roughres[k].x < ilim);
-			rangey = (roughres[k].y < jlim);
+			rangex = (roughres[k].x < iend);
+			rangey = (roughres[k].y < jend);
 			++sub44_heap_size;
 			sub44_heap_size +=
 				(*pqblock_near_dist)( roughres[k].blk, qblk, 
@@ -2706,10 +2714,19 @@ static int build_sub44_heap( int ilow, int ihigh, int jlow, int jhigh,
 									 qh, qlx, finalres+sub44_heap_size);
 		}
 
-		sub_mean_reduction( finalres, sub44_heap_size, mc_44_red, 
-						&sub44_heap_size, &mean_weight);
+		sub_mean_reduction( finalres, sub44_heap_size, mc_44_red,
+								     &sub44_heap_size, &mean_weight);
 
-
+	if( sub44_heap_size > (ihigh-ilow)*(jhigh-jlow)/(4*4*4) )
+	{
+		printf( " %03d", sub44_heap_size );
+		{	
+			static int ctr = 0;
+			ctr++;
+			if( (ctr & 15) == 0 )
+				printf("\n");
+		}
+	}
 #endif
 	return sub44_heap_size;
 }
@@ -2724,7 +2741,7 @@ static int build_sub44_heap( int ilow, int ihigh, int jlow, int jhigh,
 */
 
 
-static int build_sub22_heap( int ilow,  int ihigh, int jlow, int jhigh, 
+static int build_sub22_heap( int i0,  int j0, int ihigh, int jhigh, 
 						   uint8_t *forg,  uint8_t *fblk, 
 						   int flx, int fh,  int searched_sub44_size )
 {
@@ -2734,8 +2751,8 @@ static int build_sub22_heap( int ilow,  int ihigh, int jlow, int jhigh,
 #endif
 #if ! HALF_HEAPS
 	int min_weight;
-	int ilim = ihigh-ilow;
-	int jlim = jhigh-jlow;
+	int ilim = ihigh-i0;
+	int jlim = jhigh-j0;
 #else
 	int ilim = ihigh;
 	int jlim = jhigh;
@@ -2760,7 +2777,7 @@ static int build_sub22_heap( int ilow,  int ihigh, int jlow, int jhigh,
 #else
 		matchrec.x = finalres[k].x;
 		matchrec.y = finalres[k].y;
-		forgblk =  forg + ((matchrec.y+jlow)>>1)*flx +((matchrec.x+ilow)>>1);
+		forgblk =  forg + ((matchrec.y+j0)>>1)*flx +((matchrec.x+i0)>>1);
 #endif
 #endif
 		  
@@ -3030,7 +3047,7 @@ static void fullsearch(
 	searched_size = sub44_heap_size;
 #endif
 
-	sub22_heap_size = build_sub22_heap( ilow, ihigh, jlow, jhigh, 
+	sub22_heap_size = build_sub22_heap( i0, j0, ihigh,  jhigh, 
 									  forg, ssblk->fmb, flx, fh, 
 									  searched_size );
 
@@ -3142,7 +3159,7 @@ static int dist1_00(unsigned char *blk1,unsigned char *blk2,
 	for (j=0; j<h; j++)
 	{
 
-#define pipestep(o) v = p1[o]-p2[o]; s+= fastabs(v);
+#define pipestep(o) v = p1[o]-p2[o]; s+= intabs(v);
 		pipestep(0);  pipestep(1);  pipestep(2);  pipestep(3);
 		pipestep(4);  pipestep(5);  pipestep(6);  pipestep(7);
 		pipestep(8);  pipestep(9);  pipestep(10); pipestep(11);
@@ -3178,7 +3195,7 @@ static int dist1_01(unsigned char *blk1,unsigned char *blk2,
 			/*
 			  v = ((p1[i]>>1)+(p1[i+1]>>1)>>1) - (p2[i]>>1);
 			*/
-			s+=fastabs(v);
+			s+=intabs(v);
 		}
 		p1+= lx;
 		p2+= lx;
@@ -3203,7 +3220,7 @@ static int dist1_10(unsigned char *blk1,unsigned char *blk2,
 		for (i=0; i<16; i++)
 		{
 			v = ((unsigned int)(p1[i]+p1a[i])>>1) - p2[i];
-			s+=fastabs(v);
+			s+=intabs(v);
 		}
 		p1 = p1a;
 		p1a+= lx;
@@ -3231,7 +3248,7 @@ static int dist1_11(unsigned char *blk1,unsigned char *blk2,
 		for (i=0; i<16; i++)
 		{
 			v = ((unsigned int)(p1[i]+p1[i+1]+p1a[i]+p1a[i+1])>>2) - p2[i];
-			s+=fastabs(v);
+			s+=intabs(v);
 		}
 		p1 = p1a;
 		p1a+= lx;
@@ -3448,7 +3465,7 @@ static int fdist1( uint8_t *fblk1, uint8_t *fblk2,int flx,int fh)
 	for( j = 0; j < fh; ++j )
 	{
 		register int diff;
-#define pipestep(o) diff = p1[o]-p2[o]; s += fastabs(diff)
+#define pipestep(o) diff = p1[o]-p2[o]; s += intabs(diff)
 		pipestep(0); pipestep(1);
 		pipestep(2); pipestep(3);
 		pipestep(4); pipestep(5);
@@ -3478,7 +3495,7 @@ static int qdist1( uint8_t *qblk1, uint8_t *qblk2,int qlx,int qh)
 	int s = 0;
 	register int diff;
 
-	/* #define pipestep(o) diff = p1[o]-p2[o]; s += fastabs(diff) */
+	/* #define pipestep(o) diff = p1[o]-p2[o]; s += intabs(diff) */
 #define pipestep(o) diff = p1[o]-p2[o]; s += diff < 0 ? -diff : diff;
 	pipestep(0); pipestep(1);	 pipestep(2); pipestep(3);
 	if( qh > 1 )
@@ -3614,7 +3631,7 @@ static int bdist1(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
 			v = ((((unsigned int)(*pf++ + *pfa++ + *pfb++ + *pfc++ + 2)>>2) +
 				  ((unsigned int)(*pb++ + *pba++ + *pbb++ + *pbc++ + 2)>>2) + 1)>>1)
 				- *p2++;
-			s += fastabs(v);
+			s += intabs(v);
 		}
 		p2+= lx-16;
 		pf+= lx-16;

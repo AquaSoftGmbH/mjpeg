@@ -35,13 +35,7 @@
 #include "cpu_accel.h"
 #include "simd.h"
 
-  /* Unpredictable branches suck on modern CPU's... */
 
-#define signmask(x) (((int)x)>>fabsshift)
-static inline int samesign(int x, int y)
-{
-	return (y+(signmask(x) & -(y<<1)));
-}
 
 /* Global function pointers for SIMD-dependent functions */
 int (*pquant_non_intra)(pict_data_s *picture, int16_t *src, int16_t *dst,
@@ -55,8 +49,6 @@ static void (*piquant_non_intra_m1)(int16_t *src, int16_t *dst,  uint16_t *quant
 
 static int quant_weight_coeff_sum( int16_t *blk, uint16_t * i_quant_mat );
 static void iquant_non_intra_m1(int16_t *src, int16_t *dst, uint16_t *quant_mat);
-static int quant_non_intra(pict_data_s *picture, int16_t *src, int16_t *dst,int mquant,
-							int *nonsat_mquant);
 
 /*
   Initialise quantization routines.
@@ -193,7 +185,7 @@ void quant_intra(
 			  }
 #else
 			/* RJ: save one divide operation */
-			y = (32*fastabs(x) + (d>>1) + d*((3*mquant+2)>>2))/(quant_mat[i]*2*mquant);
+			y = (32*intabs(x) + (d>>1) + d*((3*mquant+2)>>2))/(quant_mat[i]*2*mquant);
 			if ( y > clipvalue )
 			  {
 				clipping = 1;
@@ -202,7 +194,7 @@ void quant_intra(
 			  }
 #endif
 		  
-		  	pbuf[i] = samesign(x,y);
+		  	pbuf[i] = intsamesign(x,y);
 		  }
 		pbuf += 64;
 		psrc += 64;
@@ -251,7 +243,7 @@ int quant_weight_coeff_sum( int16_t *blk, uint16_t * i_quant_mat )
  *
  * RETURN: A bit-mask of block_count bits indicating non-zero blocks (a 1).
  *
- * TODO: A candidate for use of efficient abs and "samesign". If only gcc understood
+ * TODO: A candidate for use of efficient abs and "intsamesign". If only gcc understood
  * PPro conditional moves...
  */
 																							     											     
@@ -275,6 +267,7 @@ int quant_non_intra(
 	nzflag = 0;
 	for (i=0; i<coeff_count; ++i)
 	{
+restart:
 		if( (i%64) == 0 )
 		{
 			nzflag = (nzflag<<1) | !!flags;
@@ -303,7 +296,7 @@ int quant_non_intra(
 				}
 				i=0;
 				nzflag =0;
-				continue;
+				goto restart;
 			}
 		}
 		dst[i] = (src[i] >= 0 ? y : -y);
@@ -392,7 +385,7 @@ static void iquant_non_intra_m1(int16_t *src, int16_t *dst,  uint16_t *quant_mat
 		val -= (~(val&1))&(val!=0);
 		val = fastmin(val, 2047); /* Saturation */
     }
-	dst[i] = samesign(src[i],val);
+	dst[i] = intsamesign(src[i],val);
 	
   }
   
@@ -428,9 +421,9 @@ void iquant_non_intra(int16_t *src, int16_t *dst, int mquant )
 		  val = src[i];
 		  if( val != 0 )
 		  {
-			  val = fastabs(val);
+			  val = intabs(val);
 			  val = (int)((val+val+1)*quant_mat[i])>>5;
-			  val = fastmin( val, 2047);
+			  val = intmin( val, 2047);
 			  sum += val;
 		  }
 		  dst[i] = val;

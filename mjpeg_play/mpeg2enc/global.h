@@ -465,17 +465,27 @@ EXTERN int input_fd;
 
 
 #define fabsshift ((8*sizeof(unsigned int))-1)
-static __inline__ int fastabs(int x)
+static __inline__ int intabs(int x)
 {
 	return ((x)-(((unsigned int)(x))>>fabsshift)) ^ ((x)>>fabsshift);
 }
 
-static __inline__ int fastmax(int x, int y)
+static __inline__ int intmax(int x, int y)
 {
 	return (((x-y)>>fabsshift) & y) |  ((~((x-y)>>fabsshift)) & x);
 }
 
-static __inline__ int fastmin(int x,int y)
+static __inline__ int intmin(int x,int y)
 {
 	return (((y-x)>>fabsshift) & y) |  ((~((y-x)>>fabsshift)) & x);
 }
+
+
+#define signmask(x) (((int)x)>>fabsshift)
+static __inline__ int intsamesign(int x, int y)
+{
+	return (y+(signmask(x) & -(y<<1)));
+}
+#undef signmask
+#undef fabsshift
+

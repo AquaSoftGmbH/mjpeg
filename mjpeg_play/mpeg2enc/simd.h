@@ -39,8 +39,8 @@ struct pict_data;
 struct mc_result
 {
 	uint16_t weight;
-	uint8_t x;
-	uint8_t y;
+	int8_t x;
+	int8_t y;
 	uint8_t *blk;
 };
 
@@ -48,7 +48,7 @@ typedef struct mc_result mc_result_s;
 
 int qblock_8grid_dists_sse( uint8_t *blk,  uint8_t *ref,
 							int ilow, int jlow,
-							uint32_t width, uint32_t depth, 
+							int ihigh, int jhigh, 
 							int h, int rowstride, 
 							int threshold,
 							mc_result_s *resvec);
@@ -59,7 +59,7 @@ int qblock_near_dist_sse( uint8_t *blk,  uint8_t *ref,
 					  int h, int rowstride, mc_result_s *resvec);
 int qblock_8grid_dists_mmx( uint8_t *blk,  uint8_t *ref,
 							int ilow, int jlow,
-							uint32_t width, uint32_t depth, 
+							int ihigh, int jhigh, 
 							int threshold,
 							int h, int rowstride, mc_result_s *resvec);
 int qblock_near_dist_mmx( uint8_t *blk,  uint8_t *ref,
@@ -71,6 +71,8 @@ int qblock_near_dist_mmx( uint8_t *blk,  uint8_t *ref,
 int quant_non_intra_3dnow(	struct pict_data *picture,int16_t *src, int16_t *dst,
 							int mquant, int *nonsat_mquant);
 int quant_non_intra_mmx(	struct pict_data *picture,int16_t *src, int16_t *dst,
+							int mquant, int *nonsat_mquant);
+int quant_non_intra(	struct pict_data *picture,int16_t *src, int16_t *dst,
 							int mquant, int *nonsat_mquant);
 							
 int quantize_ni_mmx(short *dst, short *src, short *quant_mat, 

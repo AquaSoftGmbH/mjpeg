@@ -49,7 +49,7 @@
 
 int SIMD_SUFFIX(qblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
 									 int ilow,int jlow,
-									 uint32_t width, uint32_t depth, 
+									 int ihigh, int jhigh, 
 									 int h, int rowstride, 
 									 int threshold,
 									 mc_result_s *resvec)
@@ -60,12 +60,10 @@ int SIMD_SUFFIX(qblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
 	mc_result_s *cres = resvec;
 	int      gridrowstride = rowstride<<1;
 
-	/* "Seed" the thresholding with the 0,0 correction case... */
-	
-	for( y=0; y <= depth ; y+=8)
+	for( y=jlow; y <= jhigh ; y+=8)
 	{
 		curblk = currowblk;
-		for( x = 0; x <= width; x += 8)
+		for( x = ilow; x <= ihigh; x += 8)
 		{
 			int weight;
 			if( (x & 15) == 0 )
@@ -76,7 +74,9 @@ int SIMD_SUFFIX(qblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
 			if( weight <= threshold )
 			{
 				threshold =  fastmin(weight<<2,threshold);
-				cres->weight = (uint16_t)weight;
+				/* Rough and-ready absolute distance penalty */
+				/* NOTE: This penalty is *vital* to correct operation */
+				cres->weight = (uint16_t)weight+((fastabs(x)+fastabs(y))>>3);
 				cres->x = (uint8_t)x;
 				cres->y = (uint8_t)y;
 				cres->blk = curblk;
@@ -129,8 +129,8 @@ int SIMD_SUFFIX(qblock_near_dist)( uint8_t *blk,  uint8_t *ref,
 		if( weight <= threshold )
 		{
 			cres->weight = weight;
-			cres->x = (uint8_t)x;
-			cres->y = (uint8_t)y;
+			cres->x = (int8_t)x;
+			cres->y = (int8_t)y;
 			cres->blk = curblk;
 			++cres;
 		}
