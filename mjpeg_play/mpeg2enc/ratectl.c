@@ -42,6 +42,9 @@ static double calc_actj _ANSI_ARGS_((void));
 /*Constant bit-rate rate control variables */
 /* X's global complexity (Chi! not X!) measures.
    Actually: average quantisation * bits allocated in *previous* frame
+   N.b. the choice of measure is *not* arbitrary.  The feedback bit rate
+   control gets horribly messed up if it is *not* proportionate to bit demand
+   i.e. bits used scaled for quantisation.
    d's  virtual reciever buffer fullness
    r - Rate control feedback gain (in bits/frame)  I.e if the "virtual
    buffer" is x% full and
@@ -90,9 +93,9 @@ static bitcount_t S;
 static int prev_mquant;
 
 /* Note: eventually we may wish to tweak these to suit image content */
-static double Ki = 1.7;    	/* Down-scaling of I/B/P-frame complexity */
-static double Kb = 1.0;	    /* relative to others in bit-allocation   */
-static double Kp = 1.8;	    /* calculations.  We only need 2 but have all
+static double Ki = 1.1;    	/* Down-scaling of I/B/P-frame complexity */
+static double Kb = 1.2;	    /* relative to others in bit-allocation   */
+static double Kp = 1.0;	    /* calculations.  We only need 2 but have all
 							   3 for readability */
 
 
@@ -187,9 +190,9 @@ void rc_init_seq()
 
 	if( pred_ratectl )
 	{
-		Ki = 1.7;
-		Kb = 1.0;
-		Kp = 1.8;
+		Ki = 1.0;
+		Kb = 1.4;
+		Kp = 1.0;
 	}
 	else
 	{
@@ -276,7 +279,6 @@ void rc_init_GOP(np,nb)
 	   bit allocation decisions.
 
 	*/
-	printf( "GOP under/over run = %7.0f\n", -R );
 	
 	if( R > 0 && video_buffer_size < per_gop_bits  )
 	{
@@ -305,7 +307,7 @@ void rc_init_pict(pict_data_s *picture)
 	double avg_K;
 	double target_Q;
 	double current_Q;
-
+	double Si, Sp, Sb;
 	/* TODO: A.Stevens  Nov 2000 - This modification needs testing visually.
 
 	   Weird.  The original code used the average activity of the
@@ -314,10 +316,14 @@ void rc_init_pict(pict_data_s *picture)
 	   be a bad idea..., surely, here we try to be smarter by using the
 	   current values and keeping track of how much of the frames
 	   activitity has been covered as we go along.
+
+	   We also guesstimate the relationship between  (sum
+	   of DCT coefficients) and actual quantisation weighted activty.
+	   We use this to try to predict the activity of each frame.
 	*/
 
 	actsum =  calc_actj( );
-	avg_act = actsum/(mb_width*mb_height2);
+	avg_act = (double)actsum/(double)(mb_width*mb_height2);
 	actcovered = 0.0;
 
 	/* Allocate target bits for frame based on frames numbers in GOP
@@ -329,41 +335,45 @@ void rc_init_pict(pict_data_s *picture)
 	switch (picture->pict_type)
 	{
 	case I_TYPE:
-
-		/* This *looks* inconsistent (the cost of the I frame doesn't
-		   appear in the calculations for P and B).  However, it works
-		   fine because the I frame calculation is done 1st in each GOP,
-		   so once we hit P and B frames there are no I frames left to
-		   account for with the remaining pool of bits R.
+		
+		/* There is little reason to rely on the *last* I-frame
+		   as they're not closely related.  The slow correction of
+		   K should be enough to fine-tune...
 		*/
-
 		if( pred_ratectl )
 		{
-			Xi = avg_act;
-			avg_K = avg_KI;
 			d = d0i;
+			avg_K = avg_KI;
+			Si = avg_K*actsum;
+			T = R/(1.0+Np*Xp*Ki/(Si*Kp)+Nb*Xb*Ki/(Si*Kb));
 		}
-		T = R/(1.0+Np*Xp*Ki/(Xi*Kp)+Nb*Xb*Ki/(Xi*Kb));
+		else
+			T = R/(1.0+Np*Xp*Ki/(Xi*Kp)+Nb*Xb*Ki/(Xi*Kb));
+
 		sliding_d_avg = sliding_di_avg;
 		break;
 	case P_TYPE:
 		if( pred_ratectl )
 		{
-			Xp = avg_act;
-			avg_K = avg_KP;
 			d = d0p;
+			avg_K = avg_KP;
+			Sp = (Xp + avg_K*actsum) / 2.0;
+			T =  R/(Np+Nb*Kp*Xb/(Kb*Sp)) + 0.5;
 		}
-		T =  R/(Np+Nb*Kp*Xb/(Kb*Xp)) + 0.5;
+		else
+			T =  R/(Np+Nb*Kp*Xb/(Kb*Xp)) + 0.5;
 		sliding_d_avg = sliding_dp_avg;
 		break;
 	case B_TYPE:
 		if( pred_ratectl )
 		{
-			Xb = avg_act;
+			d = d0p;            // I and P frame share ratectl virtual buffer
 			avg_K = avg_KB;
-			d = d0b;
+			Sb = (Xb + avg_K * actsum) / 2.0;
+			T =  R/(Nb+Np*Kb*Xp/(Kp*Sb));
 		}
-		T =  R/(Nb+Np*Kb*Xp/(Kp*Xb));
+		else
+			T =  R/(Nb+Np*Kb*Xp/(Kp*Xb));
 		sliding_d_avg = sliding_db_avg;
 		break;
 	}
@@ -372,9 +382,12 @@ void rc_init_pict(pict_data_s *picture)
 	if( d < 0 )
 		d = 0;
 
+	/* We don't let the target volume get absurdly low as it makes some
+	   of the prediction maths ill-condtioned.  At these levels quantisation
+	   is always minimum anyway
+	*/
 	if( T < 4000.0 )
 	{
-		printf( "\nWARNING VERY LOW T=%6.0f\n", T);
 		T = 4000.0;
 	}
 	target_Q = scale_quant(picture, 
@@ -382,7 +395,7 @@ void rc_init_pict(pict_data_s *picture)
 	current_Q = scale_quant(picture,62.0*d / r);
 	if( !quiet )
 	{
-		printf( "AA=%3.1f T=%6.0f K=%.1f BQ=%2.1f TQ=%2.1f ",avg_act, T, avg_K, current_Q, target_Q  );
+		printf( "AA=%3.1f T=%6.0f K=%.1f ",avg_act, T, avg_K  );
 	}
 	
 	if( pred_ratectl )
@@ -476,19 +489,21 @@ static double calc_actj(void)
 			   if it can be guaranteed that activity is always distinctly
 			   non-zero.
 			 */
-			actj = 1.0;
-			actj += (double) (*pquant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[0], i_q_mat ) /
-				(double) COEFFSUM_SCALE ;
-			actj += (double) (*quant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[1], i_q_mat ) / 
-				(double) COEFFSUM_SCALE;
-			actj += (double) (*quant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[1], i_q_mat ) / 
-				(double) COEFFSUM_SCALE;
 
-			actj += (double) (*quant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[1], i_q_mat ) /
-				(double) COEFFSUM_SCALE;
+			actj = (double)
+				( (*pquant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[0], i_q_mat ) 
+				  + (*quant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[1], i_q_mat ) 
+				  + (*quant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[1], i_q_mat )
+				  + (*quant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[1], i_q_mat )
+				  );
 
-			cur_picture.mbinfo[k].act = actj;
-			sum += actj;
+
+			actj = actj/COEFFSUM_SCALE;
+			if( actj < 8.0 )
+				actj = 8.0;
+
+			cur_picture.mbinfo[k].act = (double)actj;
+			sum += (double)actj;
 			++k;
 		}
 	return sum;
@@ -503,11 +518,12 @@ void rc_update_pict(pict_data_s *picture)
 	R-= S;						/* remaining # of bits in GOP */
 	AQ = (double)Q/(mb_width*mb_height2);  
 	/* TODO: The X are used as relative activity measures... so why
-	   bother dividing by 2?  */
-	X = (int) floor((double)S*(AQ/2.0) + 0.5);
-  
+	   bother dividing by 2?  
+  */
+	X = (int) floor((double)S*(AQ/2.0 + 0.5));
+
 	d += (int)S - (int)T;
-	K = (double)S / (double) (mb_width*mb_height2) * AQ / avg_act;
+	K = (double)X / actsum;
 
 	if( !quiet )
 	{
@@ -539,10 +555,7 @@ void rc_update_pict(pict_data_s *picture)
 		{
 			d0i = d;
 		}
-		else
-		{
-			Xi = X;
-		}
+		Xi = X;
 		sliding_di_avg = sliding_d_avg;
 		break;
 	case P_TYPE:
@@ -552,10 +565,7 @@ void rc_update_pict(pict_data_s *picture)
 		{
 			d0p = d;
 		}
-		else
-		{
-			Xp = X;
-		}
+		Xp = X;
 
 		sliding_dp_avg = sliding_d_avg;
 		Np--;
@@ -565,12 +575,11 @@ void rc_update_pict(pict_data_s *picture)
 		avgsq_KB = (K*K + avgsq_KB * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0);
 		if( pred_ratectl )
 		{
-			d0b = d;
+			// DEBUG Share d and p d0b = d;
+			d0p = d;
 		}
-		else
-		{
-			Xb = X;
-		}
+		Xb = X;
+
 		sliding_db_avg = sliding_d_avg;
 		Nb--;
 		break;
@@ -664,7 +673,7 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 
 
 	/* compute normalized activity */
-	actj = cur_picture.mbinfo[j].act;
+	actj = (double)cur_picture.mbinfo[j].act;
 	actcovered += actj;
 
 

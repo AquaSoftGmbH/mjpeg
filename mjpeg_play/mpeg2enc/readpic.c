@@ -34,98 +34,11 @@
 #include "config.h"
 #include "global.h"
 
-static char roundadj[4] = { 0, 0, 1, 2 };
  
-unsigned char *filter_buf;
-int noise_filt;
-int drop_lsb;
 
 static int frames_read = 0;
 static int last_frame = -1;
-static unsigned char ***frame_buffers;
 
-static int cwidth, cheight;
-
-static void do_drop_lsb(unsigned char *frame[])
-{
-   int *p, *end, c;
-   int mask;
-   int round;
-
-   for( c = 0; c < sizeof(int); ++c )
-   {
-      ((char *)&mask)[c] = (0xff << drop_lsb) & 0xff;
-      ((char *)&round)[c] = roundadj[drop_lsb];
-   }
-   
-
-   /* N.b. we know width is multiple of 16 so doing lsb dropping
-	  int-wise will work for sane (32-bit or 64-bit) machines
-   */
-   
-   for( c = 0; c < 3 ; ++c )
-   {
-      p = (int *)frame[c];
-      if( c == 0 )
-      { 
-         end = (int *)(frame[c]+ width*height);
-      }
-      else
-      {
-         end = (int *)(frame[c] + cwidth*cheight);
-      }
-      while( p++ < end )
-      {
-         *p = (*p & mask) + round;
-       }
-   }
-}
-
-static void do_noise_filt(unsigned char *frame[])
-{
-   unsigned char *bp;
-   unsigned char *p = frame[0]+width+1;
-   unsigned char *end = frame[0]+width*(height-1);
-
-   bp = filter_buf + width+1;
-   if( noise_filt == 1 )
-	 {
-	   for( p = frame[0]+width+1; p < end; ++p )
-		 {
-		   register int f=(p[-width-1]+p[-width]+p[-width+1]+
-							p[-1] + p[1] +
-							p[width-1]+p[width]+p[width+1]);
-		   /* f = f + (f<<1) + (*p << 3);
-			*bp = (f + (1 << 4)) >> (3+2); */
-		   f = f + (*p<<3);
-		   *bp = (f + 8) >> (3 + 1);
-		   ++bp;
-		 }
-	 }
-   else
-	 {
-	   for( p = frame[0]+width+1; p < end; ++p )
-		 {
-		   register int f=(p[-width-1]+p[-width]+p[-width+1]+
-							p[-1] + p[1] +
-							p[width-1]+p[width]+p[width+1]);
-		   /* f = f + (f<<1) + (*p << 3);
-			*bp = (f + (1 << 4)) >> (3+2); */
-		   f = f + (*p<<3);
-		   *bp = (f + (1 << 2)) >> (3 + 1);
-		   ++bp;
-		 }
-	 }
-	  
-   bp = filter_buf + width+1;
-   for( p = frame[0]+width+1; p < end; ++p )
-	 {
-	   *p = *bp;
-	   ++bp;
-	 }
-   
-   
-}
 
 static void border_extend(frame,w1,h1,w2,h2)
 unsigned char *frame;
@@ -176,9 +89,9 @@ static void read_gop()
 
    unsigned char magic[6];
 
-   s = frames_read % (2*N);
+   s = frames_read % (2*READ_LOOK_AHEAD);
 
-   for(n=s;n<s+N;n++)
+   for(n=s;n<s+READ_LOOK_AHEAD/2;n++)
    {
       if(piperead(input_fd,magic,6)!=6) goto EOF_MARK;
       if(strncmp(magic,"FRAME\n",6))
@@ -197,15 +110,13 @@ static void read_gop()
       v = chroma_format==CHROMA420 ? vertical_size/2 : vertical_size;
       h = chroma_format!=CHROMA444 ? horizontal_size/2 : horizontal_size;
       for(i=0;i<v;i++)
-         if(piperead(input_fd,frame_buffers[n][1]+i*cwidth,h)!=h) goto EOF_MARK;
+         if(piperead(input_fd,frame_buffers[n][1]+i*chrom_width,h)!=h) goto EOF_MARK;
       for(i=0;i<v;i++)
-         if(piperead(input_fd,frame_buffers[n][2]+i*cwidth,h)!=h) goto EOF_MARK;
+         if(piperead(input_fd,frame_buffers[n][2]+i*chrom_width,h)!=h) goto EOF_MARK;
 
-      border_extend(frame_buffers[n][1],h,v,cwidth,cheight);
-      border_extend(frame_buffers[n][2],h,v,cwidth,cheight);
+      border_extend(frame_buffers[n][1],h,v,chrom_width,chrom_height);
+      border_extend(frame_buffers[n][2],h,v,chrom_width,chrom_height);
 
-      if( drop_lsb ) do_drop_lsb(frame_buffers[n]);
-      if( noise_filt ) do_noise_filt(frame_buffers[n]);
 
       frames_read++;
    }
@@ -222,54 +133,16 @@ int readframe( int num_frame,
 {
    int n;
 
-   if(frames_read == 0)
+   if( frames_read == 0)
    {
-      /* some initializations */
-
-      /* Calculate width and height of chroma components
-         (at the moment only CHROMA420 is used) */
-
-      switch ( chroma_format ) 
-      {
-         case CHROMA420 :
-           cwidth = width / 2;
-           cheight = height / 2; 
-           break;
-         case CHROMA422 :
-           cwidth = width / 2;
-           cheight = height;
-           break;
-         case CHROMA444 :
-           cwidth = width;
-           cheight = height;
-         default :
-           abort();
-      }
-
-      /* Allocate frame buffers for a complete GOP */
-
-      frame_buffers = (unsigned char ***) malloc(2*N*sizeof(unsigned char**));
-      if(!frame_buffers) { fprintf(stderr,"malloc failed\n"); exit(1); }
-
-      for(n=0;n<2*N;n++)
-      {
-         frame_buffers[n] = (unsigned char **) malloc(3*sizeof(unsigned char*));
-         if(!frame_buffers[n]) { fprintf(stderr,"malloc failed\n"); exit(1); }
-         frame_buffers[n][0] = (unsigned char *) malloc(width*height);
-         frame_buffers[n][1] = (unsigned char *) malloc(cwidth*cheight);
-         frame_buffers[n][2] = (unsigned char *) malloc(cwidth*cheight);
-         if(!frame_buffers[n][0] || !frame_buffers[n][1] || !frame_buffers[n][2])
-         { fprintf(stderr,"malloc failed\n"); exit(1); }
-      }
-
-      /* Read first + second GOP */
+      /* Read first + second look-ahead buffer loads */
 
       read_gop();
       read_gop();
    }
 
 
-   if(num_frame < frames_read - 2*N)
+   if(num_frame < frames_read - 2*READ_LOOK_AHEAD)
    {
       fprintf(stderr,"readframe: internal error 1\n");
       exit(1);
@@ -287,15 +160,23 @@ int readframe( int num_frame,
       exit(1);
    }
 
-   n = num_frame % (2*N);
+   n = num_frame % (2*READ_LOOK_AHEAD);
 
-   memcpy(frame[0],frame_buffers[n][0],width*height);
-   memcpy(frame[1],frame_buffers[n][1],cwidth*cheight);
-   memcpy(frame[2],frame_buffers[n][2],cwidth*cheight);
+   frame[0] = frame_buffers[n][0];
+   frame[1] = frame_buffers[n][1];
+   frame[2] = frame_buffers[n][2];
+   frame[3] = frame_buffers[n][3];
 
-   /* Read next GOP if this was the last frame of current one */
 
-   if(num_frame%N == N-1) read_gop();
+   /* Read next look ahead chunk if this was the last 
+	  frame of current one */
+
+   /* We read fairly frequently... */
+   if(num_frame%(READ_LOOK_AHEAD/2) == (READ_LOOK_AHEAD/2-1)) 
+   {
+	   read_gop();
+   }
+
 
    return 0;
 }

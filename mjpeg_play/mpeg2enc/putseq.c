@@ -33,8 +33,6 @@
 #include "global.h"
 
 
-static	unsigned char *neworg[3], *newref[3];
-static	unsigned char *prevframe[3];
 
 
 void putseq()
@@ -44,6 +42,7 @@ void putseq()
 	int ipflag;
 	int sxf = 0, sxb = 0, syf = 0, syb = 0;
 	motion_comp_s mc_data;
+	unsigned char **curorg, **curref;
 
 	rc_init_seq(); /* initialize rate control */
 
@@ -66,21 +65,10 @@ void putseq()
 
 	reset_thresholds( mb_height2*mb_width );
 
-	/* Initialise sane values for neworg in case 1st frame of source
-	 sequence is corrupted and we use its "predecessor" */
-	neworg[0]=neworgframe[0];
-	neworg[1]=neworgframe[1];
-	neworg[2]=neworgframe[2];
 	/* loop through all frames in encoding/decoding order */
 	for (i=0; i<nframes; i++)
 	{
 		frame_num = i;
-		/* We keep track of the previously read frame in case source material
-		   has occasional corrupt frames */
-		prevframe[0]=neworg[0];
-		prevframe[1]=neworg[1];
-		prevframe[2]=neworg[2];
-
 		/* f0: lowest frame number in current GOP
 		 *
 		 * first GOP contains N-(M-1) frames,
@@ -94,17 +82,32 @@ void putseq()
 		if (i==0 || (i-1)%M==0)
 		{
 
-			/* I or P frame */
+			/* I or P frame: Somewhat complicated buffer handling.
+			   The original reference frame data is actually held in
+			   the frame input buffers.  In input read-ahead buffer
+			   management code worries about rotating them for use.
+			   So to make the new old one the current new one we
+			   simply move the pointers.  However for the
+			   reconstructed "ref" data we are managing our a seperate
+			   pair of buffers. We need to swap these to avoid losing
+			   one!  */
+
 			for (j=0; j<3; j++)
 			{
-				/* shuffle reference frames */
-				neworg[j] = oldorgframe[j];
-				newref[j] = oldrefframe[j];
+				unsigned char *tmp;
 				oldorgframe[j] = neworgframe[j];
+				tmp = oldrefframe[j];
 				oldrefframe[j] = newrefframe[j];
-				neworgframe[j] = neworg[j];
-				newrefframe[j] = newref[j];
+				newrefframe[j] = tmp;
 			}
+
+			/* For an I or P frame the "current frame" is simply an alias
+			   for the new new reference frame. Saves the need to copy
+			   stuff around once the frame has been processed.
+			*/
+
+			curorg = neworgframe;
+			curref = newrefframe;
 
 
 			/* f: frame number in display order */
@@ -116,7 +119,6 @@ void putseq()
 			{
 				/* I frame */
 				cur_picture.pict_type = I_TYPE;
-
 
 				cur_picture.forw_hor_f_code = 
 					cur_picture.forw_vert_f_code = 15;
@@ -161,12 +163,12 @@ void putseq()
 		}
 		else
 		{
-			/* B frame */
-			for (j=0; j<3; j++)
-			{
-				neworg[j] = auxorgframe[j];
-				newref[j] = auxframe[j];
-			}
+			/* B frame: no need to change the reference frames.
+			   The current frame data pointers are a 3rd set
+			   seperate from the reference data pointers.
+			*/
+			curorg = auxorgframe;
+			curref = auxframe;
 
 			/* f: frame number in display order */
 			f = i - 1;
@@ -223,26 +225,29 @@ void putseq()
 		}
 
 
-		if( readframe(f+frame0,neworg) )
+		if( readframe(f+frame0,curorg) )
 		{
-			/* Corrupt source frame, re-use predecessor! */
-			neworg[0] = prevframe[0];
-			neworg[1] = prevframe[1];
-			neworg[2] = prevframe[2];
-			printf( "Warning... corrupt data re-using previous frame\n" );
+			fprintf( stderr, "Corrupt frame data aborting!\n" );
+			exit(1);
 		}
 
 		mc_data.oldorg = oldorgframe[0];
 		mc_data.neworg = neworgframe[0];
 		mc_data.oldref = oldrefframe[0];
 		mc_data.newref = newrefframe[0];
-		mc_data.cur    = neworg[0];
-		mc_data.curref = newref[0];
+		mc_data.cur    = curorg[0];
+		mc_data.curref = curref[0];
 		mc_data.sxf = sxf;
 		mc_data.syf = syf;
 		mc_data.sxb = sxb;
 		mc_data.syb = syb;
 
+		set_motion_search_limits( &cur_picture, &mc_data  );
+		printf( "\nLIMS: MXF=%02d MYF=%02d MXB=%02d MYB=%02d\n", 
+				mc_data.search_limits[fwd][x_crd], 
+				mc_data.search_limits[fwd][y_crd],
+				mc_data.search_limits[bwd][x_crd], 
+				mc_data.search_limits[bwd][y_crd] );
         if (fieldpic)
 		{
 			if (!quiet)
@@ -254,12 +259,12 @@ void putseq()
 
 			cur_picture.pict_struct = cur_picture.topfirst ? TOP_FIELD : BOTTOM_FIELD;
 			/* A.Stevens 2000: Append fast motion compensation data for new frame */
-			fast_motion_data(neworg[0], cur_picture.pict_struct);
+			fast_motion_data(curorg[0], cur_picture.pict_struct);
 			motion_estimation(&cur_picture, &mc_data,0,0);
 
 			predict(&cur_picture,oldrefframe,newrefframe,predframe,0);
-			dct_type_estimation(&cur_picture,predframe[0],neworg[0]);
-			transform(&cur_picture,predframe,neworg);
+			dct_type_estimation(&cur_picture,predframe[0],curorg[0]);
+			transform(&cur_picture,predframe,curorg);
 
 			putpict(&cur_picture, qblocks);		/* Quantisation: blocks -> qblocks */
 
@@ -279,9 +284,9 @@ void putseq()
 										 cur_picture.mbinfo[k].mquant);
 			}
 
-			itransform(&cur_picture,predframe,newref,qblocks);
-			fast_motion_data(newref[0], cur_picture.pict_struct);
-			calcSNR(neworg,newref);
+			itransform(&cur_picture,predframe,curref,qblocks);
+			fast_motion_data(curref[0], cur_picture.pict_struct);
+			calcSNR(curorg,curref);
 			stats();
 
 			if (!quiet)
@@ -308,8 +313,8 @@ void putseq()
 			motion_estimation(&cur_picture, &mc_data ,1,ipflag);
 
 			predict(&cur_picture,oldrefframe,newrefframe,predframe,1);
-			dct_type_estimation(&cur_picture,predframe[0],neworg[0]);
-			transform(&cur_picture,predframe,neworg);
+			dct_type_estimation(&cur_picture,predframe[0],curorg[0]);
+			transform(&cur_picture,predframe,curorg);
 
 			putpict(&cur_picture, qblocks);	/* Quantisation: blocks -> qblocks */
 
@@ -329,15 +334,15 @@ void putseq()
 										 cur_picture.mbinfo[k].mquant);
 			}
 
-			itransform(&cur_picture,predframe,newref,qblocks);
-			fast_motion_data(newref[0], cur_picture.pict_struct);
-			calcSNR(neworg,newref);
+			itransform(&cur_picture,predframe,curref,qblocks);
+			fast_motion_data(curref[0], cur_picture.pict_struct);
+			calcSNR(curorg,curref);
 			stats();
 		}
 		else
 		{
 			cur_picture.pict_struct = FRAME_PICTURE;
-			fast_motion_data(neworg[0], cur_picture.pict_struct);
+			fast_motion_data(curorg[0], cur_picture.pict_struct);
 
 			/* do motion_estimation
 			 *
@@ -348,9 +353,9 @@ void putseq()
 			motion_estimation(&cur_picture,&mc_data,0,0);
 
 			predict(&cur_picture, oldrefframe,newrefframe,predframe,0);
-			dct_type_estimation(&cur_picture,predframe[0],neworg[0]);
+			dct_type_estimation(&cur_picture,predframe[0],curorg[0]);
 
-			transform(&cur_picture,predframe,neworg);
+			transform(&cur_picture,predframe,curorg);
 
 			putpict(&cur_picture,qblocks);	/* Quantisation: blocks -> qblocks */
 
@@ -371,15 +376,16 @@ void putseq()
 										 cur_picture.mbinfo[k].mquant);
 			}
 
-			itransform(&cur_picture,predframe,newref,qblocks);
-			fast_motion_data(newref[0], cur_picture.pict_struct); 
-			calcSNR(neworg,newref);
+			itransform(&cur_picture,predframe,curref,qblocks);
+			fast_motion_data(curref[0], cur_picture.pict_struct); 
+			calcSNR(curorg,curref);
 
 			stats();
 		}
 
+		record_range_of_motion( &cur_picture, &mc_data  );
 
-		writeframe(f+frame0,newref);
+		writeframe(f+frame0,curref);
 
 	}
 

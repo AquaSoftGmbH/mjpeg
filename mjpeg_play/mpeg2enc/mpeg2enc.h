@@ -88,6 +88,14 @@
 #define T_YUV   1
 #define T_PPM   2
 
+/*
+  Some enumerated types to give legible indices into motion vector arrays
+*/
+
+typedef enum coord { x_crd, y_crd} coord_e;
+typedef enum mc_dir { fwd, bwd } mc_dir_e;
+typedef enum field { top, bot }  field_e;
+
 /* Per frame Motion estimation data set 
  * oldorg: original frame for forward prediction (P and B frames)
  * neworg: original frame for backward prediction (B frames only)
@@ -104,7 +112,11 @@ struct motion_comp
 	unsigned char *oldorg, *neworg;
 	unsigned char *oldref, *newref;
 	unsigned char *cur, *curref;
-	int sxf, syf,  sxb, syb;
+	int sxf, syf, sxb, syb;
+	int search_limits[2][2];
+	int lastIP_max_MV[2];		/* Maximum search in last P frame */
+								/* (Updated continually) */
+	int temp_ref_lastIP;		/* Temporal reference of last P frame */
 };
 
 typedef struct motion_comp motion_comp_s;
@@ -134,7 +146,7 @@ struct mbinfo {
 };
 
 typedef struct mbinfo mbinfo_s;
-
+ 
 /* motion data */
 struct motion_data {
   int forw_hor_f_code,forw_vert_f_code; /* vector range */
@@ -165,6 +177,7 @@ struct pict_data
 	int repeatfirst;			/* repeat first field after second field */
 	int prog_frame;				/* progressive frame */
 
+	int max_MV[2][2];			/* Maximum absolute motion compensation 	*/
 
 	/* 8*8 block data, raw (unquantised) and quantised */
 	short (*blocks)[64];
@@ -195,5 +208,6 @@ typedef unsigned char mcompuint;
 
 
 #define BUFFER_ALIGN 16
+
 
 

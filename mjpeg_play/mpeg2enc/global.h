@@ -61,6 +61,9 @@ void init_idct _ANSI_ARGS_((void));
 
 void init_motion ();
 
+void set_motion_search_limits(	pict_data_s *picture,motion_comp_s *mc_data  );
+void record_range_of_motion( pict_data_s *picture,motion_comp_s *mc_data  );
+
 void motion_estimation _ANSI_ARGS_((
 	pict_data_s *picture,
 	motion_comp_s *mc_data,
@@ -302,25 +305,19 @@ EXTERN char pict_type_char[6]
 
 int video_buffer_size;
 
+/* Buffers frame data */
+EXTERN unsigned char ***frame_buffers;
+
 EXTERN pict_data_s cur_picture;
 
-/* reconstructed frames */
+/* Buffers for econstructed frames */
 EXTERN unsigned char *newrefframe[3], *oldrefframe[3], *auxframe[3];
-/* original frames */
+/* Pointers to original frames in frame_buffers */
 EXTERN unsigned char *neworgframe[3], *oldorgframe[3], *auxorgframe[3];
 /* prediction of current frame */
 EXTERN unsigned char *predframe[3];
 /* Buffer for filter pre-processing */
-EXTERN unsigned char *filter_buf;
 
-#ifdef DELETE_SOON
-/* 8*8 block data, raw (unquantised) and quantised */
-EXTERN short (*blocks)[64];
-
-/* macroblock side information array */
-EXTERN struct mbinfo *mbinfo;
-/* motion estimation parameters */
-#endif
 EXTERN struct motion_data *motion_data;
 EXTERN short (*qblocks)[64];
 
@@ -355,6 +352,21 @@ EXTERN int frame0, tc0; /* number and timecode of first frame */
 EXTERN int mpeg1; /* ISO/IEC IS 11172-2 sequence */
 EXTERN int fieldpic; /* use field pictures */
 
+
+
+/*
+  How many frames to read ahead (eventually intended to support
+  scene change based GOP structuring.  READ_LOOK_AHEAD/2 must be
+  greater than M (otherwise buffers will be overwritten that are
+  still in use).
+
+  It should also be a multiple of 4 due to the way buffers are
+  filled (in 1/4's).
+*/
+
+#define READ_LOOK_AHEAD 16 
+
+
 /* sequence specific data (sequence header) */
 
 EXTERN int horizontal_size, vertical_size; /* frame size (pels) */
@@ -384,7 +396,7 @@ EXTERN int vbv_buffer_size; /* size of VBV buffer (* 16 kbit) */
 EXTERN int constrparms; /* constrained parameters flag (MPEG-1 only) */
 EXTERN int load_iquant, load_niquant; /* use non-default quant. matrices */
 EXTERN int load_ciquant,load_cniquant;
-
+EXTERN int search_radius[2];		/* Radius for motion compensation search */
 
 /* sequence specific data (sequence extension) */
 

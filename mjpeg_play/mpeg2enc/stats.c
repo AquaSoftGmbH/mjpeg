@@ -119,6 +119,26 @@ void stats()
   struct mbinfo *mbi;
 
 
+  /* Needs adjusting to reflect its move... */
+#ifdef NOT_DONE_YET
+		if (cur_picture.pict_type!=I_TYPE)
+		{
+			fprintf(statfile," forward search window: %d...%d / %d...%d\n",
+					-sxf,sxf,-syf,syf);
+			fprintf(statfile," forward vector range: %d...%d.5 / %d...%d.5\n",
+					-(4<<cur_picture.forw_hor_f_code),(4<<cur_picture.forw_hor_f_code)-1,
+					-(4<<cur_picture.forw_vert_f_code),(4<<cur_picture.forw_vert_f_code)-1);
+		}
+
+		if (cur_picture.pict_type==B_TYPE)
+		{
+			fprintf(statfile," backward search window: %d...%d / %d...%d\n",
+					-sxb,sxb,-syb,syb);
+			fprintf(statfile," backward vector range: %d...%d.5 / %d...%d.5\n",
+					-(4<<cur_picture.back_hor_f_code),(4<<cur_picture.back_hor_f_code)-1,
+					-(4<<cur_picture.back_vert_f_code),(4<<cur_picture.back_vert_f_code)-1);
+		}
+#endif
   nmb = mb_width*mb_height2;
 
   n_skipped=n_intra=n_ncoded=n_blocks=n_interp=n_forward=n_backward=0;

@@ -80,7 +80,7 @@ static int param_fastmc     = 10;
 static int param_threshold  = 0;
 static int param_hfnoise_quant = 0;
 static int param_hires_quant = 0;
-static double param_act_boost = 1.0;
+static double param_act_boost = 2.0;
 static int param_pred_ratectl = 0;
 static int param_video_buffer_size = 46;
 
@@ -229,6 +229,7 @@ int main(argc,argv)
 				fprintf( stderr, "-q option requires arg 0.1 .. 10.0\n");
 				nerr++;
 			}
+			break;
 		default:
 			nerr++;
 		}
@@ -376,6 +377,7 @@ static unsigned char *bufalloc( size_t size )
 {
 	char *buf = malloc( size + BUFFER_ALIGN );
 	int adjust;
+
 	if( buf == NULL )
 	{
 		error("malloc failed\n");
@@ -388,8 +390,9 @@ static unsigned char *bufalloc( size_t size )
 
 static void init()
 {
-	int i, size;
+	int i, n;
 	static int block_count_tab[3] = {6,8,12};
+	int lum_buffer_size, chrom_buffer_size;
 
 	initbits();
 	init_fdct();
@@ -402,6 +405,13 @@ static void init()
 	width = 16*mb_width;
 	height = 16*mb_height;
 
+	/* Calculate the sizes and offsets in to luminance and chrominance
+	   buffers.  A.Stevens 2000 for luminance data we allow space for
+	   fast motion estimation data.  This is actually 2*2 pixel
+	   sub-sampled mcompuint followed by 4*4 sub-sampled.  We add an
+	   extra row to act as a margin to allow us to neglect / postpone
+	   edge condition checking in time-critical loops...  */
+
 	chrom_width = (chroma_format==CHROMA444) ? width : width>>1;
 	chrom_height = (chroma_format!=CHROMA420) ? height : height>>1;
 
@@ -411,8 +421,13 @@ static void init()
   
 	block_count = block_count_tab[chroma_format-1];
 
+	lum_buffer_size = (width*height) + 
+					 sizeof(mcompuint) *(width/2)*(height/2) +
+					 sizeof(mcompuint) *(width/4)*(height/4+1);
+	chrom_buffer_size = chrom_width*chrom_height;
 	fsubsample_offset = (width)*(height) * sizeof(unsigned char);
 	qsubsample_offset =  fsubsample_offset + (width/2)*(height/2)*sizeof(mcompuint);
+
 #ifdef TEST_RCSEARCH
 	rowsums_offset = qsubsample_offset +  (width/4)*(height/4)*sizeof(mcompuint);
 	colsums_offset = rowsums_offset + (width+1)*(height+1);
@@ -424,36 +439,32 @@ static void init()
 	clp+= 384;
 	for (i=-384; i<640; i++)
 		clp[i] = (i<0) ? 0 : ((i>255) ? 255 : i);
+	
+	/* Allocate the frame data buffer */
 
-	for (i=0; i<3; i++)
+
+	frame_buffers = (unsigned char ***) 
+		bufalloc(2*READ_LOOK_AHEAD*sizeof(unsigned char**));
+	
+	for(n=0;n<2*READ_LOOK_AHEAD;n++)
 	{
-		/* A.Stevens 2000 for luminance data we allow space for
-		   fast motion estimation data.  This is actually 2*2 pixel sub-sampled
-		   mcompuint followed by 4*4 sub-sampled.
-		   We add an extra row to act as a margin to allow us to neglect exact
-		   postpone condition checking in critical loops...
-		*/
-		if (i==0)
-			size = (width*height) + 
-				sizeof(mcompuint) *(width/2)*(height/2) +
-				sizeof(mcompuint) *(width/4)*(height/4+1);
-#ifdef TEST_RCSEARCH
-		+ sizeof(unsigned short) * (width+1)*(height+1) * 2
-#endif		
-		
-			else
-				size = chrom_width*chrom_height;
+         frame_buffers[n] = (unsigned char **) bufalloc(4*sizeof(unsigned char*));
+		 for (i=0; i<3; i++)
+		 {
+			 frame_buffers[n][i] = 
+				 bufalloc( (i==0) ? lum_buffer_size : chrom_buffer_size );
+		 }
+	}
 
+	/* TODO: The ref and aux frame buffers are no redundant! */
+	for( i = 0 ; i<3; i++)
+	{
+		int size =  (i==0) ? lum_buffer_size : chrom_buffer_size;
 		newrefframe[i] = bufalloc(size);
 		oldrefframe[i] = bufalloc(size);
 		auxframe[i]    = bufalloc(size);
-		neworgframe[i] = bufalloc(size);
-		oldorgframe[i] = bufalloc(size);
-		auxorgframe[i] = bufalloc(size);
 		predframe[i]   = bufalloc(size);
 	}
-
-	filter_buf = bufalloc( width*height );
 
 	qblocks =
 		(short (*)[64])bufalloc(mb_width*mb_height2*block_count*sizeof(short [64]));
@@ -476,6 +487,11 @@ static void init()
 		sprintf(errortext,"Couldn't create statistics output file %s",statname);
 		error(errortext);
 	}
+
+	search_radius[x_crd] = param_searchrad*M;
+	search_radius[y_crd] = param_searchrad*M*height/width;
+	search_radius[y_crd] = (search_radius[y_crd] / 4 + 3) * 4;
+
 }
 
 void error(text)

@@ -38,6 +38,16 @@ This links in the prototype version of an experimental gradient-descent
 motion compensation algorithm.   Looks good but its not ready for prime-time
 yet....
 #define TEST_GRAD_DESCENT
+#ifdef TEST_GRAD_DESCENT
+static double seq_sum;
+static double ratio_sum;
+static double worst_seq;
+static int seq_cnt;
+static int miss_cnt;
+static int test_cnt;
+static int dist_cnt;
+#endif
+
 */
 
 /* Macro-block Motion compensation results record */
@@ -336,6 +346,18 @@ static void update_threshold( thresholdrec *rec, int match_dist )
 
 }
 
+
+/*
+ * Round search radius to suit the search algorithm.
+ * Currently radii must be multiples of 4.
+ *
+ */
+
+int round_search_radius( int radius )
+{
+	return ((radius+3) /4)*4;
+}
+
 /* 
    Reset the match accuracy threshhold used to decide whether to
    restrict the size of the the fast motion compensation search window.
@@ -355,6 +377,106 @@ void reset_thresholds(int macroblocks_per_frame)
 	fast_motion_weighting = (double)2*macroblocks_per_frame;
 }
 
+
+/*
+ * Update the motion estimation range recorded for a picture to take 
+ * into account the current component macro block.
+ * Note: we don't worry that the backward motion vectors may be nonsense
+ * in a P-frame because in that case they will be ignored anyway...
+ *
+ */
+
+#ifdef ORIGINAL_CODE
+static void update_mc_range(  pict_data_s *picture, mbinfo_s *mbi)
+{
+	int i;
+	/* This is a little hacky but perfectly legit in C - we treat the
+	   2*2 arrays as a 1 * 4 ...
+	*/
+	int  *max_MV = &picture->max_MV[0][0];
+	int  *mb_MV = &mbi->MV[0][0][0];
+	
+	for( i = 0; i < 3; ++i )
+		if( max_MV[i] < abs(mb_MV[i]) )
+			max_MV[i] = abs(mb_MV[i]);
+
+	if( mbi->motion_type == MC_FIELD )
+	{
+		mb_MV = &mbi->MV[1][0][0];
+		for( i = 0; i < 3; ++i )
+			if( max_MV[i] < abs(mb_MV[i]) )
+				max_MV[i] = abs(mb_MV[i]);
+	}
+}
+#endif
+/*
+ * Set the motion compensation search limits.
+ * We use the range of vectors found for a P frame as a bound for search
+ * in the subsequent B-frames.
+ *
+ * TODO Eventually we'll have a sliding limit for P search here...
+ */
+
+void set_motion_search_limits(	pict_data_s *picture,motion_comp_s *mc_data  )
+{
+	int i;
+	if( picture->pict_type == I_TYPE || picture->pict_type == P_TYPE )
+	{
+		mc_data->search_limits[fwd][x_crd] = search_radius[x_crd];
+		mc_data->search_limits[fwd][y_crd] = search_radius[y_crd];
+		mc_data->temp_ref_lastIP = picture->temp_ref;
+	}
+	else if( picture->pict_type == B_TYPE )
+	{
+		/* Motion vectors are calculated in 1/2-pel's but we
+		   need specify range in pel's.
+		*/
+		/*int x_range = mc_data->lastIP_max_MV[x_crd] / 2;
+		  int y_range = mc_data->lastIP_max_MV[y_crd] / 2;*/
+		int x_range = search_radius[x_crd];
+		int y_range = search_radius[x_crd];
+		i = mc_data->temp_ref_lastIP - picture->temp_ref;
+		// TODO DEBUG
+		if( i < 1 || i >= M )
+		{
+			fprintf( stderr, "Bogus temportal calculation?\n" );
+			exit(1);
+		}
+		mc_data->search_limits[fwd][x_crd] = 
+			round_search_radius((M-i) * x_range / M + 1);
+		mc_data->search_limits[fwd][y_crd] = 
+			round_search_radius((M-i) * y_range / M + 1);
+		mc_data->search_limits[bwd][x_crd] =
+			round_search_radius( i * x_range / M + 1);
+		mc_data->search_limits[bwd][y_crd] = 
+			round_search_radius(i * y_range / M + 1);
+		
+	}
+}
+
+
+/*
+ * Record the range of motion found.
+ * We use the range of vectors found for a P frame as a bound for search
+ * in the subsequent B-frames.
+ * In the case of an I-frame we pretend we had a maximal search.
+ *
+ * TODO Eventually we'll have a sliding limit for P search here...
+ */
+
+void record_range_of_motion( pict_data_s *picture,motion_comp_s *mc_data  )
+{
+	if( picture->pict_type == I_TYPE )
+	{
+		mc_data->lastIP_max_MV[x_crd] = search_radius[x_crd];
+		mc_data->lastIP_max_MV[y_crd] = search_radius[y_crd];
+	}
+	else if( picture->pict_type == P_TYPE)
+	{
+		mc_data->lastIP_max_MV[x_crd] = picture->max_MV[fwd][x_crd];
+		mc_data->lastIP_max_MV[y_crd] = picture->max_MV[fwd][y_crd];
+	}
+}
 
 
 /*
@@ -379,15 +501,6 @@ void reset_thresholds(int macroblocks_per_frame)
  * uses global vars: pict_type, frame_pred_dct
  */
 
-#ifdef TEST_GRAD_DESCENT
-static double seq_sum;
-static double ratio_sum;
-static double worst_seq;
-static int seq_cnt;
-static int miss_cnt;
-static int test_cnt;
-static int dist_cnt;
-#endif
 
 void motion_estimation(
 	pict_data_s *picture,
@@ -2447,6 +2560,7 @@ static int rough_heap_size;
 */
   
 static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh, 
+							int i0, int j0,
 							mcompuint *qorg, mcompuint *qblk, int qlx, int qh )
 {
 	mcompuint *qorgblk;
@@ -2477,11 +2591,12 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 			old_qorgblk = qorgblk;
 			for( i = ilow; i <= ihigh; i += 4 )
 			{
-				s1 = (*pqdist1)( qorgblk,qblk,qlx,qh) & 0xffff;
+				s1 = ((*pqdist1)( qorgblk,qblk,qlx,qh) & 0xffff)
+					+ fastabs(i-i0) + fastabs(j-j0);
 				quad_matches[quad_heap_size].x = i;
 				quad_matches[quad_heap_size].y = j;
 				quad_match_heap[quad_heap_size].index = quad_heap_size;
-				quad_match_heap[quad_heap_size].weight =s1;
+				quad_match_heap[quad_heap_size].weight = s1 ;
 				dist_sum += s1;
 				++quad_heap_size;
 				qorgblk += 1;
@@ -2499,10 +2614,9 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 			k = 0;
 			for( i = ilow; i <= ihigh; i+= 8  )
 			{
-
 				s1 = (*pqdist1)( qorgblk,qblk,qlx,qh);
-				s2 = (s1 >> 16) & 0xffff;
-				s1 = s1 & 0xffff;
+				s2 = ((s1 >> 16) & 0xffff) + fastabs(i+8-i0) + fastabs(j-j0);
+				s1 = (s1 & 0xffff)+ fastabs(i-i0) + fastabs(j-j0);
 				dist_sum += s1+s2;
 				rough_match_heap[rough_heap_size].weight = s1;
 				rough_match_heap[rough_heap_size].index = rough_heap_size;	
@@ -2853,7 +2967,9 @@ static void fullsearch(
 	ihigh =  i0+sx;
 	ihigh = ihigh > xmax ? xmax : ihigh;
 
-	quad_heap_size = build_quad_heap( ilow, ihigh, jlow, jhigh, qorg, 
+	quad_heap_size = build_quad_heap( ilow, ihigh, jlow, jhigh, 
+									  i0, j0,
+									  qorg, 
 									  ssblk->qmb, qlx, qh );
 
 	/* Now create a distance-ordered heap of possible motion
