@@ -16,9 +16,18 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-import tvguide
-import time
+import v4l, V4L
 
-guide = tvguide.TvGuide()
-guide.guide_whole_day(0)
-guide.save(time.time())
+device = v4l.V4l()
+name, type, channels, audios, max_width, max_height, min_width, min_height = device.query_capability()
+
+print "name: %s" % name
+print "capability: %s " % device.decode_cap_types(type)
+print "video channels: %d" % channels
+for channel in range(0, channels):
+	chan, name, tuner, flags, type, norm = device.get_video_source(channel)
+	print "\t" + device.decode_chan(name, tuner, flags, type, norm)
+print "audio channels: %d" % audios
+print "min grab: %d x %d" % (min_width, min_height)
+print "max grab: %d x %d" % (max_width, max_height)
+

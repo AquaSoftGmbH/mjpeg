@@ -26,8 +26,7 @@ class TvGuide(Guide):
 
 	def __init__(self):
 		Guide.__init__(self)
-		self.starting_point = mktime(2000, 11, 9, 0, 0, 0, 0, 0, -1)
-
+		self.starting_point = 973728000.0
 	#
 	# convert tvguide time to unix time
 	#
@@ -180,18 +179,28 @@ class TvGuide(Guide):
 					continue
 
 				self.append([curr_time, name, channel, 
-					run_time, show_name])
+					run_time, show_name,
+					svcid +','+titleid])
 				curr_time = curr_time + run_time * 60
 
 	def  guide_url(self,  url):
 		host = self.config_string("tvguide", "host")
-		http = HTTP(host)
-		http.putrequest("GET", url)
-		http.putheader("Accept", "text/html")
-		http.putheader("Accept", "text/plain");
-		http.endheaders()
+		http_loop = 20
+		while http_loop:
+			try:
+				http = HTTP(host)
+				http.putrequest("GET", url)
+				http.putheader("Accept", "text/html")
+				http.putheader("Accept", "text/plain");
+				http.endheaders()
 
-		errcode, errmsg, headers = http.getreply()
+				errcode, errmsg, headers = http.getreply()
+			except:
+				print "retry get"
+				sleep(60)
+				http_loop = http_loop - 1
+				continue
+			break
 
 		data = http.getfile()	
 		guide_data = split(data.read(), "\n")
@@ -217,7 +226,7 @@ class TvGuide(Guide):
 		current = current - (current % (24 * 60 * 60))
 		current = current + offset * 24 * 60 * 60
 		
-		start = self.seconds_tvguide(current)
+		start = self.seconds_tvguide(current - (4 * 60 * 60))
 		end = self.seconds_tvguide(current + 28 * 60 * 60)
 		self.tvguide_url(start, end)
 

@@ -1,0 +1,11 @@
+[global]
+guidedir: /src2/guides
+
+[display]
+stations: HBO:501, HBOP:502, HBOS:503, HBOW:504, HBOPW:505, HBOF:507, HBFW:508, MAX:512, MMAX:513, MAXW:514
+
+[tvguide]
+serviceid: 63891
+host: www.tvguide.com
+guidedir: /src2/tvguides
+
