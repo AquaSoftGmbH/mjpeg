@@ -166,6 +166,11 @@ class Recorder:
 
 			event_data = {}
 			dbm.get_event_data(id, event_data)
+			if time.daylight:
+				event_data["start_time"] = event_data["start_time"] - 60 * 60
+				event_data["stop_time"] = event_data["stop_time"] - 60 * 60
+
+#			print "start: ",event_data["start_time"]," stop: ", event_data["stop_time"]," current: ",current_time
 
 			if event_data["stop_time"] <= current_time:
 				print "delete it"

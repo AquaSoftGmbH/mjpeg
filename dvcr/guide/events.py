@@ -81,6 +81,9 @@ class Event:
 			time_value = time_value - (time_value % (30 * 60))
 			time_value = time_value + 30 * 60
 
+		if time.daylight:
+			time_value = time_value - (60 * 60);
+
 		self.start_hour.set(time.strftime("%l",time.localtime(time_value)))
 		self.start_min.set(time.strftime("%M",time.localtime(time_value)))
 		self.start_ampm.set(time.strftime("%p",time.localtime(time_value)))
@@ -122,8 +125,9 @@ class Event:
 			self.stop_min.set("")
 			self.stop_ampm.set("")
 		else:
+			if time.daylight:
+				time_value = time_value - (60 * 60);
 			self.stop_hour.set(time.strftime("%l",time.localtime(time_value)))
-
 			self.stop_min.set(time.strftime("%M",time.localtime(time_value)))
 			self.stop_ampm.set(time.strftime("%p",time.localtime(time_value)))
 

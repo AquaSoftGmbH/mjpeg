@@ -29,9 +29,14 @@ import re
 def TicksDateTime(DateTime):
 	aDateTime = "%s" % DateTime
 	date = ISO.ParseDateTime(aDateTime)
-	return date.ticks()
+	ticks = date.ticks()
+	if time.daylight:
+		ticks = ticks + 60 * 60
+	return ticks
 
 def DateTime(seconds):
+	if time.daylight:
+		seconds = seconds - 60 * 60
 	return time.strftime("%m/%d/%y %H:%M", time.localtime(seconds))
 
 class guide_dbm:
@@ -41,6 +46,9 @@ class guide_dbm:
 		self.cursor = self.guide.cursor();
 
 	def search_listing(self, channel, start_time, end_time):
+		if time.daylight:
+			start_time = start_time  - 60 * 60
+			end_time = end_time - 60 * 60
 		if channel == None:
 			stmt = """select id, station, start_time, end_time, 
 				length, title from listings

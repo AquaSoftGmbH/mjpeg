@@ -35,7 +35,7 @@ def http_timeout(signum, frame):
 	print "http timeout!";
 	raise IOError, "Host not responding."
 
-VERBOSE=0
+VERBOSE=1
 
 class TvGuideParser(sgmllib.SGMLParser):
 
@@ -226,12 +226,11 @@ class TvGuide(Guide):
 			http.putheader("Accept-Encoding", "gzip")
 			http.putheader("Accept-Language", "en")
 			http.putheader("Accept-Charset", 'iso-8859-1,*,utf-8')
-#			http.putheader("Cookie",'sid=17; Country=USA; PPVProvider=%2E; TypeOfService=National; TimeRule=300%2C%2D60%3B0%2C10%2C0%2C5%2C2%2C0%2C0%2C0%3B0%2C4%2C0%2C1%2C2%2C0%2C0%2C0%3B; Zip=48160; ServiceID=63892; SITESERVER=ID=8b0c35c8658ce98bf309d037ab4064a6; nat=0; cb=TV00; AdHistory=3586%2C3338%2C3474; FilterGenre=0; AdHistoryGrid=3395; FilterChannel=0; tmpptfc=tmpyfki; ptfc=yfki; sid=17');
 			cookie = "sid=17; Country=USA; PPVProvider=%2E; TypeOfService=National; TimeRule=300%2C%2D60%3B0%2C10%2C0%2C5%2C2%2C0%2C0%2C0%3B0%2C4%2C0%2C1%2C2%2C0%2C0%2C0%3B; SITESERVER=ID=8b0c35c8658ce98bf309d037ab4064a6; nat=0; ServiceID="+ service_id + "; cb=TV00; AdHistory=3760%2C3338%2C3338%2C3338; FilterGenre=0; FilterChannel=0; tmpptfc=tmpyfki; ptfc=yfki; sid=17"
 			http.putheader("Cookie", cookie)
 
 			data = "serv_id=%s&zip=&gridtype=0&S=&N=&event_date=%d&event_hour=%f&frm_chanfltr=0&frm_cat_Fltr=0&x=20&y=6" % \
-				('63891', day, hour)
+				(service_id, day, hour)
 			size = "%d" % len(data)
 			http.putheader("Content-type", "application/x-www-form-urlencoded");
 			http.putheader("Content-length", size)

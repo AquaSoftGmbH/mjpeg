@@ -58,9 +58,13 @@ def set_weight(grid, start_row=0, start_column=0):
 		row = row + 1
 
 def TicksDateTime(DateTime):
+	print "TicksDateTime ",DateTime
 	aDateTime = "%s" % DateTime
 	date = ISO.ParseDateTime(aDateTime)
-	return date.ticks()
+	ticks = date.ticks()
+	if time.daylight:
+		ticks = ticks + 60 * 60
+	return ticks
 
 class Guide:
 	def __init__(self):
@@ -219,6 +223,8 @@ class Guide:
 		current = time.strptime(new_time, "%a %m/%d/%Y %I:%M %p")
 		starting = time.mktime(current)
 		time_data = time.localtime(starting)
+		if time.daylight:
+			starting = starting + 60 * 60
 
 		if current[8] != new_time[8]:
 			if current[8]:
