@@ -25,7 +25,7 @@
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
 
-static	void	usage();
+static	void	usage(void);
 
 int main(int argc, char **argv)
 	{
@@ -34,6 +34,7 @@ int main(int argc, char **argv)
 	int	ss_v = 0, ss_h = 0;
 	const	char *tag;
 	u_char	*yuv[3];
+	y4m_ratio_t rate;
 	y4m_xtag_list_t *xtags;
 	y4m_stream_info_t istream;
 	y4m_frame_info_t iframe;
@@ -105,13 +106,14 @@ int main(int argc, char **argv)
 	yuv[1] = malloc(uvlen);
 	yuv[2] = malloc(uvlen);
 
+	rate = y4m_si_get_framerate(&istream);
+
 	mjpeg_log(LOG_INFO,"Width: %d Height: %d Rate: %d/%d Framesize: %d\n",
-		width, height, istream.framerate.n,
-		istream.framerate.d,
-		istream.framelength);
+		width, height, rate.n, rate.d,
+		y4m_si_get_framelength(&istream));
 
 	frames = 0;
-	while	(y4m_read_frame_header(fd_in, &iframe) == Y4M_OK)
+	while	(y4m_read_frame_header(fd_in, &istream, &iframe) == Y4M_OK)
 		{
 		if	(y4m_read(fd_in, yuv[0], height * width) != Y4M_OK)
 			break;
