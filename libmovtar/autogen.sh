@@ -7,8 +7,8 @@ if test ! -r aclocal.m4; then
 else
   echo "Skiping aclocal, because aclocal.m4 exists"
 fi
-echo "Running autoheader..."
-autoheader
+#echo "Running autoheader..."
+#autoheader
 echo "Running autoconf..."
 autoconf
 echo "Running automake..."
