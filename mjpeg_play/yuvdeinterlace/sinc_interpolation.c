@@ -12,91 +12,34 @@ extern int height;
 
 void interpolate_field_linear (uint8_t * dst, uint8_t * src, int field)
 {
-	int x,y;
+ int x,y;
 
-	memcpy( dst,src, width*height);
-	for(y=field;y<(height-1);y+=2)
-		for(x=0;x<width;x++)
-		{
-			*(dst+x+y*width) = 
-				(
-				*(dst+x+(y-1)*width) + 
-				*(dst+x+(y+1)*width)
-				)/2;
-		}
+ memcpy( dst,src, width*height);
+ for(y=field;y<(height-1);y+=2)
+  for(x=0;x<width;x++)
+  {
+   *(dst+x+y*width) = 
+    (
+    *(dst+x+(y-1)*width) + 
+    *(dst+x+(y+1)*width)
+    )/2;
+  }
 }
 
-void
-non_linear_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field)
-{
-	int x,vx,y,v;
-	int min;
-	int delta;
-	int iv;
-	int a,b;
-
-	memcpy ( frame, inframe, width*height );
-
-	for(y = field+2; y < (height-2); y +=2)
-		for(x=0; x<width; x++)
-		{
-			min = 2 * abs(*(frame+x+(y-1)*width) - *(frame+x+(y+1)*width));
-			v = 0;
-
-			/* search best diagonal pixel-match */
-			a  = *(frame+x  +(y+1)*width);
-			b  = *(frame+x  +(y-1)*width);
-
-			for(vx=0;vx<=4;vx++)
-			{
-				delta = abs(*(frame+x+vx+(y-1)*width) - *(frame+x-vx+(y+1)*width));
-				if(delta<min)
-				{
-					iv = (*(frame+x+vx+(y-1)*width) + *(frame+x-vx+(y+1)*width) )/2;
-					if( (iv<a && b<iv) || (iv>a && b>iv) )
-					{
-						min = delta;
-						v   = vx;
-					}
-				}
-
-				vx = -vx;
-				delta = abs(*(frame+x+vx+(y-1)*width) - *(frame+x-vx+(y+1)*width));
-				if(delta<min)
-				{
-					iv = (*(frame+x+vx+(y-1)*width) + *(frame+x-vx+(y+1)*width) )/2;
-					if( (iv<a && b<iv) || (iv>a && b>iv) )
-					{
-						min = delta;
-						v   = vx;
-					}
-				}
-				vx = -vx;
-			}
-
-			iv  = *(frame+x+v+(y-1)*width);
-			iv += *(frame+x-v+(y+1)*width);
-
-			iv /= 2;
-
-			*(frame+x+y*width) = iv;
-
-		}
-}
 
 void
 sinc_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field)
 {
-	int x,y,v;
+ int x,y,v;
 
-	memcpy ( frame, inframe, width*height );
+ memcpy ( frame, inframe, width*height );
 
-	for (y = field; y < height; y += 2)
-	{
-		if(y>=7 && y<=(height-8))
-		for (x = 0; x < width; x++ )
-		{
-			v  =	 -9 * *(inframe + x + (y-7) * width );
+ for (y = field; y < height; y += 2)
+ {
+  if(y>=7 && y<=(height-8))
+  for (x = 0; x < width; x++ )
+  {
+   v  =  -9 * *(inframe + x + (y-7) * width );
 			v +=	 21 * *(inframe + x + (y-5) * width );
 			v +=	-47 * *(inframe + x + (y-3) * width );
 			v +=	163 * *(inframe + x + (y-1) * width );
