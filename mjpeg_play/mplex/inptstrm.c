@@ -222,7 +222,7 @@ void get_info_video (char *video_file,
 					 Vector *vid_info_vec)
 {
     Bit_stream_struc video_bs;
-   	bitcount_t AU_start=0LL;
+   	bitcount_t AU_start;
     bitcount_t stream_length=0LL; 
     bitcount_t prev_stream_length=0LL;
     Vaunit_struc access_unit;
@@ -238,7 +238,7 @@ void get_info_video (char *video_file,
     double frame_rate;
 	unsigned int max_bits_persec = 0;
 	Vector vaunits = NewVector( sizeof(Vaunit_struc));
-	int first_pic_header;
+	int AU_pict_data;
 	int AU_hdr = SEQUENCE_HEADER;  /* GOP or SEQ Header starting AU? */
 	
   
@@ -278,108 +278,127 @@ void get_info_video (char *video_file,
 	/* Skip to the end of the 1st AU (*2nd* Picture start!)
 	*/
 	*ret_first_frame_PTS = 0.0;
-	first_pic_header = 1;
+	AU_hdr = SEQUENCE_HEADER;
+	AU_pict_data = 0;
+	AU_start = 0LL;
 	while(!end_bs(&video_bs) && seek_sync (&video_bs, SYNCWORD_START, 24) &&
 	      ( !opt_max_PTS || access_unit.PTS < opt_max_PTS   ) )
 	{
 		syncword = (SYNCWORD_START<<8) + getbits (&video_bs, 8);
-		switch (syncword) 
+		
+		if( AU_pict_data )
 		{
-			case SEQUENCE_HEADER:
-				AU_hdr = SEQUENCE_HEADER;
-				AU_start = bitcount (&video_bs)-32LL;
-				video_info->num_sequence++;
+			
+			/* Handle the header *ending* an AU...
+			   If we have the AU picture data an AU and have now
+			   reached a header marking the end of an AU fill in the
+			   the AU length and append it to the list of AU's and
+			   start a new AU.  I.e. sequence and gop headers count as
+			   part of the AU of the corresponding picture
+			*/
+			stream_length = bitcount (&video_bs)-32LL;
+			switch (syncword) 
+			{
+			case SEQUENCE_HEADER :
+			case GROUP_START :
+			case PICTURE_START :
+				access_unit.length = (int) (stream_length - AU_start)>>3;
+				access_unit.end_seq = 0;
+				video_info->avg_frames[access_unit.type-1]+=access_unit.length;
+				VectorAppend( vaunits, &access_unit );					
+				AU_hdr = syncword;
+				AU_start = stream_length;
+				AU_pict_data = 0;
 				break;
+			case SEQUENCE_END:
+				fprintf( stderr, "DEBUG seq end detected!\n" );
 
-			case GROUP_START:
-				if( AU_hdr != SEQUENCE_HEADER )
+				/* Do we have a sequence split in the video stream? */
+				if( !end_bs(&video_bs) && 
+					getbits (&video_bs, 32) ==SEQUENCE_HEADER )
 				{
-					AU_start = bitcount (&video_bs)-32LL;
-					AU_hdr = GROUP_START;
-				}
-				video_info->num_groups++;
-				group_order=0;
-				break;
+					stream_length = bitcount (&video_bs);
+					access_unit.length = ((stream_length - AU_start)>>3);
+					access_unit.end_seq = 1;
+					VectorAppend( vaunits, &access_unit );
+					video_info->avg_frames[access_unit.type-1]+=access_unit.length;
+					AU_start = stream_length;
+					AU_hdr = SEQUENCE_HEADER;
+					AU_pict_data = 0;
 
-			case PICTURE_START:
-				/* We only know AU length once we reach the *next* AU */
-				stream_length = bitcount (&video_bs)-32LL;
-				if( first_pic_header )
-				{
-					first_pic_header = 0;
 				}
 				else
 				{
-				  	access_unit.length = (int) (stream_length - AU_start)>>3;
-					/* We count sequence and gop headers as if they
-					   were part of the following picture. Hence this
-					   AU's length starts from preceding gop or seq
-					   hdr (if present).
-					*/
-					if( AU_hdr != GROUP_START && AU_hdr != SEQUENCE_HEADER)
-					{
-						AU_start = stream_length;
-					}
-				  	video_info->avg_frames[access_unit.type-1]+=access_unit.length;
-				    VectorAppend( vaunits, &access_unit );					
+					fprintf (stderr,"DEBUG: No seq. header starting new sequence after seq. end!\n");
 				}
-
-				temporal_reference = getbits (&video_bs, 10);
-				access_unit.type   = getbits (&video_bs, 3);
-	
-				if( access_unit.type == IFRAME )
-				{
-					unsigned int bits_persec = 
-						(unsigned int) ( ((double)(stream_length - prev_stream_length)) *
-										 frame_rate / ((double)(1+decoding_order - group_start_pic)));
-
-					if( bits_persec > max_bits_persec )
-					{
-						max_bits_persec = bits_persec;
-					}
-					prev_stream_length = stream_length;
-					group_start_pic = decoding_order;
-				}
-
-				access_unit.DTS =  (clockticks) (decoding_order * (double)CLOCKS / frame_rate);
-				access_unit.dorder = decoding_order;
-				access_unit.PTS =  (clockticks) ((temporal_reference + group_start_pic) * (double)CLOCKS
-												 / frame_rate);
-				access_unit.porder = temporal_reference + group_start_pic;
-				access_unit.seq_header = ( AU_hdr == SEQUENCE_HEADER);
-				if( AU_hdr == SEQUENCE_HEADER)
-					fprintf( stderr, "SEQ HEADER LABELLED\n" );
-				decoding_order++;
-				group_order++;
-				AU_hdr = -1;
-
-				if ((access_unit.type>0) && (access_unit.type<5))
-				{
-					video_info->num_frames[access_unit.type-1]++;
-				}
-
-			    prozent =(int) (((float)bitcount(&video_bs)/8/(float)length)*100);
-				if ( prozent > old_prozent && verbose > 0 )
-				{
-					printf ("Got %d picture headers. %2d%%%c",
-							decoding_order, prozent, verbose > 1 ? '\n' : '\r');
-					fflush (stdout);
-					old_prozent = prozent;
-				}
-			
-				break;		    
-
-			case SEQUENCE_END:
-				stream_length = bitcount (&video_bs);
-				access_unit.length = (stream_length - AU_start)>>3;
-				VectorAppend( vaunits, &access_unit );
-				video_info->avg_frames[access_unit.type-1]+=access_unit.length;
-				AU_start = stream_length;
+					
 				video_info->num_seq_end++;
-				break;		    
-
+				break;
+			}
 		}
-	};
+
+		/* Handle the headers starting an AU... */
+		switch (syncword) 
+		{
+		case SEQUENCE_HEADER:
+			video_info->num_sequence++;
+			break;
+			
+		case GROUP_START:
+			video_info->num_groups++;
+			group_order=0;
+			break;
+			
+		case PICTURE_START:
+			/* We have reached AU's picture data... */
+			AU_pict_data = 1;
+			
+			temporal_reference = getbits (&video_bs, 10);
+			access_unit.type   = getbits (&video_bs, 3);
+			
+			if( access_unit.type == IFRAME )
+			{
+				unsigned int bits_persec = 
+					(unsigned int) ( ((double)(stream_length - prev_stream_length)) *
+									 frame_rate / ((double)(1+decoding_order - group_start_pic)));
+				
+				if( bits_persec > max_bits_persec )
+				{
+					max_bits_persec = bits_persec;
+				}
+				prev_stream_length = stream_length;
+				group_start_pic = decoding_order;
+			}
+			
+			access_unit.DTS =  (clockticks) (decoding_order * (double)CLOCKS / frame_rate);
+			access_unit.dorder = decoding_order;
+			access_unit.PTS =  (clockticks) ((temporal_reference + group_start_pic) * (double)CLOCKS
+											 / frame_rate);
+			access_unit.porder = temporal_reference + group_start_pic;
+			access_unit.seq_header = ( AU_hdr == SEQUENCE_HEADER);
+			decoding_order++;
+			group_order++;
+
+			if ((access_unit.type>0) && (access_unit.type<5))
+			{
+				video_info->num_frames[access_unit.type-1]++;
+			}
+
+			prozent =(int) (((float)bitcount(&video_bs)/8/(float)length)*100);
+			if ( prozent > old_prozent && verbose > 0 )
+			{
+				printf ("Got %d picture headers. %2d%%%c",
+						decoding_order, prozent, verbose > 1 ? '\n' : '\r');
+				fflush (stdout);
+				old_prozent = prozent;
+			}
+			
+			break;		    
+
+  
+				
+		}
+	}
 
 	video_info->num_pictures = decoding_order;	
 
@@ -389,10 +408,10 @@ void get_info_video (char *video_file,
 			video_info->avg_frames[i] /= video_info->num_frames[i];
 
     video_info->comp_bit_rate = (unsigned int)
-			(
-				(((double)video_info->stream_length) / ((double) video_info->num_pictures)) 
-				* ((double)frame_rate)  + 25.0
-				) / 50;
+		(
+			(((double)video_info->stream_length) / ((double) video_info->num_pictures)) 
+			* ((double)frame_rate)  + 25.0
+			) / 50;
 	
 	/* Peak bit rate in 50B/sec units... */
 	video_info->peak_bit_rate = ((max_bits_persec / 8) / 50);

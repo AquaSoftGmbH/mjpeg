@@ -176,6 +176,7 @@ typedef struct vaunit_struc	/* Informationen ueber Video AU's 	*/
     int        dorder;
     int		   porder;
 	int		   seq_header;
+	int	       end_seq;
 } Vaunit_struc;
 
 typedef struct aaunit_struc	/* Informationen ueber Audio AU's 	*/
@@ -354,8 +355,7 @@ void output_video ( clockticks SCR,
 					Vector vaunit_info_vec,
 					unsigned int *new_picture_type,
 					unsigned char marker_pack,
-					unsigned char include_sys_header,
-					unsigned char end_of_segment
+					unsigned char include_sys_header
 					);
 void output_audio ( clockticks SCR,
 					clockticks SCR_delay,
