@@ -291,7 +291,7 @@ void rc_init_seq(int reinit)
 	}
 	else
 	{
-		int buffer_safe = 5 * per_frame_bits ;
+		int buffer_safe = 6 * per_frame_bits ;
 		undershoot_carry = (ctl_video_buffer_size - buffer_safe)/2;
 		mjpeg_info( "vb=%d UC = %d pfb=%d\n", 
 					(int)ctl_video_buffer_size/8,
@@ -299,7 +299,7 @@ void rc_init_seq(int reinit)
 		if( undershoot_carry < per_frame_bits/2 )
 			mjpeg_error_exit1( "Buffer appears to be set too small (< a frames variation possible)\n" );
 		undershoot_gain = 3.0 * (46*1024 * 8) / ctl_video_buffer_size;
-		overshoot_gain = 1.5 * undershoot_gain;
+		overshoot_gain = 2.0 * undershoot_gain;
 		
 	}
 	bits_per_mb = (double)opt_bit_rate / (mb_per_pict);
