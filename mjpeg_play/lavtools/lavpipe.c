@@ -494,7 +494,7 @@ void process_segment_frames(pipe_sequence_t *ps, int segnum,
 	int err = errno;
 	mjpeg_error("ERRNO says:  %s", strerror(err));
 	mjpeg_error_exit1("lavpipe: input stream error in stream %d,"
-			  "sequence %d, frame %d\n", 
+			  "sequence %d, frame %d", 
 			  i, segnum, *frame);
       }
       source->frame_num += 1;
@@ -510,7 +510,7 @@ void process_segment_frames(pipe_sequence_t *ps, int segnum,
 			 &(filt->in_streaminfo), &(filt->frameinfo),
 			 the_output->yuv) != Y4M_OK) {
 	mjpeg_error_exit1( "lavpipe: filter stream error in sequence %d,"
-			   "frame %d\n",
+			   "frame %d",
 			   segnum, *frame);
       }
     }

@@ -244,7 +244,7 @@ guessright ( uint8_t *frame, int width, int height )
 static void
 print_usage ( void )
 {
-	mjpeg_info ( "" );
+	mjpeg_info ( " " );
 	mjpeg_info ( "Usage: %s [OPTION]... -o [output AVI]", APPNAME );
 	exit ( 0 );
 }
@@ -300,7 +300,7 @@ displayGreeting (  )
 	mjpeg_info ( "-----------------------------" );
 	mjpeg_info ( "MJPEGTools version %s", VERSION );
         mjpeg_info ( "%s version %s (%s)", APPNAME, APPVERSION, LastChanged );
-	mjpeg_info ( "" );
+	mjpeg_info ( " " );
 	mjpeg_info ( "This utility is development software.  It may eat your" );
 	mjpeg_info ( "movies or let the smoke out of your computer." );
 	mjpeg_info ( "-----------------------------" );
@@ -989,7 +989,7 @@ main ( int argc, char **argv )
 	free ( yuv[0] );
 	free ( yuv[1] );
 	free ( yuv[2] );
-	mjpeg_info ( "" );
+	mjpeg_info ( " " );
 	mjpeg_info ( "Done." );
 
 	y4m_fini_frame_info ( &frameinfo );

@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 #ifdef HAVE_LIBMOVTAR
                                                          "m"
 #endif
-                                                          "]\n");
+                                                          "]");
             usage ();
             exit (1);
          }

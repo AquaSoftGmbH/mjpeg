@@ -598,7 +598,7 @@ static int set_option(const char *name, char *value)
 #ifdef HAVE_LIBMOVTAR
                            " or m"
 #endif
-                           "\n");
+                           );
 			nerr++;
 		}
 	}
@@ -694,7 +694,7 @@ static int set_option(const char *name, char *value)
 		if(info->audio_size != 0 && info->audio_size != 8 && info->audio_size != 16)
 		{
 			mjpeg_error("audio_size (-a/--audio-bitsize) ="
-				" %d invalid (must be 0, 8 or 16)\n",
+				" %d invalid (must be 0, 8 or 16)",
 				info->audio_size);
 			nerr++;
 		}
@@ -718,7 +718,7 @@ static int set_option(const char *name, char *value)
 		if(info->audio_level<-1 || info->audio_level>100)
 		{
 			mjpeg_error("recording level (-l/--audio-volume)"
-				" = %d invalid (must be 0 ... 100 or -1)\n",
+				" = %d invalid (must be 0 ... 100 or -1)",
 				info->audio_level);
 			nerr++;
 		}
@@ -733,7 +733,7 @@ static int set_option(const char *name, char *value)
 		if(info->audio_src!='l' && info->audio_src!='m' && info->audio_src!='c')
 		{
 			mjpeg_error("Recording source (-R/--audio-source)"
-				" must be l,m or c\n");
+				" must be l,m or c");
 			nerr++;
 		}
 	}
@@ -743,7 +743,7 @@ static int set_option(const char *name, char *value)
 		if(info->sync_correction<0 || info->sync_correction>2)
 		{
 			mjpeg_error("Synchronization (-c/--synchronization) ="
-				" %d invalid (must be 0, 1 or 2)\n",
+				" %d invalid (must be 0, 1 or 2)",
 				info->sync_correction);
 			nerr++;
 		}
@@ -1012,7 +1012,7 @@ static void lavrec_print_properties(void)
 	if(info->time_lapse>1)
 		mjpeg_info("Time lapse factor:  %d",info->time_lapse);
 	
-	mjpeg_info("");
+	mjpeg_info(" ");
 	mjpeg_info("MJPEG buffer size:  %d KB",info->MJPG_bufsize);
 	mjpeg_info("# of MJPEG buffers: %d",info->MJPG_numbufs);
 	if(info->audio_size)

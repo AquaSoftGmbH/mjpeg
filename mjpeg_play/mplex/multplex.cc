@@ -507,7 +507,7 @@ void OutputStream::MuxStatus(log_level_t level)
 	}
 	if( !vbr )
 		mjpeg_log( level,
-				   "Padding : sector=%08d\n",
+				   "Padding : sector=%08d",
 				   pstrm.nsec
 			);
 	
@@ -1061,12 +1061,12 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 
     if( underruns> 0 )
 	{
-		mjpeg_error("");
+		mjpeg_error(" ");
 		mjpeg_error_exit1( "MUX STATUS: Frame data under-runs detected!" );
 	}
 	else
 	{
-		mjpeg_info( "" );
+		mjpeg_info( " " );
 		mjpeg_info( "MUX STATUS: no under-runs detected.");
 	}
 }

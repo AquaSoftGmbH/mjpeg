@@ -76,7 +76,7 @@ int main(int argc, char **argv)
    mjpeg_debug("   height:      %8d",lav_video_height(lav_fd));
    mjpeg_debug("   interlacing: %8d",lav_video_interlacing(lav_fd));
    mjpeg_debug("   frames/sec:  %8.3f",lav_frame_rate(lav_fd));
-   mjpeg_debug("");
+   mjpeg_debug(" ");
    video_frames = lav_video_frames(lav_fd);
    fps = lav_frame_rate(lav_fd);
    if(fps<=0)
@@ -131,10 +131,10 @@ int main(int argc, char **argv)
    mjpeg_debug("   audio chans: %8d",audio_chans);
    mjpeg_debug("   audio bits:  %8d",audio_bits);
    mjpeg_debug("   audio rate:  %8ld",audio_rate);
-   mjpeg_debug("");
+   mjpeg_debug(" ");
    mjpeg_debug("Length of video:  %15.3f sec",video_frames/fps);
    mjpeg_debug("Length of audio:  %15.3f sec",(double)audio_samps/(double)audio_rate);
-   mjpeg_debug("");
+   mjpeg_debug(" ");
 
 
    max_frame_size = 0;

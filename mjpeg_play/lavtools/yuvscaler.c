@@ -267,7 +267,7 @@ my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
 	      if ((err = y4m_read (fd, buf, input_width)) != Y4M_OK)
 		{
 		  mjpeg_info
-		    ("Couldn't read FRAME content line %d : %s!\n",
+		    ("Couldn't read FRAME content line %d : %s!",
 		     line, y4m_strerr (err));
 		  return (err);
 		}
@@ -275,7 +275,7 @@ my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
 	      if ((err = y4m_read (fd, buf, input_width)) != Y4M_OK)
 		{
 		  mjpeg_info
-		    ("Couldn't read FRAME content line %d : %s!\n",
+		    ("Couldn't read FRAME content line %d : %s!",
 		     line + 1, y4m_strerr (err));
 		  return (err);
 		}
@@ -288,7 +288,7 @@ my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
 	      if ((err = y4m_read (fd, buf, input_width / 2)) != Y4M_OK)
 		{
 		  mjpeg_info
-		    ("Couldn't read FRAME content line %d : %s!\n",
+		    ("Couldn't read FRAME content line %d : %s!",
 		     line, y4m_strerr (err));
 		  return (err);
 		}
@@ -296,7 +296,7 @@ my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
 	      if ((err = y4m_read (fd, buf, input_width / 2)) != Y4M_OK)
 		{
 		  mjpeg_info
-		    ("Couldn't read FRAME content line %d : %s!\n",
+		    ("Couldn't read FRAME content line %d : %s!",
 		     line + 1, y4m_strerr (err));
 		  return (err);
 		}
@@ -782,18 +782,18 @@ handle_args_dependent (int argc, char *argv[])
 	      if (norm == 0)
 		{
 		  mjpeg_info
-		    ("VCD output format requested in PAL/SECAM norm\n");
+		    ("VCD output format requested in PAL/SECAM norm");
 		  display_height = 288;
 		}
 	      else if (norm == 1)
 		{
 		  mjpeg_info
-		    ("VCD output format requested in NTSC norm\n");
+		    ("VCD output format requested in NTSC norm");
 		  display_height = 240;
 		}
 	      else
 		mjpeg_error_exit1
-		  ("No norm specified, cannot determine VCD output size. Please use the -n option!\n");
+		  ("No norm specified, cannot determine VCD output size. Please use the -n option!");
 
 	    }
 	  if (strcmp (optarg, SVCD_KEYWORD) == 0)
@@ -805,18 +805,18 @@ handle_args_dependent (int argc, char *argv[])
 	      if (norm == 0)
 		{
 		  mjpeg_info
-		    ("SVCD output format requested in PAL/SECAM norm\n");
+		    ("SVCD output format requested in PAL/SECAM norm");
 		  display_height = 576;
 		}
 	      else if (norm == 1)
 		{
 		  mjpeg_info
-		    ("SVCD output format requested in NTSC norm\n");
+		    ("SVCD output format requested in NTSC norm");
 		  display_height = 480;
 		}
 	      else
 		mjpeg_error_exit1
-		  ("No norm specified, cannot determine SVCD output size. Please use the -n option!\n");
+		  ("No norm specified, cannot determine SVCD output size. Please use the -n option!");
 	    }
 	  if (strncmp (optarg, SIZE_KEYWORD, 5) == 0)
 	    {
@@ -832,7 +832,7 @@ handle_args_dependent (int argc, char *argv[])
 		    }
 		  else
 		    mjpeg_error_exit1
-		      ("Unconsistent SIZE keyword, not multiple of 2: %s\n",
+		      ("Unconsistent SIZE keyword, not multiple of 2: %s",
 		       optarg);
 		  // A second check will eventually be done when output interlacing is finally known
 		}
@@ -939,7 +939,7 @@ handle_args_dependent (int argc, char *argv[])
 		}
 	      if (ratio == 0)
 		mjpeg_error_exit1
-		  ("Unconsistent RATIO keyword: %s\n", optarg);
+		  ("Unconsistent RATIO keyword: %s", optarg);
 	    }
 
 	  if (strcmp (optarg, FAST_WIDE2VCD) == 0)
@@ -957,18 +957,18 @@ handle_args_dependent (int argc, char *argv[])
 	      if (norm == 0)
 		{
 		  mjpeg_info
-		    ("VCD output format requested in PAL/SECAM norm\n");
+		    ("VCD output format requested in PAL/SECAM norm");
 		  display_height = 288;
 		}
 	      else if (norm == 1)
 		{
 		  mjpeg_info
-		    ("VCD output format requested in NTSC norm\n");
+		    ("VCD output format requested in NTSC norm");
 		  display_height = 240;
 		}
 	      else
 		mjpeg_error_exit1
-		  ("No norm specified, cannot determine VCD output size. Please use the -n option!\n");
+		  ("No norm specified, cannot determine VCD output size. Please use the -n option!");
 	    }
 
 	  if (strcmp (optarg, WIDE2VCD) == 0)
@@ -981,18 +981,18 @@ handle_args_dependent (int argc, char *argv[])
 	      if (norm == 0)
 		{
 		  mjpeg_info
-		    ("VCD output format requested in PAL/SECAM norm\n");
+		    ("VCD output format requested in PAL/SECAM norm");
 		  display_height = 288;
 		}
 	      else if (norm == 1)
 		{
 		  mjpeg_info
-		    ("VCD output format requested in NTSC norm\n");
+		    ("VCD output format requested in NTSC norm");
 		  display_height = 240;
 		}
 	      else
 		mjpeg_error_exit1
-		  ("No norm specified, cannot determine VCD output size. Please use the -n option!\n");
+		  ("No norm specified, cannot determine VCD output size. Please use the -n option!");
 	    }
 
 	  if (strcmp (optarg, FASTVCD) == 0)
@@ -1009,18 +1009,18 @@ handle_args_dependent (int argc, char *argv[])
 	      if (norm == 0)
 		{
 		  mjpeg_info
-		    ("VCD output format requested in PAL/SECAM norm\n");
+		    ("VCD output format requested in PAL/SECAM norm");
 		  display_height = 288;
 		}
 	      else if (norm == 1)
 		{
 		  mjpeg_info
-		    ("VCD output format requested in NTSC norm\n");
+		    ("VCD output format requested in NTSC norm");
 		  display_height = 240;
 		}
 	      else
 		mjpeg_error_exit1
-		  ("No norm specified, cannot determine VCD output size. Please use the -n option!\n");
+		  ("No norm specified, cannot determine VCD output size. Please use the -n option!");
 	    }
 
 	  if (mode == 0)
@@ -1060,14 +1060,14 @@ handle_args_dependent (int argc, char *argv[])
 		    }
 		  else
 		    mjpeg_error_exit1
-		      ("Unconsistent USE keyword: %s, offsets/sizes not multiple of 2 or offset+size>input size\n",
+		      ("Unconsistent USE keyword: %s, offsets/sizes not multiple of 2 or offset+size>input size",
 		       optarg);
 		  if (input_interlaced != Y4M_ILACE_NONE)
 		    {
 		      if ((input_useful_height % 4 != 0)
 			  || (input_discard_line_above % 4 != 0))
 			mjpeg_error_exit1
-			  ("Unconsistent USE keyword: %s, height offset or size not multiple of 4 but input is interlaced!!\n",
+			  ("Unconsistent USE keyword: %s, height offset or size not multiple of 4 but input is interlaced!!",
 			   optarg);
 		    }
 
@@ -1117,21 +1117,21 @@ handle_args_dependent (int argc, char *argv[])
 		    }
 		  else
 		    mjpeg_error_exit1
-		      ("Unconsistent ACTIVE keyword: %s, offsets/sizes not multiple of 4 or offset+size>input size\n",
+		      ("Unconsistent ACTIVE keyword: %s, offsets/sizes not multiple of 4 or offset+size>input size",
 		       optarg);
 		  if (input_interlaced != Y4M_ILACE_NONE)
 		    {
 		      if ((input_active_height % 4 != 0)
 			  || (input_black_line_above % 4 != 0))
 			mjpeg_error_exit1
-			  ("Unconsistent ACTIVE keyword: %s, height offset or size not multiple of 4 but input is interlaced!!\n",
+			  ("Unconsistent ACTIVE keyword: %s, height offset or size not multiple of 4 but input is interlaced!!",
 			   optarg);
 		    }
 
 		}
 	      else
 		mjpeg_error_exit1
-		  ("Uncorrect input flag argument: %s\n", optarg);
+		  ("Uncorrect input flag argument: %s", optarg);
 	    }
 	  if (input == 0)
 	    mjpeg_error_exit1 ("Uncorrect input keyword: %s",
@@ -1159,12 +1159,12 @@ handle_args_dependent (int argc, char *argv[])
       if ((output_interlaced == Y4M_ILACE_TOP_FIRST)
 	  || (output_interlaced == Y4M_ILACE_BOTTOM_FIRST))
 	mjpeg_warn
-	  ("VCD requires non-interlaced output frames. Ignoring interlaced specification\n");
+	  ("VCD requires non-interlaced output frames. Ignoring interlaced specification");
       output_interlaced = Y4M_ILACE_NONE;
       if ((input_interlaced == Y4M_ILACE_TOP_FIRST)
 	  || (input_interlaced == Y4M_ILACE_BOTTOM_FIRST))
 	mjpeg_warn
-	  ("Interlaced input frames will be downscaled to non-interlaced VCD frames\nIf quality is an issue, please consider deinterlacing input frames with yuvdenoise -I\n");
+	  ("Interlaced input frames will be downscaled to non-interlaced VCD frames\nIf quality is an issue, please consider deinterlacing input frames with yuvdenoise -I");
     }
   else
     {
@@ -1181,21 +1181,21 @@ handle_args_dependent (int argc, char *argv[])
 		{
 		case Y4M_ILACE_NONE:
 		  mjpeg_warn
-		    ("input not_interlaced/progressive but interlaced output required: hope you know what you're doing!\n");
+		    ("input not_interlaced/progressive but interlaced output required: hope you know what you're doing!");
 		  break;
 		case Y4M_ILACE_TOP_FIRST:
 		  if (output_interlaced == Y4M_ILACE_BOTTOM_FIRST)
 		    field_move += 1;
 		  else
 		    mjpeg_warn
-		      ("not_interlaced/progressive output required but top-interlaced input: hope you know what you're doing!\n");
+		      ("not_interlaced/progressive output required but top-interlaced input: hope you know what you're doing!");
 		  break;
 		case Y4M_ILACE_BOTTOM_FIRST:
 		  if (output_interlaced == Y4M_ILACE_TOP_FIRST)
 		    field_move -= 1;
 		  else
 		    mjpeg_warn
-		      ("not_interlaced/progressive output required but bottom-interlaced input: hope you know what you're doing!\n");
+		      ("not_interlaced/progressive output required but bottom-interlaced input: hope you know what you're doing!");
 		  break;
 
 		}
@@ -1238,7 +1238,7 @@ handle_args_dependent (int argc, char *argv[])
 	}
       else
 	mjpeg_error_exit1
-	  ("Specified input ratios (%u and %u) does not divide input useful size (%u and %u)!\n",
+	  ("Specified input ratios (%u and %u) does not divide input useful size (%u and %u)!",
 	   input_width_slice, input_height_slice, input_useful_width,
 	   input_useful_height);
     }
@@ -1298,7 +1298,7 @@ handle_args_dependent (int argc, char *argv[])
   if ((output_active_width % 4 != 0) || (output_active_height % 4 != 0)
       || (display_width % 4 != 0) || (display_height % 4 != 0))
     mjpeg_error_exit1
-      ("Output sizes are not multiple of 4! %ux%u, %ux%u being displayed\n",
+      ("Output sizes are not multiple of 4! %ux%u, %ux%u being displayed",
        output_active_width, output_active_height, display_width,
        display_height);
 
@@ -1380,7 +1380,7 @@ main (int argc, char *argv[])
 
   // Information output
   mjpeg_info ("yuvscaler (version " YUVSCALER_VERSION
-	      ") is a general scaling utility for yuv frames\n");
+	      ") is a general scaling utility for yuv frames");
   mjpeg_info ("(C) 2001 Xavier Biquard <xbiquard@free.fr>");
   mjpeg_info ("yuvscaler -h for help, or man yuvscaler");
 
@@ -1415,7 +1415,7 @@ main (int argc, char *argv[])
       chroma_format = el.MJPG_chroma;
       if (chroma_format != CHROMA422)
 	mjpeg_error_exit1
-	  ("Editlist not in chroma 422 format, exiting...\n");
+	  ("Editlist not in chroma 422 format, exiting...");
       input_width = el.video_width;
       input_height = el.video_height;
       frame_rate = mpeg_conform_framerate (el.video_fps);
@@ -1441,7 +1441,7 @@ main (int argc, char *argv[])
   if (norm < 0)
     {
       mjpeg_warn
-	("Could not infer norm (PAL/SECAM or NTSC) from input data (frame size=%dx%d, frame rate=%d:%d fps)!!\n",
+	("Could not infer norm (PAL/SECAM or NTSC) from input data (frame size=%dx%d, frame rate=%d:%d fps)!!",
 	 input_width, input_height, frame_rate.n, frame_rate.d);
     }
 
@@ -1459,7 +1459,7 @@ main (int argc, char *argv[])
 	{
 	  if (algorithm == 0)
 	    mjpeg_info
-	      ("Resampling algorithm can only downscale, not upscale => switching to bicubic algorithm\n");
+	      ("Resampling algorithm can only downscale, not upscale => switching to bicubic algorithm");
 	  algorithm = 1;
 	}
       else
@@ -1746,7 +1746,7 @@ main (int argc, char *argv[])
       if (input_black == 1)
 	{
 	  mjpeg_info
-	    ("with %u and %u black line above and under\n",
+	    ("with %u and %u black line above and under",
 	     input_black_line_above, input_black_line_under);
 	  mjpeg_info ("and %u and %u black col left and right",
 		      input_black_col_left, input_black_col_right);
@@ -1759,19 +1759,19 @@ main (int argc, char *argv[])
 	{
 	case Y4M_ILACE_NONE:
 	  mjpeg_info
-	    ("scale to %ux%u, %ux%u being displayed, %s/%s\n",
+	    ("scale to %ux%u, %ux%u being displayed, %s/%s",
 	     output_active_width, output_active_height, display_width,
 	     display_height, NOT_INTER, PROGRESSIVE);
 	  break;
 	case Y4M_ILACE_TOP_FIRST:
 	  mjpeg_info
-	    ("scale to %ux%u, %ux%u being displayed, %s\n",
+	    ("scale to %ux%u, %ux%u being displayed, %s",
 	     output_active_width, output_active_height, display_width,
 	     display_height, TOP_FIRST);
 	  break;
 	case Y4M_ILACE_BOTTOM_FIRST:
 	  mjpeg_info
-	    ("scale to %ux%u, %ux%u being displayed, %s\n",
+	    ("scale to %ux%u, %ux%u being displayed, %s",
 	     output_active_width, output_active_height, display_width,
 	     display_height, BOT_FIRST);
 	  break;
@@ -1819,7 +1819,7 @@ main (int argc, char *argv[])
 	  break;
 	default:
 	  mjpeg_error_exit1
-	    ("Unknown time reordering  status: %d\n", field_move);
+	    ("Unknown time reordering  status: %d", field_move);
 	}
 
 
@@ -1885,7 +1885,7 @@ main (int argc, char *argv[])
 	   (uint8_t *) malloc (256 * diviseur * sizeof (uint8_t) +
 			       ALIGNEMENT)))
 	mjpeg_error_exit1
-	  ("Could not allocate memory for divide table. STOP!\n");
+	  ("Could not allocate memory for divide table. STOP!");
 //      fprintf (stderr, "%p\n", divide);
       // alignement instructions
       if (((unsigned long) divide % ALIGNEMENT) != 0)
@@ -1964,7 +1964,7 @@ main (int argc, char *argv[])
 	       (uint8_t *) malloc ((bicubic_offset + bicubic_max) *
 				   sizeof (uint8_t) + ALIGNEMENT)))
 	    mjpeg_error_exit1
-	      ("Could not allocate enough memory for divide table. STOP!\n");
+	      ("Could not allocate enough memory for divide table. STOP!");
 //                fprintf (stderr, "%p\n", divide);
 	  // alignement instructions
 	  if (((unsigned long) divide % ALIGNEMENT) != 0)
@@ -2005,7 +2005,7 @@ main (int argc, char *argv[])
 	  || !(mmx_res =
 	       (int32_t *) malloc (2 * sizeof (int32_t) + ALIGNEMENT)))
 	mjpeg_error_exit1
-	  ("Could not allocate memory for mmx registers. STOP!\n");
+	  ("Could not allocate memory for mmx registers. STOP!");
 
       mjpeg_info ("Before alignement");
       mjpeg_info ("%p %p %p", mmx_padded, mmx_cubic, mmx_res);
@@ -2041,7 +2041,7 @@ main (int argc, char *argv[])
 				    sizeof (unsigned int)))
 	  || !(b = (float *) alloca (output_active_width * sizeof (float))))
 	mjpeg_error_exit1
-	  ("Could not allocate memory for in_col or b table. STOP!\n");
+	  ("Could not allocate memory for in_col or b table. STOP!");
       for (out_col = 0; out_col < output_active_width; out_col++)
 	{
 	  in_col[out_col] =
@@ -2057,7 +2057,7 @@ main (int argc, char *argv[])
 				     sizeof (unsigned int))) ||
 	  !(a = (float *) alloca (output_active_height * sizeof (float))))
 	mjpeg_error_exit1
-	  ("Could not allocate memory for in_line or a table. STOP!\n");
+	  ("Could not allocate memory for in_line or a table. STOP!");
       for (out_line = 0; out_line < output_active_height; out_line++)
 	{
 	  in_line[out_line] =
@@ -2075,7 +2075,7 @@ main (int argc, char *argv[])
 	       (int16_t *) malloc (4 * output_active_height *
 				   sizeof (int16_t))))
 	mjpeg_error_exit1
-	  ("Could not allocate memory for cubic_spline_n or cubic_spline_mtable. STOP!\n");
+	  ("Could not allocate memory for cubic_spline_n or cubic_spline_mtable. STOP!");
       for (n = -1; n <= 2; n++)
 	{
 
@@ -2135,7 +2135,7 @@ main (int argc, char *argv[])
 		(uint8_t *) malloc ((input_useful_width + 3) *
 				    (input_useful_height + 3))))
 	    mjpeg_error_exit1
-	      ("Could not allocate memory for padded_input table. STOP!\n");
+	      ("Could not allocate memory for padded_input table. STOP!");
 	}
       else
 	{
@@ -2146,7 +2146,7 @@ main (int argc, char *argv[])
 		(uint8_t *) malloc ((input_useful_width + 3) *
 				    (input_useful_height / 2 + 3))))
 	    mjpeg_error_exit1
-	      ("Could not allocate memory for padded_top|bottom tables. STOP!\n");
+	      ("Could not allocate memory for padded_top|bottom tables. STOP!");
 	}
     }
   // BICUBIC BICUBIC BICUBIC     
@@ -2161,7 +2161,7 @@ main (int argc, char *argv[])
       || !(output =
 	   malloc (((output_width * output_height * 3) / 2) + ALIGNEMENT)))
     mjpeg_error_exit1
-      ("Could not allocate memory for line, field1, field2, input or output tables. STOP!\n");
+      ("Could not allocate memory for line, field1, field2, input or output tables. STOP!");
 //  fprintf (stderr, "%p %p\n", input, output);
   if (((unsigned long) input % ALIGNEMENT) != 0)
     input =
@@ -2178,7 +2178,7 @@ main (int argc, char *argv[])
       || !(frame_v_p =
 	   (uint8_t **) malloc (display_height / 2 * sizeof (uint8_t *))))
     mjpeg_error_exit1
-      ("Could not allocate memory for frame_y_p, frame_u_p or frame_v_p tables. STOP!\n");
+      ("Could not allocate memory for frame_y_p, frame_u_p or frame_v_p tables. STOP!");
 
   // Incorporate blacks lines and columns directly into output matrix since this will never change. 
   // BLACK pixel in YUV = (16,128,128)
@@ -2588,7 +2588,7 @@ main (int argc, char *argv[])
 					    input_height, input_y_infile,
 					    input_u_infile, input_v_infile)))
 			mjpeg_error_exit1
-			  ("Frame %ld read failed\n", frame_num);
+			  ("Frame %ld read failed", frame_num);
 		      // Line switch if necessary
 		      if (line_switching)
 			line_switch (input, line);
@@ -2611,7 +2611,7 @@ main (int argc, char *argv[])
 					    input_height, input_y_infile,
 					    input_u_infile, input_v_infile)))
 			mjpeg_error_exit1
-			  ("Frame %ld read failed\n", frame_num);
+			  ("Frame %ld read failed", frame_num);
 		      // Line switch if necessary
 		      if (line_switching)
 			line_switch (input, line);

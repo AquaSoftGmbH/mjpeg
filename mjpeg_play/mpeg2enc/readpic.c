@@ -160,7 +160,7 @@ static void read_chunk(void)
 	  {
 		  if( y != Y4M_ERR_EOF )
 			  mjpeg_log (LOG_WARN, 
-						 "Error reading frame header (%d): code%s!\n", 
+						 "Error reading frame header (%d): code%s!", 
 						 n,
 						 y4m_strerr (n));
          goto EOF_MARK;

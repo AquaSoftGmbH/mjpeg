@@ -502,7 +502,7 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
       numfields = 2;
    } else {
       mjpeg_error(
-               "Read JPEG: requested height = %d, height of image = %d\n",
+               "Read JPEG: requested height = %d, height of image = %d",
                height, dinfo.output_height);
       goto ERR_EXIT;
    }
@@ -563,7 +563,7 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
             break;
          default:
             mjpeg_error(
-                     "Input is interlaced but no interlacing set\n");
+                     "Input is interlaced but no interlacing set");
             goto ERR_EXIT;
          }
       } else
@@ -772,7 +772,7 @@ int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
             break;
          default:
             mjpeg_error(
-                     "Input is interlaced but no interlacing set\n");
+                     "Input is interlaced but no interlacing set");
             goto ERR_EXIT;
          }
       } else

@@ -195,7 +195,7 @@ int open_video_file(char *filename, EditList *el, int preserve_pathname)
             el->audio_rate  != lav_audio_rate(el->lav_fd[n]) )
          {
            mjpeg_error("File %s: Audio is %d chans %d bit %ld Hz,"
-					   " should be %d chans %d bit %ld Hz\n",
+					   " should be %d chans %d bit %ld Hz",
 					   filename,lav_audio_channels(el->lav_fd[n]),
 					   lav_audio_bits(el->lav_fd[n]), lav_audio_rate(el->lav_fd[n]),
 					   el->audio_chans, el->audio_bits, el->audio_rate);

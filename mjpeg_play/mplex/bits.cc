@@ -152,7 +152,7 @@ bool IBitStream::refill_buffer()
 	if( bufcount >= bfr_size )
 	{
 		mjpeg_error_exit1("INTERNAL ERROR: additional data required but "
-                                  "no free space in input buffer\n");
+                                  "no free space in input buffer");
 	}
 
 	i = fread(bfr+bufcount, sizeof(uint8_t), 

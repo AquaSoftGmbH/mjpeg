@@ -269,7 +269,7 @@ static int avi_close_output_file(avi_t *AVI)
       readable in the most cases */
 
    idxerror = 0;
-   ret = avi_add_chunk(AVI,(uint8_t*)"idx1",(void*)AVI->idx,AVI->n_idx*16);
+   ret = avi_add_chunk(AVI,(const uint8_t*)"idx1",(void*)AVI->idx,AVI->n_idx*16);
    hasIndex = (ret==0);
    if(ret)
    {
@@ -503,18 +503,18 @@ static int avi_write_data(avi_t *AVI, uint8_t *data, long length, int audio)
    /* Add index entry */
 
    if(audio)
-      n = avi_add_index_entry(AVI,(uint8_t*)"01wb",0x00,AVI->pos,length);
+      n = avi_add_index_entry(AVI,(const uint8_t*)"01wb",0x00,AVI->pos,length);
    else
-      n = avi_add_index_entry(AVI,(uint8_t*)"00db",0x10,AVI->pos,length);
+      n = avi_add_index_entry(AVI,(const uint8_t*)"00db",0x10,AVI->pos,length);
 
    if(n) return -1;
 
    /* Output tag and data */
 
    if(audio)
-      n = avi_add_chunk(AVI,(uint8_t*)"01wb",data,length);
+      n = avi_add_chunk(AVI,(const uint8_t*)"01wb",data,length);
    else
-      n = avi_add_chunk(AVI,(uint8_t*)"00db",data,length);
+      n = avi_add_chunk(AVI,(const uint8_t*)"00db",data,length);
 
    if (n) return -1;
 
@@ -540,7 +540,7 @@ int AVI_dup_frame(avi_t *AVI)
    if(AVI->mode==AVI_MODE_READ) { AVI_errno = AVI_ERR_NOT_PERM; return -1; }
 
    if(AVI->last_pos==0) return 0; /* No previous real frame */
-   if(avi_add_index_entry(AVI,(uint8_t*)"00db",0x10,AVI->last_pos,AVI->last_len)) return -1;
+   if(avi_add_index_entry(AVI,(const uint8_t*)"00db",0x10,AVI->last_pos,AVI->last_len)) return -1;
    AVI->video_frames++;
    AVI->must_use_index = 1;
    return 0;

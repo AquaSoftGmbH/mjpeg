@@ -341,7 +341,7 @@ static int generate_YUV4MPEG(parameters_t *param)
 
       if ((param->interlace == Y4M_ILACE_NONE) || (param->interleave == 1)) {
 	mjpeg_info("Processing non-interlaced/interleaved %s, size %ld.", 
-		   jpegname, jpegsize);
+		   jpegname, (long)jpegsize);
 	decode_jpeg_raw(jpegdata, jpegsize,
 			0, 420, param->width, param->height,
 			yuv[0], yuv[1], yuv[2]);
@@ -349,7 +349,7 @@ static int generate_YUV4MPEG(parameters_t *param)
 	switch (param->interlace) {
 	case Y4M_ILACE_TOP_FIRST:
 	  mjpeg_info("Processing interlaced, top-first %s, size %ld.",
-		     jpegname, jpegsize);
+		     jpegname, (long)jpegsize);
 	  decode_jpeg_raw(jpegdata, jpegsize,
 			  LAV_INTER_TOP_FIRST,
 			  420, param->width, param->height,
@@ -357,7 +357,7 @@ static int generate_YUV4MPEG(parameters_t *param)
 	  break;
 	case Y4M_ILACE_BOTTOM_FIRST:
 	  mjpeg_info("Processing interlaced, bottom-first %s, size %ld.", 
-		     jpegname, jpegsize);
+		     jpegname, (long)jpegsize);
 	  decode_jpeg_raw(jpegdata, jpegsize,
 			  LAV_INTER_BOTTOM_FIRST,
 			  420, param->width, param->height,

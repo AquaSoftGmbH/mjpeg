@@ -279,7 +279,7 @@ char            encoded_file_name[MAX_NAME_SIZE];
 
     mjpeg_info("Opened WAV file, freq = %d Hz, channels = %d, bits = %d",
            freq_in, chans_in, audio_bits);
-    mjpeg_info("format = 0x%x, audio length = %lu bytes",audio_format,audio_bytes);
+    mjpeg_info("format = 0x%x, audio length = %lu bytes",audio_format,(unsigned long)audio_bytes);
 
     if(audio_format!=1)
     {
@@ -324,7 +324,7 @@ char            encoded_file_name[MAX_NAME_SIZE];
            break;
        default:
            mjpeg_error("Frequency must be one of 32000 44100 48000"
-					   " unless -r is used!\n");
+					   " unless -r is used!");
            exit(1);
     }
 

@@ -186,7 +186,7 @@ int main(int argc, char ** argv)
    if (process_image_frame != -1 && format!='i')
    {
       mjpeg_error_exit1("If you specify \'-i <num>\', you must use jpg (\'-f i\') as output:"
-						"   lavtrans -o image.jpg -f i movie.avi -i <frame_num>\n");
+						"   lavtrans -o image.jpg -f i movie.avi -i <frame_num>");
    }
 
    /* Get and open input files */

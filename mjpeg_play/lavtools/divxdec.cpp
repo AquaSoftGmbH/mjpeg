@@ -476,7 +476,7 @@ error ( char *text )
 static void
 print_usage ( void )
 {
-	mjpeg_info ( "" );
+	mjpeg_info ( " " );
 	mjpeg_info ( "Usage: %s [OPTION]... [input AVI]", APPNAME );
 	exit ( 0 );
 }
@@ -526,7 +526,7 @@ displayGreeting (  )
 	mjpeg_info ( "-----------------------------" );
 	mjpeg_info ( "MJPEGTools version %s", VERSION );
 	mjpeg_info ( "%s version %s (%s)", APPNAME, APPVERSION, LastChanged );
-	mjpeg_info ( "" );
+	mjpeg_info ( " " );
 	mjpeg_info ( "This utility is development software.  It may eat your" );
 	mjpeg_info ( "movies or let the smoke out of your computer." );
 	mjpeg_info ( "-----------------------------" );
@@ -823,7 +823,7 @@ writeOutputFrame()
 					);
 			if ( currentFrame.jpegSize < 0 )
 			{
-				mjpeg_error ( "" );
+				mjpeg_error ( " " );
 				mjpeg_error ( "Error converting YUV to JPEG." );
 				errCode = 1;
 				return 0;
@@ -834,7 +834,7 @@ writeOutputFrame()
 				int lavwrite = lav_write_frame ( output.fdLAV, currentFrame.jpegFrame, currentFrame.jpegSize, 1) ;
 				if ( lavwrite != 0 )
 				{
-					mjpeg_error ( "" );
+					mjpeg_error ( " " );
 					mjpeg_error ( "Error writing LAV frame: %s", lav_strerror () );
 					errCode = 1;
 					return 0;
@@ -869,7 +869,7 @@ writeOutputFrame()
 						);
 			if ( res != 0 )
 			{
-				mjpeg_error ( "" ); // break out of progress line.
+				mjpeg_error ( " " ); // break out of progress line.
 				mjpeg_error ( "Error writing audio to LAV." );
 				errCode = 1;
 				return 0;
@@ -2044,7 +2044,7 @@ main (int argc, char **argv)
 	std::cout.rdbuf ( real_cout );
 	stdout = real_stdout;
 
-	mjpeg_info ( "" );
+	mjpeg_info ( " " );
 	mjpeg_info ( "Done. %i frames", output.processedFrames );
 
 	return errCode;

@@ -58,7 +58,7 @@ average_coeff (unsigned int input_length, unsigned int output_length,
     }
 #ifdef DEBUG
   mjpeg_debug
-    ("Function average_coeff : input length = %d, output length = %d, input = %p\n",
+    ("Function average_coeff : input length = %d, output length = %d, input = %p",
      input_length, output_length, coeff);
 #endif
 
@@ -119,7 +119,7 @@ average_coeff (unsigned int input_length, unsigned int output_length,
 	      if (in != output_length - 1)
 		{
 		  mjpeg_error
-		    ("There is a common divider between %d and %d\n This should not be the case\n",
+		    ("There is a common divider between %d and %d\n This should not be the case",
 		     input_length, output_length);
 		  exit (1);
 		}
@@ -131,7 +131,7 @@ average_coeff (unsigned int input_length, unsigned int output_length,
       if (still_to_go != 0)
 	{
 	  mjpeg_error
-	    ("Function average_coeff : calculus doesn't stop right : %d\n",
+	    ("Function average_coeff : calculus doesn't stop right : %d",
 	     still_to_go);
 	}
     }

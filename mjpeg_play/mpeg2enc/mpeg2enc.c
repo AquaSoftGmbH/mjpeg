@@ -1191,7 +1191,7 @@ static void init_encoder(void)
 	
 	/* Allocate the frame data buffers */
     frame_buffer_size = 2*param_max_GOP_size+param_Bgrp_size+READ_CHUNK_SIZE+1;
-    mjpeg_info( "Buffering %d frames\n", frame_buffer_size );
+    mjpeg_info( "Buffering %d frames", frame_buffer_size );
 	frame_buffers = (uint8_t ***) 
 		bufalloc(frame_buffer_size*sizeof(uint8_t**));
 	

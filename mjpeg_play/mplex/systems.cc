@@ -41,7 +41,7 @@ PS_Stream::NextFile( )
 	if( strcmp( prev_filename, cur_filename ) == 0 )
 	{
 		mjpeg_error_exit1( 
-			"Need to split output but there appears to be no %%d in the filename pattern %s\n", filename_pat );
+			"Need to split output but there appears to be no %%d in the filename pattern %s", filename_pat );
 	}
 	strm = fopen( cur_filename, "wb" );
 	if( strm == NULL )
