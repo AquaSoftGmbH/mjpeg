@@ -40,7 +40,7 @@ ____________________________________________________________________________/
 Example one: Make a transistion from one movie to another one.
 
 Let's assume that we have got two 352x288 PAL files:
-intro.avi (1040 frames) and epilogue.mov (3920 frames). Now we want
+intro.avi (1040 frames) and epilogue.qt (3920 frames). Now we want
 to make a transistion between them that lasts for two seconds
 (2 sec = 50 frames, as they are PAL movies).
 We also have to take care that both share the same dimensions - if
@@ -64,8 +64,8 @@ has to inform lav2yuv which frames it should output. $o will
 be replaced by the offset and $n will be replaced by the number
 of frames that lavpipe wants lav2yuv to output. The -n 1
 parameter is of course optional, and any other parameters to
-lav2yuv could be added. The second line for epilogue.mov might
-look like this: "lav2yuv -o $o -f $n epilogue.mov"
+lav2yuv could be added. The second line for epilogue.qt might
+look like this: "lav2yuv -o $o -f $n epilogue.qt"
 
 Now follow all the sequences of the Pipe List, each of which
 consists of a listing of the input streams used and a command
@@ -87,23 +87,23 @@ of the stream.
 The second sequence is the actual transistion. So the first
 line is "50" (two seconds), the second one "2" (we use both streams).
 The following line will be "0 990" (intro.avi will be continued
-at frame 990) and then "1 0" follows (epilogue.mov starts with
+at frame 990) and then "1 0" follows (epilogue.qt starts with
 frame 0).
 The next line is the filter command, in our case
 "transist.flt -s $o -n $n -o 0 -O 255 -d 50"
 The -s $o -n $n parameters equal to the -o $o -f $n parameters
 of lav2yuv, -o 0 means that at the beginning of the transistion,
-only intro.avi is visible (opacity of epilogue.mov = 0).
+only intro.avi is visible (opacity of epilogue.qt = 0).
 As you would have expected, -O 255 means that at the end of
-the transistion, only epilogue.mov is visible (opacity of
-epilogue.mov = 255 = 100%) - the opacity will be linearly
+the transistion, only epilogue.qt is visible (opacity of
+epilogue.qt = 255 = 100%) - the opacity will be linearly
 interpolated inbetween. And finally -d 50 is the duration
 of the transistion in frames and should be equal to the
 first line (duration in frames) of the sequence in most cases.
 
-The last sequence continues with only epilogue.mov (the last
+The last sequence continues with only epilogue.qt (the last
 3870 frames), thus the first line is "3870". The second line
-is "1" (only one stream), then "1 50" follows (epilogue.mov,
+is "1" (only one stream), then "1 50" follows (epilogue.qt,
 beginning with frame 50). The filter command line is "-" again.
 
 Finally, our Pipe List file should look like this:
@@ -112,7 +112,7 @@ Finally, our Pipe List file should look like this:
 LAV Pipe List
 2
 lav2yuv -o $o -f $n -n 1 intro.avi
-lav2yuv -o $o -f $n epilogue.mov
+lav2yuv -o $o -f $n epilogue.qt
 990
 1
 0 0
