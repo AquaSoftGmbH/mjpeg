@@ -118,6 +118,7 @@ bin_PROGRAMS = \
 	lavinfo \
 	y4mshift \
 	y4mspatialfilter \
+	y4mstabilizer \
 	yuvfps \
 	y4mblack \
 	y4mtoyuv \
@@ -229,6 +230,9 @@ y4mshift_LDADD = $(LIBMJPEGUTILS)
 
 y4mspatialfilter_SOURCES = y4mspatialfilter.c
 y4mspatialfilter_LDADD = $(LIBMJPEGUTILS) -lm
+
+y4mstabilizer_SOURCES = y4mstabilizer.c subsample.c
+y4mstabilizer_LDADD = $(LIBMJPEGUTILS)
 
 y4mblack_SOURCES = y4mblack.c
 y4mblack_LDADD = $(LIBMJPEGUTILS)
