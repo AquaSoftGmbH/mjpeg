@@ -278,7 +278,7 @@ STATIC int build_sub44_mests( me_result_set *sub44set,
 				sub44_mests[sub44_num_mests].x = i;
 				sub44_mests[sub44_num_mests].y = j;
 				sub44_mests[sub44_num_mests].weight = s1 + 
-					(intmax(intabs(i-i0),intabs(j-j0))<<1);
+					(intmax(abs(i-i0), abs(j-j0))<<1);
 				++sub44_num_mests;
 			}
 			s44orgblk += 1;
@@ -343,7 +343,7 @@ STATIC int build_sub22_mests( me_result_set *sub44set,
 			if( x <= ilim && y <= jlim )
 			{	
 				s = (*psad_sub22)( s22orgblk,s22blk,frowstride,fh)+
-					(intmax(intabs(x),intabs(y))<<3);
+					(intmax(abs(x), abs(y))<<3);
 				if( s < threshold )
 				{
 					me_result_s *mc = &sub22set->mests[sub22set->len];
@@ -407,7 +407,7 @@ STATIC void find_best_one_pel( me_result_set *sub22set,
 
 		matchrec = sub22set->mests[k];
 		orgblk = org + (i0+matchrec.x)+rowstride*(j0+matchrec.y);
-		penalty = (intabs(matchrec.x)+intabs(matchrec.y))<<3;
+		penalty = (abs(matchrec.x) + abs(matchrec.y))<<3;
 		for( i = 0; i < 4; ++i )
 		{
 			if( matchrec.x <= ilim && matchrec.y <= jlim )
@@ -499,7 +499,7 @@ STATIC int sad_01(uint8_t *blk1,uint8_t *blk2,int rowstride, int h)
 		{
 
 			v = ((unsigned int)(p1[i]+p1[i+1]+1)>>1) - p2[i];
-			s+=intabs(v);
+			s += abs(v);
 		}
 		p1+= rowstride;
 		p2+= rowstride;
@@ -523,7 +523,7 @@ STATIC int sad_10(uint8_t *blk1,uint8_t *blk2, int rowstride, int h)
 		for (i=0; i<16; i++)
 		{
 			v = ((unsigned int)(p1[i]+p1a[i]+1)>>1) - p2[i];
-			s+= intabs(v);
+			s += abs(v);
 		}
 		p1 = p1a;
 		p1a+= rowstride;
@@ -550,7 +550,7 @@ STATIC int sad_11(uint8_t *blk1,uint8_t *blk2, int rowstride, int h)
 		for (i=0; i<16; i++)
 		{
 			v = ((unsigned int)((p1[i]+p1[i+1])+(p1a[i]+p1a[i+1])+2)>>2) - p2[i];
-			s+=intabs(v);
+			s += abs(v);
 		}
 		p1 = p1a;
 		p1a+= rowstride;
