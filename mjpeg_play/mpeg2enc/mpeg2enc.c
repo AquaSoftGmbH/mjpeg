@@ -410,7 +410,7 @@ static void set_format_presets()
 		param_video_buffer_size = 230;
 		param_mpeg = 2;
 		if( param_quant == 0 )
-			param_quant = 10;
+			param_quant = 8;
 		param_seq_hdr_every_gop = 1;
 		break;
 	}
@@ -1146,6 +1146,7 @@ static int f_code( int max_radius )
 static void init_mpeg_parms(void)
 {
 	int i;
+    const char *msg;
 
 	inputtype = 0;  /* doesnt matter */
 	istrm_nframes = 999999999; /* determined by EOF of stdin */
@@ -1244,19 +1245,23 @@ static void init_mpeg_parms(void)
 		opt_color_primaries = 5;
 		opt_transfer_characteristics = 4; /* Gamma = 2.2 */
 		opt_matrix_coefficients = 5; 
+        msg = "PAL B/G";
 		break;
 	case 'n': /* SMPTPE 170M "modern NTSC" */
 		opt_color_primaries = 6;
 		opt_transfer_characteristics = 6;
 		opt_matrix_coefficients = 6; 
 		opt_matrix_coefficients = 5; 
+        msg = "NTSC";
 		break; 
 	default:   /* unspec. */
 		opt_matrix_coefficients = 2; 
 		opt_color_primaries = 2;
 		opt_transfer_characteristics = 2;
+        msg = "unspecified";
 		break;
 	}
+    mjpeg_info( "Setting colour/gamma parameters to \"%s\"\n", msg);
 
 	switch( param_format )
 	{
@@ -1643,7 +1648,7 @@ static void init_quantmat()
 	}
 	else
 	{
-		opt_load_niquant |= 1;
+		opt_load_niquant |= (param_hf_quant == 1);
 		for (i=0; i<64; i++)
 		{
 			v = quant_hfnoise_filt(default_nonintra_quantizer_matrix[i],i);

@@ -234,30 +234,7 @@ EXTERN const uint16_t hires_intra_quantizer_matrix[64]
 #endif
 ;
 
-/* Our default non intra quantization matrix
-	This is *not* the MPEG default
-	 */
 EXTERN const uint16_t default_nonintra_quantizer_matrix[64]
-#ifdef GLOBAL
-=
-
-{
-  16, 17, 18, 19, 20, 21, 22, 23,
-  17, 18, 19, 20, 21, 22, 23, 24,
-  18, 19, 20, 21, 22, 23, 24, 25,
-  19, 20, 21, 22, 23, 24, 26, 27,
-  20, 21, 22, 23, 25, 26, 27, 28,
-  21, 22, 23, 24, 26, 27, 28, 30,
-  22, 23, 24, 26, 27, 28, 30, 31,
-  23, 24, 25, 27, 28, 30, 31, 33
- 
-}   
-#endif
-;
-
-/* Hires non intra quantization matrix.  THis *is*
-	the MPEG default...	 */
-EXTERN const uint16_t hires_nonintra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
 {
@@ -270,6 +247,15 @@ EXTERN const uint16_t hires_nonintra_quantizer_matrix[64]
 	16, 16, 16, 16, 16, 16, 16, 16,
 	16, 16, 16, 16, 16, 16, 16, 16
 }
+#endif
+;
+
+
+/* Hires non intra quantization matrix.  THis *is*
+	the MPEG default...	 */
+EXTERN const uint16_t *hires_nonintra_quantizer_matrix
+#ifdef GLOBAL
+= &default_nonintra_quantizer_matrix[0]
 #endif
 ;
 

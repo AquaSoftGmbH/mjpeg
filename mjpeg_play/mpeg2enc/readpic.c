@@ -378,6 +378,12 @@ static void read_chunk_par( int num_frame)
 static void load_frame( int num_frame )
 {
 	
+	if(last_frame>=0 && num_frame>last_frame &&num_frame<istrm_nframes)
+	{
+		mjpeg_error("Internal:readframe: internal error reading beyond end of frames\n");
+		abort();
+	}
+	
 	if( frames_read == 0)
 	{
 #ifdef __linux__
@@ -403,12 +409,6 @@ static void load_frame( int num_frame )
             read_chunk_seq( num_frame);
         }
  
-	}
-	
-	if(last_frame>=0 && num_frame>last_frame &&num_frame<istrm_nframes)
-	{
-		mjpeg_error("Internal:readframe: internal error reading beyond end of frames\n");
-		abort();
 	}
 
    /* Read a chunk of frames if we've got less than one chunk buffered
@@ -449,11 +449,20 @@ int readframe( int num_frame,
 int frame_lum_mean( int num_frame )
 {
 	int n = num_frame;
-	if(  frames_read > 0 && num_frame > frames_read-1 )
+    //
+    // We use this function to probe for the existence of frames
+    // so we clip at the end if the end is already found...
+    //
+	if(  last_frame > 0 && num_frame > last_frame )
 	{
-		n = frames_read-1;
+		n = last_frame;
 	}
 	load_frame( n );
+    //
+    // We may now know where the last frame is...
+    //
+    if( last_frame > 0 && n > last_frame )
+        n = last_frame;
 	return lum_mean[n% FRAME_BUFFER_SIZE];
 }
 

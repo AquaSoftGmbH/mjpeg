@@ -121,8 +121,8 @@ void putseqext()
 
 /* generate sequence display extension (6.2.2.4, 6.3.6)
  *
- * content not yet user setable
  */
+
 void putseqdispext()
 {
 	alignbits();

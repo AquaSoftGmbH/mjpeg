@@ -33,15 +33,16 @@ PS_Stream::FileLimReached()
 void 
 PS_Stream::NextFile( )
 {
-	if( strstr( filename_pat, "%d" ) == NULL )
-	{
-		mjpeg_error_exit1( 
-			"Need to start new file but there is no %%d in filename pattern %s\n", filename_pat );
-	}
-		
+    char prev_filename[strlen(cur_filename)+1];
 	fclose(strm);
 	++segment_num;
+    strcpy( prev_filename, cur_filename );
 	snprintf( cur_filename, MAXPATHLEN, filename_pat, segment_num );
+	if( strcmp( prev_filename, cur_filename ) == 0 )
+	{
+		mjpeg_error_exit1( 
+			"Need to split output but there appears to be no %%d in the filename pattern %s\n", filename_pat );
+	}
 	strm = fopen( cur_filename, "wb" );
 	if( strm == NULL )
 	{
