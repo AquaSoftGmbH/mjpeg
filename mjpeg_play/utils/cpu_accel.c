@@ -46,9 +46,10 @@ static int testsseill()
 {
 	int illegal;
 #if defined(__CYGWIN__)
-	// SSE causes a crash on CYGWIN, apparently.
-	// Perhaps the wrong signal is being caught or something along
-	// those line ;-) or maybe SSE itself won't work...
+	/* SSE causes a crash on CYGWIN, apparently.
+	   Perhaps the wrong signal is being caught or something along
+	   those line ;-) or maybe SSE itself won't work...
+	*/
 	illegal = 1;
 #else
 	__sig_t old_handler = signal( SIGILL, sigillhandler);
