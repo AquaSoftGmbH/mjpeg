@@ -513,8 +513,8 @@ static int quant_weight_coeff_x86_inter( struct QuantizerWorkSpace *wsp,
 }
 
 
-void enable_x86_quantization( struct QuantizerCalls *qcalls,
-int mpeg1)
+void init_x86_quantization( struct QuantizerCalls *qcalls,
+							int mpeg1)
 {
 	int flags = cpu_accel();
 	const char *opt_type1, *opt_type2;

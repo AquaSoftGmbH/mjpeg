@@ -59,15 +59,10 @@
 #include "fastintfns.h"
 #include "cpu_accel.h"
 #include "simd.h"
-#include "quantize_ref.h"
 #include "quantize_precomp.h"
 
 #ifdef HAVE_ALTIVEC
 void enable_altivec_quantization(struct QuantizerCalls *calls, int opt_mpeg1);
-#endif
-#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
-void enable_x86_quantization( struct QuantizerCalls *calls,
-                              int mpeg1 );
 #endif
 
 /* non-linear quantization coefficient table */
@@ -539,7 +534,7 @@ void init_quantizer( struct QuantizerCalls *calls,
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
     if( cpu_accel() )
     {
-        enable_x86_quantization( calls, mpeg1 );
+        init_x86_quantization( calls, mpeg1 );
     }
 #endif
 #ifdef HAVE_ALTIVEC

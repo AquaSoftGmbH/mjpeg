@@ -60,12 +60,27 @@
  *
  */
 
-
+#include <config.h>
 #include "cpu_accel.h"
 #include "quantize_ref.h"
 #include "transfrm_ref.h"
 #include "predict_ref.h"
 
+
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
+void init_x86_transform();
+void init_x86_predict();
+void init_x86_quantization( struct QuantizerCalls *calls,
+							int mpeg1 );
+#ifdef  __cplusplus
+}
+#endif
+
+#endif
 
 
 #endif /* __SIMD_H__ */

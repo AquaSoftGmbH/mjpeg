@@ -70,57 +70,13 @@ void ElemStrmWriter::AlignBits()
 	if (outcnt!=8)
 		PutBits(0,outcnt);
 }
-
-
-
-FILE_StrmWriter::FILE_StrmWriter( EncoderParams &encparams, const char *outfilename ) :
-	ElemStrmWriter( encparams )
-{
-	/* open output file */
-	if (!(outfile=fopen(outfilename,"wb")))
-	{
-		mjpeg_error_exit1("Couldn't create output file %s",outfilename);
-	}
-}
-
-FILE_StrmWriter::~FILE_StrmWriter()
-{
-	fclose( outfile );
-}
-
-/**************
- *
- * Write rightmost n (0<=n<=32) bits of val to outfile 
- *
- *************/
-void FILE_StrmWriter::PutBits(uint32_t val, int n)
-{
-	val = (n == 32) ? val : (val & (~(0xffffffffU << n)));
-	while( n >= outcnt )
-	{
-		outbfr = (outbfr << outcnt ) | (val >> (n-outcnt));
-		putc( outbfr, outfile );
-		n -= outcnt;
-		outcnt = 8;
-		++bytecnt;
-	}
-	if( n != 0 )
-	{
-		outbfr = (outbfr<<n) | val;
-		outcnt -= n;
-	}
-}
-
-
-void FILE_StrmWriter::FrameBegin()
-{
-}
-
-void FILE_StrmWriter::FrameFlush()
-{
-}
-
-void FILE_StrmWriter::FrameDiscard()
-{
-}
     
+
+
+/* 
+ * Local variables:
+ *  c-file-style: "stroustrup"
+ *  tab-width: 4
+ *  indent-tabs-mode: nil
+ * End:
+ */

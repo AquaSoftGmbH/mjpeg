@@ -20,7 +20,6 @@
  *
  */
 
-#include "stdio.h"
 #include "mjpeg_types.h"
 
 class EncoderParams;
@@ -52,20 +51,6 @@ protected:
 
 };
 
-
-class FILE_StrmWriter : public ElemStrmWriter
-{
-public:
-    FILE_StrmWriter( EncoderParams &encoder, const char *ofile_ptr ); 
-    virtual ~FILE_StrmWriter();       
-    void PutBits( uint32_t val, int n);
-    void FrameBegin();
-    void FrameFlush();
-    void FrameDiscard();
-    
-private:
-    FILE *outfile;
-};
 
 /* 
  * Local variables:

@@ -56,10 +56,6 @@
 #include "simd.h"
 
 
-#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
-extern void init_x86_predict(uint32_t cpucap);
-#endif
-
 
 #ifdef HAVE_ALTIVEC
 #include "../utils/altivec/altivec_predict.h"
@@ -291,7 +287,7 @@ void init_predict(void)
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
     else
     {
-        init_x86_predict(cpucap);
+        init_x86_predict();
     }
 #endif
 #ifdef HAVE_ALTIVEC

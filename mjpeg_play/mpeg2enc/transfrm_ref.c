@@ -57,10 +57,6 @@
 #include "cpu_accel.h"
 #include "simd.h"
 
-#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
-extern void init_x86_transform();
-#endif
-
 #ifdef HAVE_ALTIVEC
 #include "../utils/altivec/altivec_transform.h"
 #endif
