@@ -118,6 +118,12 @@ int main (int argc, char *argv[])
       i = y4m_read_frame(in_fd, &streaminfo, &frameinfo, yuv2);
       if (i != Y4M_OK)
          exit (1);
+      /* constrain matte luma */
+      for (i = 0; i < w*h; i++) {
+	  if (yuv2[0][i] < 16) yuv2[0][i] = 16;
+	  else
+	      if (yuv2[0][i] > 235) yuv2[0][i] = 235;
+      }
 
       blend (yuv0, yuv1, yuv2, w, h, yuv);
 
