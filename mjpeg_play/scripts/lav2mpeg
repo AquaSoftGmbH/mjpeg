@@ -86,7 +86,7 @@ function logIt () {
 
 function cleanExit() {
    # delete raw files if sawraw is 0 or exiting with non-zero
-   if [ $saveraw -eq 0 -o "$1" != "0" ]; then
+   if [ $saveraw -eq 0 -a "$1" = "0" ]; then
       rm -f $audio $video
    fi
    exit $1
@@ -370,7 +370,7 @@ fi
 useraencbpr=${useraencbpr:-$aencbpr}
 
 # set up  always-on flags
-lav2yuv_flags="-s 0 $lav2yuv_flags $@"
+lav2yuv_flags="$lav2yuv_flags $@"
 case $video_norm in
    PAL)    ysnorm="p";;
    SECAM)  ysnorm="s";;
@@ -404,8 +404,7 @@ fi
 #encoder quality dependent
 case ${encode_quality} in
       0) 
-         lav2yuv_flags="-n 0 ${lav2yuv_flags}"
-         mpeg2enc_flags="-4 1 -2 1 ${mpeg2enc_flags}"
+         mpeg2enc_flags="-4 4 -2 4 ${mpeg2enc_flags}"
          if [ $downscaling -ne 0 ]; then
             yuvscaler_flags="-M RESAMPLE ${yuvscaler_flags}"
          fi
@@ -416,8 +415,7 @@ case ${encode_quality} in
          fi
          ;;
       2)
-         lav2yuv_flags="-n 2 ${lav2yuv_flags}"
-         mpeg2enc_flags="-4 4 -2 4 ${mpeg2enc_flags}"  # -N here?
+         mpeg2enc_flags="-4 1 -2 1 ${mpeg2enc_flags}"  # -N here?
          dodenoise=1
          if [ "$userdenoise" != "" -a "$userdenoise" = "0" ]; then
             dodenoise=0
