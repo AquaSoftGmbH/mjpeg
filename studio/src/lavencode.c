@@ -35,18 +35,15 @@
 #include "pipes.h"
 #include "gtkfunctions.h"
 
+/* Constanst defined here */
+/* Limits of the Encoding selections */
+#define Encselect_x 2
+#define Encselect_y 7
+
 /* Some variables defined here */
 GtkWidget *input_entry, *output_entry, *sound_entry, *video_entry;
-GtkWidget *combo_audiobit, *combo_samplerate, *combo_entry_samplebitrate;
-GtkWidget *combo_entry_audiobitrate, *combo_entry_videobitrate, *combo_videobit;
-GtkWidget *combo_searchradius, *combo_entry_searchradius, *combo_entry_noisefilter;
-GtkWidget *combo_noisefilter, *combo_samples, *combo_entry_samples; 
-GtkWidget *combo_outputformat, *combo_entry_outputformat, *combo_entry_muxfmt;
-GtkWidget *combo_muxfmt, *execute_status, *button_mpeg1, *button_mpeg2;
-GtkWidget *check_sequence, *button_force_no, *button_force_vcd, *button_force_stereo;
-GtkWidget *button_force_mono, *combo_entry_scaleroutput, *combo_entry_scalermode;
+GtkWidget *execute_status;
 GtkWidget *remove_files_after_completion;
-GtkWidget *combo_entry_active, *combo_entry_scalerinput;
 
 /* For progress-meter */
 GtkWidget *progress_label;
@@ -65,9 +62,8 @@ GtkWidget *tv_preview;
 int error = 0;
 
 /* lists with  encodingoptions */
-GList *muxformat = NULL;
-GList *samples = NULL;
-GList *outputformat = NULL;
+GList *samples_old = NULL;
+// GList *outputformat = NULL;
 GList *yuvscalermode = NULL;
 /*-------------------------------------------------------------*/
 
@@ -95,37 +91,38 @@ void create_file_input(GtkWidget *widget, gpointer data);
 void file_ok_output( GtkWidget *w, GtkFileSelection *fs );
 void create_in_out (GtkWidget *hbox1, GtkWidget *vbox);
 void create_vcd_svcd (GtkWidget *hbox1, GtkWidget *vbox);
-void set_audiobitrate (GtkWidget *widget, gpointer data);
+// void set_audiobitrate (GtkWidget *widget, gpointer data);
 void set_samplebitrate (GtkWidget *widget, gpointer data);
-void force_options (GtkWidget *widget, gpointer data);
-void create_sound_encoding (GtkWidget *table);
-void set_videobit (GtkWidget *widget, gpointer data);
+// void force_options (GtkWidget *widget, gpointer data);
+void create_sound_encoding_old (GtkWidget *table);
+// void set_videobit (GtkWidget *widget, gpointer data);
 void set_searchrad (GtkWidget *widget, gpointer data);
-void set_sequenceheader(GtkWidget *widget, gpointer data);
 void mpeg_option (GtkWidget *widget, gpointer data);
 void create_video_layout (GtkWidget *table);
 void create_file_output(GtkWidget *widget, gpointer data);
-void set_noisefilter (GtkWidget *widget, gpointer data);
-void set_drop_samples (GtkWidget *widget, gpointer data);
-void set_outputformat (GtkWidget *widget, gpointer data);
+// void set_noisefilter (GtkWidget *widget, gpointer data);
+// void set_drop_samples (GtkWidget *widget, gpointer data);
+// void set_outputformat (GtkWidget *widget, gpointer data);
 void create_yuvscaler_options (GtkWidget *hbox1, GtkWidget *vbox);
-void create_video_options_layout (GtkWidget *table);
 void video_callback ( GtkWidget *widget, GtkWidget *video_entry );
 void file_ok_video ( GtkWidget *w, GtkFileSelection *fs );
 void create_file_video(GtkWidget *widget, gpointer data);
 void create_fileselect_video (GtkWidget *hbox1, GtkWidget *vbox);
 void create_video (GtkWidget *table);
-void set_mplex_muxfmt (GtkWidget *widget, gpointer data);
+// void set_mplex_muxfmt (GtkWidget *widget, gpointer data);
 void create_mplex_options (GtkWidget *table);
 void encode_all (GtkWidget *widget, gpointer data);
 void create_buttons1 (GtkWidget *hbox1);
 void create_buttons2 (GtkWidget *hbox1);
 void create_mplex (GtkWidget *table);
 void create_status (GtkWidget *hbox1, GtkWidget *vbox);
-void create_yuvscaler_layout (GtkWidget *table);
-void set_activewindow (GtkWidget *widget, gpointer data);
-void set_scalerstrings (GtkWidget *widget, gpointer data);
-
+// void create_yuvscaler_layout (GtkWidget *table);
+// void set_activewindow (GtkWidget *widget, gpointer data);
+// void set_scalerstrings (GtkWidget *widget, gpointer data);
+void create_option_button(GSList *task_group, GtkWidget *table, 
+       char task[LONGOPT], int encx, int ency);
+void create_task_layout(GtkWidget *table);
+void create_temp_files (GtkWidget *hbox1, GtkWidget *vbox);
 
 /*************************** Programm starts here **************************/
 
@@ -511,16 +508,6 @@ void video_convert()
 /* And here the support fpr the different versions vo mjpeg tools */
    if (encoding_syntax_style == 140)
    {
-/* Old version, newer below
- *    if(encoding.mpeglevel != 1) {
- *       sprintf(temp5, "%i",encoding.mpeglevel);
- *       mpeg2enc_command[n] =  "-m"; n++;
- *       mpeg2enc_command[n] =  temp5; n++;
- *    }
- *    if(encoding.sequenceheader[1] == 's') {
- *       mpeg2enc_command[n] = encoding.sequenceheader; n++;
- *    }
- */
      if (encoding.muxformat >= 3)
        {
          mpeg2enc_command[n] = "-m"; n++;
@@ -566,13 +553,18 @@ void video_convert()
    }
 
    /* Here, the command for the pipe for yuvscaler may be added */
-   if ((strlen(encoding.input_use) > 0) ||
-       (strlen(encoding.output_size) > 0) ||
-       (strlen(encoding.mode_keyword) > 0) )
+/* Old Version now checking for "as is"          */
+//   if ((strlen(encoding.input_use) > 0) ||
+//       (strlen(encoding.output_size) > 0) ||
+//       (strlen(encoding.mode_keyword) > 0) )
+     if ((strcmp(encoding.input_use,"as is") != 0) ||
+         (strcmp(encoding.output_size,"as is") != 0) ||
+         (strcmp(encoding.mode_keyword,"as is") != 0) )
    {
       n = 0;
       yuvscaler_command[n] = YUVSCALER_LOCATION; n++;
-      if (strlen(encoding.input_use) > 0)
+      if (strlen(encoding.input_use) > 0 &&
+          strcmp(encoding.input_use,"as is") )
       {
          yuvscaler_command[n] = "-I"; n++;
          yuvscaler_command[n] = encoding.input_use; n++;
@@ -582,12 +574,14 @@ void video_convert()
          yuvscaler_command[n] = "-I"; n++;
          yuvscaler_command[n] = encoding.ininterlace_type; n++;
       }
-      if (strlen(encoding.mode_keyword) > 0)
+      if (strlen(encoding.mode_keyword) > 0 &&
+          strcmp(encoding.mode_keyword,"as is") )
       {
          yuvscaler_command[n] = "-M"; n++;
          yuvscaler_command[n] = encoding.mode_keyword; n++;
       }
-      if (strlen(encoding.output_size) > 0)
+      if (strlen(encoding.output_size) > 0 &&
+          strcmp(encoding.output_size,"as is") )
       {
          yuvscaler_command[n] = "-O"; n++;
          yuvscaler_command[n] = encoding.output_size; n++;
@@ -612,7 +606,8 @@ void video_convert()
 
    n = 0;
    lav2yuv_command[n] = LAV2YUV_LOCATION; n++;
-   if (strlen(encoding.notblacksize) > 0 ) 
+   if (strlen(encoding.notblacksize) > 0 && 
+       strcmp(encoding.notblacksize,"as is") != 0) 
      {
       lav2yuv_command[n] = "-a"; n++;
       lav2yuv_command[n] = encoding.notblacksize; n++;
@@ -698,40 +693,33 @@ void mplex_convert()
 /* set the VCD options */ 
 void do_vcd(GtkWidget *widget, gpointer data)
 {
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_audiobitrate),"224");
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_samplebitrate),"44100");
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_outputformat), "as is");
+//  gtk_entry_set_text(GTK_ENTRY(combo_entry_audiobitrate),"224");
+//  gtk_entry_set_text(GTK_ENTRY(combo_entry_samplebitrate),"44100");
+//  gtk_entry_set_text(GTK_ENTRY(combo_entry_outputformat), "as is");
 /* *** Removed because if noting to scale yuvscaler prevents encoding *** */
 /*  gtk_entry_set_text(GTK_ENTRY(combo_entry_scaleroutput), "VCD");  */
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_force_vcd),TRUE );
-/*  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_mpeg1),TRUE ); */
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_videobitrate),"1152");
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_searchradius),"16");
-/*  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (check_sequence),TRUE ); */
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_muxfmt),"standard VCD");
+//  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_force_vcd),TRUE );
+//  gtk_entry_set_text(GTK_ENTRY(combo_entry_videobitrate),"1152");
+//  gtk_entry_set_text(GTK_ENTRY(combo_entry_searchradius),"16");
+//  gtk_entry_set_text(GTK_ENTRY(combo_entry_muxfmt),"standard VCD");
 }
 
 /* set the SVCD options */
 void do_svcd(GtkWidget *widget, gpointer data)
 {
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_audiobitrate),"224");
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_samplebitrate),"44100");
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_outputformat), "as is");
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_scaleroutput), "SVCD");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_force_vcd),TRUE );
-/*  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_mpeg2),TRUE ); */
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_videobitrate),"2500");
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_searchradius),"16");
-/*  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (check_sequence),TRUE ); */
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_muxfmt),"SVCD");
+//  gtk_entry_set_text(GTK_ENTRY(combo_entry_audiobitrate),"224");
+//  gtk_entry_set_text(GTK_ENTRY(combo_entry_samplebitrate),"44100");
+//  gtk_entry_set_text(GTK_ENTRY(combo_entry_outputformat), "as is");
+//  gtk_entry_set_text(GTK_ENTRY(combo_entry_scaleroutput), "SVCD");
+//  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_force_vcd),TRUE );
+//  gtk_entry_set_text(GTK_ENTRY(combo_entry_videobitrate),"2500");
+//  gtk_entry_set_text(GTK_ENTRY(combo_entry_searchradius),"16");
+//  gtk_entry_set_text(GTK_ENTRY(combo_entry_muxfmt),"SVCD");
 }
 
 /* set the default options */
 void do_defaults(GtkWidget *widget, gpointer data)
 {
-int i;
-char val[LONGOPT];
-
   if (strcmp((char*)data, "save")==0)
     save_config_encode(); 
 
@@ -743,60 +731,6 @@ char val[LONGOPT];
       gtk_entry_set_text(GTK_ENTRY(output_entry),enc_outputfile);
       gtk_entry_set_text(GTK_ENTRY(sound_entry), enc_audiofile);
       gtk_entry_set_text(GTK_ENTRY(video_entry), enc_videofile);
-
-  /* lav2yuv option */
-      gtk_entry_set_text(GTK_ENTRY(combo_entry_active), encoding.notblacksize);
-
-  /* yuvscaler options */
-      gtk_entry_set_text(GTK_ENTRY(combo_entry_scalerinput),encoding.input_use);
-      gtk_entry_set_text(GTK_ENTRY(combo_entry_scaleroutput), encoding.output_size);
-      gtk_entry_set_text(GTK_ENTRY(combo_entry_scalermode), encoding.mode_keyword);
-
-  /* lav2yuv options */
-      outputformat = g_list_first (outputformat);
-      for (i = 0; i < encoding.outputformat ;i++)
-        outputformat = g_list_next (outputformat);
-      gtk_entry_set_text(GTK_ENTRY(combo_entry_outputformat), outputformat->data);
-
-      sprintf(val,"%i",encoding.droplsb);
-      gtk_entry_set_text(GTK_ENTRY(combo_entry_samples), val);
-
-      sprintf(val,"%i",encoding.noisefilter);
-      gtk_entry_set_text(GTK_ENTRY(combo_entry_noisefilter), val);
-
-  /* Audio Options  */
-      sprintf(val,"%i",encoding.audiobitrate);
-      gtk_entry_set_text(GTK_ENTRY(combo_entry_audiobitrate), val);
-      sprintf(val,"%i00",encoding.outputbitrate);
-      gtk_entry_set_text(GTK_ENTRY(combo_entry_samplebitrate), val);
-
-      if (encoding.forcestereo[0] == '-')
-        gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(button_force_stereo),TRUE);
-      if (encoding.forcemono[0] == '-')
-        gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(button_force_mono),TRUE);
-      if (encoding.forcevcd[0] == '-')
-        gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(button_force_vcd),TRUE);
-
-  /* Video Options */  
-  /*    if (encoding.mpeglevel == 1)
-   *     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_mpeg1),TRUE );
-   *   if (encoding.mpeglevel == 2)
-   *     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_mpeg2),TRUE );
-   */
-      sprintf(val,"%i",encoding.bitrate);
-      gtk_entry_set_text(GTK_ENTRY(combo_entry_videobitrate),val);
-
-      sprintf(val,"%i",encoding.searchradius);
-      gtk_entry_set_text(GTK_ENTRY(combo_entry_searchradius),val);
-
-  /* Mplex Options */
-      muxformat = g_list_first (muxformat);
-      for (i = 0; i < encoding.muxformat ;i++)
-        muxformat = g_list_next (muxformat);
-      gtk_entry_set_text(GTK_ENTRY(combo_entry_muxfmt), muxformat->data);
-
-      /* No need to set use_yuvplay_pipe here */
-
     }
  
 }
@@ -908,8 +842,9 @@ GtkWidget *label1, *label2;
 GtkWidget *input_select, *output_select;
 
   label1 = gtk_label_new ("  Input file : ");
-  gtk_widget_show (label1);
+  gtk_widget_set_usize (label1, 70, -2);
   gtk_box_pack_start (GTK_BOX (hbox1), label1, FALSE, FALSE, 0); 
+  gtk_widget_show (label1);
 
   input_entry = gtk_entry_new ();
   gtk_entry_set_text(GTK_ENTRY(input_entry), enc_inputfile); 
@@ -920,14 +855,15 @@ GtkWidget *input_select, *output_select;
   gtk_widget_show (input_entry);
 
   input_select = gtk_button_new_with_label ("Select");
-  gtk_widget_show (input_select);
   gtk_signal_connect(GTK_OBJECT(input_select), "clicked", 
                      GTK_SIGNAL_FUNC(create_file_input), NULL);
   gtk_box_pack_start (GTK_BOX (hbox1), input_select, FALSE, FALSE, 0);
+  gtk_widget_show (input_select);
 
   label2 = gtk_label_new ("  Output file : ");
-  gtk_widget_show (label2);
+  gtk_widget_set_usize (label1, 70, -2);
   gtk_box_pack_start (GTK_BOX (hbox1), label2, FALSE, FALSE, 0); 
+  gtk_widget_show (label2);
      
   output_entry = gtk_entry_new (); 
   gtk_entry_set_text(GTK_ENTRY(output_entry), enc_outputfile); 
@@ -940,189 +876,14 @@ GtkWidget *input_select, *output_select;
   output_select = gtk_button_new_with_label ("Select");
   gtk_signal_connect(GTK_OBJECT(output_select), "clicked", 
                      GTK_SIGNAL_FUNC(create_file_output), NULL);
-  gtk_widget_show (output_select);
   gtk_box_pack_start (GTK_BOX (hbox1), output_select, FALSE, FALSE, 0);
+  gtk_widget_show (output_select);
 
   gtk_box_pack_start (GTK_BOX (vbox), hbox1, FALSE, FALSE, 0); 
   gtk_widget_show (hbox1);
-}
 
-/* set output bitrate for the audio */
-void set_audiobitrate (GtkWidget *widget, gpointer data)
-{
-char *test;
+  create_temp_files (hbox1, vbox);
 
-  test = gtk_entry_get_text(GTK_ENTRY(combo_entry_audiobitrate));
-  encoding.audiobitrate = atoi ( test );
-
-  if ( (encoding.audiobitrate < 32) || (encoding.audiobitrate > 320))
-    encoding.audiobitrate = 224;
-
-  if (verbose)
-    printf("\n selected audio bitrate: %i \n", encoding.audiobitrate);
-}
-
-/* set smaplerate for the audio */
-void set_samplebitrate (GtkWidget *widget, gpointer data)
-{
-gchar *test;
-int i;
-
-  i = 0;
-  test = gtk_entry_get_text(GTK_ENTRY(combo_entry_samplebitrate));
-  samples = g_list_last (samples);
-
-  for (i = (g_list_length (g_list_first(samples))) ; i > 0 ; i--)
-    {
-      if (strcmp (test,samples->data) == 0)
-        {
-          encoding.outputbitrate = ( (atoi (samples->data)) / 100);  
-          break;
-        }
-      samples = g_list_previous (samples);
-    }
-
-  if (verbose)
-    printf("\n selected audio samplerate: %i00\n", encoding.outputbitrate);
-}
-
-/* Set the option that should be forced */
-void force_options (GtkWidget *widget, gpointer data)
-{
-  if ( (strcmp((char*)data,"-V") ==0) && encoding.forcevcd[0] == ' ' ) 
-    sprintf(encoding.forcevcd, "%s", (char*)data);
-  else 
-    sprintf(encoding.forcevcd, " ");
-
-  if ( (strcmp((char*)data,"-s") ==0) && encoding.forcestereo[0] == ' ' ) 
-    sprintf(encoding.forcestereo, "%s", (char*)data);
-  else 
-    sprintf(encoding.forcestereo, " ");
-
-  if ( (strcmp((char*)data,"-m") ==0) && encoding.forcemono[0] == ' ' ) 
-    sprintf(encoding.forcemono, "%s", (char*)data);
-  else 
-    sprintf(encoding.forcemono, " ");
-
-  if (verbose) 
-    printf("\n in mono select: %s, vcd: %s, stereo %s, mono %s \n", 
-     (char*)data, encoding.forcevcd, encoding.forcestereo, encoding.forcemono);
-}
-
-/* Create Layout for the sound conversation */
-void create_sound_encoding (GtkWidget *table)
-{
-   GtkWidget *label1;
-   GSList *group_force;
-   GList *abitrate = NULL;
-
-   abitrate = g_list_append (abitrate, "224");
-   abitrate = g_list_append (abitrate, "160");
-   abitrate = g_list_append (abitrate, "128");
-   abitrate = g_list_append (abitrate, "96");
-
-   samples = g_list_append (samples, "44100");
-   samples = g_list_append (samples, "48000");
-   samples = g_list_append (samples, "32000");
-
-  label1 = gtk_label_new ("  Bitrate: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 1, 2);
-  gtk_widget_show (label1);
-
-  combo_audiobit = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_audiobit), abitrate);
-  combo_entry_audiobitrate = GTK_COMBO (combo_audiobit)->entry;
-  gtk_signal_connect(GTK_OBJECT(combo_entry_audiobitrate), "changed",
-                      GTK_SIGNAL_FUNC (set_audiobitrate), NULL);
-  gtk_widget_set_usize (combo_audiobit, 60, -2);
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_audiobit, 1, 2, 1, 2);
-  gtk_widget_show (combo_audiobit);
-
-  label1 = gtk_label_new ("  Sampelrate: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 2, 3);
-  gtk_widget_show (label1);
-
-  combo_samplerate = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_samplerate), samples);
-  combo_entry_samplebitrate = GTK_COMBO (combo_samplerate)->entry;
-  gtk_signal_connect(GTK_OBJECT(combo_entry_samplebitrate), "changed",
-                      GTK_SIGNAL_FUNC (set_samplebitrate), NULL);
-  gtk_widget_set_usize (combo_samplerate, 80, -2);
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_samplerate, 1, 2, 2, 3);
-  gtk_widget_show (combo_samplerate);
-
-  label1 = gtk_label_new ("  Force Sound: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 3, 4);
-  gtk_widget_show (label1);
- 
-  button_force_no = gtk_radio_button_new_with_label (NULL, "no change");
-  gtk_signal_connect (GTK_OBJECT (button_force_no), "toggled",
-                      GTK_SIGNAL_FUNC (force_options), (gpointer) "cl");
-  gtk_table_attach_defaults (GTK_TABLE (table), button_force_no, 1, 2, 3, 4);
-  group_force = gtk_radio_button_group (GTK_RADIO_BUTTON (button_force_no));
-  gtk_widget_show (button_force_no);
- 
-  button_force_vcd = gtk_radio_button_new_with_label(group_force, "VCD");
-  gtk_signal_connect (GTK_OBJECT (button_force_vcd), "toggled",
-                      GTK_SIGNAL_FUNC (force_options), (gpointer) "-V");
-  gtk_table_attach_defaults (GTK_TABLE (table), button_force_vcd, 1, 2, 4, 5);
-  group_force = gtk_radio_button_group (GTK_RADIO_BUTTON (button_force_vcd));
-  gtk_widget_show (button_force_vcd);
-
-  button_force_stereo = gtk_radio_button_new_with_label(group_force, "Stereo");
-  gtk_signal_connect (GTK_OBJECT (button_force_stereo), "toggled",
-                      GTK_SIGNAL_FUNC (force_options), (gpointer) "-s");
-  gtk_table_attach_defaults (GTK_TABLE (table), button_force_stereo, 1, 2, 5, 6);
-  group_force = gtk_radio_button_group (GTK_RADIO_BUTTON (button_force_stereo));
-  gtk_widget_show (button_force_stereo);
-  
-  button_force_mono = gtk_radio_button_new_with_label(group_force, "Mono");
-  gtk_signal_connect (GTK_OBJECT (button_force_mono), "toggled",
-                      GTK_SIGNAL_FUNC (force_options), (gpointer) "-m");
-  gtk_table_attach_defaults (GTK_TABLE (table), button_force_mono, 1, 2, 6, 7);
-  group_force = gtk_radio_button_group (GTK_RADIO_BUTTON (button_force_mono));
-  gtk_widget_show (button_force_mono);
-}
-
-/* set output bitrate for the video */
-void set_videobit (GtkWidget *widget, gpointer data)
-{
-char *test;
-
-  test = gtk_entry_get_text(GTK_ENTRY(combo_entry_videobitrate));
-
-  encoding.bitrate = atoi ( test );
-
-  if (verbose)
-    printf("\n selected video bitrate: %i \n", encoding.bitrate);
-}
-
-/* set output bitrate for the video */
-void set_searchrad (GtkWidget *widget, gpointer data)
-{
-char *test;
-
-  test = gtk_entry_get_text(GTK_ENTRY(combo_entry_searchradius));
-
-  encoding.searchradius = atoi ( test );
-
-  if (verbose)
-    printf("\n selected searchradius : %i \n", encoding.searchradius);
-}
-
-/* set the sequence header option */
-void set_sequenceheader(GtkWidget *widget, gpointer data)
-{
-  if (GTK_TOGGLE_BUTTON (widget)->active)
-    sprintf(encoding.sequenceheader,"-s"); 
-  else 
-    sprintf(encoding.sequenceheader," "); 
-
-  if (verbose)
-    printf("\n Set Sequence header : %s\n ",encoding.sequenceheader);
 }
 
 /* Set the mpeg option */
@@ -1152,374 +913,7 @@ for (i = 0; i < 3; i++)
     printf("\n MPEG Level set to: %i \n",encoding.mpeglevel);
 }
 
-
-/* create the video conversation  the mpeg2enc options */
-void create_video_layout (GtkWidget *table)
-{
-GtkWidget *label1;
-GSList *group_mpeg;
-GList *vbitrate = NULL;
-GList *searchrad = NULL;
-
-   vbitrate = g_list_append (vbitrate, "1152");
-   vbitrate = g_list_append (vbitrate, "1300");
-   vbitrate = g_list_append (vbitrate, "1500");
-   vbitrate = g_list_append (vbitrate, "1800");
-   vbitrate = g_list_append (vbitrate, "2000");
-   vbitrate = g_list_append (vbitrate, "2500");
-   
-   searchrad = g_list_append (searchrad, "0");
-   searchrad = g_list_append (searchrad, "8");
-   searchrad = g_list_append (searchrad, "16");
-   searchrad = g_list_append (searchrad, "24");
-   searchrad = g_list_append (searchrad, "32");
-   
-  label1 = gtk_label_new ("  Bitrate: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 8, 9);
-  gtk_widget_show (label1);
-  
-  combo_videobit = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_videobit), vbitrate);
-  combo_entry_videobitrate = GTK_COMBO (combo_videobit)->entry;
-  gtk_signal_connect(GTK_OBJECT(combo_entry_videobitrate), "changed",
-                      GTK_SIGNAL_FUNC (set_videobit), NULL);
-  gtk_widget_set_usize (combo_videobit, 80, -2 );
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_videobit, 1, 2, 8, 9);
-  gtk_widget_show (combo_videobit);
-
-  label1 = gtk_label_new ("  Searchradius: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 9, 10);
-  gtk_widget_show (label1);
-
-  combo_searchradius = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_searchradius), searchrad);
-  combo_entry_searchradius = GTK_COMBO (combo_searchradius)->entry;
-  gtk_widget_set_usize (combo_searchradius, 50, -2 );
-  gtk_signal_connect(GTK_OBJECT(combo_entry_searchradius), "changed",
-                      GTK_SIGNAL_FUNC (set_searchrad), NULL);
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_searchradius, 1, 2, 9, 10);
-  gtk_widget_show (combo_searchradius);
-
-/*   label1 = gtk_label_new ("  MPEG level: ");
- * gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
- * gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 10, 11);
- * gtk_widget_show (label1);
- *
- * button_mpeg1 = gtk_radio_button_new_with_label (NULL, "MPEG 1");
- * gtk_signal_connect (GTK_OBJECT (button_mpeg1), "toggled",
- *                     GTK_SIGNAL_FUNC (mpeg_option), (gpointer) "-m 1");
- * gtk_table_attach_defaults (GTK_TABLE (table), button_mpeg1, 1, 2, 10, 11);
- * gtk_widget_show (button_mpeg1);
- *
- * group_mpeg = gtk_radio_button_group (GTK_RADIO_BUTTON (button_mpeg1));
- * button_mpeg2 = gtk_radio_button_new_with_label(group_mpeg, "MPEG 2");
- * gtk_signal_connect (GTK_OBJECT (button_mpeg2), "toggled",
- *                     GTK_SIGNAL_FUNC (mpeg_option), (gpointer) "-m 2");
- * gtk_table_attach_defaults (GTK_TABLE (table), button_mpeg2, 1, 2, 11, 12);
- * group_mpeg = gtk_radio_button_group (GTK_RADIO_BUTTON (button_mpeg2));
- * gtk_widget_show (button_mpeg2);
- *
- * check_sequence=gtk_check_button_new_with_label("Sequence Header\nfor every GOP");
- * gtk_widget_ref (check_sequence);
- * gtk_signal_connect (GTK_OBJECT (check_sequence), "toggled",
- *                     GTK_SIGNAL_FUNC (set_sequenceheader), NULL);
- * gtk_table_attach_defaults (GTK_TABLE (table), check_sequence, 1, 2, 12, 13);
- * gtk_widget_show (check_sequence);
- */
-}
-
-/* set the noisfilter for lav2yuv */ 
-void set_noisefilter (GtkWidget *widget, gpointer data)
-{
-  char *test;
-  int i;
- 
-  i = 0;
-  test = gtk_entry_get_text(GTK_ENTRY(combo_entry_noisefilter));
-  i = atoi ( test );
-
-  if ( (i >= 0) && (i <= 2) )
-    encoding.noisefilter = i;
-
-  if (verbose)
-    printf("\n selected noise filer grade : %i \n", encoding.noisefilter);
-}
-
-/* set the number of LSBs dropped */
-void set_drop_samples (GtkWidget *widget, gpointer data)
-{
-char *test;
-int i;
-
-  i = 0;
-
-  test = gtk_entry_get_text(GTK_ENTRY(combo_entry_samples));
-
-  i = atoi ( test );
-
-  if ( (i >= 0) && (i <= 4) )
-    encoding.droplsb = i;
-
-  if (verbose)
-    printf("\n dropping  as many LSB of each sample : %i \n", encoding.droplsb);
-}
-
-/* set the output format of lav2yuv */
-void set_outputformat (GtkWidget *widget, gpointer data)
-{
-char *test;
-int i;
-
-  test = gtk_entry_get_text(GTK_ENTRY(combo_entry_outputformat));
-
-  outputformat = g_list_last (outputformat);
-
-  for (i = (g_list_length (g_list_first(outputformat))-1) ; i > 0 ; i--)
-    {
-      if (strcmp (test,outputformat->data) == 0)
-                break;
-
-      outputformat = g_list_previous (outputformat);
-    }
-    encoding.outputformat = i; 
-
-  if (verbose)
-    printf("\n selected output format: %i \n", encoding.outputformat);
-}
-
-/* Set the string for the yuvscaler options */
-void set_scalerstrings (GtkWidget *widget, gpointer data)
-{
-  char *test;
-  int i;   
-
-  i=0;
-
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
-
-  if (data == "SCALERINPUT")
-  {
-    if (strcmp(test,"as is") == 0 )
-      for (i=0; i < LONGOPT; i++)
-        encoding.input_use[i]='\0';
-      else
-        sprintf(encoding.input_use,"%s",test);
-
-    if (verbose)
-      printf("\n selected yuvscaler input window: %s \n", encoding.input_use);
-  }
-
-  if (data == "SCALERMODE")
-  {
-    if (strcmp(test,"as is") == 0 )
-      for (i=0; i < LONGOPT; i++)
-        encoding.mode_keyword[i]='\0';
-    else
-      sprintf(encoding.mode_keyword,"%s",test); 
-
-    if (verbose)
-      printf("\n selected yuvscaler scaling mode: %s \n", encoding.mode_keyword);
-  }
-
-  if (data == "SCALEROUTPUT")
-  {
-    if (strcmp(test,"as is") == 0 )
-      for (i=0; i < LONGOPT; i++)
-        encoding.output_size[i]='\0';
-    else if ( strcmp(test,"VCD") == 0)
-      sprintf(encoding.output_size,"%s", test);
-    else if ( strcmp(test,"SVCD") == 0)
-      sprintf(encoding.output_size,"%s", test);
-    else if ( strncmp(test,"INTERLACED_",11) == 0)
-      sprintf(encoding.output_size,"%s", test);
-    else
-      sprintf(encoding.output_size,"SIZE_%s", test);
-
-    if (verbose)
-      printf("\n selected yuvscaler output size: %s \n", encoding.output_size);
-  }
-}
-
-/* Set the string for the lav2yuv active window */
-void set_activewindow (GtkWidget *widget, gpointer data)
-{
-  char *test;
-  int i;
-
-  i=0;
-
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
-
-  if (strcmp(test,"as is") == 0)
-    for (i=0; i < LONGOPT; i++)
-       encoding.notblacksize[i]='\0';
-  else
-    sprintf(encoding.notblacksize,"%s", test);
-
-  if (verbose)
-    printf ("\n Set activ window to : %s\n", test);
-}
-
-/* create the layout for yuvscaler programm */
-void create_yuvscaler_layout (GtkWidget *table)
-{
-GtkWidget *label1, *combo_scaler_input,*combo_scaler_output, *combo_scaler_mode; 
-GList *input_window = NULL;
-GList *output_window = NULL;
-
-  input_window = g_list_append (input_window, "as is");
-  input_window = g_list_append (input_window, "352x288+208+144");
-  input_window = g_list_append (input_window, "352x240+144+120");
-
-  yuvscalermode = g_list_append (yuvscalermode, "as is");
-  yuvscalermode = g_list_append (yuvscalermode, "WIDE2STD");
-  yuvscalermode = g_list_append (yuvscalermode, "WIDE2VCD");
-  yuvscalermode = g_list_append (yuvscalermode, "FAST_WIDE2VCD");
-  yuvscalermode = g_list_append (yuvscalermode, "RATIO_388_352_1_1");
-  yuvscalermode = g_list_append (yuvscalermode, "RATIO_1_1_288_200");
-  yuvscalermode = g_list_append (yuvscalermode, "RATIO_2_1_2_1");
-  yuvscalermode = g_list_append (yuvscalermode, "RATIO_352_320_288_200");
-
-  output_window = g_list_append (output_window, "as is");
-  output_window = g_list_append (output_window, "VCD");
-  output_window = g_list_append (output_window, "SVCD");
-  output_window = g_list_append (output_window, "352x240");
-  output_window = g_list_append (output_window, "INTERLACED_ODD_FIRST");
-  output_window = g_list_append (output_window, "INTERLACED_EVEN_FIRST");
-
-  label1 = gtk_label_new("  Input window: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 5, 6);
-  gtk_widget_show (label1);
-
-  combo_scaler_input = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_scaler_input),
-    input_window);
-  combo_entry_scalerinput = GTK_COMBO (combo_scaler_input)->entry;
-  gtk_signal_connect(GTK_OBJECT(combo_entry_scalerinput), "changed",
-    GTK_SIGNAL_FUNC (set_scalerstrings), "SCALERINPUT" );
-  gtk_widget_set_usize (combo_scaler_input, 130, -2 );
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_scaler_input, 1, 2, 5, 6);
-  gtk_widget_show (combo_scaler_input);
-
-  label1 = gtk_label_new("  Scaling mode: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 6, 7);
-  gtk_widget_show (label1);
-
-  combo_scaler_mode = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_scaler_mode), yuvscalermode);
-  combo_entry_scalermode = GTK_COMBO (combo_scaler_mode)->entry;
-  gtk_signal_connect(GTK_OBJECT(combo_entry_scalermode), "changed",
-    GTK_SIGNAL_FUNC (set_scalerstrings), "SCALERMODE" );
-  gtk_widget_set_usize (combo_scaler_mode, 130, -2); 
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_scaler_mode, 1, 2, 6, 7);
-  gtk_widget_show(combo_scaler_mode);
- 
-  label1 = gtk_label_new("  Output window: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 7, 8);
-  gtk_widget_show (label1);
-
-  combo_scaler_output = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_scaler_output),
-    output_window);
-  combo_entry_scaleroutput = GTK_COMBO (combo_scaler_output)->entry;
-  gtk_signal_connect(GTK_OBJECT(combo_entry_scaleroutput), "changed",  
-    GTK_SIGNAL_FUNC (set_scalerstrings), "SCALEROUTPUT");
-  gtk_widget_set_usize (combo_scaler_output, 80, -2 );
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_scaler_output, 1, 2, 7, 8);
-  gtk_widget_show (combo_scaler_output);
-}
-
-/* create the lav2yuv encoding options */
-void create_video_options_layout (GtkWidget *table)
-{
-GtkWidget *label1, *combo_active;
-GList *noisefilter = NULL;
-GList *droplsb = NULL;
-GList *input_active_size = NULL;
-
-   noisefilter = g_list_append (noisefilter, "0");
-   noisefilter = g_list_append (noisefilter, "1");
-   noisefilter = g_list_append (noisefilter, "2");
-
-   droplsb = g_list_append (droplsb, "0");
-   droplsb = g_list_append (droplsb, "1");
-   droplsb = g_list_append (droplsb, "2");
-   droplsb = g_list_append (droplsb, "3");
-
-   outputformat = g_list_append (outputformat, "as is");
-   outputformat = g_list_append (outputformat, "half height/width from input");
-   outputformat = g_list_append (outputformat, "wide of 720 to 480 for SVCD");
-   outputformat = g_list_append (outputformat, "wide of 720 to 352 for VCD");
-   outputformat = g_list_append (outputformat, "720x240 to 480x480 for SVCD");
-
-   input_active_size = g_list_append (input_active_size, "as is");
-   input_active_size = g_list_append (input_active_size, "348x278+2+2");
-   input_active_size = g_list_append (input_active_size, "352x210+0+39");
-   input_active_size = g_list_append (input_active_size, "352x168+0+60");
-
-  label1 = gtk_label_new ("  Noise filter: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 1, 2);
-  gtk_widget_show (label1);
-
-  combo_noisefilter = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_noisefilter), noisefilter);
-  combo_entry_noisefilter = GTK_COMBO (combo_noisefilter)->entry;
-  gtk_widget_set_usize (combo_noisefilter, 35, -2 );
-  gtk_signal_connect(GTK_OBJECT(combo_entry_noisefilter), "changed",
-                      GTK_SIGNAL_FUNC (set_noisefilter), NULL);
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_noisefilter, 1, 2, 1, 2);
-  gtk_widget_show (combo_noisefilter);
-
-  label1 = gtk_label_new ("  Drop LSB of samples: "); 
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 2, 3);
-  gtk_widget_show (label1);
-  
-  combo_samples = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_samples), droplsb);
-  combo_entry_samples = GTK_COMBO (combo_samples)->entry;
-  gtk_widget_set_usize (combo_samples, 35, -2 );
-  gtk_signal_connect(GTK_OBJECT(combo_entry_samples), "changed",
-                      GTK_SIGNAL_FUNC (set_drop_samples), NULL);
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_samples, 1, 2, 2, 3);
-  gtk_widget_show (combo_samples);
-
-  label1 = gtk_label_new ("  Set active window: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 3, 4);
-  gtk_widget_show (label1);
-
-  combo_active = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_active), input_active_size);
-  combo_entry_active = GTK_COMBO (combo_active)->entry;
-  gtk_widget_set_usize (combo_active, 200, -2 );
-  gtk_signal_connect(GTK_OBJECT(combo_entry_active), "changed",
-    GTK_SIGNAL_FUNC (set_activewindow), NULL);
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_active, 1, 2, 3, 4);
-  gtk_widget_show (combo_active);
-
-  label1 = gtk_label_new ("  Lav2yuv output format: "); 
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 4, 5);
-  gtk_widget_show (label1);
-  
-  combo_outputformat = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_outputformat), outputformat);
-  combo_entry_outputformat = GTK_COMBO (combo_outputformat)->entry;
-  gtk_widget_set_usize (combo_outputformat, 200, -2 );
-  gtk_signal_connect(GTK_OBJECT(combo_entry_outputformat), "changed",
-                      GTK_SIGNAL_FUNC (set_outputformat), NULL);
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_outputformat, 1, 2, 4, 5);
-  gtk_widget_show (combo_outputformat);
-} 
-
-/* */
+/* Ups, no comment, how could this happen, change me */
 void video_callback ( GtkWidget *widget, GtkWidget *video_entry )
 {
  gchar *file;
@@ -1555,76 +949,31 @@ GtkWidget *filew;
 /* Create Layout for the video conversation */
 void create_video (GtkWidget *table)
 {
-  create_video_options_layout(table);
-  create_yuvscaler_layout(table);
+  //create_video_options_layout(table);
+  //create_yuvscaler_layout(table);
   create_video_layout(table);
 }
 
-/* set the mplex format */
-void set_mplex_muxfmt (GtkWidget *widget, gpointer data)
+/* creating the layout for temp files */
+void create_temp_files (GtkWidget *hbox1, GtkWidget *vbox)
 {
-  gchar *test;
-  int i;
+GtkWidget *label1, *video_select, *sound_select;
 
-  i = 0;
-  test = gtk_entry_get_text(GTK_ENTRY(combo_entry_muxfmt));
-  muxformat = g_list_last (muxformat);
-
-  for (i = (g_list_length (g_list_first(muxformat))-1) ; i > 0 ; i--)
-    {
-      if (strcmp (test,muxformat->data) == 0)
-                break;
-
-      muxformat = g_list_previous (muxformat);
-    }
-
-  encoding.muxformat = i; 
-
-  if (verbose)
-    printf("\n selected multiplexing format: %i \n", encoding.muxformat);
-}
-
-/* creating the options for mplex */
-void create_mplex_options (GtkWidget *table)
-{
-GtkWidget *label1, *hbox1;
-GtkWidget *video_select;
-GtkWidget *sound_select;
-
-   muxformat = g_list_append (muxformat, "Auto MPEG 1");
-   muxformat = g_list_append (muxformat, "standard VCD");
-   muxformat = g_list_append (muxformat, "user-rate VCD");
-   muxformat = g_list_append (muxformat, "Auto MPEG 2");
-   muxformat = g_list_append (muxformat, "standard SVCD");
-   muxformat = g_list_append (muxformat, "user-rate SVCD");
-   muxformat = g_list_append (muxformat, "DVD");
-
-  label1 = gtk_label_new ("  Multiplex format: ");
-  gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 1, 2);
-  gtk_widget_show (label1);
-
-  combo_muxfmt = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_muxfmt), muxformat);
-  combo_entry_muxfmt = GTK_COMBO (combo_muxfmt)->entry;
-  gtk_widget_set_usize (combo_muxfmt, 120, -2 );
-  gtk_signal_connect(GTK_OBJECT(combo_entry_muxfmt), "changed",
-                      GTK_SIGNAL_FUNC (set_mplex_muxfmt), NULL);
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_muxfmt, 1, 2, 1, 2);
-  gtk_widget_show (combo_muxfmt);
+  hbox1 = gtk_hbox_new (FALSE, 0);
 
   /* sound temp file */
   label1 = gtk_label_new ("  Audio file: ");
   gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 2, 3);
+  gtk_widget_set_usize (label1, 70, -2);
+  gtk_box_pack_start (GTK_BOX (hbox1), label1, FALSE, FALSE, 0); 
   gtk_widget_show (label1);
-
-  hbox1 = gtk_hbox_new (FALSE, FALSE);
 
   sound_entry = gtk_entry_new ();
   gtk_entry_set_text(GTK_ENTRY(sound_entry), enc_audiofile);
   gtk_signal_connect(GTK_OBJECT(sound_entry), "changed",
                      GTK_SIGNAL_FUNC(sound_callback), sound_entry);
-  gtk_box_pack_start (GTK_BOX (hbox1), sound_entry, TRUE, TRUE, 0);
+  gtk_widget_set_usize (sound_entry, 200, -2);
+  gtk_box_pack_start (GTK_BOX (hbox1), sound_entry, FALSE, FALSE, 0);
   gtk_widget_show (sound_entry);
 
   sound_select = gtk_button_new_with_label ("Select");
@@ -1632,21 +981,19 @@ GtkWidget *sound_select;
   gtk_signal_connect(GTK_OBJECT(sound_select), "clicked",
                      GTK_SIGNAL_FUNC(create_file_sound), NULL);
   gtk_box_pack_start (GTK_BOX (hbox1), sound_select, FALSE, FALSE, 0);
-
-  gtk_table_attach_defaults (GTK_TABLE (table), hbox1, 1, 2, 2, 3);
-  gtk_widget_show (hbox1);
+  gtk_widget_show (sound_select);
 
   label1 = gtk_label_new ("  Video file : ");
   gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 3, 4);
+  gtk_widget_set_usize (label1, 75, -2);
+  gtk_box_pack_start (GTK_BOX (hbox1), label1, FALSE, FALSE, 0); 
   gtk_widget_show (label1);
-
-  hbox1 = gtk_hbox_new (FALSE, FALSE);
 
   video_entry = gtk_entry_new ();
   gtk_entry_set_text(GTK_ENTRY(video_entry), enc_videofile);
   gtk_signal_connect(GTK_OBJECT(video_entry), "changed",
                      GTK_SIGNAL_FUNC(video_callback), video_entry);
+  gtk_widget_set_usize (video_entry, 200, -2);
   gtk_box_pack_start (GTK_BOX (hbox1), video_entry, FALSE, FALSE, 0);
   gtk_widget_show (video_entry);
 
@@ -1655,14 +1002,21 @@ GtkWidget *sound_select;
   gtk_signal_connect(GTK_OBJECT(video_select), "clicked",
                      GTK_SIGNAL_FUNC(create_file_video), NULL);
   gtk_box_pack_start (GTK_BOX (hbox1), video_select, FALSE, FALSE, 0);
-
-  gtk_table_attach_defaults (GTK_TABLE (table), hbox1, 1, 2, 3, 4);
   gtk_widget_show (hbox1);
 
-  remove_files_after_completion = gtk_check_button_new_with_label("Delete temp files after encoding");
+  gtk_box_pack_start (GTK_BOX (vbox), hbox1, FALSE, FALSE, 0);
+  gtk_widget_show (hbox1);
+
+  hbox1 = gtk_hbox_new (FALSE, 0);
+
+  remove_files_after_completion = gtk_check_button_new_with_label
+                                  ("Delete temp files after encoding");
   gtk_widget_ref (remove_files_after_completion);
-  gtk_table_attach_defaults (GTK_TABLE (table), remove_files_after_completion, 0, 2, 4, 5);
+  gtk_box_pack_start(GTK_BOX(hbox1), remove_files_after_completion, FALSE, FALSE,0);
   gtk_widget_show (remove_files_after_completion);
+
+  gtk_box_pack_start (GTK_BOX (vbox), hbox1, FALSE, FALSE, 0);
+  gtk_widget_show (hbox1);
 }
 
 /* here all steps of the convert are started */
@@ -1739,12 +1093,6 @@ void create_buttons2 (GtkWidget *hbox1)
   gtk_widget_show(set_defaults);
 }
 
-/* Here the mplex layout ist created */
-void create_mplex (GtkWidget *table)
-{
-  create_mplex_options (table);
-}
-
 /* Here some parts of status layout are done */
 void create_status (GtkWidget *hbox1, GtkWidget *vbox)
 {
@@ -1766,21 +1114,90 @@ GtkWidget *label1;
   gtk_widget_show(vbox);
   hbox1 = gtk_hbox_new (FALSE, FALSE);
 
-/*  label1 = gtk_label_new (" Progress  : ");
-  gtk_box_pack_start (GTK_BOX (hbox1), label1, FALSE, FALSE, 5);
-  gtk_widget_show (label1);
-
-*/
   gtk_box_pack_start (GTK_BOX (vbox), hbox1, FALSE, FALSE, 0);
   gtk_widget_show (hbox1);
 }
 
-/* Here all the work is disrtibuted, and some basic parts of the layout done */
+/* Create the Option Button with work distribution*/
+void create_option_button(GSList *task_group, GtkWidget *table, 
+       char task[LONGOPT], int encx, int ency)
+{
+GtkWidget *button_option;
+
+  button_option = gtk_button_new_with_label (" Option ");
+  gtk_signal_connect (GTK_OBJECT (button_option), "clicked",
+                      GTK_SIGNAL_FUNC (open_mpeg_window), task);
+  gtk_table_attach_defaults (GTK_TABLE (table), button_option, 
+                                    encx, encx+1, ency, ency+1);
+  gtk_widget_show(button_option);
+
+}
+
+/* Create the task layout, and the Option buttons */
+/* Also Work distribution */
+void create_task_layout(GtkWidget *table)
+{
+int encx, ency;
+GtkWidget *button_mpeg1, *button_mpeg2, *button_vcd, *button_svcd;
+GSList *task_group;
+
+encx=0;
+ency=2;
+
+
+  button_mpeg1 = gtk_radio_button_new_with_label (NULL, "MPEG - 1");
+/* what I set here hast to bue used by the options screen to set the correct
+ * struct. I will also need it for the encoding process.change:force_options*/
+//  gtk_signal_connect (GTK_OBJECT (button_mpeg1), "toggled",
+//                      GTK_SIGNAL_FUNC (force_options), (gpointer) "mpeg1");
+  gtk_table_attach_defaults (GTK_TABLE (table), button_mpeg1, 
+                                    encx, encx+1, ency, ency+1);
+  task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_mpeg1));
+  gtk_widget_show (button_mpeg1);
+  create_option_button(task_group, table, "mpeg1", encx+1, ency);
+  ency++;
+
+  button_mpeg2 = gtk_radio_button_new_with_label(task_group, "MPEG - 2");
+//  gtk_signal_connect (GTK_OBJECT (button_mpeg2), "toggled",
+//                      GTK_SIGNAL_FUNC (force_options), (gpointer) "mpeg2");
+  gtk_table_attach_defaults (GTK_TABLE (table), button_mpeg2, 
+                                    encx, encx+1, ency, ency+1);
+  task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_mpeg2));
+  gtk_widget_show (button_mpeg2);
+  create_option_button(task_group, table, "mpeg2", encx+1, ency);
+  ency++;
+
+  button_vcd = gtk_radio_button_new_with_label(task_group, " VCD (MPEG-1) ");
+//  gtk_signal_connect (GTK_OBJECT (button_vcd), "toggled",
+//                      GTK_SIGNAL_FUNC (force_options), (gpointer) "vcd");
+  gtk_table_attach_defaults (GTK_TABLE (table), button_vcd, 
+                                    encx, encx+1, ency, ency+1);
+  task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_vcd));
+  gtk_widget_show (button_vcd);
+  create_option_button(task_group, table, "vcd", encx+1, ency);
+  ency++;
+ 
+  button_svcd = gtk_radio_button_new_with_label(task_group, "SVCD (MPEG-2) ");
+//  gtk_signal_connect (GTK_OBJECT (button_svcd), "toggled",
+//                      GTK_SIGNAL_FUNC (force_options), (gpointer) "svcd");
+  gtk_table_attach_defaults (GTK_TABLE (table), button_svcd, 
+                                    encx, encx+1, ency, ency+1);
+  task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_svcd));
+  gtk_widget_show (button_svcd);
+  create_option_button(task_group, table, "svcd", encx+1, ency);
+  ency++;
+
+}
+
+/* Here all the work is distributed, and some basic parts of the layout done */
 GtkWidget *create_lavencode_layout()
 {
-  GtkWidget *vbox, *hbox1, *hbox, *vbox_main, *vbox1;
-  GtkWidget *separator, *label, *table; 
- 
+GtkWidget *vbox, *hbox1, *hbox, *vbox_main, *vbox1;
+GtkWidget *separator, *label, *table; 
+int enc_x,enc_y; 
+
+  enc_x=0;
+  enc_y=0; 
   /* main box (with borders) */
   hbox = gtk_hbox_new(FALSE,0);
   vbox_main = gtk_vbox_new(FALSE,0);
@@ -1815,54 +1232,25 @@ GtkWidget *create_lavencode_layout()
   separator = gtk_hseparator_new ();
   gtk_box_pack_start (GTK_BOX (vbox), separator, FALSE, TRUE, 5);
   gtk_widget_show (separator);
+/* Till here most of the things could be reused */
 
   /* the table containing sound/mplex layout */
   hbox1 = gtk_hbox_new (FALSE, 0);
   vbox1 = gtk_vbox_new (FALSE, 0);
 
-  /* sound layout */
-  table = gtk_table_new (2, 7, FALSE);
-  label = gtk_label_new ("Manual Mode Sound encoding:");
-  gtk_misc_set_alignment (GTK_MISC (label), 0, 0);
-  gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 2, 0, 1);
-  gtk_widget_show (label);
-  create_sound_encoding (table);
-  gtk_box_pack_start (GTK_BOX (vbox1), table, FALSE, TRUE, 5);
-  gtk_widget_show(table);
-
-  separator = gtk_hseparator_new ();
-  gtk_box_pack_start (GTK_BOX (vbox1), separator, FALSE, TRUE, 5);
-  gtk_widget_show (separator);
-
-  /* mplex layout */
-  table = gtk_table_new (2, 5, FALSE);
-  label = gtk_label_new ("Manual Mplex:");
-  gtk_misc_set_alignment (GTK_MISC (label), 0, 0);
-  gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 2, 0, 1);
-  gtk_widget_show (label);
-
-  create_mplex (table);
-  gtk_box_pack_start (GTK_BOX (vbox1), table, FALSE, TRUE, 5);
-  gtk_widget_show(table);
-
-  gtk_box_pack_start (GTK_BOX (hbox1), vbox1, FALSE, FALSE, 0);
-  gtk_widget_show(vbox1);
-
-  /* separator */
-  separator = gtk_vseparator_new ();
-  gtk_box_pack_start (GTK_BOX (hbox1), separator, FALSE, TRUE, 5);
-  gtk_widget_show (separator);
-
   /* the table containing the video layout */
-  table = gtk_table_new (2, 13, FALSE);
+  table = gtk_table_new (Encselect_x, Encselect_y, FALSE);
 
   /* video layout */
-  label = gtk_label_new ("Manual Mode Video encoding:");
+  label = gtk_label_new ("Select the task:");
   gtk_misc_set_alignment (GTK_MISC (label), 0, 0);
-  gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 2, 0, 1);
+  gtk_table_attach_defaults (GTK_TABLE (table), 
+                              label, enc_x, enc_x+2, enc_y, enc_y+2);
   gtk_widget_show (label);
-  
-  create_video (table);
+ 
+/* Old remove when the other version works  
+ * create_video (table);                   */
+  create_task_layout(table);
   gtk_box_pack_start (GTK_BOX (hbox1), table, FALSE, FALSE, 0);
   gtk_widget_show(table);
 
@@ -1874,6 +1262,7 @@ GtkWidget *create_lavencode_layout()
   gtk_box_pack_start (GTK_BOX (vbox), separator, FALSE, TRUE, 5);
   gtk_widget_show (separator);
 
+/* We can also use the status window */
   /* the status */
   hbox1 = gtk_hbox_new (FALSE, TRUE);
   create_status (hbox1,vbox);
