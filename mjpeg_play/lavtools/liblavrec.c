@@ -1569,6 +1569,9 @@ static int lavrec_queue_buffer(lavrec_t *info, unsigned long *num)
    if (info->software_encoding)
    {
       settings->mm.frame = *num;
+      if (settings->is_queued[*num] < 0)
+        return 1;
+
       if (ioctl(settings->video_fd, VIDIOCMCAPTURE, &(settings->mm)) < 0)
          return 0;
 
@@ -1608,14 +1611,14 @@ static void *lavrec_software_sync_thread(void* arg)
       pthread_mutex_lock(&(settings->queue_mutex));
       while (settings->queue_left < MIN_QUEUES_NEEDED)
       {
-         if (settings->is_queued[frame] <= 0) break; /* sync on all remaining frames */
+         if (settings->is_queued[frame] < 0) break; /* sync on all remaining frames */
          lavrec_msg(LAVREC_MSG_DEBUG, info,
             "Software sync thread: sleeping for new queues");
          pthread_cond_wait(&(settings->queue_wait),
             &(settings->queue_mutex));
       }
       pthread_mutex_unlock(&(settings->queue_mutex));
-      if (settings->state != LAVREC_STATE_RECORDING && !settings->is_queued[frame])
+      if (!settings->queue_left)
          break;
 retry:
       if (ioctl(settings->video_fd, VIDIOCSYNC, &frame) < 0)
@@ -1971,8 +1974,7 @@ static void lavrec_record(lavrec_t *info)
    {
       /* mark us as "ready" */
       for (x=0;x<settings->softreq.frames;x++)
-         if (settings->is_queued[x] == 1)
-            settings->is_queued[x] = -1;
+         settings->is_queued[x] = -1;
       pthread_join(settings->software_sync_thread, NULL);
    }
    else
