@@ -47,12 +47,13 @@
 
 
 #include "config.h"
-#include "fastintfns.h"
 #include "encoderparams.hh"
 #include "mpeg2syntaxcodes.h"
 #include "picture.hh"
 #include "macroblock.hh"
 #include "quantize.hh"
+
+#include <stdlib.h>
 
 /********************
  * 
@@ -102,7 +103,7 @@ static int unit_coeff_elimination(DCTblock &block,
 	{
 	    
         const int j = scan_pattern[i];
-        const int level = intabs(block[j]);
+        const int level = abs(block[j]);
         if(level==1)
 		{
             score += run_shortness_weight[run];

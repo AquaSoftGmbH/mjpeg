@@ -54,7 +54,6 @@
 #include <mpeg2syntaxcodes.h>
 #include "cpu_accel.h"
 #include "simd.h"
-#include "fastintfns.h"
 #include "motionsearch.h"
 #include "mjpeg_logging.h"
 #include "encoderparams.hh"
@@ -102,19 +101,17 @@ typedef struct subsampled_mb subsampled_mb_s;
   Main field and frame based motion estimation entry points.
 */
 
-
-
 static void field_estimate (const Picture &picture,
-							uint8_t *toporg,
-							uint8_t *topref, 
-							uint8_t *botorg, 
-							uint8_t *botref,
-							subsampled_mb_s *ssmb,
-							int i, int j, int sx, int sy,
-							mb_motion_s *bestfr,
-							mb_motion_s *best8u,
-							mb_motion_s *best8l,
-							mb_motion_s *bestsp);
+					uint8_t *toporg,
+					uint8_t *topref, 
+					uint8_t *botorg, 
+					uint8_t *botref,
+					subsampled_mb_s *ssmb,
+					int i, int j, int sx, int sy,
+					mb_motion_s *bestfr,
+					mb_motion_s *best8u,
+					mb_motion_s *best8l,
+					mb_motion_s *bestsp);
 
 static void mb_me_search (
     const EncoderParams &eparams,
@@ -127,9 +124,9 @@ static void mb_me_search (
 	mb_motion_s *motion );
 
 
-inline int mv_coding_penalty( int mv_x, int mv_y )
+static __inline__ int mv_coding_penalty( int mv_x, int mv_y )
 {
-    return (intabs(mv_x) + intabs(mv_y))<<3;
+    return (abs(mv_x) + abs(mv_y))<<3;
 }
 
 
@@ -138,8 +135,6 @@ inline int mv_coding_penalty( int mv_x, int mv_y )
  *  N.b. Sub-sampling works correctly if we treat interlaced images
  *  as two half-height images side-by-side.
  */
-
-
 
 /*
  * Compute the variance of the residual of uni-directionally motion
@@ -272,15 +267,14 @@ static __inline__ int chrom_var_sum( subsampled_mb_s *ssblk, int h, int lx )
 }
 
 
-
 /*
  * Compute SAD for bi-directionally motion compensated blocks...
  */
 
 static __inline__ int bidir_pred_sad( const mb_motion_s *motion_f, 
-									  const mb_motion_s *motion_b,
-									  uint8_t *mb,  
-									  int lx, int h)
+					const mb_motion_s *motion_b,
+					uint8_t *mb,  
+					int lx, int h)
 {
 	return pbsad(motion_f->blk, motion_b->blk, 
 					 mb, lx, 
@@ -990,9 +984,7 @@ void MacroBlock::FrameMEs()
             
 		}
 	}
-
 }
-
 
 
 /*
@@ -1529,10 +1521,6 @@ static void field_estimate (
 }
 
 
-
-
-
- 
 /* Hierarchical block matching motion estimation search
  *
  * A.Stevens 2000: This is now a big misnomer.  The search is now a
@@ -1791,8 +1779,6 @@ static void mb_me_search(
 	res->var = psumsq(res->blk, ssblk->mb, lx, res->hx, res->hy, h);
 
 }
-
-
 
 
 /* 
