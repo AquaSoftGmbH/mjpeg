@@ -138,7 +138,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/time.h>
-//#include <sys/resource.h>
+#include <sys/resource.h>
 #include <sys/vfs.h>
 
 #include <signal.h>
@@ -1450,6 +1450,12 @@ int main(int argc, char ** argv)
       res = fcntl(0,F_SETFL,O_NONBLOCK);
       if (res<0) system_error("making stdin nonblocking","fcntl F_SETFL");
    }
+
+   /* If we can increase process priority ... no need for R/T though... */
+   /* This is mainly useful for running using "at" which otherwise drops the
+	  priority which causes sporadic audio buffer over-runs */
+   if( getpriority(PRIO_PROCESS, 0) > -5 )
+	   setpriority(PRIO_PROCESS, 0, -5 );
 
    /* We are set up now - wait for user confirmation if wanted */
 

@@ -1564,7 +1564,7 @@ static void dpfield_estimate(
  *   Vectors of motion compensations 
  */
 
-#define MAX_44_MATCHES (127*127/(4*4))
+#define MAX_44_MATCHES (256*256/(4*4))
 
 static int sub22_num_mcomps;
 static int sub44_num_mcomps;

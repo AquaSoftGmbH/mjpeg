@@ -126,7 +126,7 @@
 
 char *audio_strerror();
 
-int  verbose = 2;
+int  verbose = 6;
 
 static EditList el;
 
@@ -424,626 +424,626 @@ void x_shutdown(int a)
 
 int main(int argc, char ** argv)
 {
-   int res, frame, hn;
-   long nqueue, nsync, first_free;
-   struct timeval audio_tmstmp;
-   struct timeval time_now;
-   long nb_out, nb_err;
-   long audio_buffer_size;
-   unsigned char * buff;
-   int nerr, n, i, k, skipv, skipa, skipi, nskip;
-   double tdiff, tdiff1, tdiff2;
-   char input_buffer[256];
-   long frame_number[256]; /* Must be at least as big as the number of buffers used */
+	int res, frame, hn;
+	long nqueue, nsync, first_free;
+	struct timeval audio_tmstmp;
+	struct timeval time_now;
+	long nb_out, nb_err;
+	long audio_buffer_size;
+	unsigned char * buff;
+	int nerr, n, i, k, skipv, skipa, skipi, nskip;
+	double tdiff, tdiff1, tdiff2;
+	char input_buffer[256];
+	long frame_number[256]; /* Must be at least as big as the number of buffers used */
 
-   char *sbuffer;
-   struct mjpeg_params bp;
-   struct mjpeg_sync bs;
-   struct sigaction action, old_action;
+	char *sbuffer;
+	struct mjpeg_params bp;
+	struct mjpeg_sync bs;
+	struct sigaction action, old_action;
    
    /* Output Version information - Used by xlav to check for
 	consistency. 
    */
 
-   printf( LAVPLAY_VSTR "\n" );
-   fflush(stdout);
-   printf( "lavtools version " VERSION "\n" );
+	printf( LAVPLAY_VSTR "\n" );
+	fflush(stdout);
+	printf( "lavtools version " VERSION "\n" );
 
 
-   if(argc < 2) Usage(argv[0]);
+	if(argc < 2) Usage(argv[0]);
 
-   nerr = 0;
-   while( (n=getopt(argc,argv,"a:h:v:s:c:n:t:qSZHxzg")) != EOF)
-   {
-      switch(n) {
-	 case 'a':
-	    audio_enable = atoi(optarg);
-	    break;
+	nerr = 0;
+	while( (n=getopt(argc,argv,"a:h:v:s:c:n:t:qSZHxzg")) != EOF)
+	{
+		switch(n) {
+		case 'a':
+			audio_enable = atoi(optarg);
+			break;
 
-         case 'h':
+		case 'h':
             h_offset = atoi(optarg);
             break;
 
-         case 'v':
+		case 'v':
             v_offset = atoi(optarg);
             break;
 
-         case 's':
+		case 's':
             skip_seconds = atoi(optarg);
             if(skip_seconds<0) skip_seconds = 0;
             break;
 
-         case 'c':
+		case 'c':
             sync_corr = atoi(optarg);
             break;
 
-         case 'n':
+		case 'n':
             MJPG_nbufs = atoi(optarg);
             if(MJPG_nbufs<4) MJPG_nbufs = 4;
             if(MJPG_nbufs>256) MJPG_nbufs = 256;
             break;
 
-         case 't':
+		case 't':
             test_factor = atof(optarg);
             if(test_factor<=0) test_factor = 1.0;
             break;
 
-         case 'q':
+		case 'q':
             quit_at_end = 0;
             break;
 
-         case 'x':
+		case 'x':
             exchange_fields = 1;
             break;
 
-         case 'z':
+		case 'z':
             zoom_to_fit = 1;
             break;
 
-         case 'g':
+		case 'g':
             gui_mode = 1;
             break;
 
-         case '?':
+		case '?':
             nerr++;
             break;
 
-         case 'S':
-	    printf("Choosing software MJPEG playback\n");
+		case 'S':
+			printf("Choosing software MJPEG playback\n");
             soft_play = 1;
-	    screen_output = 0;
+			screen_output = 0;
             break;
 
-         case 'Z':
+		case 'Z':
             soft_fullscreen = 1;
             break;
 
-         case 'H':
-	    printf("Choosing hardware MJPEG playback (on-screen)\n");
+		case 'H':
+			printf("Choosing hardware MJPEG playback (on-screen)\n");
             screen_output = 1;
-	    soft_play = 0;
+			soft_play = 0;
             break;
-      }
-   }
+		}
+	}
 
-   if(optind>=argc) nerr++;
+	if(optind>=argc) nerr++;
 
-   if(nerr) Usage(argv[0]);
+	if(nerr) Usage(argv[0]);
 
-   /* Get and open input files */
+	/* Get and open input files */
 
-   read_video_files(argv + optind, argc - optind, &el);
+	read_video_files(argv + optind, argc - optind, &el);
 
-   /* Seconds per video frame: */
+	/* Seconds per video frame: */
 
-   spvf = (el.video_norm == 'n') ? 1001./30000. : 0.040;
+	spvf = (el.video_norm == 'n') ? 1001./30000. : 0.040;
 
-   /* Seconds per audio sample: */
+	/* Seconds per audio sample: */
 
-   if(el.has_audio && audio_enable)
-      spas = 1.0/el.audio_rate;
-   else
-      spas = 0.;
+	if(el.has_audio && audio_enable)
+		spas = 1.0/el.audio_rate;
+	else
+		spas = 0.;
 
    /* Seek starting position */
 
-   nframe = 0;
-   n = skip_seconds/spvf;
-   res = inc_frames(n);
-   if(res)
-   {
-      lavplay_msg(LAVPLAY_ERROR,"Start position is behind all files","");
-      exit(1);
-   }
+	nframe = 0;
+	n = skip_seconds/spvf;
+	res = inc_frames(n);
+	if(res)
+	{
+		lavplay_msg(LAVPLAY_ERROR,"Start position is behind all files","");
+		exit(1);
+	}
 
-   /* allocate auxiliary video buffer for flicker reduction */
+	/* allocate auxiliary video buffer for flicker reduction */
 
-   tmpbuff[0] = (char*) malloc(el.max_frame_size);
-   tmpbuff[1] = (char*) malloc(el.max_frame_size);
-   if(tmpbuff[0]==0 || tmpbuff[1]==0) malloc_error();
+	tmpbuff[0] = (char*) malloc(el.max_frame_size);
+	tmpbuff[1] = (char*) malloc(el.max_frame_size);
+	if(tmpbuff[0]==0 || tmpbuff[1]==0) malloc_error();
 
-   if (soft_play)
-     mjpeg = mjpeg_open(MJPEG_OUTPUT_SOFTWARE, MJPG_nbufs, el.max_frame_size);
-   else 
-     if (screen_output)
-       mjpeg = mjpeg_open(MJPEG_OUTPUT_HARDWARE_SCREEN, MJPG_nbufs, el.max_frame_size);
-     else
-       mjpeg = mjpeg_open(MJPEG_OUTPUT_HARDWARE_VIDEO, MJPG_nbufs, el.max_frame_size);
+	if (soft_play)
+		mjpeg = mjpeg_open(MJPEG_OUTPUT_SOFTWARE, MJPG_nbufs, el.max_frame_size);
+	else 
+		if (screen_output)
+			mjpeg = mjpeg_open(MJPEG_OUTPUT_HARDWARE_SCREEN, MJPG_nbufs, el.max_frame_size);
+		else
+			mjpeg = mjpeg_open(MJPEG_OUTPUT_HARDWARE_VIDEO, MJPG_nbufs, el.max_frame_size);
 
-   buff = mjpeg_get_io_buffer(mjpeg);
+	buff = mjpeg_get_io_buffer(mjpeg);
 
-   if (soft_play)
-     {
-       char wintitle[255];
-	   printf( "Initialising SDL\n" );
-	   if (SDL_Init (SDL_INIT_VIDEO) < 0)
-		 {
-		   fprintf( stderr, "SDL Failed to initialise...\n" );
-		   exit(1);
-		 }
+	if (soft_play)
+	{
+		char wintitle[255];
+		printf( "Initialising SDL\n" );
+		if (SDL_Init (SDL_INIT_VIDEO) < 0)
+		{
+			fprintf( stderr, "SDL Failed to initialise...\n" );
+			exit(1);
+		}
 #ifdef ODFOFOFFO
-	   int video_flags;
+		int video_flags;
 
-	   video_flags = SDL_SWSURFACE;
-	   printf( "SETTING SDL VIDEO MODE %d %d %d\n", el.video_width, el.video_height, soft_fullscreen);
+		video_flags = SDL_SWSURFACE;
+		printf( "SETTING SDL VIDEO MODE %d %d %d\n", el.video_width, el.video_height, soft_fullscreen);
 
 		screen = SDL_SetVideoMode( 640, 480, 0, video_flags);
-	   printf( "GOT PAST SDL VIDEO MODE SET\n");
-	   exit(0);
+		printf( "GOT PAST SDL VIDEO MODE SET\n");
+		exit(0);
 #endif
-       /* Now initialize SDL */
-       /* Set the video mode, and rely on SDL to find a nice mode */
-       if (soft_fullscreen)
-		 screen = SDL_SetVideoMode(el.video_width, 
-				   el.video_height, 0, SDL_HWSURFACE | SDL_FULLSCREEN);
-       else
-		 screen = SDL_SetVideoMode(el.video_width, 
-								   el.video_height, 0, SDL_SWSURFACE);
+		/* Now initialize SDL */
+		/* Set the video mode, and rely on SDL to find a nice mode */
+		if (soft_fullscreen)
+			screen = SDL_SetVideoMode(el.video_width, 
+									  el.video_height, 0, SDL_HWSURFACE | SDL_FULLSCREEN);
+		else
+			screen = SDL_SetVideoMode(el.video_width, 
+									  el.video_height, 0, SDL_SWSURFACE);
 
-       SDL_EventState(SDL_KEYDOWN, SDL_ENABLE);
-       SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
+		SDL_EventState(SDL_KEYDOWN, SDL_ENABLE);
+		SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
        
-       if (screen->format->BytesPerPixel == 2)
-	 mjpeg_calc_rgb16_params(screen->format->Rloss, screen->format->Gloss, screen->format->Bloss,
-			   screen->format->Rshift, screen->format->Gshift, screen->format->Bshift);
+		if (screen->format->BytesPerPixel == 2)
+			mjpeg_calc_rgb16_params(screen->format->Rloss, screen->format->Gloss, screen->format->Bloss,
+									screen->format->Rshift, screen->format->Gshift, screen->format->Bshift);
        
-       if ( screen == NULL )  
-	 {
-	   lavplay_msg(LAVPLAY_ERROR,"SDL: Output screen error", SDL_GetError());
-	   exit(1);
-	 }
+		if ( screen == NULL )  
+		{
+			lavplay_msg(LAVPLAY_ERROR,"SDL: Output screen error", SDL_GetError());
+			exit(1);
+		}
 
-       jpegdims.x = 0; // This is not going to work with interlaced pics !!
-       jpegdims.y = 0;
-       jpegdims.w = el.video_width;
-       jpegdims.h = el.video_height;
+		jpegdims.x = 0; // This is not going to work with interlaced pics !!
+		jpegdims.y = 0;
+		jpegdims.w = el.video_width;
+		jpegdims.h = el.video_height;
        
-       /* Lock the screen to test, and to be able to access screen->pixels */
-       lock_screen();
+		/* Lock the screen to test, and to be able to access screen->pixels */
+		lock_screen();
        
-       /* Draw bands of color on the raw surface, as run indicator for debugging */
-       sbuffer = (char *)screen->pixels;
-       for ( i=0; i < screen->h; ++i ) 
-	 {
-	   memset(sbuffer,(i*255)/screen->h,
-		  screen->w * screen->format->BytesPerPixel);
-	   sbuffer += screen->pitch;
-	 }
+		/* Draw bands of color on the raw surface, as run indicator for debugging */
+		sbuffer = (char *)screen->pixels;
+		for ( i=0; i < screen->h; ++i ) 
+		{
+			memset(sbuffer,(i*255)/screen->h,
+				   screen->w * screen->format->BytesPerPixel);
+			sbuffer += screen->pitch;
+		}
 
-       /* Set up the necessary callbacks for the decompression process */
-       mjpeg->lock_screen_callback = lock_screen;
-       mjpeg->unlock_update_screen_callback = unlock_update_screen;
+		/* Set up the necessary callbacks for the decompression process */
+		mjpeg->lock_screen_callback = lock_screen;
+		mjpeg->unlock_update_screen_callback = unlock_update_screen;
 
-       /* The output framebuffer parameters (where the JPEG frames are rendered into) */
-       mjpeg_set_framebuf(mjpeg, screen->pixels, screen->w, screen->h, screen->format->BytesPerPixel); 
+		/* The output framebuffer parameters (where the JPEG frames are rendered into) */
+		mjpeg_set_framebuf(mjpeg, screen->pixels, screen->w, screen->h, screen->format->BytesPerPixel); 
 
-       /* Set the windows title (currently simply the first file name) */
-       sprintf(wintitle, "lavplay %s", el.video_file_list[0]);
-       SDL_WM_SetCaption(wintitle, "0000000");  
+		/* Set the windows title (currently simply the first file name) */
+		sprintf(wintitle, "lavplay %s", el.video_file_list[0]);
+		SDL_WM_SetCaption(wintitle, "0000000");  
 
-       unlock_update_screen();
-     }
-   if (el.has_audio && audio_enable)
-   {
-      res = audio_init(0,(el.audio_chans>1),el.audio_bits,
-                       (int)(el.audio_rate*test_factor));
-      if(res)
-      {
-         lavplay_msg(LAVPLAY_ERROR,"Error initializing Audio",audio_strerror());
-         exit(1);
-      }
+		unlock_update_screen();
+	}
+	if (el.has_audio && audio_enable)
+	{
+		res = audio_init(0,(el.audio_chans>1),el.audio_bits,
+						 (int)(el.audio_rate*test_factor));
+		if(res)
+		{
+			lavplay_msg(LAVPLAY_ERROR,"Error initializing Audio",audio_strerror());
+			exit(1);
+		}
 
-      audio_buffer_size = audio_get_buffer_size();
+		audio_buffer_size = audio_get_buffer_size();
 
-      /* Ensure proper exit processing for audio */
-      atexit(audio_shutdown);
-   }
+		/* Ensure proper exit processing for audio */
+		atexit(audio_shutdown);
+	}
 
-  signal(SIGINT, x_shutdown);
+	signal(SIGINT, x_shutdown);
 
    /* Fill all buffers first */
 
-   for(nqueue = 0; nqueue < mjpeg->br.count; nqueue++)
-   {
-      frame_number[nqueue] = nframe;
-      if(queue_next_frame(buff+nqueue* mjpeg->br.size,0,0,0)) break;
-   }
+	for(nqueue = 0; nqueue < mjpeg->br.count; nqueue++)
+	{
+		frame_number[nqueue] = nframe;
+		if(queue_next_frame(buff+nqueue* mjpeg->br.size,0,0,0)) break;
+	}
 
-   /* Choose the correct parameters for playback */
+	/* Choose the correct parameters for playback */
 
-   mjpeg_get_params(mjpeg, &bp);
+	mjpeg_get_params(mjpeg, &bp);
    
-   bp.input = 0;
+	bp.input = 0;
 
    /* Set norm */       
-   bp.norm = (el.video_norm == 'n') ? 1 : 0;
-   sprintf(infostring,"Output norm: %s",bp.norm?"NTSC":"PAL");
-   lavplay_msg(LAVPLAY_INFO,infostring,"");
+	bp.norm = (el.video_norm == 'n') ? 1 : 0;
+	sprintf(infostring,"Output norm: %s",bp.norm?"NTSC":"PAL");
+	lavplay_msg(LAVPLAY_INFO,infostring,"");
    
-   hn = bp.norm ? 480 : 576;  /* Height of norm */
+	hn = bp.norm ? 480 : 576;  /* Height of norm */
    
-   bp.decimation = 0; /* we will set proper params ourselves */
+	bp.decimation = 0; /* we will set proper params ourselves */
    
-   /* Check dimensions of video, select decimation factors */
-   if (!soft_play && !screen_output)
-     if( el.video_width > 720 || el.video_height > hn )
-       {
-	 /* This is definitely too large */
+	/* Check dimensions of video, select decimation factors */
+	if (!soft_play && !screen_output)
+		if( el.video_width > 720 || el.video_height > hn )
+		{
+			/* This is definitely too large */
 	 
-	 sprintf(infostring,"Video dimensions too large: %ld x %ld\n",
-		 el.video_width,el.video_height);
-	 lavplay_msg(LAVPLAY_ERROR,infostring,"");
-	 exit(1);
-       };
+			sprintf(infostring,"Video dimensions too large: %ld x %ld\n",
+					el.video_width,el.video_height);
+			lavplay_msg(LAVPLAY_ERROR,infostring,"");
+			exit(1);
+		};
        
-   /* if zoom_to_fit is set, HorDcm is independent of interlacing */
+	/* if zoom_to_fit is set, HorDcm is independent of interlacing */
        
-   if(zoom_to_fit)
-     {
-       if ( el.video_width < 180 )
-	 bp.HorDcm = 4;
-       else if ( el.video_width < 360 )
-	 bp.HorDcm = 2;
-       else
-	 bp.HorDcm = 1;
-     }
+	if(zoom_to_fit)
+	{
+		if ( el.video_width < 180 )
+			bp.HorDcm = 4;
+		else if ( el.video_width < 360 )
+			bp.HorDcm = 2;
+		else
+			bp.HorDcm = 1;
+	}
    
-   if(el.video_inter)
-     {
-       /* Interlaced video, 2 fields per buffer */
+	if(el.video_inter)
+	{
+		/* Interlaced video, 2 fields per buffer */
        
-       bp.field_per_buff = 2;
-       bp.TmpDcm = 1;
+		bp.field_per_buff = 2;
+		bp.TmpDcm = 1;
 	   
-       if(zoom_to_fit)
-	 {
-	   if( el.video_height <= hn/2 )
-	     bp.VerDcm = 2;
-	   else
-	     bp.VerDcm = 1;
-	 }
-       else
-	 {
-	   /* if zoom_to_fit is not set, we always use decimation 1 */
-	   bp.HorDcm = 1;
-	   bp.VerDcm = 1;
-	 }
-     }
-   else
-     {
-       /* Not interlaced, 1 field per buffer */
+		if(zoom_to_fit)
+		{
+			if( el.video_height <= hn/2 )
+				bp.VerDcm = 2;
+			else
+				bp.VerDcm = 1;
+		}
+		else
+		{
+			/* if zoom_to_fit is not set, we always use decimation 1 */
+			bp.HorDcm = 1;
+			bp.VerDcm = 1;
+		}
+	}
+	else
+	{
+		/* Not interlaced, 1 field per buffer */
        
-       bp.field_per_buff = 1;
-       bp.TmpDcm = 2;
+		bp.field_per_buff = 1;
+		bp.TmpDcm = 2;
        
-       if (!soft_play && !screen_output &&  
-	   ( el.video_height > hn/2 || (!zoom_to_fit && el.video_width>360) ))
-	 {
-	   sprintf(infostring,"Video dimensions (not interlaced) too large: %ld x %ld\n",
-		   el.video_width,el.video_height);
-	   lavplay_msg(LAVPLAY_ERROR,infostring,"");
-	   if(el.video_width>360) lavplay_msg(LAVPLAY_INFO,"Try -z option !!!!","");
-	   exit(1);
-	 }
+		if (!soft_play && !screen_output &&  
+			( el.video_height > hn/2 || (!zoom_to_fit && el.video_width>360) ))
+		{
+			sprintf(infostring,"Video dimensions (not interlaced) too large: %ld x %ld\n",
+					el.video_width,el.video_height);
+			lavplay_msg(LAVPLAY_ERROR,infostring,"");
+			if(el.video_width>360) lavplay_msg(LAVPLAY_INFO,"Try -z option !!!!","");
+			exit(1);
+		}
        
-       if(zoom_to_fit)
-	 {
-	   if( el.video_height <= hn/4 )
-		 bp.VerDcm = 2;
-	   else
-	     bp.VerDcm = 1;
-	 }
-       else
-	 {
-	   /* the following is equivalent to decimation 2 in lavrec: */
-	   bp.HorDcm = 2;
-	   bp.VerDcm = 1;
-	 }
-     }
+		if(zoom_to_fit)
+		{
+			if( el.video_height <= hn/4 )
+				bp.VerDcm = 2;
+			else
+				bp.VerDcm = 1;
+		}
+		else
+		{
+			/* the following is equivalent to decimation 2 in lavrec: */
+			bp.HorDcm = 2;
+			bp.VerDcm = 1;
+		}
+	}
    
-   /* calculate height, width and offsets from the above settings */
+	/* calculate height, width and offsets from the above settings */
    
-   bp.quality = 100;
-   bp.img_width  = bp.HorDcm*el.video_width;
-   bp.img_height = bp.VerDcm*el.video_height/bp.field_per_buff;
-   bp.img_x = (720  - bp.img_width )/2 + h_offset;
-   bp.img_y = (hn/2 - bp.img_height)/2 + v_offset/2;
+	bp.quality = 100;
+	bp.img_width  = bp.HorDcm*el.video_width;
+	bp.img_height = bp.VerDcm*el.video_height/bp.field_per_buff;
+	bp.img_x = (720  - bp.img_width )/2 + h_offset;
+	bp.img_y = (hn/2 - bp.img_height)/2 + v_offset/2;
    
-   sprintf(infostring,"Output dimensions: %dx%d+%d+%d",
-	   bp.img_width,bp.img_height*2,bp.img_x,bp.img_y*2);
-   lavplay_msg(LAVPLAY_INFO,infostring,"");
-   sprintf(infostring,"Output zoom factors: %d (hor) %d (ver)\n",
-	   bp.HorDcm,bp.VerDcm*bp.TmpDcm);
-   lavplay_msg(LAVPLAY_INFO,infostring,"");
+	sprintf(infostring,"Output dimensions: %dx%d+%d+%d",
+			bp.img_width,bp.img_height*2,bp.img_x,bp.img_y*2);
+	lavplay_msg(LAVPLAY_INFO,infostring,"");
+	sprintf(infostring,"Output zoom factors: %d (hor) %d (ver)\n",
+			bp.HorDcm,bp.VerDcm*bp.TmpDcm);
+	lavplay_msg(LAVPLAY_INFO,infostring,"");
    
    /* Set field polarity for interlaced video */
    
-   bp.odd_even = (el.video_inter==LAV_INTER_EVEN_FIRST);
-   if(exchange_fields) bp.odd_even = !bp.odd_even;
+	bp.odd_even = (el.video_inter==LAV_INTER_EVEN_FIRST);
+	if(exchange_fields) bp.odd_even = !bp.odd_even;
    
-   mjpeg_set_params(mjpeg, &bp);
+	mjpeg_set_params(mjpeg, &bp);
 
-  /* Make stdin nonblocking */
-  memset(&action, 0, sizeof(action));
+	/* Make stdin nonblocking */
+	memset(&action, 0, sizeof(action));
 
-  action.sa_handler = sig_cont;
-  action.sa_flags = SA_RESTART;
-
-
-   sigaction(SIGCONT, &action, &old_action);
-
-   sig_cont(0);
-
-   /* Queue the buffers read, this triggers video playback */
-
-   if (el.has_audio && audio_enable) audio_start();
+	action.sa_handler = sig_cont;
+	action.sa_flags = SA_RESTART;
 
 
-   for(n = 0; n < nqueue; n++)
-   {
-     mjpeg_queue_buf(mjpeg, n);
-   }
+	sigaction(SIGCONT, &action, &old_action);
 
-   /* Playback loop */
+	sig_cont(0);
 
-   nsync  = 0;
-   tdiff1 = 0.0;
-   tdiff2 = 0.0;
-   tdiff  = 0.0;
+	/* Queue the buffers read, this triggers video playback */
 
-   while(1)
-   {
-      /* Sync to get a free buffer. We want to have all free buffers,
-         which have been played so far. Normally there should be a function
-         in the kernel API to get the number of all free buffers.
-         I don't want to change this API at the moment, therefore
-         we look on the clock to see if there are more buffers ready */
+	if (el.has_audio && audio_enable) audio_start();
 
-      first_free = nsync;
-      do
-      {
-	mjpeg_sync_buf(mjpeg, &bs);
 
-	frame = bs.frame;
-	/* Since we queue the frames in order, we have to get them back in order */
-	if(frame != nsync % mjpeg->br.count)
-	  {
-	    printf("frame = %d, nsync = %ld, mjpeg->br.count = %ld\n", frame, nsync, mjpeg->br.count);
-            lavplay_msg(LAVPLAY_INTERNAL,"Wrong frame order on sync","");
-	    //mjpeg_close(mjpeg);
-	    x_shutdown(1);
-            exit(1);
-	  }
-	nsync++;
-	/* Look on clock */
-	gettimeofday(&time_now,0);
-	tdiff =  time_now.tv_sec  - bs.timestamp.tv_sec +
-	  (time_now.tv_usec - bs.timestamp.tv_usec)*1.e-6;
-      }
-      while(tdiff>spvf && (nsync-first_free)<mjpeg->br.count-1);
+	for(n = 0; n < nqueue; n++)
+	{
+		mjpeg_queue_buf(mjpeg, n);
+	}
 
-      if(gui_mode) printf("@%lc%ld/%ld/%d\n",el.video_norm,frame_number[frame],
-                                          el.video_frames,play_speed);
+	/* Playback loop */
 
-      if((nsync-first_free)> mjpeg->br.count-3)
-         lavplay_msg(LAVPLAY_WARNING,"Disk too slow, can not keep pace!","");
+	nsync  = 0;
+	tdiff1 = 0.0;
+	tdiff2 = 0.0;
+	tdiff  = 0.0;
 
-      if(el.has_audio && audio_enable)
-      {
-         audio_get_output_status(&audio_tmstmp,&nb_out,&nb_err);
-         if(audio_tmstmp.tv_sec)
-         {
-            tdiff1 = spvf*(nsync-nvcorr) - spas*audio_buffer_size/el.audio_bps*nb_out;
-            tdiff2 = (bs.timestamp.tv_sec -audio_tmstmp.tv_sec )
-                   + (bs.timestamp.tv_usec-audio_tmstmp.tv_usec)*1.e-6;
-         }
-      }
+	while(1)
+	{
+		/* Sync to get a free buffer. We want to have all free buffers,
+		   which have been played so far. Normally there should be a function
+		   in the kernel API to get the number of all free buffers.
+		   I don't want to change this API at the moment, therefore
+		   we look on the clock to see if there are more buffers ready */
 
-      tdiff = tdiff1-tdiff2;
+		first_free = nsync;
+		do
+		{
+			mjpeg_sync_buf(mjpeg, &bs);
+
+			frame = bs.frame;
+			/* Since we queue the frames in order, we have to get them back in order */
+			if(frame != nsync % mjpeg->br.count)
+			{
+				printf("frame = %d, nsync = %ld, mjpeg->br.count = %ld\n", frame, nsync, mjpeg->br.count);
+				lavplay_msg(LAVPLAY_INTERNAL,"Wrong frame order on sync","");
+				//mjpeg_close(mjpeg);
+				x_shutdown(1);
+				exit(1);
+			}
+			nsync++;
+			/* Look on clock */
+			gettimeofday(&time_now,0);
+			tdiff =  time_now.tv_sec  - bs.timestamp.tv_sec +
+				(time_now.tv_usec - bs.timestamp.tv_usec)*1.e-6;
+		}
+		while(tdiff>spvf && (nsync-first_free)<mjpeg->br.count-1);
+
+		if(gui_mode) printf("@%lc%ld/%ld/%d\n",el.video_norm,frame_number[frame],
+							el.video_frames,play_speed);
+
+		if((nsync-first_free)> mjpeg->br.count-3)
+			lavplay_msg(LAVPLAY_WARNING,"Disk too slow, can not keep pace!","");
+
+		if(el.has_audio && audio_enable)
+		{
+			audio_get_output_status(&audio_tmstmp,&nb_out,&nb_err);
+			if(audio_tmstmp.tv_sec)
+			{
+				tdiff1 = spvf*(nsync-nvcorr) - spas*audio_buffer_size/el.audio_bps*nb_out;
+				tdiff2 = (bs.timestamp.tv_sec -audio_tmstmp.tv_sec )
+					+ (bs.timestamp.tv_usec-audio_tmstmp.tv_usec)*1.e-6;
+			}
+		}
+
+		tdiff = tdiff1-tdiff2;
 
       /* Fill and queue free buffers again */
 
-      res = 0;
-      for(n=first_free;n<nsync;)
-      {
-         /* Audio/Video sync correction */
+		res = 0;
+		for(n=first_free;n<nsync;)
+		{
+			/* Audio/Video sync correction */
 
-         skipv = 0;
-         skipa = 0;
-         skipi = 0;
+			skipv = 0;
+			skipa = 0;
+			skipi = 0;
 
-         if(sync_corr)
-         {
-            if(tdiff>spvf)
-            {
-               /* Video is ahead audio */
-               skipa = 1;
-               if(sync_ins_frames) skipi = 1;
-               nvcorr++;
-               numca++;
-               tdiff-=spvf;
-            }
-            if(tdiff<-spvf)
-            {
-               /* Video is behind audio */
-               skipv = 1;
-               if(!sync_skip_frames) skipi = 1;
-               nvcorr--;
-               numcb++;
-               tdiff+=spvf;
-            }
-         }
+			if(sync_corr)
+			{
+				if(tdiff>spvf)
+				{
+					/* Video is ahead audio */
+					skipa = 1;
+					if(sync_ins_frames) skipi = 1;
+					nvcorr++;
+					numca++;
+					tdiff-=spvf;
+				}
+				if(tdiff<-spvf)
+				{
+					/* Video is behind audio */
+					skipv = 1;
+					if(!sync_skip_frames) skipi = 1;
+					nvcorr--;
+					numcb++;
+					tdiff+=spvf;
+				}
+			}
 
-         /* Read one frame, break if EOF is reached */
+			/* Read one frame, break if EOF is reached */
 
-         frame = n%mjpeg->br.count;
-         frame_number[frame] = nframe;
-         res = queue_next_frame(buff+frame*mjpeg->br.size,skipv,skipa,skipi);
-         if(res) break;
-         if(skipv) continue; /* no frame has been read */
+			frame = n%mjpeg->br.count;
+			frame_number[frame] = nframe;
+			res = queue_next_frame(buff+frame*mjpeg->br.size,skipv,skipa,skipi);
+			if(res) break;
+			if(skipv) continue; /* no frame has been read */
 
-         /* Queue the frame */
+			/* Queue the frame */
 
-	 mjpeg_queue_buf(mjpeg, frame);
+			mjpeg_queue_buf(mjpeg, frame);
 
-         nqueue++;
-         n++;
-      }
-      if (res) break;
+			nqueue++;
+			n++;
+		}
+		if (res) break;
 
       /* See if we got input */
 
-      res = read(0,input_buffer,256);
-      if(res>0)
-      {
-         input_buffer[res-1] = 0;
-         if(input_buffer[0]=='q') break; /* We are done */
-         switch(input_buffer[0])
-         {
-            case 'p': play_speed = atoi(input_buffer+1); break;
-            case '+': inc_frames( 1); break;
-            case '-': inc_frames(-1); break;
-            case 'a': audio_mute = input_buffer[1]=='0'; break;
-            case 's':
-               if(input_buffer[1]=='+')
-               {
-                  nskip = atoi(input_buffer+2);
-                  inc_frames(nskip);
-               }
-               else if(input_buffer[1]=='-')
-               {
-                  nskip = atoi(input_buffer+2);
-                  inc_frames(-nskip);
-               }
-               else
-               {
-                  nskip = atoi(input_buffer+1)-nframe;
-                  inc_frames(nskip);
-               }
-               break;
+		res = read(0,input_buffer,256);
+		if(res>0)
+		{
+			input_buffer[res-1] = 0;
+			if(input_buffer[0]=='q') break; /* We are done */
+			switch(input_buffer[0])
+			{
+			case 'p': play_speed = atoi(input_buffer+1); break;
+			case '+': inc_frames( 1); break;
+			case '-': inc_frames(-1); break;
+			case 'a': audio_mute = input_buffer[1]=='0'; break;
+			case 's':
+				if(input_buffer[1]=='+')
+				{
+					nskip = atoi(input_buffer+2);
+					inc_frames(nskip);
+				}
+				else if(input_buffer[1]=='-')
+				{
+					nskip = atoi(input_buffer+2);
+					inc_frames(-nskip);
+				}
+				else
+				{
+					nskip = atoi(input_buffer+1)-nframe;
+					inc_frames(nskip);
+				}
+				break;
 
-            case 'e':
+			case 'e':
 
-               /* Do some simple editing:
-                  next chars are u (for cUt), o (for cOpy) or p (for Paste) */
+				/* Do some simple editing:
+				   next chars are u (for cUt), o (for cOpy) or p (for Paste) */
 
-               if(input_buffer[1]=='u'||input_buffer[1]=='o')
-               {
-                  int nc1, nc2;
-                  sscanf(input_buffer+2,"%d %d",&nc1,&nc2);
-                  if(nc1>=0 && nc2>=nc1 && nc2<el.video_frames)
-                  {
-                     /* Save Selection */
+				if(input_buffer[1]=='u'||input_buffer[1]=='o')
+				{
+					int nc1, nc2;
+					sscanf(input_buffer+2,"%d %d",&nc1,&nc2);
+					if(nc1>=0 && nc2>=nc1 && nc2<el.video_frames)
+					{
+						/* Save Selection */
 
-                     if(save_list) free(save_list);
-                     save_list = (long*) malloc((nc2-nc1+1)*sizeof(long));
-                     if(save_list==0) malloc_error();
-                     k = 0;
-                     for(i=nc1;i<=nc2;i++) save_list[k++] = el.frame_list[i];
-                     save_list_len = k;
+						if(save_list) free(save_list);
+						save_list = (long*) malloc((nc2-nc1+1)*sizeof(long));
+						if(save_list==0) malloc_error();
+						k = 0;
+						for(i=nc1;i<=nc2;i++) save_list[k++] = el.frame_list[i];
+						save_list_len = k;
 
-                     /* Cut Frames */
+						/* Cut Frames */
 
-                     if(input_buffer[1]=='u')
-                     {
-                        if(nframe>=nc1 && nframe<=nc2) nframe = nc1-1;
-                        if(nframe>nc2) nframe -= k;
-                        for(i=nc2+1;i<el.video_frames;i++) el.frame_list[i-k] = el.frame_list[i];
-                        el.video_frames -= k;
-                     }
-                     printf("Cut/Copy done ---- !!!!\n");
-                  }
-                  else
-                  {
-                     printf("Cut/Copy %d %d params are wrong!\n",nc1,nc2);
-                  }
-               }
+						if(input_buffer[1]=='u')
+						{
+							if(nframe>=nc1 && nframe<=nc2) nframe = nc1-1;
+							if(nframe>nc2) nframe -= k;
+							for(i=nc2+1;i<el.video_frames;i++) el.frame_list[i-k] = el.frame_list[i];
+							el.video_frames -= k;
+						}
+						printf("Cut/Copy done ---- !!!!\n");
+					}
+					else
+					{
+						printf("Cut/Copy %d %d params are wrong!\n",nc1,nc2);
+					}
+				}
 
-               if(input_buffer[1]=='p')
-               {
-                  /* We should output a warning if save_list is empty,
-                     we just insert nothing */
+				if(input_buffer[1]=='p')
+				{
+					/* We should output a warning if save_list is empty,
+					   we just insert nothing */
 
-                  el.frame_list = realloc(el.frame_list,(el.video_frames+save_list_len)*sizeof(long));
-                  if(el.frame_list==0) malloc_error();
-                  k = save_list_len;
-                  for(i=el.video_frames-1;i>nframe;i--) el.frame_list[i+k] = el.frame_list[i];
-                  k = nframe+1;
-                  for(i=0;i<save_list_len;i++) el.frame_list[k++] = save_list[i];
-                  el.video_frames += save_list_len;
-                  printf("Paste done ---- !!!!\n");
-               }
-               break;
+					el.frame_list = realloc(el.frame_list,(el.video_frames+save_list_len)*sizeof(long));
+					if(el.frame_list==0) malloc_error();
+					k = save_list_len;
+					for(i=el.video_frames-1;i>nframe;i--) el.frame_list[i+k] = el.frame_list[i];
+					k = nframe+1;
+					for(i=0;i<save_list_len;i++) el.frame_list[k++] = save_list[i];
+					el.video_frames += save_list_len;
+					printf("Paste done ---- !!!!\n");
+				}
+				break;
 
-            case 'w':
+			case 'w':
 
-               /* Write edit list */
+				/* Write edit list */
 
-               if(input_buffer[1]=='a')
-               {
-                  char filename[256];
-                  sscanf(input_buffer+3,"%s",filename);
-                  write_edit_list(filename,0,el.video_frames-1,&el);
-               }
-               if(input_buffer[1]=='s')
-               {
-                  char filename[256];
-                  int ns1, ns2;
-                  sscanf(input_buffer+3,"%d %d %s",&ns1,&ns2,filename);
-                  write_edit_list(filename,ns1,ns2,&el);
-               }
+				if(input_buffer[1]=='a')
+				{
+					char filename[256];
+					sscanf(input_buffer+3,"%s",filename);
+					write_edit_list(filename,0,el.video_frames-1,&el);
+				}
+				if(input_buffer[1]=='s')
+				{
+					char filename[256];
+					int ns1, ns2;
+					sscanf(input_buffer+3,"%d %d %s",&ns1,&ns2,filename);
+					write_edit_list(filename,ns1,ns2,&el);
+				}
 
-               break;
-         }
-         printf("- play speed =%3d, pos =%6ld/%ld >",play_speed,nframe,el.video_frames);
-      }
-      fflush(stdout);
-      fflush(stderr);
-   }
+				break;
+			}
+			printf("- play speed =%3d, pos =%6ld/%ld >",play_speed,nframe,el.video_frames);
+		}
+		fflush(stdout);
+		fflush(stderr);
+	}
 
-   /* All buffers are queued, sync on the outstanding buffers */
-   /* Never try to sync on the last buffer, it is a hostage of
-      the codec since it is played over and over again */
+	/* All buffers are queued, sync on the outstanding buffers */
+	/* Never try to sync on the last buffer, it is a hostage of
+	   the codec since it is played over and over again */
 
-   while(nqueue > nsync + 1)
-   {
-     mjpeg_sync_buf(mjpeg, &bs);
-     nsync++;
-   }
+	while(nqueue > nsync + 1)
+	{
+		mjpeg_sync_buf(mjpeg, &bs);
+		nsync++;
+	}
 
-   /* Stop streaming playback */
-   mjpeg_close(mjpeg);
-   if (soft_play) SDL_Quit();
+	/* Stop streaming playback */
+	mjpeg_close(mjpeg);
+	if (soft_play) SDL_Quit();
 
-   if(sync_corr)
-   {
-      sprintf(infostring,"Corrections because video ahead  audio: %4d",numca);
-      lavplay_msg(LAVPLAY_INFO,infostring,"");
-      sprintf(infostring,"Corrections because video behind audio: %4d",numcb);
-      lavplay_msg(LAVPLAY_INFO,infostring,"");
-   }
+	if(sync_corr)
+	{
+		sprintf(infostring,"Corrections because video ahead  audio: %4d",numca);
+		lavplay_msg(LAVPLAY_INFO,infostring,"");
+		sprintf(infostring,"Corrections because video behind audio: %4d",numcb);
+		lavplay_msg(LAVPLAY_INFO,infostring,"");
+	}
 
-   exit(0);
+	exit(0);
 }
 
 
