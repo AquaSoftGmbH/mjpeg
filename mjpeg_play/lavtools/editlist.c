@@ -93,7 +93,21 @@ static int open_video_file(char *filename, EditList *el)
      fprintf(stderr,"   frames:      %8ld\n",lav_video_frames(el->lav_fd[n]));
      fprintf(stderr,"   width:       %8d\n",lav_video_width (el->lav_fd[n]));
      fprintf(stderr,"   height:      %8d\n",lav_video_height(el->lav_fd[n]));
-     fprintf(stderr,"   interlacing: %8d\n",lav_video_interlacing(el->lav_fd[n]));
+     fprintf(stderr,"   interlacing: " );
+	 switch(  lav_video_interlacing(el->lav_fd[n]))
+	 {
+	 case LAV_NOT_INTERLACED :
+		 fprintf( stderr,"not interlaced\n" );
+		 break;
+	 case LAV_INTER_ODD_FIRST :
+		 fprintf( stderr,"odd first\n" );	 
+		 break;
+	 case LAV_INTER_EVEN_FIRST :
+		 fprintf( stderr,"even first\n" );
+		 break;
+	 default:
+		 fprintf( stderr,"Unknown!\n");
+	 }
      fprintf(stderr,"   frames/sec:  %8.3f\n",lav_frame_rate(el->lav_fd[n]));
      fprintf(stderr,"   audio samps: %8ld\n",lav_audio_samples(el->lav_fd[n]));
      fprintf(stderr,"   audio chans: %8d\n",lav_audio_channels(el->lav_fd[n]));

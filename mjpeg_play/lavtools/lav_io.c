@@ -241,11 +241,11 @@ int lav_query_polarity(char format)
 
    switch(format)
    {
-      case 'a': return LAV_INTER_EVEN_FIRST;
-      case 'A': return LAV_INTER_ODD_FIRST;
-      case 'q': return LAV_INTER_EVEN_FIRST;
-      case 'm': return LAV_INTER_EVEN_FIRST;
-      default:  return LAV_INTER_EVEN_FIRST;
+      case 'a': return LAV_INTER_ODD_FIRST;
+      case 'A': return LAV_INTER_EVEN_FIRST;
+      case 'q': return LAV_INTER_ODD_FIRST;
+      case 'm': return LAV_INTER_ODD_FIRST;
+      default:  return LAV_INTER_ODD_FIRST;
    }
 }
 lav_file_t *lav_open_output_file(char *filename, char format,
@@ -402,7 +402,7 @@ int lav_write_frame(lav_file_t *lav_file, char *buff, long size, long count)
                jpgdata[jpeg_app0_offset+5] = 'V';
                jpgdata[jpeg_app0_offset+6] = 'I';
                jpgdata[jpeg_app0_offset+7] = '1';
-               jpgdata[jpeg_app0_offset+8] = lav_file->format=='A' ? n+1 : 2-n;
+               jpgdata[jpeg_app0_offset+8] = lav_file->format=='a' ? n+1 : 2-n;
 
                /* Update pointer and len for second field */
                jpgdata += jpeg_padded_len;
@@ -1129,24 +1129,24 @@ lav_file_t *lav_open_input_file(char *filename)
                strncasecmp(frame + jpeg_app0_offset + 4,"AVI1",4)==0 )
             {
                 if (frame[jpeg_app0_offset+8]==1)
-                   lav_fd->interlacing = LAV_INTER_ODD_FIRST;
-                else
                    lav_fd->interlacing = LAV_INTER_EVEN_FIRST;
+                else
+                   lav_fd->interlacing = LAV_INTER_ODD_FIRST;
             }
             else
             {
                /* There is no default, it really depends on the
                   application which produced the AVI */
-               lav_fd->interlacing = LAV_INTER_EVEN_FIRST;
+               lav_fd->interlacing = LAV_INTER_ODD_FIRST;
             }
-            lav_fd->format = lav_fd->interlacing == LAV_INTER_ODD_FIRST ? 'A' : 'a';
+            lav_fd->format = lav_fd->interlacing == LAV_INTER_EVEN_FIRST ? 'A' : 'a';
             break;
 
          case 'q':
-            lav_fd->interlacing = LAV_INTER_EVEN_FIRST;
+            lav_fd->interlacing = LAV_INTER_ODD_FIRST;
 
          case 'm':
-            lav_fd->interlacing = LAV_INTER_EVEN_FIRST;
+            lav_fd->interlacing = LAV_INTER_ODD_FIRST;
       }
    }
    else
