@@ -50,7 +50,7 @@ int main(int argc, char **argv)
     int    ywidth, yheight, uvwidth, uvheight, ylen, uvlen;
     int    verbose = 0, fdin;
     int    NlumaX = 4, NlumaY = 4, NchromaX = 4, NchromaY = 4;
-    float  BWlumaX = 0.75, BWlumaY = 0.75, BWchromaX = 0.6, BWchromaY = 0.6;
+    float  BWlumaX = 0.8, BWlumaY = 0.8, BWchromaX = 0.7, BWchromaY = 0.7;
     struct filter *lumaXtaps, *lumaYtaps, *chromaXtaps, *chromaYtaps;
     u_char *yuvinout[3];
     float *yuvtmp1,*yuvtmp2;
