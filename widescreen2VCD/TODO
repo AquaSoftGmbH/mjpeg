@@ -1,0 +1,7 @@
+1- A single function to realize the average along width and height
+
+2- Convert this programme to an output plugin for mpeg2dec-patched
+
+3- This program is able to do down-scaling with arbitrary down-scale ratio,
+arbitrary input size and output size => create a specific utility that could
+be called FrameRescaler

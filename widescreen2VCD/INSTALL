@@ -1,0 +1,6 @@
+Modify in Makefile the CFLAGS line according to your architecture (pentium
+III/K7 by default)
+make
+The executable is called Widescreen2VCD, copy it to a directory in your
+search PATH
+

@@ -1,0 +1,150 @@
+This document - From VOB to VCD - gathers my understanding of the video
+format of VOB and VCD files.
+
+*****VOB FILES NORMS
+
+Most VOB files are in widescreen format (aspect ratio = 3), that is
+(anamorphic) 16/9 format. (To be more complete, Ratio=1 means square and
+Ratio=2 means 4/3). As it is an MPEG2 file, this aspect ratio concerns the
+displayed image, whereas it concerns the form of the pixels for MPEG1 (VCD
+are MPEG1 system stream). Therefore, for most VOB files, the image will be
+displayed with a width that is 16/9 times larger than its height. In the PAL
+format, VOB frames are coded with a size of 720*576 (@25Hz), and the
+resulting image will be displayed with the same size as a (square pixel)
+1024*576 image. In the NTSC format, VOB frames are coded with a size of
+720*480 (@30Hz), and the resulting image will be displayed with the same
+size as a (square pixel) 854*480 image. NTSC height is 5/6 times smaller
+than PAL height, which is exactly compensated by a refresh rate 6/5 times
+bigger : PAL and NTSC data flux are equal, and the quality of the displayed
+video is the same in the two norms.
+
+*****VCD FILES NORMS
+
+On the other side, VCD is an MPEG1 system stream with square pixel frames
+(Ratio=1) of size 352*288 (@25Hz) for PAL and 352*240 (@30Hz) for NTSC. Once
+again, the data flux between PAL and NTSC is the same. PAL and NTSC have the
+same width, it is the haight and the display rate that changes.
+
+*****ABOUT THE VCD and VOB FRAME SIZES
+
+Let us come back on the height problem. A 4:3 frame with square pixel will
+have an height equal to 3/4 times its width. Therefore, a true 4:3 VCD frame
+with square pixel will be of size 352*264. What about its rate of display
+now? Well, there are two main norms: 25 fps or 30 fps. So, if I want the two
+norms to have the same display quality, I must enlarge the height of the 25
+fps and lower the height of the 30 fps, in regards for the true 4:3 VCD
+frame. More precisely, the new heights will be such that the resulting data
+flux will be equal to that of a true 4:3 VCD frame displayed at a frame rate
+of 27.5 fps (average between 25 and 30). This gives us for the 25 fps norm:
+height=264*27.5/25=290 and for the 30 fps norm: height=264*27.5/30=242. But
+those two heights are not a good choice.
+
+Let us nor forget that these video streams are meant to be MPEG encoded:
+MPEG1 for VCD and MPEG2 for VOB. And indeed, the compression scheme of MPEG
+(just like jpeg) is based on macroblocks of 16*16 pixel size. So, we
+definitely need height values that are multiple of 16. As 290/16=18.125, we
+will take for the PAL norm an height equal to 18*16=288. And as
+242/16=15.125, we will take for the NTSC norm an height equal to 15*16=240.
+
+Going back to VOB frame, we found that the VCD haight is finally one half of
+the VOB height : why is it not the same for the width? Simply because 720 is
+an uneven multiple of 16 so that 720/2=360 is not a multiple of 16. The real
+question is: why did we took 720 for VOB width and not 704? I have no answer
+here.
+
+To be more complete, let us mention that VOB frame as well as VCD frames are
+composed of three components : one luminance component which is full-sized
+and two chrominance components which are quarter-sized. And as it is the
+same for the yuv frame we want to generate for MPEG1 encoding, schrink
+factors are the same for each component!
+
+
+*****HOW TO DOWN-SCALE FROM 16:9 VOB TO VCD?
+
+***Letterboxing
+
+There are several methods. Let us begin with the Letterboxing method. In
+this method, the resulting VCD frame shows the entire VOB frame so that the
+film director's point of view is preserved.
+
+Let us begin with the width: we want to down-scale a 720 pixel large frame
+to a 352 pixel large one. So, we will average every 45 points into 22
+points.
+
+Now the height: the corresponding height should be 16/9 times smaller than
+the width. Therefore, the resulting height will be 198 pixels high. And as
+the needed height for true VCD frame is 264, the additional pixels will be
+black. The non-black part of the VCD frame will be called the active part.
+This 198 pixels height active part for true VCD frame corresponds to a true
+VOB frame size of 528 (=2*264). Therefore, we have to down-scale a 528 high
+VOB frame to a 198 high VCD frame: we will average every 8 points into 3
+points. This will generate a 216 pixel active height for PAL and a 180 pixel
+active height for NTSC.
+
+This letterboxing mathod is really the method that everybody uses because it
+is the only one that preserves the film director's point of view.
+Nevertheless, it has two drawbacks : it generates active frame haight that
+are not multiple of 16, and it generates a frame that uses only 75%
+(198/264) of the TV screen resolution.
+
+***Frame zoom and encoding quality
+
+The fact that the height is not a multiple of 16 influences directly on the
+quality of the MPEG1 encoding that will follow. Indeed, some 16*16
+macroblocks will contain pixels that are at the limit of the active frame
+and black pixels. It would be far better if the macroblocks only contain
+active pixel or black ones (nb: macroblocks with enterely black pixels are
+easy to encode!). So, we will increase the PAL height from 216 to 224=14*16
+and the NTSC height from 180 to 192=12*16.
+
+For PAL, this will leave us with 64=4*16 lines of black pixels: 32 lines
+above and 32 lines under the active part of the frame. The corresponding
+down-scale ratio will be 18->7 and 77% of the pixels are active. For NTSC,
+this will leave us with 48=3*16 lines of black pixels: 16 lines above and 32
+lines under the active part of the frame. NTSC displayed image will
+therefore not be centered. The corresponding down-scale ratio will be 5->2
+and 80% of the pixel will be active.
+
+For PAL, the corresponding width is 352*224/216#365 on which only 352 will be
+displayed. To calculate tHe corresponding down-scale ratio, we will take 360
+pixels for the width, so that the corresponding down-scale ratio is 2->1.
+
+For NTSC, the corresponding width is 352*192/180#375 on which only 352 will be
+displayed. To calculate tHe corresponding down-scale ratio, we will take 372
+pixels for the width, so that the corresponding down-scale ratio is 60->31.
+
+
+***Theater scaled VOB frame and encoding quality
+
+The problem of the active frame resolution becomes more accurate when the
+VOB file mentions that it respects theater scale, that is a 2.35:1 scale. In
+that case, the 72 first lines and the 72 last lines of each 720*576 PAL
+frame are black, as well as the 60 first lines and the 60 last lines of each
+720*480 frame are black ! In fact, these lines will be effectively totally
+black if the VOB file doesn't contains any sub-pict and if their is no
+subtitles.
+
+For PAL, this gives us an active initial frame size of 720*432 (effective
+image ratio 2.37:1), an active initial frame size of 720*360 for NTSC. This
+leads to an initial active true VOB frame of size 720*396. And this will be
+scaled down to 352*148 for true VCD frame size : in that case, only 56% of
+the screen pixel are activated. This is usually found to be too small and is
+not a multiple of 16. For PAL, the corresponding height is 162=(10.125*16)
+that we increase to 192(=12*16) and for NTSC, 135 (=8.4375*16) that we
+increase to 160 (=10*16). The corresponds to a true VCD frame will be of
+height 176, and of width 414 of which only 352 are displayed. The
+down-scaled ratio of height is 9->4 and is 40->23 for width. 73% of the
+screen is activated. 
+
+If the VOB files has subtitles and/or (essential) sub-pict, the initial
+frame height to consider is the full VOB frame height. For PAL, everything
+is fine since 576/9*4=256=16*16; but for NTSC, 480/9*4=213.33 : we will skip
+the 6 first and last lines: (480-12)/9*4=208=13*16.
+
+If the VOB files has no subtitles and no (essential) sub-pict, then there is
+no need to read black lines : 2*72 lines will be skipped for PAL and
+2*60 lines for NTSC. This will speed up conversion, but will not affect
+down-scale ratio.
+
+For french speaking persons, see http://www.homecinema-fr.com/bible/video/
+

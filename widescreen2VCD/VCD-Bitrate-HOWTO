@@ -1,0 +1,47 @@
+Q : I want to encode and burn my data to VCD or eXtended VCD format : how to
+calculate the optimal - that is the maximal - encoding image bitrate for
+mpeg2enc ?
+
+A1 : maximal maximuum
+
+- Usually, the maximal encoding speed acceptable by DVD player is such
+that the total video flux is 2 times the standard VCD video bitrate.
+
+- Standard VCD bitrate is 1152kBits/s for image and 224kBits/s for sound,
+total video bitrate = 1152+224=1376kBits/s (with kBits=1000Bits, not
+1024Bits)
+
+- Even with larger image bitrate, sound bitrate doesn't change.
+
+- So maximal image bitrate is such that (image+224)=2*1376. Maximal image
+bitrate is 2528kBits/s
+
+A2 : Storage capacity of a CD-R or CD-RW VCD are burn in a special mode
+where sectors have not the same size as data sectors. Therefore, the
+capacity (650Mo, 700Mo) is not relevant here. What is relevant is the number
+of blocks of the media. You get this information by issuing (for example):
+cdrecord -atip -dev=?,?,?<your device obtained by cdrecord -scanbus>
+
+The required information is the "ATIP start of lead out". Typically,
+74min/650Mo CD show 336000 blocks. Let us note that 336000 blocks of data
+(data use 2048 bytes per block) enables to store 336000*2048=656Mo. But for
+VCD, it is much more since we store 2300bytes of VCD data per block => VCD
+capacity is 737Mo.
+
+A3 : Space needed on media
+
+Given the length of the video, we can now calculate the required space on
+media as a function of the image bitrate. It roughly takes 1125 blocks for
+the VCD filesystem, 100 blocks for mpg filesystem and the rest is the data
+to be stored, that is Video_Bitrate(in kBits/s)*duration(in s)/8(from bit to
+byte)/2300(nb of VCD data byte stored per block). So, the maximal image
+encoding bitrate is :
+Video_bitrate(kBits/s)=(available_blocks-1125-100)*8*2300/duration(s)/1000.
+As Video=Image+Audio with Audio=224kBits/s
+Image_bitrate(kBits/s)=(available_blocks-1125-100)*8*2300/duration(s)/1000-224
+
+Typically, 45mn of data may be encoded using an Image bitrate of 2057kBit/s
+on a 650Mo CD => we take 2050kBits/s
+
+
+
