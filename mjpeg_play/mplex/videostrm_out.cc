@@ -79,6 +79,21 @@ bool VideoStream::RunOutComplete()
 			  au->type == IFRAME && au->PTS >= muxinto.runout_PTS));
 }
 
+/*********************************
+ * Signals if it is permissible/possible to Mux out a sector from the Stream.
+ * The universal constraints that muxing should not be complete and that
+ * that the reciever buffer should have sufficient it also insists that
+ * the muxed data won't hang around in the receiver buffer for more than
+ * one second.  This is mainly for the benefit of (S)VCD and DVD applications
+ * where long delays mess up random access.
+ *******************************/
+
+
+bool VideoStream::MuxPossible()
+{
+	return ( ElementaryStream::MuxPossible() 
+             && muxinto.current_SCR+CLOCKS > au->DTS );
+}
 
 /*********************************
  * Work out the timestamps to be set in the header of sectors starting
@@ -132,7 +147,7 @@ void VideoStream::OutputSector ( )
 
 	max_packet_payload = 0;	/* 0 = Fill sector */
   	/* 	
-	   We're now in the last AU of a segment. 
+ 	   We're now in the last AU of a segment. 
 		So we don't want to go beyond it's end when filling
 		sectors. Hence we limit packet payload size to (remaining) AU length.
 		The same applies when we wish to ensure sequence headers starting

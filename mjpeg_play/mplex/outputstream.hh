@@ -131,7 +131,7 @@ private:
 	void OutputPrefix( );
 
 	void OutputSuffix();
-	void OutputPadding ( bool pseudo_VBR, bool vcd_audio_pad );
+	void OutputPadding ( bool vcd_audio_pad );
 	void MuxStatus( log_level_t level );
 
 	void WriteRawSector( uint8_t *rawpackets,

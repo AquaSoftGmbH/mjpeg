@@ -152,7 +152,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				access_unit.end_seq = 0;
 				avg_frames[access_unit.type-1]+=access_unit.length;
 				aunits.append( access_unit );					
-				mjpeg_info( "Found AU %d: DTS=%d\n", access_unit.dorder,
+				mjpeg_debug( "Found AU %d: DTS=%d\n", access_unit.dorder,
 							 access_unit.DTS/300 );
 				AU_hdr = syncword;
 				AU_start = stream_length;

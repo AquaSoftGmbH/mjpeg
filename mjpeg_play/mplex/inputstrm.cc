@@ -45,7 +45,7 @@ void MuxStream::Init( const int strm_id,
 	zero_stuffing = _zero_stuffing;
 	buffer_scale = _buf_scale;
 	buffer_size = buf_size;
-	bufmodel.init( buf_size );
+	bufmodel.Init( buf_size );
 	buffers_in_header = bufs_in_first;
 	always_buffers_in_header = always_bufs;
 	new_au_next_sec = true;
@@ -120,18 +120,20 @@ ElementaryStream::ReadStrm(uint8_t *dst, unsigned int to_read)
 	return bs.read_buffered_bytes( dst, to_read );
 }
 
+
 bool ElementaryStream::MuxPossible()
 {
 	return (!RunOutComplete() &&
-			bufmodel.space() > max_packet_data);
+			bufmodel.Space() > max_packet_data);
 }
+
 
 void ElementaryStream::UpdateBufferMinMax()
 {
-    buffer_min =  buffer_min < bufmodel.space() ? 
-        buffer_min : bufmodel.space();
-    buffer_max = buffer_max > bufmodel.space() ? 
-        buffer_max : bufmodel.space();
+    buffer_min =  buffer_min < bufmodel.Space() ? 
+        buffer_min : bufmodel.Space();
+    buffer_max = buffer_max > bufmodel.Space() ? 
+        buffer_max : bufmodel.Space();
 }
 
 
@@ -143,12 +145,12 @@ clockticks ElementaryStream::RequiredDTS()
 
 void ElementaryStream::AllDemuxed()
 {
-	bufmodel.flushed();
+	bufmodel.Flushed();
 }
 
 void ElementaryStream::DemuxedTo( clockticks SCR )
 {
-	bufmodel.cleaned( SCR );
+	bufmodel.Cleaned( SCR );
 }
 
 bool ElementaryStream::MuxCompleted()

@@ -2,15 +2,13 @@
 #include <stdlib.h>
 
 /******************************************************************
-cleaned
+ *	Remove entries from FIFO buffer list, if their DTS is less than
+ *	actual SCR. These packet data have been already decoded and have
+ *	been removed from the system target decoder's elementary stream
+ *	buffer.
+ *****************************************************************/
 
-	Remove entries from FIFO buffer list, if their DTS is 
-	less than actual SCR. These packet data have been already
-	decoded and have been removed from the system target
-	decoder's elementary stream buffer.
-******************************************************************/
-
-void BufferModel::cleaned(clockticks SCR)
+void BufferModel::Cleaned(clockticks SCR)
 {
     BufferQueue *pointer;
 
@@ -23,15 +21,29 @@ void BufferModel::cleaned(clockticks SCR)
 }
 
 /******************************************************************
-	BufferModel::flush
+ * Return the SCR when there will next be some change in the
+ * buffer.
+ * If the buffer is empty return a zero timestamp.
+ *****************************************************************/
 
-	Remove all entries from FIFO buffer list, if their DTS is 
-	less than actual SCR. These packet data have been already
-	decoded and have been removed from the system target
-	decoder's elementary stream buffer.
-******************************************************************/
+clockticks BufferModel::NextChange()
+{
+	if( first == NULL )
+		return static_cast<clockticks>(0);
+	else
+		return first->DTS;
+}
 
-void BufferModel::flushed ()
+
+/******************************************************************
+ *
+ *	Remove all entries from FIFO buffer list, if their DTS is less
+ *	than actual SCR. These packet data have been already decoded and
+ *	have been removed from the system target decoder's elementary
+ *	stream buffer.
+ *****************************************************************/
+
+void BufferModel::Flushed ()
 {
     BufferQueue *pointer;
 
@@ -49,7 +61,7 @@ void BufferModel::flushed ()
 	returns free space in the buffer
 ******************************************************************/
 
-unsigned int BufferModel::space ()
+unsigned int BufferModel::Space ()
 {
     unsigned int used_bytes;
     BufferQueue *pointer;
@@ -73,7 +85,7 @@ unsigned int BufferModel::space ()
 	adds entry into the buffer FIFO queue
 ******************************************************************/
 
-void BufferModel::queued (unsigned int bytes,
+void BufferModel::Queued (unsigned int bytes,
 					clockticks TS)
 {
     BufferQueue *pointer;
@@ -101,7 +113,7 @@ void BufferModel::queued (unsigned int bytes,
 }
 
 
-void BufferModel::init ( unsigned int size)
+void BufferModel::Init ( unsigned int size)
 {
     max_size = size;
     first = 0;

@@ -459,6 +459,7 @@ void OutputStream::Init( char *multi_file)
 				 video_delay / 300,
 				 audio_delay / 300 );
 
+
 	//
 	// Now that all mux parameters are set we can trigger parsing
 	// of actual input stream data and calculation of associated 
@@ -482,7 +483,7 @@ void OutputStream::MuxStatus(log_level_t level)
 			mjpeg_log( level,
 					   "Video %02x: buf=%7d frame=%06d sector=%08d\n",
 					   (*str)->stream_id,
-					   (*str)->bufmodel.space(),
+					   (*str)->bufmodel.Space(),
 					   (*str)->au->dorder,
 					   (*str)->nsec
 				);
@@ -491,7 +492,7 @@ void OutputStream::MuxStatus(log_level_t level)
 			mjpeg_log( level,
 					   "Audio %02x: buf=%7d frame=%06d sector=%08d\n",
 					   (*str)->stream_id,
-					   (*str)->bufmodel.space(),
+					   (*str)->bufmodel.Space(),
 					   (*str)->au->dorder,
 					   (*str)->nsec
 				);
@@ -500,7 +501,7 @@ void OutputStream::MuxStatus(log_level_t level)
 			mjpeg_log( level,
 					   "Other %02x: buf=%7d sector=%08d\n",
 					   (*str)->stream_id,
-					   (*str)->bufmodel.space(),
+					   (*str)->bufmodel.Space(),
 					   (*str)->nsec
 				);
 			break;
@@ -565,14 +566,14 @@ void OutputStream::OutputPrefix( )
 								 true, true, vmux  );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
-	  	OutputPadding( false,  false);		
+	  	OutputPadding( false);		
 
 		/* Second packet carries audio-info-only sys_header */
 		psstrm->CreateSysHeader (&sys_header, mux_rate,  false, true, 
 								 true, true, amux );
 
 		
-	  	OutputPadding( false, true );
+	  	OutputPadding( true );
 		break;
 		
 	case MPEG_FORMAT_SVCD :
@@ -582,7 +583,7 @@ void OutputStream::OutputPrefix( )
                                  true, true, emux );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
-	  	OutputPadding(  false, 0);
+	  	OutputPadding(false);
         break;
 
 	case MPEG_FORMAT_VCD_STILL :
@@ -593,7 +594,7 @@ void OutputStream::OutputPrefix( )
 								 true, true, emux );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
-		OutputPadding(  false, false);	
+		OutputPadding(  false);	
         break;
 			
 	case MPEG_FORMAT_SVCD_STILL :
@@ -604,7 +605,7 @@ void OutputStream::OutputPrefix( )
 								 true, true, vmux );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
-	  	OutputPadding(   false,  false);		
+	  	OutputPadding( false);		
 		break;
 
     case MPEG_FORMAT_DVD :
@@ -697,6 +698,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 	int i;
 	clockticks audio_next_SCR;
 	clockticks video_next_SCR;
+    clockticks ticks_per_sector;
 	vector<bool> completed;
 	vector<bool>::iterator pcomp;
 	vector<ElementaryStream *>::iterator str;
@@ -737,6 +739,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 		bytes output...
 	*/
 
+	ByteposTimecode( sector_transport_size, ticks_per_sector );
 	
 	seg_state = start_segment;
 	running_out = false;
@@ -877,7 +880,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 
 		padding_packet = false;
 		start_of_new_pack = (packets_left_in_pack == packets_per_pack); 
-
+        
 		for( str = estreams->begin(); str < estreams->end(); ++str )
 		{
 			(*str)->DemuxedTo(current_SCR);
@@ -921,7 +924,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 			video_first = false;
 			if( current_SCR >=  earliest && underrun_ignore == 0)
 			{
-				mjpeg_warn( "Stream %02x: Frame data under-run SCR=%lld DTS=%d (data will arrive too late to be useful)!\n", 
+				mjpeg_warn( "Stream %02x: data will arrive too late sent(SCR)=%lld required(DTS)=%d\n", 
 							despatch->stream_id, 
 							current_SCR/300, 
 							earliest/300 );
@@ -942,9 +945,39 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 		}
 		else
 		{
-
-			OutputPadding (	vbr,false);
-			padding_packet =true;
+            //
+            // If we got here no stream could be muxed out.
+            // We therefore generate padding packets if necessary
+            // usually this is because reciever buffers are likely to be
+            // full.  
+            //
+            if( vbr )
+            {
+                //
+                // VBR: For efficiency we bump SCR up to five times or
+                // until it looks like buffer status will change
+                NextPosAndSCR();
+                clockticks next_change = static_cast<clockticks>(0);
+                for( str = estreams->begin(); str < estreams->end(); ++str )
+                {
+                    clockticks change_time = (*str)->bufmodel.NextChange();
+                    if( next_change == 0 || change_time < next_change )
+                        next_change = change_time;
+                }
+                unsigned int bumps = 5;
+                while( bumps > 0 
+                       && next_change > current_SCR + ticks_per_sector)
+                {
+                    NextPosAndSCR();
+                    --bumps;
+                }
+            }
+            else
+            {
+                // Just output a padding packet
+                OutputPadding (	false);
+            }
+			padding_packet = true;
 		}
 
 		/* Update the counter for pack packets.  VBR is a tricky 
@@ -1100,7 +1133,7 @@ void ElementaryStream::Muxed (unsigned int bytes_muxed)
 	while (au_unsent < bytes_muxed)
 	{	  
 
-		bufmodel.queued (au_unsent, decode_time);
+		bufmodel.Queued(au_unsent, decode_time);
 		bytes_muxed -= au_unsent;
 		if( !NextAU() )
 			return;
@@ -1117,13 +1150,13 @@ void ElementaryStream::Muxed (unsigned int bytes_muxed)
 	if (au_unsent > bytes_muxed)
 	{
 
-		bufmodel.queued( bytes_muxed, decode_time);
+		bufmodel.Queued( bytes_muxed, decode_time);
 		au_unsent -= bytes_muxed;
 		new_au_next_sec = false;
 	} 
 	else //  if (au_unsent == bytes_muxed)
 	{
-		bufmodel.queued(bytes_muxed, decode_time);
+		bufmodel.Queued(bytes_muxed, decode_time);
 		if( ! NextAU() )
 			return;
 		new_au_next_sec = true;
@@ -1137,47 +1170,32 @@ void ElementaryStream::Muxed (unsigned int bytes_muxed)
 
 	generates Pack/Sys Header/Packet information for a 
 	padding stream and saves the sector
-	
-	This is at the heart of a simple implementation of
-	VBR multiplexing.  We treat VBR as CBR albeit with
-	a bit-rate rather higher than the peak bit-rate observed
-	in the stream.  
-	
-	The stream we generate is then simply a CBR stream
-	for this bit-rate for a large buffer and *with
-	padding blocks stripped*.
 
-	We have to pass in a packet data limit to cope with
-	appalling mess VCD makes of audio packets (the last 20
-	bytes being dropped thing)
-	0 = Fill the packet completetely...
+	We have to pass in a special flag to cope with appalling mess VCD
+	makes of audio packets (the last 20 bytes being dropped thing) 0 =
+	Fill the packet completetely.  This include "audio packets" that
+    include no actual audio, only a system header and padding.
 ******************************************************************/
 
 
-void OutputStream::OutputPadding (	bool VBR_pseudo,
-									bool vcd_audio_pad
-	)
+void OutputStream::OutputPadding (bool vcd_audio_pad)
 
 {
-	if( ! VBR_pseudo  )
-	{
-		/* let's generate the packet				*/
-		if( vcd_audio_pad )
-			psstrm->CreateSector ( pack_header_ptr, sys_header_ptr,
-								   0,
-								   vcdapstrm,
-								   false, false,
-								   0, 0,
-								   TIMESTAMPBITS_NO );
-		else
-			psstrm->CreateSector ( pack_header_ptr, sys_header_ptr,
-								   0,
-								   pstrm,
-								   false, false,
-								   0, 0,
-								   TIMESTAMPBITS_NO );
-		++pstrm.nsec;
-	}
+    if( vcd_audio_pad )
+        psstrm->CreateSector ( pack_header_ptr, sys_header_ptr,
+                               0,
+                               vcdapstrm,
+                               false, false,
+                               0, 0,
+                               TIMESTAMPBITS_NO );
+    else
+        psstrm->CreateSector ( pack_header_ptr, sys_header_ptr,
+                               0,
+                               pstrm,
+                               false, false,
+                               0, 0,
+                               TIMESTAMPBITS_NO );
+    ++pstrm.nsec;
 	NextPosAndSCR();
 
 }

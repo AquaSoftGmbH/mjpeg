@@ -41,14 +41,14 @@ class BufferModel
 {
 public:
   BufferModel() : max_size(0),first(0) {}
-  void init( unsigned int size);
+  void Init( unsigned int size);
   
-  void cleaned(  clockticks timenow);
-  void flushed( );
-  unsigned int space();
-  void queued( unsigned int bytes,
-               clockticks removaltime);
-  inline unsigned int size() { return max_size; }
+  void Cleaned(  clockticks timenow);
+  clockticks NextChange();
+  void Flushed( );
+  unsigned int Space();
+  void Queued( unsigned int bytes, clockticks removaltime);
+  inline unsigned int Size() { return max_size; }
 private:
   unsigned int max_size;
   BufferQueue *first;

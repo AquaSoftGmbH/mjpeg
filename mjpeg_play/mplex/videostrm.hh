@@ -65,6 +65,7 @@ public:
 
     virtual void OutputGOPControlSector();
 	bool RunOutComplete();
+	virtual bool MuxPossible();
 
 	void OutputSector();
 protected:

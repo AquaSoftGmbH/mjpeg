@@ -170,11 +170,11 @@ bool VCDStillsStream::LastSectorLastAU()
 
 bool VCDStillsStream::MuxPossible()
 {
-    if( bufmodel.size() < au_unsent )
+    if( bufmodel.Size() < au_unsent )
     {
         mjpeg_error_exit1( "Illegal VCD still: larger than maximum permitted by its buffering parameters!\n");
     }
-	if (RunOutComplete() ||	bufmodel.space() < au_unsent)
+	if (RunOutComplete() ||	bufmodel.Space() < au_unsent)
 	{
 		return false;
 	}
