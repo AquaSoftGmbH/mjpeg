@@ -139,8 +139,9 @@ void Usage(char *progname);
 void lock_screen(void);
 void unlock_update_screen(void);
 void x_shutdown(int a);
+void add_new_frames(char *movie, int nc1, int nc2, int dest);
 void cut_copy_frames(int nc1, int nc2, char cut_or_copy);
-void paste_frames(void);
+void paste_frames(int dest);
 
 
 int  verbose = 6;
@@ -463,6 +464,56 @@ void x_shutdown(int a)
    these easier. Think about a move a scene (nc1, nc2) to position nc3,
    delete a scene (nc1, nc2), etc. */
 
+void add_new_frames(char *movie, int nc1, int nc2, int dest)
+{
+	/* This will add frames nc1->nc2 from new
+	movie 'movie' to the current edit list at dest,
+	nc1=-1 (nc2 does not matter) means whole movie */
+
+	if (nc1 < -1 || nc2<nc1 || dest < 0 || dest >= el.video_frames)
+	{
+		printf("Wrong parameters for add movie frames...\n");
+	}
+	else
+	{
+		/* Open movie into editlist */
+		int i,old_n,n;
+
+		old_n = el.video_frames;
+
+		n = open_video_file(movie,&el);
+
+		el.frame_list = (long*) realloc(el.frame_list,
+			(el.video_frames+el.num_frames[n])*sizeof(long));
+		if(el.frame_list==0) malloc_error();
+		for(i=0;i<el.num_frames[n];i++)
+			el.frame_list[el.video_frames++] = EL_ENTRY(n,i);
+
+		if (nc1 == -1)
+		{
+			nc1 = 0;
+			nc2 = el.num_frames[n]-1;
+		}
+
+		/* Delete unwanted frames */
+		if (nc1>0)
+		{
+			for(i=old_n;i<old_n+nc1;i++) el.frame_list[i] = el.frame_list[i+nc1];
+			el.video_frames -= nc1;
+		}
+		if (nc2+old_n-nc1 < el.video_frames-1 && nc1 != -1)
+		{
+			el.video_frames = old_n + nc2 - nc1 + 1;
+		}
+
+		/* Move frames we want to the dest position */
+		cut_copy_frames(old_n, old_n+nc2-nc1, 'u');
+		paste_frames(dest);
+
+		printf("--- Added frames %d - %d from movie %s\n", nc1, nc2, movie);
+	}
+}
+
 void cut_copy_frames(int nc1, int nc2, char cut_or_copy)
 {
 	int i,k;
@@ -495,7 +546,7 @@ void cut_copy_frames(int nc1, int nc2, char cut_or_copy)
 	}
 }
 
-void paste_frames(void)
+void paste_frames(int dest)
 {
 	/* We should output a warning if save_list is empty,
 	   we just insert nothing */
@@ -505,11 +556,13 @@ void paste_frames(void)
 	el.frame_list = realloc(el.frame_list,(el.video_frames+save_list_len)*sizeof(long));
 	if(el.frame_list==0) malloc_error();
 	k = save_list_len;
-	for(i=el.video_frames-1;i>nframe;i--) el.frame_list[i+k] = el.frame_list[i];
-	k = nframe+1;
+	for(i=el.video_frames-1;i>=dest;i--) el.frame_list[i+k] = el.frame_list[i];
+	k = dest;
 	for(i=0;i<save_list_len;i++) el.frame_list[k++] = save_list[i];
 	el.video_frames += save_list_len;
 	printf("Paste done ---- !!!!\n");
+
+	inc_frames(dest-nframe);
 }
 
 
@@ -1070,7 +1123,17 @@ int main(int argc, char ** argv)
 				if(input_buffer[1]=='p')
 				{
 					/* Paste current selection in current position */
-					paste_frames();
+					int k,i;
+
+					el.frame_list = realloc(el.frame_list,
+						(el.video_frames+save_list_len)*sizeof(long));
+					if(el.frame_list==0) malloc_error();
+					k = save_list_len;
+					for(i=el.video_frames-1;i>nframe;i--) el.frame_list[i+k] = el.frame_list[i];
+					k = nframe+1;
+					for(i=0;i<save_list_len;i++) el.frame_list[k++] = save_list[i];
+					el.video_frames += save_list_len;
+					printf("Paste done ---- !!!!\n");
 				}
 
 				if(input_buffer[1]=='m')
@@ -1079,9 +1142,7 @@ int main(int argc, char ** argv)
 					int nc1, nc2, nc3;
 					sscanf(input_buffer+2,"%d %d %d",&nc1,&nc2, &nc3);
 					cut_copy_frames(nc1, nc2, 'u');
-					inc_frames(nc3-1-nframe);
-					paste_frames();
-					inc_frames(1);
+					paste_frames(nc3);
 				}
 
 				if(input_buffer[1]=='d')
@@ -1089,11 +1150,21 @@ int main(int argc, char ** argv)
 					/* Delete scene(nc1->nc2) */
 					int k, nc1, nc2;
 					sscanf(input_buffer+2,"%d %d",&nc1,&nc2);
-					k = nc2 - nc1;
+					k = nc2 - nc1+1;
 					if(nframe>=nc1 && nframe<=nc2) nframe = nc1-1;
 					if(nframe>nc2) nframe -= k;
 					for(i=nc2+1;i<el.video_frames;i++) el.frame_list[i-k] = el.frame_list[i];
 					el.video_frames -= k;
+				}
+
+				if(input_buffer[1]=='a')
+				{
+					/* Add scenes from new movie file...
+					arg1=movie.avi/mov/movtar, arg2/arg3=start/stop frames */
+					int nc1, nc2, dest;
+					char movie[256];
+					sscanf(input_buffer+2,"%s %d %d %d",&movie,&nc1,&nc2,&dest);
+					add_new_frames(movie, nc1, nc2, dest);
 				}
 
 				break;
