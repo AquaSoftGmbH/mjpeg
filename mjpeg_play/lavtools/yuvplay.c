@@ -75,6 +75,8 @@ int main(int argc, char *argv[])
    int screenwidth=0, screenheight=0;
    y4m_stream_info_t streaminfo;
    y4m_frame_info_t frameinfo;
+   int frame_width;
+   int frame_height;
 
    while ((n = getopt(argc, argv, "hs:f:")) != EOF) {
       switch (n) {
@@ -108,9 +110,28 @@ int main(int argc, char *argv[])
          y4m_strerr(n));
       exit (1);
    }
+   frame_width = y4m_si_get_width(&streaminfo);
+   frame_height = y4m_si_get_height(&streaminfo);
 
-   if (screenwidth <= 0) screenwidth = y4m_si_get_width(&streaminfo);
-   if (screenheight <= 0) screenheight = y4m_si_get_height(&streaminfo);
+   if ((screenwidth <= 0) || (screenheight <= 0)) {
+     /* no user supplied screen size, so let's use the stream info */
+     y4m_ratio_t aspect = y4m_si_get_aspectratio(&streaminfo);
+       
+     if (!(Y4M_RATIO_EQL(aspect, y4m_aspect_UNKNOWN))) {
+       /* if aspect ratio supplied, use it */
+       if ((frame_width * aspect.d) < (frame_height * aspect.n)) {
+	 screenwidth = frame_width;
+	 screenheight = frame_width * aspect.d / aspect.n;
+       } else {
+	 screenheight = frame_height;
+	 screenwidth = frame_height * aspect.n / aspect.d;
+       }
+     } else {
+       /* unknown aspect ratio -- assume square pixels */
+       screenwidth = frame_width;
+       screenheight = frame_height;
+     }
+   }
 
    /* Initialize the SDL library */
    if( SDL_Init(SDL_INIT_VIDEO) < 0 ) {
@@ -119,12 +140,9 @@ int main(int argc, char *argv[])
    }
 
    /* yuv params */
-   yuv[0] = malloc(y4m_si_get_width(&streaminfo) * 
-		   y4m_si_get_height(&streaminfo) * sizeof(unsigned char));
-   yuv[1] = malloc(y4m_si_get_width(&streaminfo) * 
-		   y4m_si_get_height(&streaminfo) * sizeof(unsigned char) / 4);
-   yuv[2] = malloc(y4m_si_get_width(&streaminfo) * 
-		   y4m_si_get_height(&streaminfo) * sizeof(unsigned char) / 4);
+   yuv[0] = malloc(frame_width * frame_height * sizeof(unsigned char));
+   yuv[1] = malloc(frame_width * frame_height / 4 * sizeof(unsigned char));
+   yuv[2] = malloc(frame_width * frame_height / 4 * sizeof(unsigned char));
 
    screen = SDL_SetVideoMode(screenwidth, screenheight, 0, SDL_SWSURFACE);
    if ( screen == NULL ) {
@@ -137,8 +155,7 @@ int main(int argc, char *argv[])
          screenheight, screen->format->BitsPerPixel);
    }
 
-   yuv_overlay = SDL_CreateYUVOverlay(y4m_si_get_width(&streaminfo), 
-				      y4m_si_get_height(&streaminfo),
+   yuv_overlay = SDL_CreateYUVOverlay(frame_width, frame_height,
 				      SDL_IYUV_OVERLAY, screen);
    if ( yuv_overlay == NULL ) {
       mjpeg_log(LOG_ERROR, "SDL: Couldn't create SDL_yuv_overlay: %s\n", SDL_GetError());
@@ -187,7 +204,7 @@ int main(int argc, char *argv[])
 
       /* Show, baby, show! */
       SDL_DisplayYUVOverlay(yuv_overlay, &rect);
-      SDL_UpdateRect(screen, 0, 0, y4m_si_get_width(&streaminfo), y4m_si_get_height(&streaminfo));
+      SDL_UpdateRect(screen, 0, 0, frame_width, frame_height);
 
       fprintf(stdout, "Playing frame %4.4d - %s\r", frame,
 			  print_status(frame, frame_rate));
