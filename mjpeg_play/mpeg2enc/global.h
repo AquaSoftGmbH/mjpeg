@@ -128,7 +128,7 @@ void vbv_end_of_picture _ANSI_ARGS_((void));
 void calc_vbv_delay _ANSI_ARGS_((void));
 
 /* readpic.c */
-void readframe _ANSI_ARGS_((char *fname, unsigned char *frame[]));
+int readframe _ANSI_ARGS_((char *fname, unsigned char *frame[]));
 
 /* stats.c */
 void calcSNR _ANSI_ARGS_((unsigned char *org[3], unsigned char *rec[3]));

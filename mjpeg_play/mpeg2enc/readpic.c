@@ -47,7 +47,7 @@ unsigned char *filter_buf;
 int noise_filt;
 int drop_lsb;
 
-void readframe(fname,frame)
+int readframe(fname,frame)
 char *fname;
 unsigned char *frame[];
 {
@@ -66,7 +66,12 @@ unsigned char *frame[];
    res = decode_jpeg_raw(jpeg_data,len,el.video_inter,
                          chroma_format,width,height,
                          frame[0],frame[1],frame[2]);
-   if(res) { fprintf(stderr,"Decoding of Frame %d failed\n",numframe); exit(1); }
+   if(res) 
+	 { 
+	   fprintf(stderr,"Warning: Decoding of Frame %d failed\n",numframe);
+	   /* TODO: Selective exit here... */
+	   return 1;
+	 }
    
    
  
@@ -171,5 +176,6 @@ unsigned char *frame[];
 	   
 	   
 	 }
+   return 0;
 
 }

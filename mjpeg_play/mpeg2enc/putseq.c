@@ -40,6 +40,7 @@ void putseq()
   FILE *fd;
   char name[256];
   unsigned char *neworg[3], *newref[3];
+  unsigned char *prevframe[3];
   static char ipb[5] = {' ','I','P','B','D'};
 
   rc_init_seq(); /* initialize rate control */
@@ -62,9 +63,21 @@ void putseq()
 	 parameters. */
   reset_fast_motion_threshold( mb_height2*mb_width );
 
+  /* Initialise sane values for neworg in case 1st frame of source sequence is
+	 corrupted and we use its "predecessor" */
+  neworg[0]=neworgframe[0];
+  neworg[1]=neworgframe[1];
+  neworg[2]=neworgframe[2];
   /* loop through all frames in encoding/decoding order */
   for (i=0; i<nframes; i++)
   {
+	
+	/* We keep track of the previously read frame in case source material
+	 has occasional corrupt frames */
+	prevframe[0]=neworg[0];
+	prevframe[1]=neworg[1];
+	prevframe[2]=neworg[2];
+
     if (!quiet)
     {
       fprintf(stderr,"Encoding frame %d ",i);
@@ -201,8 +214,15 @@ void putseq()
     }
 #endif
 
+
     sprintf(name,tplorg,f+frame0);
-    readframe(name,neworg);
+    if( readframe(name,neworg) )
+	  {
+		/* Corrupt source frame, re-use predecessor! */
+		neworg[0] = prevframe[0];
+		neworg[1] = prevframe[1];
+		neworg[2] = prevframe[2];
+	  }
 
 	/* A.Stevens 2000: Append fast motion compensation data for new frame */
 	fast_motion_data(neworg[0]);

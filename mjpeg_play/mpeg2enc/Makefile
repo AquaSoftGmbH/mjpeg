@@ -41,7 +41,7 @@ CFLAGS = -O3 $(SSEFLAGS) $(MMXFLAGS) -mpentiumpro -Wall -I .. -I ../jpeg-6b
 QT_LIBS= ../quicktime/quicktime/libquicktime.a ../jpeg-6b-mmx/libjpeg.a -lpthread -lpng -lz
 #QT_LIBS= ../jpeg-6b/libjpeg.a -lpng -lz
 
-MMXOBJ = fdist1_mmx.o dist1_mmx.o
+MMXOBJ = fdist1_mmx.o dist1_mmx.o dist1_01_mmx.o
 SSEOBJ = fdist1_00.o dist1_00.o dist1_01.o dist1_10.o dist1_11.o
 
 COBJ = mpeg2enc.o conform.o putseq.o putpic.o puthdr.o putmpg.o putvlc.o putbits.o motion.o predict.o readpic.o writepic.o transfrm.o fdctref.o idct.o quantize.o ratectl.o stats.o jpegutils.o
