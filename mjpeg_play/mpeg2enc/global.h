@@ -326,7 +326,7 @@ EXTERN const char *statname
 */
 
 #define READ_CHUNK_SIZE 20
-#define FRAME_BUFFER_SIZE (READ_CHUNK_SIZE*4)
+#define FRAME_BUFFER_SIZE (READ_CHUNK_SIZE*3)
 
 /*
   How many frames encoding may be concurrently under way.
@@ -484,7 +484,15 @@ EXTERN int istrm_fd;
  *************************** */
 
 
-EXTERN int width, height; /* encoded frame size (pels) multiples of 16 or 32 */
+EXTERN int 
+    opt_enc_width, 
+	opt_enc_height;   /* encoded frame size (pels) multiples of 16 or 32 */
+
+EXTERN int 
+    opt_phy_width, 
+	opt_phy_height;   /* Physical Frame buffer size (pels) may differ
+					   * from encoded size due to alignment
+					   * constraints */
 
 EXTERN int lum_buffer_size, chrom_buffer_size;
 
@@ -507,9 +515,10 @@ EXTERN int inputtype; /* format of input frames */
 
 /* sequence specific data (sequence header) */
 
-EXTERN int chrom_width,chrom_height,block_count;
+EXTERN int opt_phy_chrom_width,opt_phy_chrom_height, block_count;
 EXTERN int mb_width, mb_height; /* frame size (macroblocks) */
-EXTERN int width2, height2, mb_height2, chrom_width2; /* picture size */
+EXTERN int opt_phy_width2, opt_phy_height2, opt_enc_height2,
+	mb_height2, opt_phy_chrom_width2; /* picture size */
 EXTERN int qsubsample_offset, 
            fsubsample_offset,
 	       rowsums_offset,

@@ -143,14 +143,15 @@ int select_dct_type( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
 			register int toppix = 
 				cur_lum_mb[rowoffs+i] - pred_lum_mb[rowoffs+i];
 			register int botpix = 
-				cur_lum_mb[rowoffs+width+i] - pred_lum_mb[rowoffs+width+i];
+				cur_lum_mb[rowoffs+opt_phy_width+i] 
+				- pred_lum_mb[rowoffs+opt_phy_width+i];
 			sumtop += toppix;
 			sumsqtop += toppix*toppix;
 			sumbot += botpix;
 			sumsqbot += botpix*botpix;
 			sumbottop += toppix*botpix;
 		}
-		rowoffs += (width<<1);
+		rowoffs += (opt_phy_width<<1);
 	}
 
 	/* Calculate Variances top and bottom.  If they're of similar
@@ -248,8 +249,8 @@ sum_sumsq_8bytes( uint8_t *cur_lum_mb,
 
 	/* Load pixels from bot field into mm1.w,mm2.w
 	 */
-	movq_m2r( *((mmx_t*)(cur_lum_mb+width)), mm1 );
-	movq_m2r( *((mmx_t*)(pred_lum_mb+width)), mm2 );
+	movq_m2r( *((mmx_t*)(cur_lum_mb+opt_phy_width)), mm1 );
+	movq_m2r( *((mmx_t*)(pred_lum_mb+opt_phy_width)), mm2 );
 	
 	/* mm2 := mm1 mm4 := mm2
 	   mm1.w[0..3] := mm1.b[0..3]-mm2.b[0..3]
@@ -354,7 +355,7 @@ int select_dct_type_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
 		sum_sumsq_8bytes( &cur_lum_mb[rowoffs+8], &pred_lum_mb[rowoffs+8],
 						  &sumtop_accs, &sumbot_accs,
 						  &sumsqtop_accs, &sumsqbot_accs, &sumxprod_accs );
-		rowoffs += (width<<1);
+		rowoffs += (opt_phy_width<<1);
 	}
 
 	mmx_sum_4_word_accs( &sumtop_accs, &sumtop );
@@ -400,9 +401,9 @@ void transform(
 	int introwstart = 0;
 	k = 0;
 
-	for (j=0; j<height2; j+=16)
+	for (j=0; j<opt_enc_height2; j+=16)
 	{
-		for (i=0; i<width; i+=16)
+		for (i=0; i<opt_enc_width; i+=16)
 		{
 			mbi[k].dctblocks = &blocks[k*block_count];
 			mbi[k].dct_type =
@@ -423,18 +424,18 @@ void transform(
 					if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type)
 					{
 						/* field DCT */
-						offs = i + ((n&1)<<3) + width*(j+((n&2)>>1));
-						lx = width<<1;
+						offs = i + ((n&1)<<3) + opt_phy_width*(j+((n&2)>>1));
+						lx =  opt_phy_width<<1;
 					}
 					else
 					{
 						/* frame DCT */
-						offs = i + ((n&1)<<3) + width2*(j+((n&2)<<2));
-						lx = width2;
+						offs = i + ((n&1)<<3) +  opt_phy_width2*(j+((n&2)<<2));
+						lx =  opt_phy_width2;
 					}
 
 					if (picture->pict_struct==BOTTOM_FIELD)
-						offs += width;
+						offs +=  opt_phy_width;
 				}
 				else
 				{
@@ -448,18 +449,18 @@ void transform(
 						&& (opt_chroma_format!=CHROMA420))
 					{
 						/* field DCT */
-						offs = i1 + (n&8) + chrom_width*(j1+((n&2)>>1));
-						lx = chrom_width<<1;
+						offs = i1 + (n&8) +  opt_phy_chrom_width*(j1+((n&2)>>1));
+						lx =  opt_phy_chrom_width<<1;
 					}
 					else
 					{
 						/* frame DCT */
-						offs = i1 + (n&8) + chrom_width2*(j1+((n&2)<<2));
-						lx = chrom_width2;
+						offs = i1 + (n&8) +  opt_phy_chrom_width2*(j1+((n&2)<<2));
+						lx =  opt_phy_chrom_width2;
 					}
 
 					if (picture->pict_struct==BOTTOM_FIELD)
-						offs += chrom_width;
+						offs +=  opt_phy_chrom_width;
 				}
 
 				(*psub_pred)(pred[cc]+offs,cur[cc]+offs,lx,
@@ -469,7 +470,7 @@ void transform(
 
 			k++;
 		}
-		introwstart += 16*width;
+		introwstart += 16* opt_phy_width;
 	}
 }
 
@@ -487,8 +488,8 @@ void itransform(pict_data_s *picture)
 
 	k = 0;
 
-	for (j=0; j<height2; j+=16)
-		for (i=0; i<width; i+=16)
+	for (j=0; j<opt_enc_height2; j+=16)
+		for (i=0; i<opt_enc_width; i+=16)
 		{
 			for (n=0; n<block_count; n++)
 			{
@@ -500,18 +501,18 @@ void itransform(pict_data_s *picture)
 					if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type)
 					{
 						/* field DCT */
-						offs = i + ((n&1)<<3) + width*(j+((n&2)>>1));
-						lx = width<<1;
+						offs = i + ((n&1)<<3) + opt_phy_width*(j+((n&2)>>1));
+						lx = opt_phy_width<<1;
 					}
 					else
 					{
 						/* frame DCT */
-						offs = i + ((n&1)<<3) + width2*(j+((n&2)<<2));
-						lx = width2;
+						offs = i + ((n&1)<<3) + opt_phy_width2*(j+((n&2)<<2));
+						lx = opt_phy_width2;
 					}
 
 					if (picture->pict_struct==BOTTOM_FIELD)
-						offs += width;
+						offs +=  opt_phy_width;
 				}
 				else
 				{
@@ -525,18 +526,18 @@ void itransform(pict_data_s *picture)
 						&& (opt_chroma_format!=CHROMA420))
 					{
 						/* field DCT */
-						offs = i1 + (n&8) + chrom_width*(j1+((n&2)>>1));
-						lx = chrom_width<<1;
+						offs = i1 + (n&8) + opt_phy_chrom_width*(j1+((n&2)>>1));
+						lx = opt_phy_chrom_width<<1;
 					}
 					else
 					{
 						/* frame DCT */
-						offs = i1 + (n&8) + chrom_width2*(j1+((n&2)<<2));
-						lx = chrom_width2;
+						offs = i1 + (n&8) + opt_phy_chrom_width2*(j1+((n&2)<<2));
+						lx = opt_phy_chrom_width2;
 					}
 
 					if (picture->pict_struct==BOTTOM_FIELD)
-						offs += chrom_width;
+						offs +=  opt_phy_chrom_width;
 				}
 				(*pidct)(blocks[k*block_count+n]);
 				(*padd_pred)(pred[cc]+offs,cur[cc]+offs,lx,blocks[k*block_count+n]);

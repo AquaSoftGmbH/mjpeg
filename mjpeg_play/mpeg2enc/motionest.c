@@ -189,11 +189,11 @@ void motion_subsampled_lum( pict_data_s *picture )
 
 	if (!opt_fieldpic)
 	{
-		linestride = width;
+		linestride = opt_phy_width;
 	}
 	else
 	{
-		linestride = 2*width;
+		linestride = 2*opt_phy_width;
 	}
 
 	subsample_image( picture->curorg[0], 
@@ -223,11 +223,11 @@ void motion_estimation(
 
 	if (picture->pict_struct==FRAME_PICTURE)
 	{			
-		mb_row_incr = 16*width;
+		mb_row_incr = 16*opt_phy_width;
 		/* loop through all macroblocks of a frame picture */
-		for (j=0; j<height2; j+=16)
+		for (j=0; j<opt_enc_height2; j+=16)
 		{
-			for (i=0; i<width; i+=16)
+			for (i=0; i<opt_enc_width; i+=16)
 			{
 				frame_ME(picture,  mb_row_start, i,j, mbi);
 				mbi++;
@@ -237,11 +237,11 @@ void motion_estimation(
 	}
 	else
 	{		
-		mb_row_incr = (16 * 2) * width;
+		mb_row_incr = (16 * 2) * opt_phy_width;
 		/* loop through all macroblocks of a field picture */
-		for (j=0; j<height2; j+=16)
+		for (j=0; j<opt_enc_height2; j+=16)
 		{
-			for (i=0; i<width; i+=16)
+			for (i=0; i<opt_enc_width; i+=16)
 			{
 				field_ME(picture, mb_row_start, i,j,
 						 mbi,picture->secondfield,picture->ipflag);
@@ -520,7 +520,7 @@ static void frame_ME(pict_data_s *picture,
 	   for sub-sampling.  Silly MPEG forcing chrom/lum to have same
 	   quantisations... ;-)
 	 */
-	var = (*pvariance)(ssmb.mb,16,width);
+	var = (*pvariance)(ssmb.mb,16,opt_phy_width);
 
 	if (picture->pict_type==I_TYPE)
 	{
@@ -530,25 +530,25 @@ static void frame_ME(pict_data_s *picture,
 	{
 		/* For P pictures we take into account chrominance. This
 		   provides much better performance at scene changes */
-		var += chrom_var_sum(&ssmb,16,width);
+		var += chrom_var_sum(&ssmb,16,opt_phy_width);
 
 		if (picture->frame_pred_dct )
 		{
-			mb_me_search(picture->oldorg[0],oldrefimg[0],&ssmb,
-					   width,i,j,picture->sxf,picture->syf,16,width,height,
-					    &framef_mc);
+			mb_me_search(picture->oldorg[0],oldrefimg[0],&ssmb, opt_phy_width,
+                         i,j,picture->sxf,picture->syf,16,
+                         opt_enc_width,opt_enc_height, &framef_mc);
 			framef_mc.fieldoff = 0;
 			vmc = vmcf =
-				unidir_var_sum( &framef_mc, oldrefimg, &ssmb, width, 16 );
+				unidir_var_sum( &framef_mc, oldrefimg, &ssmb,  opt_phy_width, 16 );
 			mbi->motion_type = MC_FRAME;
 		}
 		else
 		{
-			botssmb.mb = ssmb.mb+width;
-			botssmb.fmb = ssmb.mb+(width>>1);
-			botssmb.qmb = ssmb.qmb+(width>>2);
-			botssmb.umb = ssmb.umb+(width>>1);
-			botssmb.vmb = ssmb.vmb+(width>>1);
+			botssmb.mb = ssmb.mb+opt_phy_width;
+			botssmb.fmb = ssmb.mb+(opt_phy_width>>1);
+			botssmb.qmb = ssmb.qmb+(opt_phy_width>>2);
+			botssmb.umb = ssmb.umb+(opt_phy_width>>1);
+			botssmb.vmb = ssmb.vmb+(opt_phy_width>>1);
 
 			frame_estimate(picture->oldorg[0],oldrefimg[0],
 						   &ssmb, &botssmb,
@@ -558,11 +558,14 @@ static void frame_ME(pict_data_s *picture,
 						   &botfldf_mc,
 						   imins,jmins);
 			vmcf = 
-				unidir_var_sum( &framef_mc, oldrefimg, &ssmb, width, 16 );
+				unidir_var_sum( &framef_mc, oldrefimg, &ssmb, 
+                                opt_phy_width, 16 );
 			vmcfieldf = 
-				unidir_var_sum( &topfldf_mc, oldrefimg, &ssmb, (width<<1), 8 ) +
+				unidir_var_sum( &topfldf_mc, oldrefimg, &ssmb,
+                                (opt_phy_width<<1), 8 ) +
 				
-				unidir_var_sum( &botfldf_mc, oldrefimg, &botssmb, (width<<1), 8 );
+				unidir_var_sum( &botfldf_mc, oldrefimg, &botssmb, 
+                                (opt_phy_width<<1), 8 );
 			if ( ctl_M==1)
 			{
 				dpframe_estimate(picture,oldrefimg[0],&ssmb,
@@ -624,8 +627,10 @@ static void frame_ME(pict_data_s *picture,
 			 * (requires no motion vectors, allows skipping)
 			 */
 
-			zeromot_mc.var = unidir_pred_var(&zeromot_mc, ssmb.mb, width, 16 );
-			v0 = unidir_var_sum(&zeromot_mc, oldrefimg, &ssmb, width, 16 );
+			zeromot_mc.var = unidir_pred_var(&zeromot_mc, ssmb.mb, 
+                                             opt_phy_width, 16 );
+			v0 = unidir_var_sum(&zeromot_mc, oldrefimg, &ssmb, 
+                                opt_phy_width, 16 );
 
 			if (4*v0>5*vmc )
 			{
@@ -677,29 +682,32 @@ static void frame_ME(pict_data_s *picture,
 		{
 
 
-			var = (*pvariance)(ssmb.mb,16,width) +
-				  chrom_var_sum(&ssmb,16,width);
+			var = (*pvariance)(ssmb.mb,16,opt_phy_width) 
+                + chrom_var_sum(&ssmb,16,opt_phy_width);
 			/* forward */
 			mb_me_search(picture->oldorg[0],oldrefimg[0],&ssmb,
-					   width,i,j,picture->sxf,picture->syf,
-					   16,width,height,
+					   opt_phy_width,i,j,picture->sxf,picture->syf,
+					   16,opt_enc_width,opt_enc_height,
 					   &framef_mc
 					   );
 			framef_mc.fieldoff = 0;
-			vmcf = unidir_var_sum( &framef_mc, oldrefimg, &ssmb, width, 16 );
+			vmcf = unidir_var_sum( &framef_mc, oldrefimg, &ssmb, 
+                                   opt_phy_width, 16 );
 
 			/* backward */
-			mb_me_search(picture->neworg[0],newrefimg[0],&ssmb,
-						 width,i,j,picture->sxb,picture->syb,
-						 16,width,height,
+			mb_me_search(picture->neworg[0],newrefimg[0],&ssmb, 
+                         opt_phy_width, i,j,picture->sxb,picture->syb,
+						 16, opt_enc_width, opt_enc_height,
 						 &frameb_mc);
 			frameb_mc.fieldoff = 0;
-			vmcr = unidir_var_sum( &frameb_mc, newrefimg, &ssmb, width, 16 );
+			vmcr = unidir_var_sum( &frameb_mc, newrefimg, &ssmb, 
+                                   opt_phy_width, 16 );
 
 			/* interpolated (bidirectional) */
 
-			/*vmci = bidir_pred_var( &framef_mc, &frameb_mc, ssmb.mb, width, 16 );*/
-			vmci = bidir_var_sum( &framef_mc, &frameb_mc,  oldrefimg, newrefimg,  &ssmb, width, 16 );
+			vmci = bidir_var_sum( &framef_mc, &frameb_mc,  
+                                  oldrefimg, newrefimg,  
+                                  &ssmb, opt_phy_width, 16 );
 
 
 
@@ -728,11 +736,11 @@ static void frame_ME(pict_data_s *picture,
 		}
 		else
 		{
-			botssmb.mb = ssmb.mb+width;
-			botssmb.fmb = ssmb.mb+(width>>1);
-			botssmb.qmb = ssmb.qmb+(width>>2);
-			botssmb.umb = ssmb.umb+(width>>1);
-			botssmb.vmb = ssmb.vmb+(width>>1);
+			botssmb.mb = ssmb.mb+opt_phy_width;
+			botssmb.fmb = ssmb.mb+(opt_phy_width>>1);
+			botssmb.qmb = ssmb.qmb+(opt_phy_width>>2);
+			botssmb.umb = ssmb.umb+(opt_phy_width>>1);
+			botssmb.vmb = ssmb.vmb+(opt_phy_width>>1);
 
 			/* forward prediction */
 			frame_estimate(picture->oldorg[0],oldrefimg[0],
@@ -753,24 +761,26 @@ static void frame_ME(pict_data_s *picture,
 						   &botfldb_mc,
 						   imins,jmins);
 
-			vmcf = unidir_var_sum( &framef_mc, oldrefimg, &ssmb, width, 16 );
-			vmcr = unidir_var_sum( &frameb_mc, newrefimg, &ssmb, width, 16 );
+			vmcf = unidir_var_sum( &framef_mc, oldrefimg, 
+                                   &ssmb, opt_phy_width, 16 );
+			vmcr = unidir_var_sum( &frameb_mc, newrefimg, 
+                                   &ssmb, opt_phy_width, 16 );
 			vmci = bidir_var_sum( &framef_mc, &frameb_mc, 
 								  oldrefimg, newrefimg,
-								  &ssmb, width, 16 );
+								  &ssmb, opt_phy_width, 16 );
 
 			vmcfieldf =	
-				unidir_var_sum( &topfldf_mc, oldrefimg, &ssmb, (width<<1), 8 ) +
-				unidir_var_sum( &botfldf_mc, oldrefimg, &botssmb, (width<<1), 8 );
+				unidir_var_sum( &topfldf_mc, oldrefimg, &ssmb, (opt_phy_width<<1), 8 ) +
+				unidir_var_sum( &botfldf_mc, oldrefimg, &botssmb, (opt_phy_width<<1), 8 );
 			vmcfieldr =	
-				unidir_var_sum( &topfldb_mc, newrefimg, &ssmb, (width<<1), 8 ) +
-				unidir_var_sum( &botfldb_mc, newrefimg, &botssmb, (width<<1), 8 );
+				unidir_var_sum( &topfldb_mc, newrefimg, &ssmb, (opt_phy_width<<1), 8 ) +
+				unidir_var_sum( &botfldb_mc, newrefimg, &botssmb, (opt_phy_width<<1), 8 );
 			vmcfieldi = bidir_var_sum( &topfldf_mc, &topfldb_mc, 
 									   oldrefimg,newrefimg,
-									   &ssmb, width<<1, 8) +
+									   &ssmb, opt_phy_width<<1, 8) +
 				        bidir_var_sum( &botfldf_mc, &botfldb_mc, 
 									   oldrefimg,newrefimg,
-									   &botssmb, width<<1, 8);
+									   &botssmb, opt_phy_width<<1, 8);
 
 			/* select prediction type of minimum distance from the
 			 * six candidates (field/frame * forward/backward/interpolated)
@@ -940,7 +950,7 @@ static void field_ME(
 		newrefimg = picture->neworg;
 	}
 
-	w2 = width<<1;
+	w2 = opt_phy_width<<1;
 
 	/* Fast motion data sits at the end of the luminance buffer */
 	ssmb.mb = picture->curorg[0] + i + w2*j;
@@ -951,11 +961,11 @@ static void field_ME(
 
 	if (picture->pict_struct==BOTTOM_FIELD)
 	{
-		ssmb.mb += width;
-		ssmb.umb += (width >> 1);
-		ssmb.vmb += (width >> 1);
-		ssmb.fmb += (width >> 1);
-		ssmb.qmb += (width >> 2);
+		ssmb.mb += opt_phy_width;
+		ssmb.umb += (opt_phy_width >> 1);
+		ssmb.vmb += (opt_phy_width >> 1);
+		ssmb.fmb += (opt_phy_width >> 1);
+		ssmb.qmb += (opt_phy_width >> 2);
 	}
 
 	var = (*pvariance)(ssmb.mb,16,w2) + chrom_var_sum(&ssmb,16,w2);
@@ -966,8 +976,8 @@ static void field_ME(
 	{
 		toporg = picture->oldorg[0];
 		topref = oldrefimg[0];
-		botorg = picture->oldorg[0] + width;
-		botref = oldrefimg[0] + width;
+		botorg = picture->oldorg[0] + opt_phy_width;
+		botref = oldrefimg[0] + opt_phy_width;
                                                         
 		if (secondfield)
 		{
@@ -975,8 +985,8 @@ static void field_ME(
 			if (picture->pict_struct==TOP_FIELD)
 			{
 				/* current is top field */
-				botorg = picture->curorg[0] + width;
-				botref = picture->curref[0] + width;
+				botorg = picture->curorg[0] + opt_phy_width;
+				botref = picture->curref[0] + opt_phy_width;
 			}
 			else
 			{
@@ -1042,7 +1052,7 @@ static void field_ME(
 			 * (not allowed if ipflag is set)
 			 */
 			if (!ipflag)
-				v0 = (*psumsq)(((picture->pict_struct==BOTTOM_FIELD)?botref:topref) + i + w2*j,
+				v0 = (*psumsq)(((picture->pict_struct==BOTTOM_FIELD) ? botref : topref) + i + w2*j,
 							   ssmb.mb,w2,0,0,16);
 			else
 				v0 = 1234;			/* Keep Compiler happy... */
@@ -1091,9 +1101,11 @@ static void field_ME(
 	{
 		/* forward prediction */
 		field_estimate(picture,
-					   picture->oldorg[0],oldrefimg[0],
-					   picture->oldorg[0]+width,oldrefimg[0]+width,&ssmb,
-					   i,j,picture->sxf,picture->syf,0,
+					   picture->oldorg[0],
+                       oldrefimg[0],
+					   picture->oldorg[0]+opt_phy_width,
+                       oldrefimg[0]+opt_phy_width,
+                       &ssmb,i,j,picture->sxf,picture->syf,0,
 					   &fieldf_mc,
 					   &field8uf_mc,
 					   &field8lf_mc,
@@ -1103,9 +1115,11 @@ static void field_ME(
 
 		/* backward prediction */
 		field_estimate(picture,
-					   picture->neworg[0],newrefimg[0],picture->neworg[0]+width,newrefimg[0]+width,
-					   &ssmb,
-					   i,j,picture->sxb,picture->syb,0,
+					   picture->neworg[0],
+                       newrefimg[0],
+                       picture->neworg[0]+opt_phy_width,
+                       newrefimg[0]+opt_phy_width,
+					   &ssmb,i,j,picture->sxb,picture->syb,0,
 					   &fieldb_mc,
 					   &field8ub_mc,
 					   &field8lb_mc,
@@ -1245,24 +1259,27 @@ static void frame_estimate(
 	mb_motion_s botfld_mc;
 
 	/* frame prediction */
-	mb_me_search(org,ref,topssmb,width,i,j,sx,sy,16,width,height,
-						  bestfr );
+	mb_me_search(org,ref,topssmb,opt_phy_width,i,j,sx,sy,16,
+                 opt_enc_width,opt_enc_height, bestfr );
 	bestfr->fieldsel = 0;
 	bestfr->fieldoff = 0;
 
 	/* predict top field from top field */
-	mb_me_search(org,ref,topssmb,width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
-			   &topfld_mc);
+	mb_me_search(org,ref,topssmb,
+                 opt_phy_width<<1,i,j>>1,sx,sy>>1,8,
+                 opt_enc_width,opt_enc_height>>1,
+                 &topfld_mc);
 
 	/* predict top field from bottom field */
-	mb_me_search(org+width,ref+width,topssmb, width<<1,i,j>>1,sx,sy>>1,8,
-			   width,height>>1, &botfld_mc);
+	mb_me_search(org+opt_phy_width,ref+opt_phy_width,topssmb, 
+                 opt_phy_width<<1,i,j>>1,sx,sy>>1,8,
+                 opt_enc_width,opt_enc_height>>1, &botfld_mc);
 
 	/* set correct field selectors... */
 	topfld_mc.fieldsel = 0;
 	botfld_mc.fieldsel = 1;
 	topfld_mc.fieldoff = 0;
-	botfld_mc.fieldoff = width;
+	botfld_mc.fieldoff = opt_phy_width;
 
 	imins[0][0] = topfld_mc.pos.x;
 	jmins[0][0] = topfld_mc.pos.y;
@@ -1281,19 +1298,21 @@ static void frame_estimate(
 
 	/* predict bottom field from top field */
 	mb_me_search(org,ref,botssmb,
-					width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
-					&topfld_mc);
+                 opt_phy_width<<1,i,j>>1,sx,sy>>1,8,
+                 opt_enc_width,opt_enc_height>>1,
+                 &topfld_mc);
 
 	/* predict bottom field from bottom field */
-	mb_me_search(org+width,ref+width,botssmb,
-					width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
-					&botfld_mc);
+	mb_me_search(org+opt_phy_width,ref+opt_phy_width,botssmb,
+                 opt_phy_width<<1,i,j>>1,sx,sy>>1,8,
+                 opt_enc_width,opt_enc_height>>1,
+                 &botfld_mc);
 
 	/* set correct field selectors... */
 	topfld_mc.fieldsel = 0;
 	botfld_mc.fieldsel = 1;
 	topfld_mc.fieldoff = 0;
-	botfld_mc.fieldoff = width;
+	botfld_mc.fieldoff = opt_phy_width;
 
 	imins[0][1] = topfld_mc.pos.x;
 	jmins[0][1] = topfld_mc.pos.y;
@@ -1350,11 +1369,11 @@ static void field_estimate (
 	int notop, nobot;
 	subsampled_mb_s botssmb;
 
-	botssmb.mb = ssmb->mb+width;
-	botssmb.umb = ssmb->umb+(width>>1);
-	botssmb.vmb = ssmb->vmb+(width>>1);
-	botssmb.fmb = ssmb->fmb+(width>>1);
-	botssmb.qmb = ssmb->qmb+(width>>2);
+	botssmb.mb = ssmb->mb+opt_phy_width;
+	botssmb.umb = ssmb->umb+(opt_phy_width>>1);
+	botssmb.vmb = ssmb->vmb+(opt_phy_width>>1);
+	botssmb.fmb = ssmb->fmb+(opt_phy_width>>1);
+	botssmb.qmb = ssmb->qmb+(opt_phy_width>>2);
 
 	/* if ipflag is set, predict from field of opposite parity only */
 	notop = ipflag && (picture->pict_struct==TOP_FIELD);
@@ -1366,23 +1385,23 @@ static void field_estimate (
 	if (notop)
 		topfld_mc.sad = dt = 65536; /* infinity */
 	else
-		mb_me_search(toporg,topref,ssmb,width<<1,
-				   i,j,sx,sy>>1,16,width,height>>1,
-				   &topfld_mc);
+		mb_me_search(toporg,topref,ssmb,
+                     opt_phy_width<<1, i,j,sx,sy>>1,16,
+                     opt_enc_width,opt_enc_height>>1, &topfld_mc);
 	dt = topfld_mc.sad;
 	/* predict current field from bottom field */
 	if (nobot)
 		botfld_mc.sad = db = 65536; /* infinity */
 	else
-		mb_me_search(botorg,botref,ssmb,width<<1,
-				   i,j,sx,sy>>1,16,width,height>>1,
-				   &botfld_mc);
+		mb_me_search(botorg,botref,ssmb,
+                     opt_phy_width<<1, i,j,sx,sy>>1,16,
+                     opt_enc_width,opt_enc_height>>1, &botfld_mc);
 	db = botfld_mc.sad;
 	/* Set correct field selectors */
 	topfld_mc.fieldsel = 0;
 	botfld_mc.fieldsel = 1;
 	topfld_mc.fieldoff = 0;
-	botfld_mc.fieldoff = width;
+	botfld_mc.fieldoff = opt_phy_width;
 
 	/* same parity prediction (only valid if ipflag==0) */
 	if (picture->pict_struct==TOP_FIELD)
@@ -1412,24 +1431,24 @@ static void field_estimate (
 	if (notop)
 		topfld_mc.sad = dt = 65536;
 	else
-		mb_me_search(toporg,topref,ssmb,width<<1,
-				   i,j,sx,sy>>1,8,width,height>>1,
-				    &topfld_mc);
+		mb_me_search(toporg,topref,ssmb,
+                     opt_phy_width<<1, i,j,sx,sy>>1,8,
+                     opt_enc_width,opt_enc_height>>1,&topfld_mc);
 	dt = topfld_mc.sad;
 	/* predict upper half field from bottom field */
 	if (nobot)
 		botfld_mc.sad = db = 65536;
 	else
-		mb_me_search(botorg,botref,ssmb,width<<1,
-				   i,j,sx,sy>>1,8,width,height>>1,
-				    &botfld_mc);
+		mb_me_search(botorg,botref,ssmb,
+                     opt_phy_width<<1, i,j,sx,sy>>1,8,
+                     opt_enc_width,opt_enc_height>>1,&botfld_mc);
 	db = botfld_mc.sad;
 
 	/* Set correct field selectors */
 	topfld_mc.fieldsel = 0;
 	botfld_mc.fieldsel = 1;
 	topfld_mc.fieldoff = 0;
-	botfld_mc.fieldoff = width;
+	botfld_mc.fieldoff = opt_phy_width;
 
 	/* select prediction for upper half field */
 	if (dt<=db)
@@ -1456,23 +1475,22 @@ static void field_estimate (
 		topfld_mc.sad = dt = 65536;
 	else
 		mb_me_search(toporg,topref,&botssmb,
-				   width<<1,
-				   i,j+8,sx,sy>>1,8,width,height>>1,
-				    &topfld_mc);
+                     opt_phy_width<<1, i,j+8,sx,sy>>1,8,
+                     opt_enc_width,opt_enc_height>>1, &topfld_mc);
 	dt = topfld_mc.sad;
 	/* predict lower half field from bottom field */
 	if (nobot)
 		botfld_mc.sad = db = 65536;
 	else
-		mb_me_search(botorg,botref,&botssmb,width<<1,
-				   i,j+8,sx,sy>>1,8,width,height>>1,
-				   &botfld_mc);
+		mb_me_search(botorg,botref,&botssmb,
+                     opt_phy_width<<1,i,j+8,sx,sy>>1,8,
+                     opt_enc_width,opt_enc_height>>1, &botfld_mc);
 	db = botfld_mc.sad;
 	/* Set correct field selectors */
 	topfld_mc.fieldsel = 0;
 	botfld_mc.fieldsel = 1;
 	topfld_mc.fieldoff = 0;
-	botfld_mc.fieldoff = width;
+	botfld_mc.fieldoff = opt_phy_width;
 
 	/* select prediction for lower half field */
 	if (dt<=db)
@@ -1576,8 +1594,8 @@ static void dpframe_estimate (
 			ib0 += i<<1;
 			jb0 += j<<1;
 
-			if (is >= 0 && is <= (width-16)<<1 &&
-				js >= 0 && js <= (height-16))
+			if (is >= 0 && is <= (opt_enc_width-16)<<1 &&
+				js >= 0 && js <= (opt_enc_height-16))
 			{
 				for (delta_y=-1; delta_y<=1; delta_y++)
 				{
@@ -1589,24 +1607,24 @@ static void dpframe_estimate (
 						ib = ib0 + delta_x;
 						jb = jb0 + delta_y;
 
-						if (it >= 0 && it <= (width-16)<<1 &&
-							jt >= 0 && jt <= (height-16) &&
-							ib >= 0 && ib <= (width-16)<<1 &&
-							jb >= 0 && jb <= (height-16))
+						if (it >= 0 && it <= (opt_enc_width-16)<<1 &&
+							jt >= 0 && jt <= (opt_enc_height-16) &&
+							ib >= 0 && ib <= (opt_enc_width-16)<<1 &&
+							jb >= 0 && jb <= (opt_enc_height-16))
 						{
 							/* compute prediction error */
 							local_dist = (*pbsumsq)(
-								ref + (is>>1) + (width<<1)*(js>>1),
-								ref + width + (it>>1) + (width<<1)*(jt>>1),
+								ref + (is>>1) + (opt_phy_width<<1)*(js>>1),
+								ref + opt_phy_width + (it>>1) + (opt_phy_width<<1)*(jt>>1),
 								ssmb->mb,             /* current mb location */
-								width<<1,       /* adjacent line distance */
+								opt_phy_width<<1,       /* adjacent line distance */
 								is&1, js&1, it&1, jt&1, /* half-pel flags */
 								8);             /* block height */
 							local_dist += (*pbsumsq)(
-								ref + width + (is>>1) + (width<<1)*(js>>1),
-								ref + (ib>>1) + (width<<1)*(jb>>1),
-								ssmb->mb + width,     /* current mb location */
-								width<<1,       /* adjacent line distance */
+								ref + opt_phy_width + (is>>1) + (opt_phy_width<<1)*(js>>1),
+								ref + (ib>>1) + (opt_phy_width<<1)*(jb>>1),
+								ssmb->mb + opt_phy_width,     /* current mb location */
+								opt_phy_width<<1,       /* adjacent line distance */
 								is&1, js&1, ib&1, jb&1, /* half-pel flags */
 								8);             /* block height */
 
@@ -1633,17 +1651,17 @@ static void dpframe_estimate (
 	/* TODO: This is now likely to be obsolete... */
 	/* Compute L1 error for decision purposes */
 	local_dist = (*pbsad)(
-		ref + (imins>>1) + (width<<1)*(jmins>>1),
-		ref + width + (imint>>1) + (width<<1)*(jmint>>1),
+		ref + (imins>>1) + (opt_phy_width<<1)*(jmins>>1),
+		ref + opt_phy_width + (imint>>1) + (opt_phy_width<<1)*(jmint>>1),
 		ssmb->mb,
-		width<<1,
+		opt_phy_width<<1,
 		imins&1, jmins&1, imint&1, jmint&1,
 		8);
 	local_dist += (*pbsad)(
-		ref + width + (imins>>1) + (width<<1)*(jmins>>1),
-		ref + (iminb>>1) + (width<<1)*(jminb>>1),
-		ssmb->mb + width,
-		width<<1,
+		ref + opt_phy_width + (imins>>1) + (opt_phy_width<<1)*(jmins>>1),
+		ref + (iminb>>1) + (opt_phy_width<<1)*(jminb>>1),
+		ssmb->mb + opt_phy_width,
+		opt_phy_width<<1,
 		imins&1, jmins&1, iminb&1, jminb&1,
 		8);
 
@@ -1724,15 +1742,15 @@ static void dpfield_estimate(
 			io = io0 + delta_x;
 			jo = jo0 + delta_y;
 
-			if (io >= 0 && io <= (width-16)<<1 &&
-				jo >= 0 && jo <= (height2-16)<<1)
+			if (io >= 0 && io <= (opt_enc_width-16)<<1 &&
+				jo >= 0 && jo <= (opt_enc_height2-16)<<1)
 			{
 				/* compute prediction error */
 				local_dist = (*pbsumsq)(
-					sameref + (imins>>1) + width2*(jmins>>1),
-					oppref  + (io>>1)    + width2*(jo>>1),
+					sameref + (imins>>1) + opt_phy_width2*(jmins>>1),
+					oppref  + (io>>1)    + opt_phy_width2*(jo>>1),
 					mb,             /* current mb location */
-					width2,         /* adjacent line distance */
+					opt_phy_width2,         /* adjacent line distance */
 					imins&1, jmins&1, io&1, jo&1, /* half-pel flags */
 					16);            /* block height */
 
@@ -1752,10 +1770,10 @@ static void dpfield_estimate(
 	/* Compute L1 error for decision purposes */
 	bestdp_mc->sad =
 		(*pbsad)(
-			sameref + (imins>>1) + width2*(jmins>>1),
-			oppref  + (imino>>1) + width2*(jmino>>1),
+			sameref + (imins>>1) + opt_phy_width2*(jmins>>1),
+			oppref  + (imino>>1) + opt_phy_width2*(jmino>>1),
 			mb,             /* current mb location */
-			width2,         /* adjacent line distance */
+			opt_phy_width2,         /* adjacent line distance */
 			imins&1, jmins&1, imino&1, jmino&1, /* half-pel flags */
 			16);            /* block height */
 

@@ -632,8 +632,8 @@ static double calc_actj(pict_data_s *picture)
 	sum = 0.0;
 	k = 0;
 
-	for (j=0; j<height2; j+=16)
-		for (i=0; i<width; i+=16)
+	for (j=0; j<opt_enc_height2; j+=16)
+		for (i=0; i<opt_enc_width; i+=16)
 		{
 			/* A.Stevens Jul 2000 Luminance variance *has* to be a
 			   rotten measure of how active a block in terms of bits

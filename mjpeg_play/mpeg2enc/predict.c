@@ -148,10 +148,10 @@ void predict(pict_data_s *picture)
 	k = 0;
 
 	/* loop through all macroblocks of the picture */
-	for (j=0; j<height2; j+=16)
-		for (i=0; i<width; i+=16)
+	for (j=0; j<opt_enc_height2; j+=16)
+		for (i=0; i<opt_enc_width; i+=16)
 		{
-			predict_mb(picture,reff,refb,pred,width,i,j,
+			predict_mb(picture,reff,refb,pred,opt_phy_width,i,j,
 					   &mbi[k], secondfield );
 			k++;
 		}
@@ -694,13 +694,15 @@ static void clearblock(
   int i, j, w, h;
   uint8_t *p;
 
-  p = cur[0] + ((picture->pict_struct==BOTTOM_FIELD) ? width : 0) + i0 + width2*j0;
+  p = cur[0] 
+	  + ((picture->pict_struct==BOTTOM_FIELD) ? opt_phy_width : 0) 
+	  + i0 + opt_phy_width2*j0;
 
   for (j=0; j<16; j++)
   {
     for (i=0; i<16; i++)
       p[i] = 128;
-    p+= width2;
+    p+= opt_phy_width2;
   }
 
   w = h = 16;
@@ -715,23 +717,25 @@ static void clearblock(
     j0>>=1; h>>=1;
   }
 
-  p = cur[1] + ((picture->pict_struct==BOTTOM_FIELD) ? chrom_width : 0) + i0
-             + chrom_width2*j0;
+  p = cur[1] 
+	  + ((picture->pict_struct==BOTTOM_FIELD) ? opt_phy_chrom_width : 0) 
+	  + i0 + opt_phy_chrom_width2*j0;
 
   for (j=0; j<h; j++)
   {
     for (i=0; i<w; i++)
       p[i] = 128;
-    p+= chrom_width2;
+    p+= opt_phy_chrom_width2;
   }
 
-  p = cur[2] + ((picture->pict_struct==BOTTOM_FIELD) ? chrom_width : 0) + i0
-             + chrom_width2*j0;
+  p = cur[2] 
+	  + ((picture->pict_struct==BOTTOM_FIELD) ? opt_phy_chrom_width : 0) 
+	  + i0 + opt_phy_chrom_width2*j0;
 
   for (j=0; j<h; j++)
   {
     for (i=0; i<w; i++)
       p[i] = 128;
-    p+= chrom_width2;
+    p+= opt_phy_chrom_width2;
   }
 }

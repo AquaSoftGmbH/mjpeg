@@ -112,30 +112,6 @@ static int luminance_mean(uint8_t *frame, int w, int h )
 	return sum / (w * h);
 }
 
-static void border_extend(uint8_t *frame,
-						  int w1, int h1, int w2, int h2)
-{
-  int i, j;
-  unsigned char *fp;
- 
-  /* horizontal pixel replication (right border) */
- 
-  for (j=0; j<h1; j++)
-  {
-    fp = frame + j*w2;
-    for (i=w1; i<w2; i++)
-      fp[i] = fp[i-1];
-  }
- 
-  /* vertical pixel replication (bottom border) */
- 
-  for (j=h1; j<h2; j++)
-  {
-    fp = frame + j*w2;
-    for (i=0; i<w2; i++)
-      fp[i] = fp[i-w2];
-  }
-}
 
 static int piperead(int fd, uint8_t *buf, int len)
 {
@@ -193,23 +169,18 @@ static void read_chunk(void)
       v = opt_vertical_size;
       h = opt_horizontal_size;
       for(i=0;i<v;i++)
-         if(piperead(istrm_fd,frame_buffers[n][0]+i*width,h)!=h) goto EOF_MARK;
-
-      border_extend(frame_buffers[n][0],h,v,width,height);
-	  
-	  lum_mean[n] = luminance_mean(frame_buffers[n][0], width, height );
+         if(piperead(istrm_fd,frame_buffers[n][0]+i*opt_phy_width,h)!=h) goto EOF_MARK;
+	  lum_mean[n] = luminance_mean(frame_buffers[n][0], opt_phy_width, opt_phy_height );
 
       v = opt_chroma_format==CHROMA420 ? 
 		  opt_vertical_size/2 : opt_vertical_size;
       h = opt_chroma_format!=CHROMA444 ? 
 		  opt_horizontal_size/2 : opt_horizontal_size;
       for(i=0;i<v;i++)
-         if(piperead(istrm_fd,frame_buffers[n][1]+i*chrom_width,h)!=h) goto EOF_MARK;
+         if(piperead(istrm_fd,frame_buffers[n][1]+i*opt_phy_chrom_width,h)!=h) goto EOF_MARK;
       for(i=0;i<v;i++)
-         if(piperead(istrm_fd,frame_buffers[n][2]+i*chrom_width,h)!=h) goto EOF_MARK;
+         if(piperead(istrm_fd,frame_buffers[n][2]+i*opt_phy_chrom_width,h)!=h) goto EOF_MARK;
 
-      border_extend(frame_buffers[n][1],h,v,chrom_width,chrom_height);
-      border_extend(frame_buffers[n][2],h,v,chrom_width,chrom_height);
 
 	  if( ctl_parallel_read )
 	  {

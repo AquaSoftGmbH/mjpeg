@@ -102,7 +102,7 @@ static int param_22_red	= 3;
 static int param_hf_quant = 0;
 static double param_act_boost = 0.0;
 static int param_video_buffer_size = 0;
-static int param_seq_length_limit = 2000;
+static int param_seq_length_limit = 0;
 static int param_min_GOP_size = -1;
 static int param_max_GOP_size = -1;
 static int param_preserve_B = 0;
@@ -278,6 +278,10 @@ static void set_format_presets(void)
 			param_bitrate = 1151929;
 		if( param_video_buffer_size == 0 )
 			param_video_buffer_size = 46 * param_bitrate / 1151929;
+        if( param_seq_length_limit == 0 )
+            param_seq_length_limit = 700;
+        if( param_nonvid_bitrate == 0 )
+            param_nonvid_bitrate = 230;
 		break;
 		
 	case  MPEG_FORMAT_MPEG2 : 
@@ -308,6 +312,10 @@ static void set_format_presets(void)
 		if( param_min_GOP_size == -1 )
             param_min_GOP_size = 9;
         param_seq_hdr_every_gop = 1;
+        if( param_seq_length_limit == 0 )
+            param_seq_length_limit = 700;
+        if( param_nonvid_bitrate == 0 )
+            param_nonvid_bitrate = 230;
         break;
 
 	case MPEG_FORMAT_VCD_STILL :
@@ -608,7 +616,7 @@ static int check_param_constraints(void)
 		FRAME_BUFFER_SIZE-READ_CHUNK_SIZE  )
 	{
 		mjpeg_error( 
-				"Min and max GOP sizes must be in range [%d..%d]\n",
+				"Min and max GOP sizes must be in range [%d..%d]",
 				2*param_Bgrp_size,
 				(FRAME_BUFFER_SIZE-READ_CHUNK_SIZE-1-param_Bgrp_size)/2);
 		++nerr;
@@ -893,9 +901,9 @@ static struct option long_options[]={
 			break;
 		case 'Q' :
 			param_act_boost = atof(optarg);
-			if( param_act_boost <0.0 || param_act_boost > 10.0)
+			if( param_act_boost <-4.0 || param_act_boost > 10.0)
 			{
-				mjpeg_error( "-q option requires arg 0.1 .. 10.0");
+				mjpeg_error( "-q option requires arg -4.0 .. 10.0");
 				++nerr;
 			}
 			break;
@@ -1049,11 +1057,53 @@ uint8_t *bufalloc( size_t size )
 	return (uint8_t*)(buf+adjust);
 }
 
+/*********************
+ *
+ * Mark the border so that blocks in the frame are unlikely
+ * to match blocks outside the frame.  This is useful for
+ * motion estimation routines that, for speed, are a little
+ * sloppy about some of the candidates they consider.
+ *
+ ********************/
+
+static void border_mark( uint8_t *frame,
+                         int w1, int h1, int w2, int h2)
+{
+  int i, j;
+  uint8_t *fp;
+  uint8_t mask = 0xff;
+  /* horizontal pixel replication (right border) */
+ 
+  for (j=0; j<h1; j++)
+  {
+    fp = frame + j*w2;
+    for (i=w1; i<w2; i++)
+    {
+      fp[i] = mask;
+      mask ^= 0xff;
+    }
+  }
+ 
+  /* vertical pixel replication (bottom border) */
+
+  for (j=h1; j<h2; j++)
+  {
+    fp = frame + j*w2;
+    for (i=0; i<w2; i++)
+    {
+        fp[i] = mask;
+        mask ^= 0xff;
+    }
+  }
+
+}
+
+
 static void init_encoder(void)
 {
 	int i, n;
 	static int block_count_tab[3] = {6,8,12};
-
+    int enc_chrom_width, enc_chrom_height;
 	initbits(); 
 	init_fdct();
 	init_idct();
@@ -1061,7 +1111,10 @@ static void init_encoder(void)
 	/* Tune threading and motion compensation for specified number of CPU's 
 	   and specified speed parameters.
 	 */
-	ctl_act_boost = (param_act_boost+1.0);
+    
+	ctl_act_boost = param_act_boost >= 0.0 
+        ? (param_act_boost+1.0)
+        : (param_act_boost-1.0);
 	switch( param_num_cpus )
 	{
 
@@ -1097,8 +1150,12 @@ static void init_encoder(void)
 	mb_width = (opt_horizontal_size+15)/16;
 	mb_height = opt_prog_seq ? (opt_vertical_size+15)/16 : 2*((opt_vertical_size+31)/32);
 	mb_height2 = opt_fieldpic ? mb_height>>1 : mb_height; /* for field pictures */
-	width = 16*mb_width;
-	height = 16*mb_height;
+	opt_enc_width = 16*mb_width;
+	opt_enc_height = 16*mb_height;
+    /* James: here's the place to do that padding!! */
+    /* The values here are just for testing.        */
+    opt_phy_width = opt_enc_width+16;
+    opt_phy_height = opt_enc_height+8;
 
 	/* Calculate the sizes and offsets in to luminance and chrominance
 	   buffers.  A.Stevens 2000 for luminance data we allow space for
@@ -1107,24 +1164,36 @@ static void init_encoder(void)
 	   extra row to act as a margin to allow us to neglect / postpone
 	   edge condition checking in time-critical loops...  */
 
-	chrom_width = (opt_chroma_format==CHROMA444) ? width : width>>1;
-	chrom_height = (opt_chroma_format!=CHROMA420) ? height : height>>1;
+	opt_phy_chrom_width = (opt_chroma_format==CHROMA444) 
+        ? opt_phy_width 
+        : opt_phy_width>>1;
+	opt_phy_chrom_height = (opt_chroma_format!=CHROMA420) 
+        ? opt_phy_height 
+        : opt_phy_height>>1;
+	enc_chrom_width = (opt_chroma_format==CHROMA444) 
+        ? opt_enc_width 
+        : opt_enc_width>>1;
+	enc_chrom_height = (opt_chroma_format!=CHROMA420) 
+        ? opt_enc_height 
+        : opt_enc_height>>1;
 
-
-
-	height2 = opt_fieldpic ? height>>1 : height;
-	width2 = opt_fieldpic ? width<<1 : width;
-	chrom_width2 = opt_fieldpic ? chrom_width<<1 : chrom_width;
+	opt_phy_height2 = opt_fieldpic ? opt_phy_height>>1 : opt_phy_height;
+	opt_enc_height2 = opt_fieldpic ? opt_enc_height>>1 : opt_enc_height;
+	opt_phy_width2 = opt_fieldpic ? opt_phy_width<<1 : opt_phy_width;
+	opt_phy_chrom_width2 = opt_fieldpic 
+        ? opt_phy_chrom_width<<1 
+        : opt_phy_chrom_width;
  
 	block_count = block_count_tab[opt_chroma_format-1];
-	lum_buffer_size = (width*height) + 
-					 sizeof(uint8_t) *(width/2)*(height/2) +
-					 sizeof(uint8_t) *(width/4)*(height/4+1);
-	chrom_buffer_size = chrom_width*chrom_height;
+	lum_buffer_size = (opt_phy_width*opt_phy_height) +
+					 sizeof(uint8_t) *(opt_phy_width/2)*(opt_phy_height/2) +
+					 sizeof(uint8_t) *(opt_phy_width/4)*(opt_phy_height/4+1);
+	chrom_buffer_size = opt_phy_chrom_width*opt_phy_chrom_height;
 
 
-	fsubsample_offset = (width)*(height) * sizeof(uint8_t);
-	qsubsample_offset =  fsubsample_offset + (width/2)*(height/2)*sizeof(uint8_t);
+	fsubsample_offset = (opt_phy_width)*(opt_phy_height) * sizeof(uint8_t);
+	qsubsample_offset =  fsubsample_offset 
+        + (opt_phy_width/2)*(opt_phy_height/2)*sizeof(uint8_t);
 
 	mb_per_pict = mb_width*mb_height2;
 
@@ -1149,6 +1218,15 @@ static void init_encoder(void)
 			 frame_buffers[n][i] = 
 				 bufalloc( (i==0) ? lum_buffer_size : chrom_buffer_size );
 		 }
+         border_mark(frame_buffers[n][0],
+                     opt_enc_width,opt_enc_height,
+                     opt_phy_width,opt_phy_height);
+         border_mark(frame_buffers[n][1],
+                     enc_chrom_width, enc_chrom_height,
+                     opt_phy_chrom_width,opt_phy_chrom_height);
+         border_mark(frame_buffers[n][2],
+                     enc_chrom_width, enc_chrom_height,
+                     opt_phy_chrom_width,opt_phy_chrom_height);
 	}
 #ifdef OUTPUT_STAT
 	/* open statistics output file */
@@ -1574,7 +1652,7 @@ static void init_mpeg_parms(void)
 		if (opt_motion_data[i].sxf > (4<<opt_motion_data[i].forw_hor_f_code)-1)
 		{
 			mjpeg_info(
-				"reducing forward horizontal search width to %d\n",
+				"reducing forward horizontal search width to %d",
 						(4<<opt_motion_data[i].forw_hor_f_code)-1);
 			opt_motion_data[i].sxf = (4<<opt_motion_data[i].forw_hor_f_code)-1;
 		}
@@ -1582,7 +1660,7 @@ static void init_mpeg_parms(void)
 		if (opt_motion_data[i].syf > (4<<opt_motion_data[i].forw_vert_f_code)-1)
 		{
 			mjpeg_info(
-				"reducing forward vertical search width to %d\n",
+				"reducing forward vertical search width to %d",
 				(4<<opt_motion_data[i].forw_vert_f_code)-1);
 			opt_motion_data[i].syf = (4<<opt_motion_data[i].forw_vert_f_code)-1;
 		}
@@ -1592,7 +1670,7 @@ static void init_mpeg_parms(void)
 			if (opt_motion_data[i].sxb > (4<<opt_motion_data[i].back_hor_f_code)-1)
 			{
 				mjpeg_info(
-					"reducing backward horizontal search width to %d\n",
+					"reducing backward horizontal search width to %d",
 					(4<<opt_motion_data[i].back_hor_f_code)-1);
 				opt_motion_data[i].sxb = (4<<opt_motion_data[i].back_hor_f_code)-1;
 			}
@@ -1600,7 +1678,7 @@ static void init_mpeg_parms(void)
 			if (opt_motion_data[i].syb > (4<<opt_motion_data[i].back_vert_f_code)-1)
 			{
 				mjpeg_info(
-					"reducing backward vertical search width to %d\n",
+					"reducing backward vertical search width to %d",
 					(4<<opt_motion_data[i].back_vert_f_code)-1);
 				opt_motion_data[i].syb = (4<<opt_motion_data[i].back_vert_f_code)-1;
 			}
