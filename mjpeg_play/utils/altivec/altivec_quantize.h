@@ -39,7 +39,7 @@ void enable_altivec_quantization(int opt_mpeg1);
 
 ALTIVEC_FUNCTION(quant_non_intra, int,
 	(int16_t *src, int16_t *dst,
-	 int q_scale_type, int mquant, int *nonsat_mquant));
+	 int q_scale_type, int *nonsat_mquant));
 
 ALTIVEC_FUNCTION(quant_weight_coeff_sum, int,
 	(int16_t *blk, uint16_t *i_quant_mat));
