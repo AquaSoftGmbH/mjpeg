@@ -22,6 +22,7 @@
 #endif
 
 #include "altivec_quantize.h"
+#include "vectorize.h"
 #include "../mjpeg_logging.h"
 
 
@@ -48,6 +49,15 @@ void enable_altivec_quantization(int opt_mpeg1, uint16_t *intra_q,
 #else
     mjpeg_info("SETTING AltiVec for QUANTIZER!");
 #endif
+
+#ifdef ALTIVEC_VERIFY /* {{{ */
+    if (NOT_VECTOR_ALIGNED(intra_q))
+	mjpeg_error_exit1("AltiVec quantize: intra_q %% 16 != 0, (%d)",
+	    intra_q);
+    if (NOT_VECTOR_ALIGNED(inter_q))
+	mjpeg_error_exit1("AltiVec quantize: inter_q %% 16 != 0, (%d)",
+	    inter_q);
+#endif /* }}} */
 
     intra_q_altivec = (vector unsigned short*)intra_q;
     inter_q_altivec = (vector unsigned short*)inter_q;
@@ -76,5 +86,23 @@ void enable_altivec_quantization(int opt_mpeg1, uint16_t *intra_q,
 #else
 	piquant_non_intra = ALTIVEC_SUFFIX(iquant_non_intra_m1);
 #endif
+#if ALTIVEC_TEST_FUNCTION(iquant_intra_m1)
+	piquant_intra = ALTIVEC_TEST_SUFFIX(iquant_intra_m1);
+#else
+	piquant_intra = ALTIVEC_SUFFIX(iquant_intra_m1);
+#endif
+    } else {
+#if ALTIVEC_TEST_FUNCTION(iquant_non_intra_m2)
+	piquant_non_intra = ALTIVEC_TEST_SUFFIX(iquant_non_intra_m2);
+#else
+	piquant_non_intra = ALTIVEC_SUFFIX(iquant_non_intra_m2);
+#endif
+#if ALTIVEC_TEST_FUNCTION(iquant_intra_m2)
+	piquant_intra = ALTIVEC_TEST_SUFFIX(iquant_intra_m2);
+#else
+	piquant_intra = ALTIVEC_SUFFIX(iquant_intra_m2);
+#endif
     }
 }
+
+/* vim:set foldmethod=marker foldlevel=0: */

@@ -28,7 +28,10 @@
       ( ALTIVEC_TEST_FUNCTION(quant_non_intra) ||                            \
         ALTIVEC_TEST_FUNCTION(quant_weight_coeff_intra) ||                   \
         ALTIVEC_TEST_FUNCTION(quant_weight_coeff_inter) ||                   \
-        ALTIVEC_TEST_FUNCTION(iquant_non_intra_m1) ) )                       \
+        ALTIVEC_TEST_FUNCTION(iquant_non_intra_m1) ||                        \
+        ALTIVEC_TEST_FUNCTION(iquant_non_intra_m2) ||                        \
+        ALTIVEC_TEST_FUNCTION(iquant_intra_m1) ||                            \
+        ALTIVEC_TEST_FUNCTION(iquant_intra_m2) ) )                           \
     /* }}} */
 
 
@@ -50,6 +53,15 @@ ALTIVEC_FUNCTION(quant_weight_coeff_inter, int, (int16_t *blk));
 
 ALTIVEC_FUNCTION(iquant_non_intra_m1, void,
 	(int16_t *src, int16_t *dst, int mquant));
+
+ALTIVEC_FUNCTION(iquant_non_intra_m2, void,
+	(int16_t *src, int16_t *dst, int mquant));
+
+ALTIVEC_FUNCTION(iquant_intra_m1, void,
+	(int16_t *src, int16_t *dst, int dc_prec, int mquant));
+
+ALTIVEC_FUNCTION(iquant_intra_m2, void,
+	(int16_t *src, int16_t *dst, int dc_prec, int mquant));
 
 #ifdef __cplusplus
 }

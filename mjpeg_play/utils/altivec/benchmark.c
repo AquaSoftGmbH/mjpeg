@@ -90,6 +90,15 @@ extern struct benchmark_stats n##_altivec_benchmark_stats
 #if ALTIVEC_TEST_FUNCTION(iquant_non_intra_m1)
   EXTERN_STATS(iquant_non_intra_m1);
 #endif
+#if ALTIVEC_TEST_FUNCTION(iquant_non_intra_m2)
+  EXTERN_STATS(iquant_non_intra_m2);
+#endif
+#if ALTIVEC_TEST_FUNCTION(iquant_intra_m1)
+  EXTERN_STATS(iquant_intra_m1);
+#endif
+#if ALTIVEC_TEST_FUNCTION(iquant_intra_m2)
+  EXTERN_STATS(iquant_intra_m2);
+#endif
 #if ALTIVEC_TEST_FUNCTION(variance)
   EXTERN_STATS(variance);
 #endif
@@ -160,6 +169,15 @@ struct benchmark_info benchmarktab[] = {
 #endif
 #if ALTIVEC_TEST_FUNCTION(iquant_non_intra_m1)
   BENCHMARK_INFO(iquant_non_intra_m1)
+#endif
+#if ALTIVEC_TEST_FUNCTION(iquant_non_intra_m2)
+  BENCHMARK_INFO(iquant_non_intra_m2)
+#endif
+#if ALTIVEC_TEST_FUNCTION(iquant_intra_m1)
+  BENCHMARK_INFO(iquant_intra_m1)
+#endif
+#if ALTIVEC_TEST_FUNCTION(iquant_intra_m2)
+  BENCHMARK_INFO(iquant_intra_m2)
 #endif
 #if ALTIVEC_TEST_FUNCTION(variance)
   BENCHMARK_INFO(variance)

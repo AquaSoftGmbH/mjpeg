@@ -33,7 +33,8 @@ libaltivec_a_SOURCES = \
   idct.c \
   quant_non_intra.c \
   quant_weight_coeff_sum.c \
-  iquant_non_intra_m1.c \
+  iquant_non_intra.c \
+  iquant_intra.c \
   variance.c \
   sub_pred.c \
   add_pred.c \

@@ -33,10 +33,6 @@
 /*
  * define each function to verify with it's comparable function
  */
-/* build_sub44_mests_altivec returns slightly different results in it's
- * fully optimized state. verification is off by default to avoid lots of
- * debug messages.
- */
 #define ALTIVEC_TEST_build_sub44_mests_WITH         build_sub44_mests
 #define ALTIVEC_TEST_build_sub22_mests_WITH         build_sub22_mests 
 #define ALTIVEC_TEST_find_best_one_pel_WITH         find_best_one_pel 
@@ -56,6 +52,9 @@
 #define ALTIVEC_TEST_quant_weight_coeff_intra_WITH  quant_weight_coeff_intra 
 #define ALTIVEC_TEST_quant_weight_coeff_inter_WITH  quant_weight_coeff_inter 
 #define ALTIVEC_TEST_iquant_non_intra_m1_WITH       iquant_non_intra_m1
+#define ALTIVEC_TEST_iquant_non_intra_m2_WITH       iquant_non_intra_m2
+#define ALTIVEC_TEST_iquant_intra_m1_WITH           iquant_intra_m1
+#define ALTIVEC_TEST_iquant_intra_m2_WITH           iquant_intra_m2
 #define ALTIVEC_TEST_add_pred_WITH                  add_pred 
 #define ALTIVEC_TEST_sub_pred_WITH                  sub_pred 
 #define ALTIVEC_TEST_pred_comp_WITH                 pred_comp 
@@ -89,6 +88,7 @@
 #undef  ALTIVEC_TEST_add_pred_WITH                  add_pred 
 #undef  ALTIVEC_TEST_pred_comp_WITH                 pred_comp 
 #undef  ALTIVEC_TEST_subsample_image_WITH           subsample_image 
+#undef  ALTIVEC_TEST_field_dct_best_WITH            field_dct_best
 /* the following functions may call other functions and should be */
 /* benchmarked separately. */
 #undef  ALTIVEC_TEST_find_best_one_pel_WITH         find_best_one_pel 
@@ -96,9 +96,11 @@
 #undef  ALTIVEC_TEST_build_sub22_mests_WITH         build_sub22_mests
 /* can't benchmark the following functions since they modify their input */
 #undef  ALTIVEC_TEST_sub_mean_reduction_WITH        sub_mean_reduction 
-/* iquant_non_intra_m1 modifies it's input but it shouldn't affect timing */
+/* iquant_(non_)?intra_m[12] modifies it's input but it shouldn't affect timing */
 #undef  ALTIVEC_TEST_iquant_non_intra_m1_WITH       iquant_non_intra_m1
-#define ALTIVEC_TEST_field_dct_best_WITH            field_dct_best
+#undef  ALTIVEC_TEST_iquant_non_intra_m2_WITH       iquant_non_intra_m2
+#undef  ALTIVEC_TEST_iquant_intra_m1_WITH           iquant_intra_m1
+#undef  ALTIVEC_TEST_iquant_intra_m2_WITH           iquant_intra_m2
 
 /* turn off (undef) DST during benchmarking, it only slows the function down
  * since everything will be cached due to the benchmark loop.
@@ -150,6 +152,9 @@
 #define ALTIVEC_TEST_quant_weight_coeff_intra_WITH quant_weight_coeff_intra_altivec
 #define ALTIVEC_TEST_quant_weight_coeff_inter_WITH quant_weight_coeff_inter_altivec
 #define ALTIVEC_TEST_iquant_non_intra_m1_WITH    iquant_non_intra_m1_altivec
+#define ALTIVEC_TEST_iquant_non_intra_m2_WITH    iquant_non_intra_m2_altivec
+#define ALTIVEC_TEST_iquant_intra_m1_WITH        iquant_intra_m1_altivec
+#define ALTIVEC_TEST_iquant_intra_m2_WITH        iquant_intra_m2_altivec
 #undef  ALTIVEC_TEST_sub_mean_reduction_WITH     sub_mean_reduction_altivec
 #define ALTIVEC_TEST_variance_WITH               variance_altivec
 #define ALTIVEC_TEST_sub_pred_WITH               sub_pred_altivec
@@ -178,6 +183,9 @@
 #define ALTIVEC_TEST_quant_weight_coeff_intra_WITH quant_weight_coeff_intra
 #define ALTIVEC_TEST_quant_weight_coeff_inter_WITH quant_weight_coeff_inter
 #define ALTIVEC_TEST_iquant_non_intra_m1_WITH    iquant_non_intra_m1
+#define ALTIVEC_TEST_iquant_non_intra_m2_WITH    iquant_non_intra_m2
+#define ALTIVEC_TEST_iquant_intra_m1_WITH        iquant_intra_m1
+#define ALTIVEC_TEST_iquant_intra_m2_WITH        iquant_intra_m2
 #undef  ALTIVEC_TEST_sub_mean_reduction_WITH     sub_mean_reduction 
 #define ALTIVEC_TEST_variance_WITH               variance 
 #define ALTIVEC_TEST_sub_pred_WITH               sub_pred 
