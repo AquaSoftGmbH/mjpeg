@@ -843,12 +843,16 @@ GtkWidget *create_lavrec_layout(GtkWidget *window)
 		save_config();
 	}
 
-	hbox3 = create_video_sliders();
-	gtk_box_pack_start (GTK_BOX (hbox2), hbox3, TRUE, FALSE, 10);
-	gtk_widget_show(hbox3);
+	if (tv)
+ 	{
+		hbox3 = create_video_sliders();
+		gtk_box_pack_start (GTK_BOX (hbox2), hbox3, TRUE, FALSE, 10);
+		gtk_widget_show(hbox3);
+	}
 
 	if (tv == NULL)
 	{
+		//return NULL;
 		tv = gtk_event_box_new();
 		set_background_color(tv, 0,0,0);
 	}
