@@ -20,12 +20,12 @@
 
 extern  char    *__progname;
 
-#define MIN(a,b) ((a)<(b))?(a):(b)
-#define MAX(a,b) ((a)>(b))?(a):(b)
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#define MAX(a,b) (((a)>(b))?(a):(b))
 
 static void *my_malloc(size_t);
 static void get_coeff(float **, int, float);
-static void convolveFrame(u_char *src,u_char *tmp,int w,int h,int interlace,float **xtap,int numx,float **ytap,int numy);
+static void convolveFrame(u_char *src,int w,int h,int interlace,float **xtap,int numx,float **ytap,int numy,float *yuvtmp1,float *yuvtmp2);
 static void usage(void);
 
 int main(int argc, char **argv)
@@ -36,7 +36,8 @@ int main(int argc, char **argv)
     int    NlumaX = 4, NlumaY = 4, NchromaX = 4, NchromaY = 4;
     float  BWlumaX = 0.75, BWlumaY = 0.75, BWchromaX = 0.6, BWchromaY = 0.6;
     float  **lumaXtaps, **lumaYtaps, **chromaXtaps, **chromaYtaps;
-    u_char *yuvinout[3], *yuvtmp;
+    u_char *yuvinout[3];
+    float *yuvtmp1,*yuvtmp2;
     y4m_stream_info_t istream, ostream;
     y4m_frame_info_t iframe;
 
@@ -129,7 +130,8 @@ int main(int argc, char **argv)
     yuvinout[0] = my_malloc(ylen*sizeof(u_char));
     yuvinout[1] = my_malloc(uvlen*sizeof(u_char));
     yuvinout[2] = my_malloc(uvlen*sizeof(u_char));
-    yuvtmp = my_malloc(MAX(ylen,uvlen)*sizeof(u_char));
+    yuvtmp1 = my_malloc(MAX(ylen,uvlen)*sizeof(float));
+    yuvtmp2 = my_malloc(MAX(ylen,uvlen)*sizeof(float));
 
     /* allocate filters */
     lumaXtaps = my_malloc((NlumaX+1)*sizeof(float *));
@@ -159,9 +161,9 @@ int main(int argc, char **argv)
 	    if (verbose && ((frames % 100) == 0))
 		mjpeg_log(LOG_INFO, "Frame %d\n", frames);
 	    
-            convolveFrame(yuvinout[0],yuvtmp,ywidth,yheight,interlace,lumaXtaps,NlumaX,lumaYtaps,NlumaY);
-            convolveFrame(yuvinout[1],yuvtmp,uvwidth,uvheight,interlace,chromaXtaps,NchromaX,chromaYtaps,NchromaY);
-            convolveFrame(yuvinout[2],yuvtmp,uvwidth,uvheight,interlace,chromaXtaps,NchromaX,chromaYtaps,NchromaY);
+            convolveFrame(yuvinout[0],ywidth,yheight,interlace,lumaXtaps,NlumaX,lumaYtaps,NlumaY,yuvtmp1,yuvtmp2);
+            convolveFrame(yuvinout[1],uvwidth,uvheight,interlace,chromaXtaps,NchromaX,chromaYtaps,NchromaY,yuvtmp1,yuvtmp2);
+            convolveFrame(yuvinout[2],uvwidth,uvheight,interlace,chromaXtaps,NchromaX,chromaYtaps,NchromaY,yuvtmp1,yuvtmp2);
 
 	    y4m_write_frame(fileno(stdout), &ostream, &iframe, yuvinout);
 
@@ -209,32 +211,46 @@ static void get_coeff(float **taps, int length, float bandwidth)
 	}
 }
 
+static void frame_i2f(u_char *src,float *dst,int l)
+{
+    int i;
+
+    for( i=0; i<l; i++ )
+        dst[i]=src[i];
+}
+
+static void frame_f2i(float *src,u_char *dst,int l)
+{
+    int i;
+
+    for( i=0; i<l; i++ )
+        dst[i]=src[i]+0.5;
+}
 
 /* Routine to perform a 1-dimensional convolution with the result 
    symmetrically truncated to match the input length.  
    Filter is odd and linear phase, only center and right-side taps are specified */
 
-static void convolveLine(u_char *data,int width,int datastride,int outstride,float *filter,int flen,u_char *out)
+static void convolveLine(float *data,int width,int datastride,int outstride,float *filter,int flen,float *out)
 {
     int i;
     for( i=0; i<width; i++ ) {
-        int k,r;
-        u_char *d1=data,*d2=data;
+        int k;
+        float *d1=data,*d2=data;
         float tempout=filter[0]*data[0];
         for( k=1; k<=flen; k++) {
             d1-=datastride;
             d2+=datastride;
             tempout+=filter[k]*(d1[0]+d2[0]);
         }
-        r=tempout+0.5;
         /* clip and cast to integer */
-        out[0]=MIN(MAX(r,0),255);
+        out[0]=MIN(MAX(tempout,0),255);
         out+=outstride;
         data+=1;
     }
 }
 
-static void convolveField(u_char *data, int width, int height, int outstride, float **filter, int filterlength, u_char *output)
+static void convolveField(float *data, int width, int height, int outstride, float **filter, int filterlength, float *output)
 {
 
     int n,datastride,datalength;
@@ -265,16 +281,20 @@ static void convolveField(u_char *data, int width, int height, int outstride, fl
 	}
 }
 
-static void convolveFrame(u_char *src,u_char *tmp,int w,int h,int interlace,float **xtap,int numx,float **ytap,int numy)
+static void convolveFrame(u_char *src,int w,int h,int interlace,float **xtap,int numx,float **ytap,int numy,float *tmp1,float *tmp2)
 {
+    frame_i2f(src,tmp1,w*h);
+
     if (interlace ) {
-        convolveField(src,  w,h,2,ytap,numy,tmp);
-        convolveField(src+w,w,h,2,ytap,numy,tmp+1);
+        convolveField(tmp1,  w,h,2,ytap,numy,tmp2);
+        convolveField(tmp1+w,w,h,2,ytap,numy,tmp2+1);
     }
     else
-        convolveField(src,w,h,1,ytap,numy,tmp);
+        convolveField(tmp1,w,h,1,ytap,numy,tmp2);
 
-    convolveField(tmp,h,w,1,xtap,numx,src);
+    convolveField(tmp2,h,w,1,xtap,numx,tmp1);
+
+    frame_f2i(tmp1,src,w*h);
 }
 
 static void usage(void)
