@@ -36,7 +36,8 @@ lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c  $(lav_heade
 lavplay_LDADD = -L$(top_builddir)/mjpeg -lmjpeg $(PTHREAD_LIBS) \
 	$(QUICKTIME_LIBS) $(MOVTAR_LIBS) $(SDL_LIBS) $(JPEG_LIBS)
 
-lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c $(lav_headers)
+lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c frequencies.c \
+        frequencies.h $(lav_headers)
 lavrec_LDADD = -L$(top_builddir)/mjpeg -lmjpeg $(PTHREAD_LIBS) \
 	$(QUICKTIME_LIBS) $(MOVTAR_LIBS) $(JPEG_LIBS)
 

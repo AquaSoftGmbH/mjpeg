@@ -26,7 +26,8 @@
                  'N' NTSC  SVHS-Input
                  's' SECAM Composite Input
                  'S' SECAM SVHS-Input
-                 't' TV tuner input (if available)
+                 't' PAL TV tuner input (if available)
+                 'T' NTSC TV tuner input (if available)
                  'a' (or every other letter) Autosense (default)
 
    -d num        decimation, must be either 1, 2 or 4 for identical decimation
@@ -64,6 +65,14 @@
                  If num==1 it is silently ignored.
 
    -w            Wait for user confirmation to start
+
+   -C map:chan   Channel selection.  Map is the frequecy map.  Currently
+                 supported maps are: 
+                     us-bcast us-cable, us-cable-hrc, japan-bcast, japan-cable,
+                     europe-west, europe-east, italy, newzealand, australia,
+                     ireland, france, china-bcast
+                 chan selects the channel, its exact form varys depending on
+                 the channel map.
 
    *** Audio settings ***
 
@@ -154,6 +163,7 @@
 #include <linux/soundcard.h>
 #include <videodev_mjpeg.h>
 
+#include "frequencies.h"
 #include "lav_io.h"
 
 /* These are explicit prototypes for the compiler, to prepare separation of audiolib.c */
@@ -219,6 +229,9 @@ static lav_file_t *video_file, *video_file_old;
 static int width, height;
 static int input, norm;
 static int audio_bps; /* audio bytes per sample */
+
+/* For setting audio properties when using a tuner */
+struct video_audio vau;
 
 static char *norm_name[] = {"PAL", "NTSC", "SECAM"};
 
@@ -1015,13 +1028,14 @@ int main(int argc, char ** argv)
 	double tdiff1, tdiff2;
 	char *video_dev_name;
 	int device_width;
+	int tuner_freq=0;
 	/* check usage */
 	if (argc < 2)  Usage(argv[0]);
 
 	/* Get options */
 
 	nerr = 0;
-	while( (n=getopt(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mR:c:n:b:")) != EOF)
+	while( (n=getopt(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mR:c:n:b:C:")) != EOF)
 	{
 		switch(n) {
 		case 'f':
@@ -1161,6 +1175,38 @@ int main(int argc, char ** argv)
 			verbose = atoi(optarg);
 			break;
 
+		case 'C':
+			{
+			int colin=0; int chlist=0; int chan=0;
+			while ( optarg[colin] && optarg[colin]!=':') colin++;
+			if (optarg[colin]==0) /* didn't find the colin */
+			{
+				fprintf(stderr,"malformed channel\n");
+				nerr++;
+				break;
+			}
+			while (strncmp(chanlists[chlist].name,optarg,colin)!=0)
+			{
+				if (chanlists[chlist++].name==NULL)
+				{
+					fprintf(stderr,"bad frequency map\n");
+					nerr++;
+					break;
+				}
+			}
+			while (strcmp((chanlists[chlist].list)[chan].name,&(optarg[colin+1]))!=0)
+			{
+				if ((chanlists[chlist].list)[chan++].name==NULL)
+				{
+					fprintf(stderr,"bad channel spec\n");
+					nerr++;
+					break;
+				}
+			}
+			tuner_freq=(chanlists[chlist].list)[chan].freq;
+			}
+			break;
+
 		default:
             nerr++;
             break;
@@ -1204,7 +1250,8 @@ int main(int argc, char ** argv)
         case 'N': printf("S-VHS NTSC\n"); break;
         case 's': printf("Composite SECAM\n"); break;
         case 'S': printf("S-VHS SECAM\n"); break;
-        case 't': printf("TV tuner\n"); break;
+        case 't': printf("PAL TV tuner\n"); break;
+        case 'T': printf("NTSC TV tuner\n"); break;
         default:  printf("Auto detect\n");
 		}
 		if(hordcm==verdcm)
@@ -1297,13 +1344,15 @@ int main(int argc, char ** argv)
 
 	switch(input_source)
 	{
-	case 'p': input = 0; norm = 0; break;
-	case 'P': input = 1; norm = 0; break;
-	case 'n': input = 0; norm = 1; break;
-	case 'N': input = 1; norm = 1; break;
-	case 's': input = 0; norm = 2; break;
-	case 'S': input = 1; norm = 2; break;
-	case 't': input = 2; norm = 0; break;
+	/* Maybe we should switch these over */
+	case 'p': input = 0; norm = VIDEO_MODE_PAL; break;
+	case 'P': input = 1; norm = VIDEO_MODE_PAL; break;
+	case 'n': input = 0; norm = VIDEO_MODE_NTSC; break;
+	case 'N': input = 1; norm = VIDEO_MODE_NTSC; break;
+	case 's': input = 0; norm = VIDEO_MODE_SECAM; break;
+	case 'S': input = 1; norm = VIDEO_MODE_SECAM; break;
+	case 't': input = 2; norm = VIDEO_MODE_PAL; break;
+        case 'T': input = 2; norm = VIDEO_MODE_NTSC; break;
 	default:
 		n = 0;
 		lavrec_msg(LAVREC_INFO,"Auto detecting input and norm ...","");
@@ -1349,6 +1398,29 @@ int main(int argc, char ** argv)
 	vch.norm    = norm;
 	res = ioctl(video_dev, VIDIOCSCHAN,&vch);
 	if(res<0) system_error("setting norm","ioctl VIDIOCSCHAN");
+
+	/* set channel if we're tuning */
+	if (input ==2 && tuner_freq!=0) {
+		unsigned long outfreq;
+		outfreq = tuner_freq*16/1000;
+		res = ioctl(video_dev, VIDIOCSFREQ,&outfreq);
+		if(res<0) system_error("setting tuner frequency","ioctl VIDIOCSFREQ");
+	}
+
+	/* Set up tuner audio if this is a tuner. I think this should be done
+	 * AFTER the tuner device is selected */
+	if (input == 2) {
+		/* get current */
+		res = ioctl(video_dev,VIDIOCGAUDIO,&vau);
+		if(res<0) system_error("getting tuner audio params","ioctl VIDIOCGAUDIO");
+		/* unmute so we get sound to record */
+		/* this is done without checking current state because the
+		 * current mga driver doesn't report mute state accurately */
+		lavrec_msg(LAVREC_INFO,"Unmuting tuner audio...","");
+		vau.flags &= (~VIDEO_AUDIO_MUTE);
+		res = ioctl(video_dev,VIDIOCSAUDIO,&vau);
+		if(res<0) system_error("setting tuner audio params","ioctl VIDIOCSAUDIO");
+	}
    
 	/* Determine device pixel width (DC10=768, BUZ=720 for PAL/SECAM, DC10=640, BUZ=720) */
    
@@ -1760,6 +1832,14 @@ int main(int argc, char ** argv)
 	}
 
 	/* Audio and mixer exit processing is done with atexit() */
+
+	/* Re-mute tuner audio if this is a tuner */
+	if (input == 2) {
+		lavrec_msg(LAVREC_INFO,"Re-muting tuner audio...","");
+		vau.flags |= VIDEO_AUDIO_MUTE;
+		res = ioctl(video_dev,VIDIOCSAUDIO,&vau);
+		if(res<0) system_error("setting tuner audio params","ioctl VIDIOCSAUDIO");
+	}
 
 	if(res>=0) {
 		lavrec_msg(LAVREC_INFO,"Clean exit ...","");
