@@ -15,7 +15,7 @@ CFLAGS=-Wall -g
 ##
 ## TODO: Need to include the mpeg programs in bin_PROGRAMS for installation
 ##
-bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf
+bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf lav2wav lav2yuv
 lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c
 lavplay_LDFLAGS = -L./mjpeg/ @GLIB_LIBS@
 lavplay_LDADD = @MOVTAR_LIBS@ -lmjpeg
@@ -23,6 +23,14 @@ lavplay_LDADD = @MOVTAR_LIBS@ -lmjpeg
 lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c
 lavrec_LDFLAGS = -L./mjpeg/ @GLIB_LIBS@
 lavrec_LDADD = @MOVTAR_LIBS@ -lmjpeg
+
+lav2yuv_LDFLAGS  = -L movtar 
+lav2yuv_LDADD = editlist.o lav_io.o avilib.o -lmovtar
+lav2yuv_SOURCES = lav2yuv.c  jpegutils.c
+
+lav2wav_SOURCES = lav2wav.c
+lav2wav_LDADD = editlist.o lav_io.o avilib.o -lmovtar
+lav2wav_SOURCES = lav2wav.c 
 
 lavvideo_SOURCES = lavvideo.c
 

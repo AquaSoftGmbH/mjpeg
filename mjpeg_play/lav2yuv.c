@@ -263,7 +263,7 @@ void writeoutYUV4MPEGheader()
 		something more reliable than height */
 	 
 	 sprintf(str,"YUV4MPEG %d %d %d\n",
-			 output_width,output_height,(output_height>512)?3:4);
+			 output_width,output_height,el.video_norm == 'n' ? 4 : 3);
 	 write(1,str,strlen(str));
 }
 

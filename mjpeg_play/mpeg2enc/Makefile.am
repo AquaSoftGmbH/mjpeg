@@ -23,9 +23,6 @@ mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 	fdctref.c idct.c quantize.c ratectl.c stats.c \
 	$(mpeg2enc_SIMD)
 
-mjpegcat_LDFLAGS  = -L ../movtar 
-mjpegcat_LDADD = ../editlist.o ../lav_io.o ../avilib.o -lmovtar
-mjpegcat_SOURCES = mjpegcat.c  jpegutils.c
 
 INCLUDES =  -I ..
 CPPFLAGS = -DX86_CPU @MTYPEFLAGS@

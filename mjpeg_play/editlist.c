@@ -48,7 +48,7 @@ static int open_video_file(char *filename, EditList *el)
    for(i=0;i<el->num_video_files;i++)
       if(strcmp(realname,el->video_file_list[i])==0)
       {
-         printf("File %s already open\n",realname);
+         fprintf(stderr,"File %s already open\n",realname);
          return i;
       }
 
@@ -63,7 +63,7 @@ static int open_video_file(char *filename, EditList *el)
    n = el->num_video_files;
    el->num_video_files++;
 
-   printf("Opening video file %s ...\n",filename);
+   fprintf(stderr,"Opening video file %s ...\n",filename);
 
    el->lav_fd[n] = lav_open_input_file(filename);
    if(!el->lav_fd[n])
@@ -84,18 +84,18 @@ static int open_video_file(char *filename, EditList *el)
 
    /* Debug Output */
 
-   printf("File: %s, absolute name: %s\n",filename,realname);
-   printf("   frames:      %8ld\n",lav_video_frames(el->lav_fd[n]));
-   printf("   width:       %8d\n",lav_video_width (el->lav_fd[n]));
-   printf("   height:      %8d\n",lav_video_height(el->lav_fd[n]));
-   printf("   interlacing: %8d\n",lav_video_interlacing(el->lav_fd[n]));
-   printf("   frames/sec:  %8.3f\n",lav_frame_rate(el->lav_fd[n]));
-   printf("   audio samps: %8ld\n",lav_audio_samples(el->lav_fd[n]));
-   printf("   audio chans: %8d\n",lav_audio_channels(el->lav_fd[n]));
-   printf("   audio bits:  %8d\n",lav_audio_bits(el->lav_fd[n]));
-   printf("   audio rate:  %8ld\n",lav_audio_rate(el->lav_fd[n]));
-   printf("\n");
-   fflush(stdout);
+   fprintf(stderr,"File: %s, absolute name: %s\n",filename,realname);
+   fprintf(stderr,"   frames:      %8ld\n",lav_video_frames(el->lav_fd[n]));
+   fprintf(stderr,"   width:       %8d\n",lav_video_width (el->lav_fd[n]));
+   fprintf(stderr,"   height:      %8d\n",lav_video_height(el->lav_fd[n]));
+   fprintf(stderr,"   interlacing: %8d\n",lav_video_interlacing(el->lav_fd[n]));
+   fprintf(stderr,"   frames/sec:  %8.3f\n",lav_frame_rate(el->lav_fd[n]));
+   fprintf(stderr,"   audio samps: %8ld\n",lav_audio_samples(el->lav_fd[n]));
+   fprintf(stderr,"   audio chans: %8d\n",lav_audio_channels(el->lav_fd[n]));
+   fprintf(stderr,"   audio bits:  %8d\n",lav_audio_bits(el->lav_fd[n]));
+   fprintf(stderr,"   audio rate:  %8ld\n",lav_audio_rate(el->lav_fd[n]));
+   fprintf(stderr,"\n");
+   fflush(stderr);
 
    nerr = 0;
 
@@ -210,7 +210,7 @@ void read_video_files(char **filename, int num_files, EditList *el)
    {
       el->video_norm = filename[0][1];
       nf = 1;
-      printf("Norm set to %s\n",el->video_norm=='n'?"NTSC":"PAL");
+      fprintf(stderr,"Norm set to %s\n",el->video_norm=='n'?"NTSC":"PAL");
    }
 
    for(;nf<num_files;nf++)
@@ -231,7 +231,7 @@ void read_video_files(char **filename, int num_files, EditList *el)
       {
          /* Ok, it is a edit list */
 
-         printf("Edit list %s opened\n",filename[nf]);
+         fprintf(stderr,"Edit list %s opened\n",filename[nf]);
 
          /* Read second line: Video norm */
 
@@ -242,7 +242,7 @@ void read_video_files(char **filename, int num_files, EditList *el)
             exit(1);
          }
 
-         printf("Edit list norm is %s\n",line[0]=='N'||line[0]=='n'?"NTSC":"PAL");
+         fprintf(stderr,"Edit list norm is %s\n",line[0]=='N'||line[0]=='n'?"NTSC":"PAL");
 
          if(line[0]=='N'||line[0]=='n')
          {
@@ -268,7 +268,7 @@ void read_video_files(char **filename, int num_files, EditList *el)
          fgets(line,1024,fd);
          sscanf(line,"%d",&num_list_files);
 
-         printf("Edit list contains %d files\n",num_list_files);
+         fprintf(stderr,"Edit list contains %d files\n",num_list_files);
 
          /* read files */
 
@@ -456,6 +456,8 @@ int el_get_audio_data(char *abuff, long nframe, EditList *el, int mute)
 
    if(mute)
    {
+	   /* TODO: A.Stevens 2000 - this looks like a potential overflow
+		  bug to me... non muted we only ever return asamps/FPS samples */
       memset(abuff,0,asamps*el->audio_bps);
       return asamps*el->audio_bps;
    }

@@ -2,38 +2,50 @@ TASKS OUTSTANDING
 
 Minor
 
-- Tidy up linkage to quicktime, sort out whether lavtools and the
-  MPEG stuff is going to be embedded or not... 
+- Update the included scripts to reflect the new seperate input filter architecture for the
+  mpeg decoder.
 
-Medium
-
-- Modify mplex to improve speed and remove the need for mpegjoin
-
-- Beef up xlav to make splitting an editted stream set into multiple
-  edit lists for parallel compression less tedious.
+- Test and complete VCD multiplexing support in mplex.
 
 - Turn the crappy "HINTS" file into nice introductory documentation on
   working with these programs to achieve the best results in typical
   scenarios.
 
+- Add an end-of-stream marker to the "YUV" format to allow for tidy termination...
+
+
+Medium
+
+- Build some tidied up mpeg tools (e.g. a version of mpegjoin that works cleanly).
+
+- Beef up xlav to make splitting an editted stream set into multiple
+  edit lists for parallel compression less tedious.
 
 -	The new quantizer is only used on the most crucial (non-intra frame) routine.
 	It needs to be converted into a more efficient fully table-driven
 	form and adapted for intra frames too.
 
--	The code is still full of a "scaffolding" to support the forthcoming
+-   Test to make sure no bugs crept in mpeg-2 encoding with the new motion compensation code.
+
+-   Add the code to do DVD and SVCD multiplexing into mplex.  This is mainly the addition
+    of facilities to mux in AC-3 as stream PRIVATE1.  As ever Brent Byeler's "bbmpeg" is a 
+	good source here.
+
+-   Merge support for streamed wav's into aenc.  Perhaps replace it with the superior "toolame"
+    code base.
+
+-	The mpeg2enc code still has a lot of "scaffolding" to support the forthcoming
 	addition of gradient-descent based motion compensation.
 	Lots of "Code hygiene" improvements to be undertaken to modernise the code
 	base and allow better compiler checking...
 
+
+
 Major
 
 - Improve quality of mpeg2enc's output to the level of the best commercial
-  encoders.  Make it go *still faster*  ;-)
+  encoders.  I.e. add look-ahead bit-allocation and maybe some "intelligent"
+	pre-filtering options to blur mosaics. Make it go *still faster*  ;-)
 
-
-- 	THE BIGGY: Brent Byeler's hard work to support variable bit-rate SVCD
-	and DVD properly in the mpeg2enc / aenc / mplex derived "bbmpeg"
-	for windows should be merged in.  It's next on my list.
 
 

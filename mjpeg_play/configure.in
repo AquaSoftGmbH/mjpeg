@@ -3,7 +3,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT(lav_io.c)
 
 
-AM_INIT_AUTOMAKE(lavtools, 0.1.0)
+AM_INIT_AUTOMAKE(lavtools, 1.2.2)
 AM_MAINTAINER_MODE
 
 
@@ -41,6 +41,7 @@ dnl Check for GLib
 AM_PATH_GLIB(1.2.0)
 dnl AC_SUBST(GLIB_CFLAGS)
 dnl AC_SUBST(GLIB_LIBS)
+
 
 dnl Check for jpeg...
 have_jpeg="no"

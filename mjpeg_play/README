@@ -4,8 +4,8 @@ unpack it (e.g. under /usr/src/quicktime, and create a symlink to it
 e.g. cd /usr/src/mjpeg_play; ln -s /usr/src/quicktime ./quicktime
 )
 
-lavtools: Linux Audio and Video TOOLS
-=====================================
+mjpeg tools: Linux Motion JPEG Audio and Video TOOLS  (formely "lavtools")
+==========================================================================
 
 Programs for recording and playback and simple cut-and-paste editting
 and compression of audio and video under Linux.  Currently only the
@@ -20,19 +20,25 @@ with the lav tools edit lists and AVI and quicktime files.  Some
 and functionality enhancements.   They're all bundled together here to
 save you the tedious hunting around we have to go through ;-)
 
-The mjpeg/ directory contains a library 
-to simplify MJPEG software and hardware playback.
-Please read the accompanying README files in thise directory
+The mjpeg/ directory contains libraries to handle
+the new MJPEG movtar video format and a library 
+to simplify MJPEG software and hardware playback, respectively.
+Please read the accompanying README files in these directories
 for more information. 
 
-- "lavrec" is a program to record AVI and Quicktime files with
-   the Iomega BUZ including sound recording from the soundcard.
+- "lavrec" is a program to record AVI and Quicktime MJPEG files with
+   the Iomega BUZ etc including sound recording from the soundcard.
 
-- "lavplay" plays back AVI and Quicktime files with the Iomega BUZ
-  (including sound).
+- "lavplay" plays back AVI and Quicktime MJPEG files or "xlav" produced
+  edit files with the Iomega BUZ etc  (including sound).
 
 - "xlav" in the directory xlav is a GUI for lavplay which permits
-  fast forward/reverse, single frame stepping and simple editing.
+  fast forward/reverse, single frame stepping and simple non-destructive 
+  editing.  Instead of writing new AVI or Quicktime files xlav creates an
+  "edit list" file with pointers to the relevant bits of the original files.
+  The lav tools and MPEG encoding tools can all work directly with these files
+  as well as Quicktime and AVI files.  Since these files have simple plain-text
+  format they can easily be manually editted or use for other tools.
 	
 - "lavtrans" (in directory utils) converts a mixture of AVI files,
   Quicktime files  or Edit Lists into a single AVI or Quicktime file
@@ -44,22 +50,39 @@ for more information.
 - "lavvideo" is a small test application for the video overlay
    capabilities of your V4L hardware device.
 
+- "lav2yuv" decodes AVI and Quicktime MJPEG and edit lists video and outputs it to
+  standard out the simple raw YUV video   format expected by the MPEG compressor 
+  "mpeg2enc" (see below).
+
+- "lav2wav" decodes AVI and Quicktime MJPEG and edit lists video and outputs it to
+  standard out the WAV format expected by the MPEG layer 2 audio compressor 
+  "mp2enc" (see below).
+
 - "v4l-conf" is used in X to set up your video framebuffer address
 
 - "mpeg2enc" for encoding AVI/Quicktime files and Edit Lists
-  to MPEG-1/2 video streams
+  to MPEG-1/2 video streams.   It creates two programs.
+  mpeg2enc (the encoder proper) and "lav2yuv".  mpeg2enc expects
+  a simple "raw" YUV video format on its standard input (see README in the directory 
+  for details of the format).   Typically you'd therefore pipe the output of lav2yuv 
+  into mpeg2enc.  This two-program approach is chosen for primarily for flexibility.  
+  Using appropriate filter programs other than lav2yuv it is easy to use mpeg2enc to compress
+  other types of video stream.  For example, the "livid" MPEG-2 decoder/DVD player can produce
+  the output expected by "mpeg2enc" so that in combination they can be used to reduce high bit-rate
+  MPEG-2 formats to smaller MPEG-2 or MPEG-1 formats.
 
-- "aenc" for encoding AVI/Quicktime files and Edit Lists
-  to MPEG-1/2 layer 2 audio streams.   You may wish to try
-  using your favourite mpeg-1 layer 3 "MP3" encoder for better
+
+- "aenc" contains the source files for "mp2enc" the MPEG layer 2 audio compressor.
+  You may wish to try  using your favourite MPEG layer 3 "MP3" encoder for better
   quality results.  However, make sure you use constant bit-rate
   and turn of any extensions to the format.  Even then not all video
   players will work.
 
-- mplex multiplexes (interleaves) MPEG-1 video and audio streams
+- mplex multiplexes (interleaves) MPEG-1/2 video and audio streams
   into a combined "system stream" that can be played back smoothly.
-  This is *not* a trivial task (see the authors excellent paper on
-  the subject - copy is in the documentation). 
+  This is *not* as trivial a task as it might seem (see the authors 
+ excellent paper on the subject - copy is in the documentation). 
+	MPEG-2 multiplexing is currently untested.
   
 - mpegjoin joins *video* (not audio, not system) streams into a single
   stream.  This is very useful if you want to divide compressing
@@ -68,8 +91,8 @@ for more information.
   simply "cat" the files together (its has been modified to handle this).
 
 
-- Scripts is a collection of usefulcontains sample shell scripts
-	giving example usage of various files.
+- Scripts is a collection of useful sample shell scripts
+	giving example usage of various programs.
 
 See the README's of the various programs for further details
 of authorship, usage, and implementation/compilation details.

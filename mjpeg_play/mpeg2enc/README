@@ -12,6 +12,7 @@ POST  MPEG SSG Development
 Rainer Johanni changed the input routine so that "lavtools" Edit
 Lists, AVI's and Quicktime input is accepted, introduced command line
 params instead of a param file and made some simple optimizations.
+Rainer also did the initial mod to accept the new special yuv format.
 
 Andrew Stevens added more intelligent motion compensation and
 optimised some key calculations that run badly on modern highly
@@ -238,6 +239,15 @@ matrices.   Strong suppression of HF coefficients would work wonders
 on noise I suspect.  Update: either I'm doing it wrong or it doesn't
 work too well.  One problem is the lack of filtering messing up 
 motion compensation.
+
+
+INPUT FORMAT
+
+YUV4MPEG\n
+<horizonal size> <vertical size> <frame_rate_code>\n
+[FRAME\n<Y-data><U-data><V-data> ...]
+
+
 
 
 

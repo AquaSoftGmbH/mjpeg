@@ -7,7 +7,7 @@
 	 too read MPEG-1 streams *much* faster than the official VCD 170K/sec.  300K seems fine.
 	 
 	 Generally, given the current slightly lame rate control code in mpeg2enc you'll probably
-	 need a buffer size of around 1/4 data-rate to avoid buffer underflows (siginalled
+	 need a buffer size of around 1/4 data-rate to avoid buffer underflows (signalled
 	 as "time out"'s by mplex).
 	 
 (2)  If you want to play MPEG-1 stuff on hardware decoders stick to
@@ -20,7 +20,7 @@
      high.  You'll get warnings about violating the MPEG-1 standard.
 
 (4)  If you want to compress MPEG-2: feel free to try it, however, as far as I
-	am aware mplex won't multiplex MPEG-2 correctly.  Coming soon...
+	 am aware mplex won't multiplex MPEG-2 correctly.  Coming soon...
 
 (5)  If you want to compress MPEG-1: buy reasonably fast CPU's.
 	 Currently my Celeron-366and K6-2-500 run at about 1/4 playing-time.  My PIII-450's
@@ -28,7 +28,7 @@
 	 *fly* on this work.
 	 
 (6)	For encoding a typical (45 minute running time) show to 90 odd minute movie I have found
-	a CBR bit-rate of 2400 to be ideal.  The resulting files are around 700M for 45 minutes
+	a CBR bit-rate of 2200 to be ideal.  The resulting files are around 700M for 45 minutes
 	which fits nicely as a raw XA MODE2 data track on a CD-R.  (I use cdrdao to write such CD's
 	and a hacked version of vcdread - soon to be included to extract them).
 

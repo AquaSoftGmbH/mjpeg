@@ -107,19 +107,26 @@ FILE               *musicin;
 Bit_stream_struc   bs;
 char               *programName;
 
-/* Implementations */
+/* Global variables */
 
-#include "lav_io.h"
-#include "editlist.h"
-
-EditList el;
+int freq_in=0;
+int freq_out=0;
+int chans_in=0;
+int chans_out=0;
+int audio_bits=0;
+unsigned long audio_bytes=0;
 
 void Usage(char *str)
 {
-  printf("Usage: %s [params] inputfiles\n",str);
+  printf("Usage: %s [params] < input.wav\n",str);
   printf("   where possible params are:\n");
   printf("   -b num     Bitrate in KBit/sec (default: 224 KBit/s)\n");
-  printf("   -o name    Outputfile name\n");
+  printf("   -o name    Outputfile name (REQUIRED)\n");
+  printf("   -r num     Force output rate to be num Hz\n");
+  printf("              num must be one of 32000, 44100, 48000\n");
+  printf("   -s         Force stereo output\n");
+  printf("   -m         Force mono output\n");
+  printf("   -v         Force VCD compatible output (same as: -b 224 -r 44100 -s)\n");
   exit(0);
 }
 
@@ -136,7 +143,11 @@ char            encoded_file_name[MAX_NAME_SIZE];
     layer *info = fr_ps->header;
     int brt=0;
     char *outfilename = 0;
+    int stereo = 0;
+    int mono = 0;
+    int video_cd = 0;
     int j, n;
+    int audio_format;
 
     /* RJ: We set most params to fixed defaults: */
 
@@ -153,7 +164,7 @@ char            encoded_file_name[MAX_NAME_SIZE];
 
     brt = 0;
 
-    while( (n=getopt(argc,argv,"b:o:")) != EOF)
+    while( (n=getopt(argc,argv,"b:o:r:smv")) != EOF)
     {
         switch(n) {
 
@@ -165,10 +176,28 @@ char            encoded_file_name[MAX_NAME_SIZE];
                outfilename = optarg;
                break;
 
+            case 'r':
+               freq_out = atoi(optarg);
+               break;
+
+            case 's':
+               stereo = 1;
+               break;
+
+            case 'm':
+               mono = 1;
+               break;
+
+            case 'v':
+               video_cd = 1;
+               break;
+
             case '?':
                Usage(argv[0]);
         }
     }
+
+    if(argc!=optind) Usage(argv[0]);
 
     if(outfilename==0)
     {
@@ -176,10 +205,111 @@ char            encoded_file_name[MAX_NAME_SIZE];
         Usage(argv[0]);
     }
     strncpy(encoded_file_name,outfilename,MAX_NAME_SIZE);
- 
-    open_bit_stream_w(&bs, encoded_file_name, BUFFER_SIZE);
 
-    if (brt==0) brt = 224;
+    /* Sanity checks */
+
+    if(freq_out!=0 && freq_out!=32000 && freq_out!=44100 && freq_out!=48000)
+    {
+       fprintf(stderr,"Options -r requires one of 32000 44100 48000!\n");
+       Usage(argv[0]);
+    }
+
+    if(stereo && mono)
+    {
+       fprintf(stderr,"Options -s and -m are mutally exclusive!\n");
+       Usage(argv[0]);
+    }
+    if(mono)   chans_out = 1;
+    if(stereo) chans_out = 2;
+
+    if(video_cd && mono)
+    {
+       fprintf(stderr,"Options -v and -m are mutally exclusive!\n");
+       Usage(argv[0]);
+    }
+
+    if(video_cd && freq_out!=0 && freq_out!=44100)
+    {
+       fprintf(stderr,"Option -v requires sample rate 44100!\n");
+       Usage(argv[0]);
+    }
+
+    if(video_cd && brt!=0 && brt!=224)
+    {
+       fprintf(stderr,"Option -v requires bit rate 224 KBit/s!\n");
+       Usage(argv[0]);
+    }
+
+    if(video_cd)
+    {
+       freq_out=44100;
+       brt = 224;
+       chans_out = 2;
+    }
+
+    /* Read the WAV file header, make sanity checks */
+
+    if(wav_read_header(stdin,&freq_in,&chans_in,&audio_bits,
+                       &audio_format,&audio_bytes))
+    {
+       fprintf(stderr,"*** Error reading WAV file ***\n");
+       exit(0);
+    }
+
+    printf("Opened WAV file, freq = %d Hz, channels = %d, bits = %d\n",
+           freq_in, chans_in, audio_bits);
+    printf("   format = 0x%x, audio length = %u bytes\n",audio_format,audio_bytes);
+
+    if(audio_format!=1)
+    {
+       fprintf(stderr,"Error: WAV file is not in PCM format\n");
+       exit(1);
+    }
+    if(audio_bits!=8 && audio_bits!=16)
+    {
+       fprintf(stderr,"Error: audio samples must have 8 or 16 bits\n");
+       exit(1);
+    }
+
+    if(chans_in!=1 && chans_in!=2)
+    {
+       fprintf(stderr,"Error: can only handle files with 1 or 2 channels\n");
+       exit(1);
+    }
+
+    if(chans_out==0) chans_out = chans_in;
+
+    if(chans_out==1)
+    {
+       info->mode = MPG_MD_MONO;
+       info->mode_ext = 0;
+    }
+    else
+    {
+       info->mode = MPG_MD_STEREO;
+       info->mode_ext = 0;
+    }
+
+    if(freq_out==0) freq_out = freq_in;
+    switch (freq_out) {
+       case 48000 :
+           info->sampling_frequency = 1;
+           break;
+       case 44100 :
+           info->sampling_frequency = 0;
+           break;
+       case 32000 :
+           info->sampling_frequency = 2;
+           break;
+       default:
+           fprintf(stderr,"Error: Frequency must be one of 32000 44100 48000"
+                          " unless -r is used!\n");
+           exit(1);
+    }
+
+    *num_samples = audio_bytes/(audio_bits/8);
+
+    if (brt==0) brt = (info->mode == MPG_MD_MONO) ? 112 : 224;
 
     for(j=0;j<15;j++) if (bitrate[info->lay-1][j] == brt) break;
 
@@ -190,50 +320,12 @@ char            encoded_file_name[MAX_NAME_SIZE];
 
     info->bitrate_index = j;
 
-    /* Open editlist */
-
-    read_video_files(argv + optind, argc - optind, &el);
-
-    if(!el.has_audio)
-    {
-        fprintf(stderr,"Input file(s) have no audio\n");
-        exit(1);
-    }
-
-    if(el.audio_bits!=16)
-    {
-        fprintf(stderr,"Input file(s) must have 16 bit audio!\n");
+    if(info->lay==2 && brt>192 && info->mode==MPG_MD_MONO) {
+        fprintf(stderr,"Bitrate of %d KBit/s not allowed for MONO\n",brt);
         exit(1);
     }
  
-    switch (el.audio_rate) {
-       case 48000 : info->sampling_frequency = 1;
-           break;
-       case 44100 : info->sampling_frequency = 0;
-           break;
-       case 32000 : info->sampling_frequency = 2;
-           break;
-       default:
-           fprintf(stderr,"Audio rate is %d Hz\n",el.audio_rate);
-           fprintf(stderr,"Audio rate must be 32000, 44100 or 48000 !\n");
-           exit(1);
-    }
-
-    switch (el.audio_chans) {
-       case 1:
-          info->mode = MPG_MD_MONO;
-          info->mode_ext = 0;
-          break;
-
-       case 2:
-          info->mode = MPG_MD_STEREO;
-          info->mode_ext = 0;
-          break;
-
-       default:
-          fprintf(stderr,"Audio channels %d not allowed\n",el.audio_chans);
-           exit(1);
-    }
+    open_bit_stream_w(&bs, encoded_file_name, BUFFER_SIZE);
 }
 
 /************************************************************************
@@ -477,40 +569,40 @@ static unsigned int crc;
                    filter_subband(&(*win_que)[k][0], &(*sb_sample)[k][i][j][0]);
                 }
  
-			 II_scale_factor_calc(*sb_sample, scalar, stereo, fr_ps.sblimit);
-			 pick_scale(scalar, &fr_ps, max_sc);
-			 if(fr_ps.actual_mode == MPG_MD_JOINT_STEREO) {
-			   II_combine_LR(*sb_sample, *j_sample, fr_ps.sblimit);
-			   II_scale_factor_calc(j_sample, &j_scale, 1, fr_ps.sblimit);
-			 }       /* this way we calculate more mono than we need */
-			 /* but it is cheap */
-			 
-			 if (model == 1) II_Psycho_One(buffer, max_sc, ltmin, &fr_ps);
-			 else {
-			   for (k=0;k<stereo;k++) {
-				 psycho_anal(&buffer[k][0],&sam[k][0], k, 
-							 info.lay, snr32,
-							 (FLOAT)s_freq[info.sampling_frequency]*1000);
-				 for (i=0;i<SBLIMIT;i++) ltmin[k][i] = (double) snr32[i];
-			   }
-			 }
+                II_scale_factor_calc(*sb_sample, scalar, stereo, fr_ps.sblimit);
+                pick_scale(scalar, &fr_ps, max_sc);
+                if(fr_ps.actual_mode == MPG_MD_JOINT_STEREO) {
+                   II_combine_LR(*sb_sample, *j_sample, fr_ps.sblimit);
+                   II_scale_factor_calc(j_sample, &j_scale, 1, fr_ps.sblimit);
+                }       /* this way we calculate more mono than we need */
+                        /* but it is cheap */
  
-			 II_transmission_pattern(scalar, scfsi, &fr_ps);
-			 II_main_bit_allocation(ltmin, scfsi, bit_alloc, &adb, &fr_ps);
-			 
-			 if (error_protection)
-			   II_CRC_calc(&fr_ps, bit_alloc, scfsi, &crc);
-			 
-			 encode_info(&fr_ps, &bs);
-			 
-			 if (error_protection) encode_CRC(crc, &bs);
-			 
-			 II_encode_bit_alloc(bit_alloc, &fr_ps, &bs);
-			 II_encode_scale(bit_alloc, scfsi, scalar, &fr_ps, &bs);
-			 II_subband_quantization(scalar, *sb_sample, j_scale,
-									 *j_sample, bit_alloc, *subband, &fr_ps);
-			 II_sample_encoding(*subband, bit_alloc, &fr_ps, &bs);
-			 for (i=0;i<adb;i++) put1bit(&bs, 0);
+                if (model == 1) II_Psycho_One(buffer, max_sc, ltmin, &fr_ps);
+                else {
+                   for (k=0;k<stereo;k++) {
+                      psycho_anal(&buffer[k][0],&sam[k][0], k, 
+                                 info.lay, snr32,
+                                 (FLOAT)s_freq[info.sampling_frequency]*1000);
+                      for (i=0;i<SBLIMIT;i++) ltmin[k][i] = (double) snr32[i];
+                   }
+                }
+ 
+                II_transmission_pattern(scalar, scfsi, &fr_ps);
+                II_main_bit_allocation(ltmin, scfsi, bit_alloc, &adb, &fr_ps);
+ 
+                if (error_protection)
+                   II_CRC_calc(&fr_ps, bit_alloc, scfsi, &crc);
+ 
+                encode_info(&fr_ps, &bs);
+ 
+                if (error_protection) encode_CRC(crc, &bs);
+ 
+                II_encode_bit_alloc(bit_alloc, &fr_ps, &bs);
+                II_encode_scale(bit_alloc, scfsi, scalar, &fr_ps, &bs);
+                II_subband_quantization(scalar, *sb_sample, j_scale,
+                                      *j_sample, bit_alloc, *subband, &fr_ps);
+                II_sample_encoding(*subband, bit_alloc, &fr_ps, &bs);
+                for (i=0;i<adb;i++) put1bit(&bs, 0);
           break;
  
 /***************************** Layer 3 **********************************/

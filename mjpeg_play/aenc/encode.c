@@ -86,49 +86,181 @@ encode.c
 extern unsigned _stklen = 16384;
 #endif
 
-#include "lav_io.h"
-#include "editlist.h"
+extern int freq_in;
+extern int freq_out;
+extern int chans_in;
+extern int chans_out;
+extern int audio_bits;
+extern unsigned long audio_bytes;
 
-extern EditList el;
+static unsigned long nseconds = 0;
+static int num_out = -1;
+static int buff_pos;
+static int big_endian;
+static unsigned char *in_buff;
+static short *buf1, *buf2, *out_buff;
+static double freq_quot;
 
-static int num_frame = 0;
-static int nbuff=0;
-static short samp_buff[16384];
-static int percent_old = -1;
-
-int get_samples(short *abuff, int num)
+static void read_and_resample()
 {
-   int n, percent;
+   int n, nbps, num_in, is;
+   double s, fs;
 
-   while(nbuff<num)
+   /* Read 1 second of audio from stdin */
+
+   nbps = chans_in*audio_bits/8; /* Bytes per sample in */
+
+   if(num_out<0)
    {
-      if(num_frame>=el.video_frames) return 0;
-      n = el_get_audio_data(samp_buff+nbuff,num_frame,&el,0);
-      if(n==0)
-      {
-         printf("\n");
-         return 0;
+      /* Initialize, read first sample to the end of the buffer */
+
+      n = fread(in_buff+freq_in*nbps,1,nbps,stdin);
+      if(n!=nbps) {
+         fprintf(stderr,"\nError reading wave data\n");
+         exit(1);
       }
-      nbuff+=n/2;
-      num_frame++;
    }
 
-   memcpy(abuff,samp_buff,2*num);
-   nbuff-=num;
-   memmove(samp_buff,samp_buff+num,2*nbuff);
+   /* Copy last sample in input buffer to front,
+      read exactly 1 second */
 
-   percent = 100*num_frame/el.video_frames;
-   if(percent != percent_old)
+   memcpy(in_buff,in_buff+freq_in*nbps,nbps);
+   n = fread(in_buff+nbps,1,freq_in*nbps,stdin);
+   num_in = n/nbps + 1;
+
+   /* Step 1: Make little endian shorts from input */
+
+   if(audio_bits==8)
    {
-      printf("%3d %% done\r",percent);
-      fflush(stdout);
-      percent_old = percent;
+      for(n=0;n<num_in*chans_in;n++)
+         buf1[n] = (in_buff[n]-128)<<8;
+   }
+   else if(big_endian)
+   {
+      swab(in_buff,buf1,num_in*nbps);
+   }
+
+   /* Step 2: Make mono from stereo or vice versa if wanted */
+
+   if(chans_in==2 && chans_out==1)
+   {
+      for(n=0;n<num_in;n++)
+         buf2[n] = (buf1[2*n]+buf1[2*n+1]) >> 1;
+   }
+
+   if(chans_in==1 && chans_out==2)
+   {
+      for(n=0;n<num_in;n++)
+         buf2[2*n] = buf2[2*n+1] = buf1[n];
+   }
+
+   /* Step 3: Change sampling frequency if necessary */
+
+   num_out = ((long long)num_in-1)*(long long)freq_out/(long long)freq_in;
+   if(freq_in != freq_out)
+   {
+      for(n=0;n<num_out;n++)
+      {
+         s = n*freq_quot;
+         is = s;
+         fs = s - is;
+
+         if(chans_out==2)
+         {
+            out_buff[2*n  ] = (1.0-fs)*buf2[2*is  ] + fs*buf2[2*is+2];
+            out_buff[2*n+1] = (1.0-fs)*buf2[2*is+1] + fs*buf2[2*is+3];
+         }
+         else
+         {
+            out_buff[n] = (1.0-fs)*buf2[is] + fs*buf2[is+1];
+         }
+      }
+   }
+   num_out *= chans_out;
+
+   nseconds++;
+   printf("%4d seconds done\r",nseconds);
+   fflush(stdout);
+}
+
+int get_samples(short *abuff, int num, int stereo)
+{
+   char c[2];
+   short *s;
+   int n;
+
+   if(num_out<0)
+   {
+      /* Initialize */
+
+      c[0] = 0x12;
+      c[1] = 0x34;
+      s = (short*) c;
+
+      if(*s==0x1234) {
+         big_endian = 1;
+         printf("System is big endian\n");
+      } else if(*s==0x3412) {
+         big_endian = 0;
+         printf("System is little endian\n");
+      } else {
+         fprintf(stderr,"Can not determine if system is big/lttle endian\n");
+         fprintf(stderr,"Are you running on a Cray - or what?\n");
+         exit(1);
+      }
+
+      freq_quot = (double)freq_in/(double)freq_out;
+
+      in_buff = (unsigned char *) malloc((freq_in+1)*chans_in*audio_bits/8);
+      if(!in_buff) { fprintf(stderr,"Malloc failed\n"); exit(1); }
+      if( audio_bits==8 || (audio_bits==16 && big_endian) )
+      {
+         buf1 = (short *)malloc((freq_in+1)*chans_in*sizeof(short));
+         if(!buf1) { fprintf(stderr,"Malloc failed\n"); exit(1); }
+      }
+      else
+         buf1 = (short *)in_buff;
+
+      if(chans_in!=chans_out)
+      {
+         buf2 = (short *)malloc((freq_in+1)*chans_out*sizeof(short));
+         if(!buf2) { fprintf(stderr,"Malloc failed\n"); exit(1); }
+      }
+      else
+         buf2 = buf1;
+
+      if(freq_in!=freq_out)
+      {
+         out_buff = (short *)malloc(freq_out*chans_out*sizeof(short));
+         if(!out_buff) { fprintf(stderr,"Malloc failed\n"); exit(1); }
+      }
+      else
+         out_buff = buf2;
+
+      /* Read first buffer with samples */
+
+      read_and_resample();
+      buff_pos = 0;
+   }
+
+   while(num)
+   {
+      if(buff_pos == num_out)
+      {
+        read_and_resample();
+        buff_pos = 0;
+        if(num_out==0) return 0;
+      }
+      n = num;
+      if(buff_pos+n>num_out) n = num_out-buff_pos;
+      memcpy(abuff,out_buff+buff_pos,n*sizeof(short));
+      abuff += n;
+      buff_pos += n;
+      num -= n;
    }
 
    return 1;
 }
-      
-   
 
 /*=======================================================================\
 |                                                                       |
@@ -177,7 +309,7 @@ int stereo, lay;
  
    if (lay == 1){
       if(stereo == 2){ /* layer 1, stereo */
-         res = get_samples(insamp, 384*2);
+         res = get_samples(insamp, 384*2, stereo);
          for(j=0;j<448;j++) {
             if(j<64) {
                buffer[0][j] = buffer[0][j+384];
@@ -190,7 +322,7 @@ int stereo, lay;
          }
       }
       else { /* layer 1, mono */
-         res = get_samples(insamp, 384);
+         res = get_samples(insamp, 384, stereo);
          for(j=0;j<448;j++){
             if(j<64) {
                buffer[0][j] = buffer[0][j+384];
@@ -205,20 +337,21 @@ int stereo, lay;
    }
    else {
       if(stereo == 2){ /* layer 2 (or 3), stereo */
-         res = get_samples(insamp, 1152*2);
+         res = get_samples(insamp, 1152*2, stereo);
          for(j=0;j<1152;j++) {
             buffer[0][j] = insamp[2*j];
             buffer[1][j] = insamp[2*j+1];
          }
       }
       else { /* layer 2 (or 3), mono */
-         res = get_samples(insamp, 1152);
+         res = get_samples(insamp, 1152, stereo);
          for(j=0;j<1152;j++){
             buffer[0][j] = insamp[j];
             buffer[1][j] = 0;
          }
       }
    }
+   if(res==0) printf("\n");
    return res;
 }
 
