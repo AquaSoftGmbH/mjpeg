@@ -1,4 +1,4 @@
-.TH "lavrec" "1" "23 November 2001" "MJPEG Linux Square" "MJPEG tools manual"
+.TH "lavrec" "1" "6 December 2001" "MJPEG Linux Square" "MJPEG tools manual"
 
 .SH NAME
 lavrec \- Record MJPEG-video from a zoran/video4linux-device
@@ -63,7 +63,7 @@ being the horizontal and the second one being the vertical (-d 12).
 the geometry of the undecimated subframe to record. The default is the
 full frame, so 720x576/480+0+0 for Buz/LML33\-users and 640x480+0+0
 or 768x576+0+0 for DC10(+)-users.
-\fBFor software recordingP: The size of the video to be captured.
+\fBFor software recording:\fP The size of the video to be captured.
 Currently, width and height need to be a multiple of 16. You always
 capture the full frame since most video4linux devices don\'t support
 subframe capture.
@@ -76,7 +76,7 @@ filesize, higher quality will take more diskspace but will give more
 detailed perfectness in the resulting recorded video. Default is 50%.
 
 .TP 8
-.BI \-C\-\-channel " LIST:CHAN"
+.BI \-C/\-\-channel " LIST:CHAN"
 Choose the channel to record from (xawtv-style). By default, lavrec will
 just use the current TV channel.
 
@@ -86,7 +86,7 @@ Recording time in seconds. The default is unlimited. To stop capturing
 video while recording, use Ctrl-C.
 
 .TP 8
-.B \-/\-\-single\-frame
+.B \-S/\-\-single\-frame
 Single-frame capture mode. This means that one can capture individual
 frames from the capture device.
 
@@ -190,10 +190,18 @@ audio options and record to an AVI file. That having said, your recording
 command line would look like:
 .TP 8
 .B From hardware MJPEG devices (S\-video input)
-  lavrec --format=a --input=P --quality=80 --decimation=2 /path/to/file.avi
+lavrec --format=a --input=P --quality=80 --decimation=2 /path/to/file.avi
 .TP 8
 .B From normal video4linux devices
-  lavrec --software-encoding --format=a --input=p --quality=80 --geometry=352x288 /path/to/file.avi
+lavrec --software-encoding --format=a --input=p --quality=80 --geometry=352x288 /path/to/file.avi
+
+.SH BUGS
+lavrec should be able to detect automatically whether to use software
+JPEG encoding or whether to use the card's hardware JPEG encoding
+features (if available).
+
+Besides that, software JPEG encoding seems, for some people, to cause
+small out-of-sync'ness.
 
 .SH AUTHOR
 This man page was written by Ronald Bultje.

@@ -1,4 +1,4 @@
-.TH "lavplay" "1" "2 June 2001" "MJPEG Linux Square" "MJPEG tools manual"
+.TH "lavplay" "1" "6 December 2001" "MJPEG Linux Square" "MJPEG tools manual"
 
 .SH NAME
 lavplay \- Playback and edit MJPEG video
@@ -16,29 +16,33 @@ the Miro/Pinnacle DC10(+), the Iomega Buz or Linux Media Labs' LML33,
 or in software mode (using SDL).
 
 It also provides mechanisms for non-destructive editting video using
-an interactive front-end such as \fBxlav\fP(1).  See
-.B SEARCHING AND EDITTING
+an interactive front-end such as \fBglav\fP(1).  See
+.B SEARCHING AND EDITING
 below for details.
 
 
 .SH OPTIONS
 \fBlavplay\fP accepts the following options:
 .TP 8
-.BR  \-S | \-H | \-C
-The playback mode to be used. \-S means software\-playback using SDL.
-\-H means hardware\-playback on the monitor (full\-screen). \-C means
+.BR \-p/\-\-playback " [" S | C | H ]
+The playback mode to be used. 'S' means software\-playback using SDL.
+'H' means hardware\-playback on the monitor (full\-screen). 'C' means
 hardware\-playback to the video-out of the zoran video-capture device.
-Obviously, \-C and \-H only work on computers with zoran video\-capture
+Obviously, 'C' and 'H' only work on computers with zoran video\-capture
 devices.
 .TP 8
-.B \-Z
+.B \-Z/\-\-full\-screen
 Software full-screen playback. This only works if SDL-playback is chosen
 (-S), and will playback the video full-screen instead of in a window.
 .TP 8
-.B \-a [01]
+.BI \-\-size " NxN"
+Size of the video window (default: size of the input video) when using
+software (SDL) playback
+.TP 8
+.BR \-a/\-\-audio " [" 0 | 1 ]
 Enables (1) or disables (0) audio playback.
 .TP 8
-.B \-z
+.B \-z/\-\-zoom
 Zooms the video to fit the screen as good as possible.
 .TP 8
 .B \-x
@@ -46,44 +50,50 @@ Exchange fields of an interlaced video. Try this if the video looks weird.
 It shouldn't be necessary with stuff captured using lavrec(1) but could be
 needed for other sources.
 .TP 8
-.B \-s num
+.BI \-s/\-\-skip " num"
 Skip <num> seconds of video at the beginning.
 .TP 8
-.B \-o [np]
+.BR \-o/\-\-norm " [" n | p ]
 Forces the use of PAL (p) or NTSC (n). By default, the use of either PAL
 or NTSC is guessed from the framerate of the first input video.
 .TP 8
-.B \-c [01]
+.B \-x/\-\-exchange\-fields
+Invert field order (for videos which are recorded with wrong field
+order interlacing settings)
+.TP 8
+.B \-F/\-\-flicker
+Disable flicker reduction
+.TP 8
+.BR \-c/\-\-synchronization " [" 0 | 1 ]
 Enables (1) or disables (0) the use of sync corrections. Basically,
 you almost certainly want this.  Disabling is really there for
 diagnostic purposes and not much else.
 .TP 8
-.B \-X num, \-Y num
-Horizontal (-X) and vertical (-Y) offset when using hardware-playback of
+.BI \-H/\-\-H\-offset " num", \-V/\-\-V-offset " num"
+Horizontal (-H) and vertical (-V) offset when using hardware-playback of
 a video which does not cover the full video hardware-resolution.
 .TP 8
-.B \-q
+.BI \-\-display " :x.x"
+When using hardware fullsreen video playback (\-pH), this setting can be
+used to specify the video display (default: :0.0) to use for video display.
+.TP 8
+.B \-q/\-\-no\-quit
 Makes lavplay stay alive at the end of the video (lavplay won't quit).
 Use 'q<enter>' on the command line to quit (see below, \fBSEARCHING
 AND EDITING\fP).
 .TP 8
-.B \-g
-Enables GUI-mode. This is used by xlav and Linux Video Studio. It will
-output the current position in the video each frame, so that the xlav
+.B \-g/\-\-gui\-mode
+Enables GUI-mode. This is used by glav and Linux Video Studio. It will
+output the current position in the video each frame, so that the glav
 or LVS can keep track of where we are in the video which is being played
 back.
 .TP 8
-.B \-n num
+.BI \-n/\-\-mjpeg\-buffers " num"
 Number of MJPEG-buffers. Default is 32. Try changing this number if you
 have many lost frames.
 .TP 8
-.B \-v num
+.BI \-v/\-\-verbose " num"
 Verbosity level (0, 1 or 2)
-.YP 8
-.B \-g
-Turns on "GUI feedback".  Makes lavplay produce output to let a GUI
-front-end know its current position in the video stream in response to
-stdin commands (see below).  Not intended for interactive use.
 
 .SH ENVIRONMENT VARIABLES
 The following environment variables can be recognized by lavrec:
@@ -96,7 +106,7 @@ The audio device. Default is /dev/dsp
 .SH SEARCHING AND EDITING
 \fBlavplay\fP can do more than simple plain playback. It is also intended
 to be controlled using commands sent via stdin from a front-end like
-.BR xlav(1)
+.BR glav(1)
 or similar, more sophisticated tools.  The most significant aspect of
 this functionality is the ability to create \fIedit list\fP files
 giving the playback sequence of an editted version of the input video.
@@ -174,12 +184,6 @@ Editlists record absolute pathnames.  This more or less forces manual
 editting of the pathnames in them if it is desired to move editlists
 and source video files.
 
-lavplay currently uses a modified version of the JPEG library to
-perform colour-space conversion in software.  Although using MMX
-on x86 CPU's performance is not what it should be.  Future releases
-will utilise the X server for colour space conversion to allow
-hardware acceleration and improve stability and portability.
-
 lavplay really ought to make a decent job of detecting what playback
 options are feasible (on-screen hardware, video-out port hardware,
 software) and set the default playback mode appropriately.  Alas, it
@@ -190,11 +194,15 @@ This man page was written by Ronald Bultje.
 .br
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:
-  \fImjpeg\-users@lists.sourceforge.net\fP
-
-For more info, see our website at \fIhttp://mjpeg.sourceforge.net/
+.br
+    \fImjpeg\-users@lists.sourceforge.net\fP
+.br
+.br
+For more info, see our website at
+.br
+    \fIhttp://mjpeg.sourceforge.net/\fP
 
 .SH SEE ALSO
 .BR mjpegtools (1),
 .BR lavrec (1),
-.BR xlav (1)
+.BR glav (1)
