@@ -26,17 +26,31 @@ unsigned int MuxStream::BufferSizeCode()
 		assert(false);
 }
 
+
 //
-//  Compute the number of bytes that would have to be sent to complete
-//  transmission current access unit if it *another* stream is muxed
-//  next.
+// Generator for padding packets in a padding stream...
 //
 
-unsigned int MuxStream::BytesToMuxAUEnd(unsigned int sector_transport_size)
+
+unsigned int PaddingStream::ReadStrm(uint8_t *dst, unsigned int to_read)
 {
-
-	return (au_unsent/min_packet_data)*sector_transport_size +
-		(au_unsent%min_packet_data)+(sector_transport_size-min_packet_data);
-	
+	memset( dst, STUFFING_BYTE, to_read );
+	return to_read;
 }
 
+
+//
+//  Generator for end-of-stream marker packets...
+// 
+
+unsigned int EndMarkerStream::ReadStrm(uint8_t *dst, unsigned int to_read)
+{
+	uint8_t *end_marker = &dst[to_read-4];
+	memset( dst, STUFFING_BYTE, to_read-4 );
+	end_marker[0] = static_cast<uint8_t>((ISO11172_END)>>24);
+	end_marker[1] = static_cast<uint8_t>((ISO11172_END & 0x00ff0000)>>16);
+	end_marker[2] = static_cast<uint8_t>((ISO11172_END & 0x0000ff00)>>8);
+	end_marker[3] = static_cast<uint8_t>(ISO11172_END & 0x000000ff);
+	
+	return to_read;
+}

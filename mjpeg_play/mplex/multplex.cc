@@ -38,7 +38,7 @@ segment_state;
 
 
 static PaddingStream pstrm;
-
+static EndMarkerStream estrm;
 
 /******************************************************************
 
@@ -67,7 +67,6 @@ void OutputStream::InitSyntaxParameters()
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 0;
 	  	always_sys_header_in_pack = 0;
-	  	trailing_pad_pack = 1;
 	  	sector_transport_size = 2352;	      /* Each 2352 bytes with 2324 bytes payload */
 	  	transport_prefix_sectors = 30;
 	  	sector_size = 2324;
@@ -86,7 +85,6 @@ void OutputStream::InitSyntaxParameters()
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 1;
 	  	always_sys_header_in_pack = 0;
-	  	trailing_pad_pack = 0;
 	  	sector_transport_size = 2048;	      /* Each 2352 bytes with 2324 bytes payload */
 	  	transport_prefix_sectors = 0;
 	  	sector_size = 2048;
@@ -116,7 +114,6 @@ void OutputStream::InitSyntaxParameters()
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 0;
 	  	always_sys_header_in_pack = 0;
-	  	trailing_pad_pack = 1;
 	  	sector_transport_size = 2324;
 	  	transport_prefix_sectors = 0;
 	  	sector_size = 2324;
@@ -140,7 +137,6 @@ void OutputStream::InitSyntaxParameters()
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 0;
 	  	always_sys_header_in_pack = 0;
-	  	trailing_pad_pack = 1;
 	  	sector_transport_size = 2352;	      /* Each 2352 bytes with 2324 bytes payload */
 	  	transport_prefix_sectors = 30;
 	  	sector_size = 2324;
@@ -158,7 +154,6 @@ void OutputStream::InitSyntaxParameters()
 	  	packets_per_pack = opt_packets_per_pack;
 	  	always_sys_header_in_pack = opt_always_system_headers;
 		sys_header_in_pack1 = 1;
-		trailing_pad_pack = 0;
 		sector_transport_size = opt_sector_size;
 		transport_prefix_sectors = 0;
         sector_size = opt_sector_size;
@@ -406,30 +401,13 @@ void OutputStream::OutputSuffix(clockticks &SCR,
 	unsigned char *index;
 	Pack_struc 	pack;
 
-	if (trailing_pad_pack )
-	{
-		int end_code_padding_payload;
-
-		psstrm->CreatePack (&pack, SCR, mux_rate);
-		end_code_padding_payload = psstrm->PacketPayload( NULL, &pack, false, 0, 0)-4;
-		psstrm->CreateSector (&cur_sector, &pack, NULL,
-							  end_code_padding_payload,
-							  NULL, pstrm, 
-							  false, 0, 0,
-							  TIMESTAMPBITS_NO );
-		index = cur_sector.buf  + sector_size-4;
-	}
-	else
-		index = cur_sector.buf;
-	/* write out ISO 11172 END CODE				*/
-
-
-	*(index++) = (unsigned char)((ISO11172_END)>>24);
-	*(index++) = (unsigned char)((ISO11172_END & 0x00ff0000)>>16);
-	*(index++) = (unsigned char)((ISO11172_END & 0x0000ff00)>>8);
-	*(index++) = (unsigned char)(ISO11172_END & 0x000000ff);
-
-	psstrm->RawWrite(cur_sector.buf, sector_size);
+	psstrm->CreatePack (&pack, SCR, mux_rate);
+	psstrm->CreateSector (&pack, NULL,
+						  0,
+						  estrm, 
+						  false, 0, 0,
+						  TIMESTAMPBITS_NO );
+	
 	*bytes_output += sector_transport_size;
 	ByteposTimecode ( *bytes_output, SCR);
 }
@@ -874,6 +852,7 @@ void OutputStream::OutputVideo ( VideoStream &vstrm,
 {
 
 	unsigned int max_packet_payload; 	 
+	unsigned int actual_payload;
 	unsigned int prev_au_tail;
 	Pack_struc *pack_ptr = NULL;
 	Sys_header_struc *sys_header_ptr = NULL;
@@ -934,13 +913,13 @@ void OutputStream::OutputVideo ( VideoStream &vstrm,
 		else
 			timestamps=TIMESTAMPBITS_PTS_DTS;
 
-		psstrm->CreateSector ( &cur_sector, pack_ptr, sys_header_ptr,
-						max_packet_payload,
-						vstrm.rawstrm, 
-						vstrm,
-						buffers_in_video, PTS, DTS,
-						timestamps );
-		NextVideoAU ( cur_sector.length_of_packet_data, vstrm);
+		actual_payload =
+			psstrm->CreateSector ( pack_ptr, sys_header_ptr,
+								   max_packet_payload,
+								   vstrm,
+								   buffers_in_video, PTS, DTS,
+								   timestamps );
+		NextVideoAU ( actual_payload, vstrm);
 
 	}
 
@@ -951,13 +930,13 @@ void OutputStream::OutputVideo ( VideoStream &vstrm,
 	else if ( ! vstrm.new_au_next_sec &&
 			  (vstrm.au_unsent >= old_au_then_new_payload))
 	{
-		psstrm->CreateSector( &cur_sector, pack_ptr, sys_header_ptr,
-					   vstrm.au_unsent,
-					   vstrm.rawstrm,
-					   vstrm,
-					   buffers_in_video, 0, 0,
-					   TIMESTAMPBITS_NO );
-		NextVideoAU ( cur_sector.length_of_packet_data, vstrm);
+		actual_payload = 
+		psstrm->CreateSector( pack_ptr, sys_header_ptr,
+							  vstrm.au_unsent,
+							  vstrm,
+							  buffers_in_video, 0, 0,
+							  TIMESTAMPBITS_NO );
+		NextVideoAU ( actual_payload, vstrm);
 
 	}
 
@@ -986,23 +965,21 @@ void OutputStream::OutputVideo ( VideoStream &vstrm,
 			PTS = vstrm.au.PTS + SCR_video_delay;
 			DTS = vstrm.au.DTS + SCR_video_delay;
 	
-			psstrm->CreateSector (&cur_sector, pack_ptr, sys_header_ptr,
-						   max_packet_payload,
-						   vstrm.rawstrm,
-						   vstrm,
-						   buffers_in_video, PTS, DTS,
-						   timestamps );
-			NextVideoAU ( cur_sector.length_of_packet_data - prev_au_tail, 
-						  vstrm);
+			actual_payload = 
+				psstrm->CreateSector ( pack_ptr, sys_header_ptr,
+									  max_packet_payload,
+									  vstrm,
+									  buffers_in_video, PTS, DTS,
+									  timestamps );
+			NextVideoAU ( actual_payload - prev_au_tail,  vstrm);
 		} 
 		else
 		{
-			psstrm->CreateSector ( &cur_sector, pack_ptr, sys_header_ptr,
-							0,
-							vstrm.rawstrm, 
-							vstrm,
-							buffers_in_video, 0, 0,
-							TIMESTAMPBITS_NO);
+			psstrm->CreateSector ( pack_ptr, sys_header_ptr,
+								   0,
+								   vstrm,
+								   buffers_in_video, 0, 0,
+								   TIMESTAMPBITS_NO);
 		};
 
 
@@ -1010,7 +987,6 @@ void OutputStream::OutputVideo ( VideoStream &vstrm,
 
 
 	/* Sector auf Platte schreiben				*/
-	psstrm->RawWrite(cur_sector.buf, sector_size);
   
 	buffers_in_video = always_buffers_in_video;
 	
@@ -1080,6 +1056,7 @@ void OutputStream::OutputAudio ( AudioStream &astrm,
 {
 	clockticks   PTS;
 	unsigned int max_packet_data; 	 
+	unsigned int actual_payload;
 	unsigned int bytes_sent;
 	Pack_struc *pack_ptr = NULL;
 	Sys_header_struc *sys_header_ptr = NULL;
@@ -1125,14 +1102,14 @@ void OutputStream::OutputAudio ( AudioStream &astrm,
 	
 	if (astrm.new_au_next_sec)
     {
-		psstrm->CreateSector (&cur_sector, pack_ptr, sys_header_ptr,
-					   audio_packet_data_limit,
-					   astrm.rawstrm, 
-					   astrm,
-					   buffers_in_audio, PTS, 0,
-					   TIMESTAMPBITS_PTS);
+		actual_payload = 
+			psstrm->CreateSector ( pack_ptr, sys_header_ptr,
+								  audio_packet_data_limit,
+								  astrm,
+								  buffers_in_audio, PTS, 0,
+								  TIMESTAMPBITS_PTS);
 
-		NextAudioAU ( cur_sector.length_of_packet_data, astrm);
+		NextAudioAU ( actual_payload, astrm);
     }
 
 	/* FALL: Packet beginnt mit alter Access Unit, es kommt	*/
@@ -1142,14 +1119,13 @@ void OutputStream::OutputAudio ( AudioStream &astrm,
 	else if (!(astrm.new_au_next_sec) && 
 			 (astrm.au_unsent >= old_au_then_new_payload))
     {
-		psstrm->CreateSector (&cur_sector, pack_ptr, sys_header_ptr,
-					   audio_packet_data_limit,
-					   astrm.rawstrm, 
-					   astrm,
-					   buffers_in_audio, 0, 0,
-					   TIMESTAMPBITS_NO );
-
-		NextAudioAU ( cur_sector.length_of_packet_data, astrm);
+		actual_payload = 
+			psstrm->CreateSector ( pack_ptr, sys_header_ptr,
+								  audio_packet_data_limit,
+								  astrm,
+								  buffers_in_audio, 0, 0,
+								  TIMESTAMPBITS_NO );
+		NextAudioAU ( actual_payload, astrm);
     }
 
 
@@ -1166,21 +1142,19 @@ void OutputStream::OutputAudio ( AudioStream &astrm,
 		{
 			astrm.new_au_next_sec = true;
 			PTS = astrm.au.PTS + SCR_audio_delay;
-			psstrm->CreateSector (&cur_sector, pack_ptr, sys_header_ptr,
-						   audio_packet_data_limit,
-						   astrm.rawstrm, 
-						   astrm,
-						   buffers_in_audio, PTS, 0,
-						   TIMESTAMPBITS_PTS );
+			actual_payload = 
+				psstrm->CreateSector ( pack_ptr, sys_header_ptr,
+									  audio_packet_data_limit,
+									  astrm,
+									  buffers_in_audio, PTS, 0,
+									  TIMESTAMPBITS_PTS );
 
-			NextAudioAU ( cur_sector.length_of_packet_data - bytes_sent, 
-						  astrm );
+			NextAudioAU ( actual_payload - bytes_sent, astrm );
 		} 
 		else
 		{
-			psstrm->CreateSector (&cur_sector, pack_ptr, sys_header_ptr,
+			psstrm->CreateSector ( pack_ptr, sys_header_ptr,
 						   0,
-						   astrm.rawstrm, 
 						   astrm,
 						   buffers_in_audio, 0, 0,
 						   TIMESTAMPBITS_NO );
@@ -1190,7 +1164,6 @@ void OutputStream::OutputAudio ( AudioStream &astrm,
 
 	/* Sector auf Platte schreiben				*/
 	/* write out sector onto disk				*/
-	psstrm->RawWrite (cur_sector.buf, sector_size);
 
 	buffers_in_audio = always_buffers_in_audio;
 	
@@ -1246,14 +1219,11 @@ void OutputStream::OutputPadding (	clockticks SCR,
 
 		/* Wir generieren das Packet				*/
 		/* let's generate the packet				*/
-		psstrm->CreateSector (&cur_sector, pack_ptr, sys_header_ptr,
+		psstrm->CreateSector ( pack_ptr, sys_header_ptr,
 							  padding_limit,
-							  NULL, 
-							  pstrm,
+							  estrm,
 							  false, 0, 0,
 							  TIMESTAMPBITS_NO );
-
-		psstrm->RawWrite(cur_sector.buf, sector_size);
 	}
 	
 }

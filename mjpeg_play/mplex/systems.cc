@@ -7,6 +7,7 @@
 #include "systems.hh"
 #include "mpegconsts.hh"
 
+uint8_t dummy_buf[8000];
 void
 PS_Stream::Init( const char *name_pat, off_t max_seg_size )
 {
@@ -203,12 +204,11 @@ PS_Stream::BufferMpeg2ScrTimecode( clockticks    timecode,
 	would exceed the remaining payload capacity.
 *************************************************************************/
 
-void 
-PS_Stream::CreateSector (Sector_struc 	 *sector,
-						 Pack_struc	 	 *pack,
+
+unsigned int
+PS_Stream::CreateSector (Pack_struc	 	 *pack,
 						 Sys_header_struc *sys_header,
 						 unsigned int     max_packet_data_size,
-						 FILE		 	 *inputstream,
 						 MuxStream        &strm,
 						 bool 	 buffers,
 						 clockticks   	 PTS,
@@ -230,7 +230,7 @@ PS_Stream::CreateSector (Sector_struc 	 *sector,
 	uint8_t 	 buffer_scale = strm.buffer_scale;
 	unsigned int buffer_size = strm.BufferSizeCode();
 
-    index = sector->buf;
+	index = sector_buf;
 
     /* soll ein Pack Header mit auf dem Sektor gespeichert werden? */
     /* Should we copy Pack Header information ? */
@@ -285,12 +285,10 @@ PS_Stream::CreateSector (Sector_struc 	 *sector,
 			break;
 		case TIMESTAMPBITS_PTS:
 			BufferDtsPtsMpeg1ScrTimecode (PTS, MARKER_JUST_PTS, &index);
-			sector->TS = PTS;
 			break;
 		case TIMESTAMPBITS_PTS_DTS:
 			BufferDtsPtsMpeg1ScrTimecode (PTS, MARKER_PTS, &index);
 			BufferDtsPtsMpeg1ScrTimecode (DTS, MARKER_DTS, &index);
-			sector->TS = DTS;
 			break;
 		}
 	}
@@ -315,13 +313,11 @@ PS_Stream::CreateSector (Sector_struc 	 *sector,
 		{
 		case TIMESTAMPBITS_PTS:
 			BufferDtsPtsMpeg1ScrTimecode(PTS, MARKER_JUST_PTS, &index);
-			sector->TS = PTS;
 			break;
 
 		case TIMESTAMPBITS_PTS_DTS:
 			BufferDtsPtsMpeg1ScrTimecode(PTS, MARKER_PTS, &index);
 			BufferDtsPtsMpeg1ScrTimecode(DTS, MARKER_DTS, &index);
-			sector->TS = DTS;
 			break;
 		}
 
@@ -341,7 +337,7 @@ PS_Stream::CreateSector (Sector_struc 	 *sector,
 
 	/* MPEG-1, MPEG-2: data available to be filled is packet_size less header and MPEG-1 trailer... */
 
-	target_packet_data_size = sector_size - (index - sector->buf);
+	target_packet_data_size = sector_size - (index - sector_buf);
 	
 		
 	/* DEBUG: A handy consistency check when we're messing around */
@@ -368,6 +364,7 @@ PS_Stream::CreateSector (Sector_struc 	 *sector,
 
 
 	/* MPEG-1, MPEG-2: read in available packet data ... */
+#ifdef DEBUG_CODE_WHILE_NEW_NOT_PROVEN 
     
     if (type == PADDING_STR)
     {
@@ -377,11 +374,32 @@ PS_Stream::CreateSector (Sector_struc 	 *sector,
 		actual_packet_data_size = packet_data_to_read;
     } 
     else
-    {   
+    {  
+#endif
+
+		actual_packet_data_size = strm.ReadStrm(index,packet_data_to_read);
+
+#ifdef DEBUG_CODE_WHILE_NEW_NOT_PROVEN 
+		
+		int apd = strm.ReadStrm(dummy_buf,packet_data_to_read);
+
+
 		actual_packet_data_size = fread (index, sizeof(uint8_t), 
 										 packet_data_to_read, 
 										 inputstream);
+		int sum = 0;
+		for( int i = 0; i < apd; ++i )
+		{
+			sum = (sum<<7) + (index[i] - dummy_buf[i]);
+			if( apd != actual_packet_data_size || sum != 0 )
+				mjpeg_debug( "%d: APD=%d(%d) byte[%d[=%d(%d)\n",
+							 ftell(inputstream), actual_packet_data_size, apd,
+							 i, index[i], dummy_buf[i]);
+		}
+		
 	}
+#endif
+
 	bytes_short = target_packet_data_size - actual_packet_data_size;
 	
 	/* Handle the situations where we don't have enough data to fill
@@ -463,8 +481,8 @@ PS_Stream::CreateSector (Sector_struc 	 *sector,
 	/* At this point padding or stuffing will have ensured the packet
 		is filled to target_packet_data_size
 	*/ 
-    sector->length_of_packet_data = actual_packet_data_size;
-
+	RawWrite(sector_buf, sector_size);
+	return actual_packet_data_size;
 }
 
 /*************************************************************************

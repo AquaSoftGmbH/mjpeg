@@ -55,11 +55,11 @@ int main (int argc, char* argv[])
 	if(  opt_stills )
 	{
 		mjpeg_error_exit1( "Still stream muxing not (yet) implemented\n");
-		vector<const char *> stills;
-		check_stills(argc-optargs, argv+optargs, stills);
+		//vector<const char *> stills;
+		//check_stills(argc-optargs, argv+optargs, stills);
 		ostrm.InitSyntaxParameters();
 		VideoStream stillStrm(0);
-		stillStrm.Init( stills[0] );
+		//stillStrm.Init( stills[0] );
 		//outputstream( stillStrm, audioStrm, multi_file );
 	}
 	else

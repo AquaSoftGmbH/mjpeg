@@ -29,7 +29,6 @@ public:
 	bool always_buffers_in_video;	
 	bool buffers_in_audio;
 	bool always_buffers_in_audio;
-	bool trailing_pad_pack;		/* Stick a padding packet at the end	*/
 	bool sector_align_iframeAUs;
 
 /* In some situations the system/PES packets are embedded with
@@ -47,14 +46,13 @@ public:
 	bool 			zero_stuffing;	/* Pad short sectors with 0's not padding packets */
 	
 	int 		dmux_rate;	/* Actual data mux-rate for calculations always a multiple of 50  */
-int 		mux_rate;	/* TODO: remove MPEG mux rate (50 byte/sec units      */
+	int 		mux_rate;	/* TODO: remove MPEG mux rate (50 byte/sec units      */
 	unsigned int packets_per_pack;
 	
 	
     /* Stream packet component buffers */
 	
 	Sys_header_struc 	sys_header;
-	Sector_struc 		cur_sector;
 	
 	/* Output stream... */
 	unsigned long long bytes_output;

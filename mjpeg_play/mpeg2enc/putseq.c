@@ -236,7 +236,7 @@ static int find_gop_length( int gop_start_frame,
 		frame_lum_mean( gop_start_frame+gop_max_len+I_frame_temp_ref );
 	int pred_lum_mean;
 
-	/* Search backwards from max gop length for I-frame candidate starting 
+	/* Search backwards from max gop length for I-frame candidate
 	   adjusting for I-frame temporal reference
 	 */
 	for( i = gop_max_len; i >= gop_min_len; --i )
@@ -253,7 +253,7 @@ static int find_gop_length( int gop_start_frame,
 		/* No scene change detected within maximum GOP length.
 		   Now do a look-ahead check to see if running a maximum length
 		   GOP next would put scene change into the GOP after-next
-		   that would need a GOP smaller than minum to handle...
+		   that would need a GOP smaller than minimum to handle...
 		*/
 		pred_lum_mean = 
 			frame_lum_mean( gop_start_frame+gop_max_len+I_frame_temp_ref );
@@ -390,8 +390,8 @@ static void gop_start( stream_state_s *ss )
 	  Compute GOP length based on min and max sizes specified
 	  and scene changes detected.  
 	  First GOP in a sequence has I frame with a 0 temp_ref
-	  nad (M-1) less frames (no initial B frames).
-	  all other GOPs have a temp_ref of M-1
+	  and (M-1) less frames (no initial B frames).
+	  In all other GOPs I-frame has a temp_ref of M-1
 	*/
 	
 	if( ss->i == 0 )

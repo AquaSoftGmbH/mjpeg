@@ -105,19 +105,6 @@ void OBitStream::put1bit(int val)
     putbyte();
 }
 
-/* Prepare a upcoming undo at the beginning of a GOP */
-void IBitStream::prepareundo( BitStream &undo)
-{
-  fgetpos(fileh, &actpos);
-  undo = *(static_cast<BitStream*>(this));
-}
-
-/* Reset old status, undo all changes made up to a point */
-void IBitStream::undochanges( BitStream &undo)
-{
-	*(static_cast<BitStream *>(this)) = undo;
-	fsetpos(fileh, &actpos);
-}
 
 /* zero bit stuffing to next byte boundary (5.2.3, 6.2.1) */
 void OBitStream::alignbits()
@@ -130,15 +117,84 @@ void OBitStream::alignbits()
 bool IBitStream::refill_buffer()
 {
 	unsigned int i;
+	if( bufcount == BUFFER_SIZE )
+	{
+		mjpeg_error_exit1("INTERNAL ERROR: additional data required but
+ no free space in input buffer\n");
+	}
+	i = fread(bfr+bufcount, sizeof(uint8_t), BUFFER_SIZE-bufcount, fileh);
+	if (i == 0)
+	{
+		eobs = true;
+		return false;
+	}
+	bufcount += i;
+	return true;
+}
 
-  i = fread(bfr, sizeof(uint8_t), BUFFER_SIZE, fileh);
-  if (!i)
-  {
-    eobs = true;
-    return false;
-  }
-  bufcount = i;
-  return true;
+/*
+  Flushes all read input up-to *but not including* bit
+  unbuffer_upto.
+*/
+
+void IBitStream::flush(bitcount_t flush_upto )
+{
+	if( flush_upto > buffer_start+bufcount )
+		mjpeg_error_exit1("INTERNAL ERROR: attempt to flush input beyond buffered amount\n" );
+
+	if( flush_upto < buffer_start )
+		mjpeg_error_exit1("INTERNAL ERROR: attempt to flush input stream before  first buffered byte %d last is %d\n", flush_upto, buffer_start );
+	unsigned int bytes_to_flush = 
+		static_cast<unsigned int>(flush_upto - buffer_start);
+	//
+	// Don't bother actually flushing until a good fraction of a buffer
+	// will be cleared.
+	//
+
+	if( bytes_to_flush < BUFFER_SIZE*3/4 )
+		return;
+
+	bufcount -= bytes_to_flush;
+	buffer_start = flush_upto;
+	byteidx -= bytes_to_flush;
+	memmove( bfr, bfr+bytes_to_flush, static_cast<size_t>(bufcount));
+}
+
+
+/*
+  Undo scanning / reading
+  N.b buffer *must not* be flushed between prepareundo and undochanges.
+*/
+void IBitStream::prepareundo( BitStream &undo)
+{
+  undo = *(static_cast<BitStream*>(this));
+}
+
+
+void IBitStream::undochanges( BitStream &undo)
+{
+	*(static_cast<BitStream *>(this)) = undo;
+}
+
+
+unsigned int IBitStream::read_buffered_bytes(uint8_t *dst, unsigned int length)
+{
+	unsigned int to_read = length;
+	if( readpos < buffer_start)
+		mjpeg_error_exit1("INTERNAL ERROR: access to input stream buffer @ %d: before first buffered byte (%d)\n", readpos, buffer_start );
+
+	if( readpos-buffer_start+length > bufcount )
+	{
+		if( !eobs )
+			mjpeg_error_exit1("INTERNAL ERROR: access to input stream buffer beyond last buffered byte\nEND=%d REQ=%d + %d bytes", bufcount, readpos-buffer_start,length  );
+		to_read = static_cast<unsigned int>(totbits/8-readpos);
+	}
+	memcpy( dst, 
+			bfr+(static_cast<unsigned int>(readpos-buffer_start)), 
+			to_read);
+	readpos += to_read;
+	flush( readpos );
+	return to_read;
 }
 
 /* open the device to read the bit stream from it */
@@ -164,18 +220,6 @@ void IBitStream::open( char *bs_filename)
 }
 
 
-/* open the device to read the bit stream from it */
-void IBitStream::rewind()
-{
-
-  byteidx = 0;
-  bitidx = 8;
-  totbits = 0LL;
-  bufcount = 0;
-  eobs = false;
-  ::rewind(fileh);
-  (void) refill_buffer();
-}
 
 /*close the device containing the bit stream after a read process*/
 void IBitStream::close()
@@ -207,11 +251,10 @@ uint32_t IBitStream::get1bit()
     byteidx++;
     if (byteidx == bufcount)
     {
-      if (bufcount == BUFFER_SIZE)
-        refill_buffer();
-      else
-        eobs = true;
-      byteidx = 0;
+		unsigned int org_bufcount=bufcount;
+		refill_buffer();
+		if (bufcount == org_bufcount)
+			eobs = true;
     }
   }
 
@@ -236,14 +279,13 @@ uint32_t IBitStream::getbits(int N)
       val = (val << 8) | bfr[byteidx];
       byteidx++;
       totbits += 8;
-      if (byteidx == bufcount)
-      {
-        if (bufcount == BUFFER_SIZE)
-          refill_buffer();
-        else
-          eobs = true;
-        byteidx = 0;
-      }
+	  if (byteidx == bufcount)
+	  {
+		  unsigned int org_bufcount=bufcount;
+		  refill_buffer();
+		  if (bufcount == org_bufcount)
+			  eobs = true;
+	  }
       i--;
     }
   }
@@ -261,14 +303,13 @@ uint32_t IBitStream::getbits(int N)
       {
         bitidx = 8;
         byteidx++;
-        if (byteidx == bufcount)
-        {
-          if (bufcount == BUFFER_SIZE)
-            refill_buffer();
-          else
-            eobs = true;
-          byteidx = 0;
-        }
+		if (byteidx == bufcount)
+		{
+			unsigned int org_bufcount=bufcount;
+			refill_buffer();
+			if (bufcount == org_bufcount)
+				eobs = true;
+		}
       }
       val = (val << 1) | j;
       i--;

@@ -52,30 +52,14 @@ public:
 		stream_length(0),
 		last_buffered_AU(0),
 		decoding_order(0),
-		old_prozent(0),
-		prozent(0)
+		old_frames(0)
 		{}
 
 	void Init( const char *file_name )
 		{
-			struct stat stb;
-			/* We actually maintain *two* file-handles one is used for
-			   scanning ahead to pick-up access unit information the
-			   other for the reading done to shuffle data into the
-			   multiplexed output file */
-			
-			rawstrm = fopen( file_name, "rb" );
-			if( rawstrm == NULL )
-				mjpeg_error_exit1( "Cannot open for scan and read: %s\n", file_name );
-			fstat(fileno(rawstrm), &stb);
-			file_length = stb.st_size;
-			
 			bs.open( const_cast<char *>(file_name) );
 		}
 
-
-	FILE *rawstrm;				// Elementary input stream
-	                            // Eventually to be encapsulated
     bitcount_t stream_length;
 protected:
 	off_t      file_length;
@@ -87,12 +71,18 @@ protected:
     uint32_t  syncword;
     bitcount_t prev_offset;
     unsigned int decoding_order;
-    unsigned int prozent;
-    unsigned int old_prozent;
+    unsigned int old_frames;
 
 };
 
 
+//
+// TODO: This is really very unnecessary templating.  If we 
+// encapsulate the AU buffering code so it doesn't generate
+// lots of memory requests even though it only
+// works with points this could be handled *far* more elegantly
+// through inheritance.  
+//
 
 class MuxStream
 {
@@ -108,8 +98,9 @@ public:
 
 	void SetMuxParams( unsigned int buf_size );
 	unsigned int BufferSizeCode();
-	unsigned int BytesToMuxAUEnd(unsigned int sector_transport_size);
-	
+
+	virtual unsigned int ReadStrm(uint8_t *dst, unsigned int to_read) = 0;
+
 public:  // TODO should go protected once encapsulation complete
 
 
@@ -117,7 +108,6 @@ public:  // TODO should go protected once encapsulation complete
 	int        stream_id;
 	bool new_au_next_sec;
 	int        buffer_scale;
-	unsigned int    au_unsent;
 	unsigned int 	buffer_size;
 	unsigned int 	max_packet_data;
 	unsigned int	min_packet_data;
@@ -156,6 +146,7 @@ public:
 			}
 		}
 
+
 	int NextAUType()
 		{
 			T *p_au = Lookahead(1);
@@ -177,12 +168,28 @@ public:
 			return aunits.lookahead(i);
 		}
 
+	unsigned int BytesToMuxAUEnd(unsigned int sector_transport_size)
+		{
+			return (au_unsent/min_packet_data)*sector_transport_size +
+				(au_unsent%min_packet_data)+(sector_transport_size-min_packet_data);
+		}
+
+	//
+	//  Read the (parsed and spliced) stream data from the stream
+	//  buffer.
+	//
+	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read)
+		{
+			return bs.read_buffered_bytes( dst, to_read );
+		}
+
 
 public:  // TODO should go protected once encapsulation complete
 	     // N.b. currently length=0 is used to indicate an ended
 	     // stream.
+	     // au itself should simply disappear
 	T au;
-	
+	unsigned int au_unsent;
 private:
 	T *next()
 		{
@@ -190,6 +197,7 @@ private:
 			{
 				if( aunits.curpos() > FRAME_CHUNK )
 				{
+					T *p_au = aunits.lookahead(0);
 					aunits.flush(FRAME_CHUNK);
 				}
 				FillAUbuffer(FRAME_CHUNK);
@@ -198,17 +206,14 @@ private:
 			return aunits.next();
 		}
 	
-
-
-
 };
 
 
-class VideoStream : public ElementaryStream<VAunit, 256>
+class VideoStream : public ElementaryStream<VAunit, 4>
 {
 public:
 	VideoStream(const int stream_num) :
-		ElementaryStream<VAunit, 256>(VIDEO_STR_0+stream_num,1),
+		ElementaryStream<VAunit, 4>(VIDEO_STR_0+stream_num,1),
 		num_sequence(0),
 		num_seq_end(0),
 		num_pictures(0),
@@ -271,11 +276,11 @@ public:							// TODO make private once encapsulation comple
 	int next_sec_AU_type;
 }; 		
 
-class AudioStream : public ElementaryStream<AAunit, 128>
+class AudioStream : public ElementaryStream<AAunit, 4>
 {
 public:   
 	AudioStream(const int stream_num) : 
-		ElementaryStream<AAunit, 128>( AUDIO_STR_0 + stream_num, 0),
+		ElementaryStream<AAunit, 4>( AUDIO_STR_0 + stream_num, 0),
 		num_syncword(0)
 		{
 			for( int i = 0; i <2 ; ++i )
@@ -323,6 +328,20 @@ public:
 		{
 			init = true;
 		}
+
+	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
+};
+
+class EndMarkerStream : public MuxStream
+{
+public:
+	EndMarkerStream() :
+		MuxStream( PADDING_STR, 0 )
+		{
+			init = true;
+		}
+
+	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
 };
 
 

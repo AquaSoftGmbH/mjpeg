@@ -15,7 +15,7 @@ typedef struct sector_struc	/* Ein Sektor, kann Pack, Sys Header	*/
 				/* und Packet enthalten.		*/
 {   unsigned char  buf [MAX_SECTOR_SIZE] ;
     unsigned int   length_of_packet_data ;
-    clockticks TS                ;
+    //clockticks TS                ;
 } Sector_struc;
 
 typedef struct pack_struc	/* Pack Info				*/
@@ -43,7 +43,9 @@ public:
 		  zero_stuffing( _zero_stuffing),
 		  segment_num( 1 ),
 		  max_segment_size( 2040 * 1024 * 1024 )
-		{}
+		{
+			sector_buf = new uint8_t[sector_size];
+		}
 
 	void Init( const char *filename_pat,
 			   off_t max_segment_size // 0 = No Limit
@@ -54,17 +56,14 @@ public:
 								Pack_struc *pack_header, 
 								int buffers, int PTSstamp, int DTSstamp );
 
-	void RawWrite(uint8_t *data, unsigned int len);
-	void CreateSector (Sector_struc 	 *sector,
-					   Pack_struc	 	 *pack,
-					   Sys_header_struc *sys_header,
-					   unsigned int     max_packet_data_size,
-					   FILE		 	 *inputstream,
-					   MuxStream        &strm,
-					   bool 	 buffers,
-					   clockticks   	 PTS,
-					   clockticks   	 DTS,
-					   uint8_t 	 timestamps
+	unsigned int CreateSector (Pack_struc	 	 *pack,
+							   Sys_header_struc *sys_header,
+							   unsigned int     max_packet_data_size,
+							   MuxStream        &strm,
+							   bool 	 buffers,
+							   clockticks   	 PTS,
+							   clockticks   	 DTS,
+							   uint8_t 	 timestamps
 		);
 
 	void CreatePack ( Pack_struc	 *pack,
@@ -86,6 +85,8 @@ public:
 	void Close() { fclose(strm); }
 
 private:
+	void RawWrite(uint8_t *data, unsigned int len);
+
 	void BufferDtsPtsMpeg1ScrTimecode (clockticks    timecode,
 								  uint8_t  marker,
 								  uint8_t **buffer);
@@ -102,5 +103,6 @@ private:
 	FILE *strm;
 	char filename_pat[MAXPATHLEN];
 	char cur_filename[MAXPATHLEN];
+	uint8_t *sector_buf;
 };
 #endif // __SYSTEMS_HH__

@@ -90,7 +90,7 @@ Pick out and check MPEG stills files.
 TODO: Do more than just collect the files can be opened!
 
 ************************************************************************/
-
+#ifdef REDUNDANT
 void check_stills( const int argc, char *argv[], vector<const char *>stills )
 {
 	int i;
@@ -108,6 +108,8 @@ void check_stills( const int argc, char *argv[], vector<const char *>stills )
 		}
 	}
 }
+
+#endif
 
 
 /*************************************************************************
@@ -304,6 +306,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 			case SEQUENCE_HEADER :
 			case GROUP_START :
 			case PICTURE_START :
+				access_unit.start = AU_start;
 				access_unit.length = (int) (stream_length - AU_start)>>3;
 				access_unit.end_seq = 0;
 				avg_frames[access_unit.type-1]+=access_unit.length;
@@ -437,12 +440,11 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				num_frames[access_unit.type-1]++;
 			}
 
-			prozent =static_cast<int>(bs.bitcount()/8*100/file_length);
-			if ( prozent > old_prozent && verbose > 0 )
+			
+			if ( decoding_order >= old_frames+1000 )
 			{
-				mjpeg_debug("Got %d picture headers. %2d%%\n",
-						decoding_order, prozent);
-				old_prozent = prozent;
+				mjpeg_debug("Got %d picture headers.\n", decoding_order);
+				old_frames = decoding_order;
 			}
 			
 			break;		    
@@ -461,7 +463,6 @@ void VideoStream::Close()
 {
 
 	bs.close();
-	fclose( rawstrm );
     stream_length = (unsigned int)(AU_start / 8);
     for (int i=0; i<4; i++)
 	{
@@ -657,8 +658,7 @@ void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
 		   stream to process before finishing ... */
 		if ( (syncword = bs.getbits( 11))!=AUDIO_SYNCWORD )
 		{
-			bitcount_t bits_to_end = file_length*8 - AU_start;
-			if( bits_to_end > 1024*8  )
+			if( !bs.eobs   )
 			{
 				/* There appears to be another catenated stream... */
 				int next;
@@ -666,6 +666,7 @@ void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
 				/* Catenated stream must start on byte boundary */
 				syncword = (syncword<<(8-AU_start % 8));
 				next = bs.getbits(8-(AU_start % 8) );
+				AU_start = bs.bitcount()-11;
 				syncword = syncword | next;
 				if( syncword != AUDIO_SYNCWORD )
 				{
@@ -685,6 +686,7 @@ void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
 		(void) bs.getbits( 2);
 
 		padding_bit=bs.get1bit();
+		access_unit.start = AU_start;
 		access_unit.length = SizeFrame( rate_code, padding_bit );
 
 		access_unit.PTS = static_cast<clockticks>(decoding_order) * static_cast<clockticks>(samples[3-layer]) * static_cast<clockticks>(CLOCKS)
@@ -695,16 +697,13 @@ void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
 		num_frames[padding_bit]++;
 
 		bs.getbits( 9);
-
-		prozent =(int) bs.bitcount()*100/8/file_length;
+		
 		num_syncword++;
 
-		if ((prozent > old_prozent && verbose > 0))
+		if (num_syncword >= old_frames+1000 )
 		{
-
-			mjpeg_debug ("Got %d frame headers. %2d%%\n",
-						 num_syncword,prozent);
-			old_prozent=prozent;
+			mjpeg_debug ("Got %d frame headers.\n", num_syncword);
+			old_frames=num_syncword;
 		
 		}
 	
