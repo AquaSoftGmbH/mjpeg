@@ -580,6 +580,7 @@ main (int argc, char **argv)
 
 
 		audio_bytesperframe = (int) ( ( ((double) waveheader.rate) / framespersec) * ((double) waveheader.bits/8 * waveheader.channels) );
+		audio_bytesperframe += (audio_bytesperframe % 4) ? (4 - (audio_bytesperframe % 4)) : 0; // Avifile wants an exact number of samples
 		fprintf(stderr, "ABF = %i\n", audio_bytesperframe);
 		audio_buffer = (char*) malloc(audio_bytesperframe);
 	}
