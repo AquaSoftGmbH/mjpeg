@@ -234,7 +234,7 @@ http://marvel.sourceforge.net
 
 Last example:
 .br
-.B > lavrec -f a -i p -d 2 -q 80 -s -l 70 -R l --software-encoding test03.avi 
+.B > lavrec -f a -i p -d 2 -q 80 -s -l 70 -R l -g 352x288 --software-encoding test03.avi 
 .br
 The two new options are 
 .B -g 352x288, 
@@ -343,11 +343,11 @@ wrong field order.
 .B How can you fix it?
 
 1.   To fix this one the fields need to be "shifted" through the frames.
-Use lav2yuv's -F option can help here. Or re-record exchanging  -f a for -F A or vice-versa. I believe the same applies to NTSC.
+Use yuvscaler's -M BOTT_FORWARD/TOP_FORWARD option can help here. Or re-record
+exchanging -f a for -F A or vice-versa. I believe the same applies to NTSC.
 
 2.   This isn't too bad either.  Use a tool that simply swaps the top and
-bottom fields a second time. lav2yuv and yuvscaler can do this.
-Use the lav2yuv -x switch or yuvscaler -M LINE_SWITCH.
+bottom fields a second time. yuvscaler can do this use the -M LINE_SWITCH.
 
 3.  Is easy to fix.  Either tell a tool someplace to relabel or simply tell
 the player to play back in swapped order (the latter can be done "indirectly"
@@ -1089,6 +1089,47 @@ You can also use scaling an options that optimize (denoise) the images, to get
 smaler streams. But this options are explained in deep in the according 
 sections.
 
+.B Which values should be used for VBR Encoding (-q)
+
+The -q option controls the minimum quantisation of the output stream. 
+Quantisation controls  the  precision  with  which image information is
+encoded. The higher the value the better the image quality.
+
+Usually you have to set up a maximum bitrate with the -b option. So the
+tricky task is to set a value for the -q option and the -b option that
+produces a nice movie without using to much bandwith and not much artefacts.
+
+A Quality factor should be choosen that way that the mplex output of
+Peak bit-rate and Average bit-rate differ for about 20-25%.
+
+If the the difference is very small < 10%, it is very likely that you have done
+something wrong. It is very likely the you have choosen the wrong values for
+the maximal bitrate or a to high quality factor.
+
+A combination that will produce more artefacts you can count, is a SVCD with
+a maximal video bitrate of 2500kBit and a qualitfactor set to 1 or 2.
+For SVCD with a video limit of 2500kBit a quality factor of 7-9 fits quite good.If you use filter programms or have a very good source like digial TV,
+DVD like material or renderd pictures. If your SVCD/DVD player supports higher
+bitrates than the official 2788kBit/sec for the video and audio. Use the
+higher bitrate and a higher quality factor, action scenes for example will
+look much better.
+
+The same (7-9) quality factor for a full size picture and a top bitrate of
+3500 to 4000 kBit won't produce to much artefacts too.
+
+For SVCD/DVD you can expect a result like the one described if the maximal
+bitrate is not set too low:
+.br
+q <= 6 real sharp pictures, and good quality
+.br
+q <= 8 good quality
+.br
+q <= 10 average quality
+.br
+q >= 11 not that good
+.br
+q >= 13 here even still sequences might look blocky
+
 .B Multiplexing Example
 
 .B > mplex -f 3 -b 300 -r 4750 -V audio.mp3 video.mp3 -o final.mpg
@@ -1539,7 +1580,7 @@ Specifies the output file.
 
 The other version uses sox and toolame in a singe command:
 .br
-\fB> cat test2.mpg | extract_ac3 - -s | ac3dec -m wav | sox -t wav /dev/stdin -t wav -r 44100 /dev/stdout | toolame -p 2 -b 224 /dev/stdin audio.mp2\fR
+\fB> cat test2.mpg | extract_ac3 - -s | ac3dec -o wav | sox -t wav /dev/stdin -t wav -r 44100 /dev/stdout | toolame -p 2 -b 224 /dev/stdin audio.mp2\fR
 
 One of the first lines output contains the label "SYNC".  You have to use this  time (referred to as "SYNC_value" below) when doing the multiplexing.
 
@@ -1664,7 +1705,7 @@ If you have videos with ac3 sound you only have to adapt the commands above.
 
 Extracting Audio:
 .br
-.B > cat test2.mpg | extract_ac3 - -s | ac3dec -m wav 2>/dev/null >sound.wav
+.B > cat test2.mpg | extract_ac3 - -s | ac3dec -o wav 2>/dev/null >sound.wav
 
 Extract video:
 .br
