@@ -43,11 +43,9 @@ int main (int argc, char* argv[])
 
 	int     optargs;
     VideoStream videoStrm;
-    Audio_struc audio_info;
+    AudioStream audioStrm;
     off_t audio_bytes, video_bytes;
     clockticks first_frame_PTS = 0;
-    AUStream<VAunit>  vaunits_info;
-	AUStream<AAunit>  aaunits_info;
 
     optargs = intro_and_options (argc, argv, &multi_file);
 	// For the moment everything is such a mess that we can't really cleanly
@@ -56,10 +54,11 @@ int main (int argc, char* argv[])
 	{
 		vector<const char *> stills;
 		check_stills(argc-optargs, argv+optargs, stills);
-		init_stream_syntax_parameters(videoStrm,&audio_info);
+		init_stream_syntax_parameters(videoStrm,audioStrm);
 		VideoStream stillStrm;
 		stillStrm.Init( stills[0], 1 );
-		outputstream( stillStrm, NULL, multi_file, aaunits_info );
+		mjpeg_error_exit1( "Still stream muxing not (yet) implemented\n");
+		//outputstream( stillStrm, audioStrm, multi_file );
 	}
 	else
 	{
@@ -71,12 +70,11 @@ int main (int argc, char* argv[])
 		}
     
 		if (which_streams & STREAMS_AUDIO) {
-			get_info_audio (audio_file, &audio_info, first_frame_PTS,
-							audio_bytes, aaunits_info);
+			audioStrm.Init (audio_file, audio_bytes);
 		}
 
-	init_stream_syntax_parameters(videoStrm,&audio_info);
-    outputstream (videoStrm,  audio_file,  multi_file,  aaunits_info );
+	init_stream_syntax_parameters(videoStrm,audioStrm);
+    outputstream (videoStrm,  audioStrm, audio_file,  multi_file );
 	videoStrm.close();
 	}
     return (0);	

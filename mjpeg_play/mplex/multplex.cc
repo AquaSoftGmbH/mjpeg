@@ -68,6 +68,41 @@ segment_state;
 
 static void outputstreamsuffix(clockticks *SCR, FILE *ostream, 
 			unsigned long long  *bytes_output);
+
+
+void output_video ( clockticks SCR,
+					clockticks SCR_delay,
+					VideoStream &vstrm,
+					FILE *ostream,
+					Buffer_struc *buffer,
+					VAunit *video_au,
+					unsigned int *new_picture_type,
+					bool marker_pack,
+					bool include_sys_header
+					);
+
+static void output_audio ( clockticks SCR,
+						   clockticks SCR_delay,
+						   FILE *istream_a,
+						   FILE *ostream,
+						   Buffer_struc *buffer,
+						   AAunit *audio_au,
+						   AudioStream &astrm,
+						   bool *audio_frame_start,
+						   bool marker_pack,
+						   bool include_sys_header,
+						   bool end_of_segment);
+
+
+static void output_padding       (
+	clockticks SCR,
+	FILE *ostream,
+	unsigned char start_of_new_pack,
+	unsigned char include_sys_header,
+	unsigned char pseudo_VBR,
+	int packet_data_limit
+	);	/* erstellt und schreibt Padding packet	*/
+
 static void next_video_access_unit (Buffer_struc *buffer,
 									VAunit *video_au, unsigned int bytes_muxed, 
 									unsigned int *AU_starting_next_sec, 
@@ -78,7 +113,7 @@ static void next_audio_access_unit (Buffer_struc *buffer,
 									unsigned int bytes_muxed,
 									unsigned char *audio_frame_start, 
 									clockticks SCR_delay,
-									AUStream<AAunit> &aaunit_info_vec);
+									AudioStream &astrm);
 void outputstreamprefix( clockticks *current_SCR, VideoStream &vstrm);
 
 
@@ -89,7 +124,7 @@ void outputstreamprefix( clockticks *current_SCR, VideoStream &vstrm);
 ******************************************************************/
 
 void init_stream_syntax_parameters(	VideoStream 	&vstrm,
-									Audio_struc 	*audio_info	)
+									AudioStream 	&astrm	)
 {
 
 	unsigned int video_rate=0;
@@ -267,7 +302,7 @@ void init_stream_syntax_parameters(	VideoStream 	&vstrm,
     }
 
 	if (which_streams & STREAMS_AUDIO)
-		audio_rate = bitrate_index[audio_info->version_id][3-audio_info->layer][audio_info->bit_rate]*128;
+		audio_rate = bitrate_index[astrm.version_id][3-astrm.layer][astrm.bit_rate]*128;
 
     
 	/* Attempt to guess a sensible mux rate for the given video and audio streams 	*/
@@ -507,9 +542,9 @@ void outputstreamsuffix(clockticks *SCR,
 int frame_cnt=0;
 	
 void outputstream ( VideoStream &vstrm,
+					AudioStream &astrm,
 					char 		*audio_file,
-					char 		*multi_file,
-					AUStream<AAunit>   &aaunit_info_vec
+					char 		*multi_file
 					)
 
 {
@@ -521,7 +556,7 @@ void outputstream ( VideoStream &vstrm,
 
 	static unsigned int sectors_delay;
 	unsigned int AU_starting_next_sec; 
-	unsigned char audio_frame_start;
+	bool audio_frame_start;
 	unsigned int audio_bytes;
 	unsigned int video_bytes;
 
@@ -544,8 +579,8 @@ void outputstream ( VideoStream &vstrm,
 
 	unsigned int packets_left_in_pack = 0; /* Suppress warning */
 	unsigned char padding_packet;
-	unsigned char start_of_new_pack;
-	unsigned char include_sys_header = 0; /* Suppress warning */
+	bool start_of_new_pack;
+	bool include_sys_header = false; /* Suppress warning */
 
 	static  FILE *istream_a =NULL;			/* Inputstream Audio	*/
 
@@ -561,7 +596,7 @@ void outputstream ( VideoStream &vstrm,
 	AU_starting_next_sec = OLDFRAME;
 	
 	if (which_streams & STREAMS_AUDIO) {
-			audio_au = *aaunit_info_vec.next();
+			audio_au = *astrm.next();
 			audio_frame_start = true;
 	}
 	if (which_streams & STREAMS_VIDEO) {
@@ -792,7 +827,7 @@ void outputstream ( VideoStream &vstrm,
 				timeout_error (STATUS_AUDIO_TIME_OUT,audio_au.dorder);
 			output_audio (current_SCR, SCR_audio_delay, 
 						  istream_a, ostream, 
-						  &audio_buffer, &audio_au, aaunit_info_vec,
+						  &audio_buffer, &audio_au, astrm,
 						  &audio_frame_start,
 						  start_of_new_pack,
 						  include_sys_header,
@@ -982,8 +1017,8 @@ void output_video ( clockticks SCR,
 					Buffer_struc *buffer,
 					VAunit *video_au,
 					unsigned int *AU_starting_next_sec,
-					unsigned char start_of_new_pack,
-					unsigned char include_sys_header
+					bool start_of_new_pack,
+					bool include_sys_header
 					)
 
 {
@@ -1145,9 +1180,10 @@ void output_video ( clockticks SCR,
 void next_audio_access_unit (Buffer_struc *buffer,
 							 AAunit *audio_au,
 							 unsigned int bytes_muxed,
-							 unsigned char *audio_frame_start,
+							 bool *audio_frame_start,
 							 clockticks SCR_delay,
-							 AUStream<AAunit> &aaunit_info_vec							 )
+							 AudioStream &astrm
+	)
 
 {
   AAunit *aau;
@@ -1161,7 +1197,7 @@ void next_audio_access_unit (Buffer_struc *buffer,
 	{
 	  queue_buffer (buffer, audio_au->length, decode_time);
 	  bytes_muxed -= audio_au->length;
-	  aau = aaunit_info_vec.next();
+	  aau = astrm.next();
 	  if( aau != NULL )
 		*audio_au = *aau;
 	  else
@@ -1182,7 +1218,7 @@ void next_audio_access_unit (Buffer_struc *buffer,
 	  if (audio_au->length == bytes_muxed)
 		{
 		  queue_buffer (buffer, bytes_muxed, decode_time);
-		  aau = aaunit_info_vec.next();
+		  aau = astrm.next();
 		  if( aau != NULL )
 			*audio_au = *aau;
 		  else
@@ -1197,9 +1233,6 @@ void next_audio_access_unit (Buffer_struc *buffer,
 
 /******************************************************************
 	Output_Audio
-	erstellt Pack/Sys_Header/Packet Informationen aus dem
-	Audio Stream und speichert den so erhaltenen Sector ab.
-
 	generates Pack/Sys Header/Packet information from the
 	audio stream and saves them into the sector
 ******************************************************************/
@@ -1210,11 +1243,11 @@ void output_audio ( clockticks SCR,
 					FILE *ostream,
 					Buffer_struc *buffer,
 					AAunit *audio_au,
-					AUStream<AAunit> &aaunit_info_vec,
-					unsigned char *audio_frame_start,
-					unsigned char start_of_new_pack,
-					unsigned char include_sys_header,
-					unsigned char last_au_segment
+					AudioStream &astrm,
+					bool *audio_frame_start,
+					bool start_of_new_pack,
+					bool include_sys_header,
+					bool last_au_segment
 					)
 
 {
@@ -1271,7 +1304,7 @@ void output_audio ( clockticks SCR,
 					 TIMESTAMPBITS_PTS);
 
 	  next_audio_access_unit (buffer, audio_au, cur_sector.length_of_packet_data, 
-							  audio_frame_start, SCR_delay, aaunit_info_vec);
+							  audio_frame_start, SCR_delay, astrm);
     }
 
   /* FALL: Packet beginnt mit alter Access Unit, es kommt	*/
@@ -1288,11 +1321,10 @@ void output_audio ( clockticks SCR,
 					 TIMESTAMPBITS_NO );
 
 	  next_audio_access_unit (buffer, audio_au, cur_sector.length_of_packet_data,
-							  audio_frame_start, SCR_delay, aaunit_info_vec);
+							  audio_frame_start, SCR_delay, astrm);
     }
 
-  /* FALL: Packet beginnt mit alter Access Unit, es kommt	*/
-  /*       eine neue im selben Packet vor			*/
+
   /* CASE: packet starts with old access unit, a new one	*/
   /*       starts in this very same packet			*/
   else /* !(*audio_frame_start) &&  (audio_au->length < old_au_then_new_payload)) */
@@ -1302,7 +1334,7 @@ void output_audio ( clockticks SCR,
 
 	  /* gibt es ueberhaupt noch eine Access Unit ? */
 	  /* is there another access unit anyway ? */
-	  aau = aaunit_info_vec.next();
+	  aau = astrm.next();
 	  if( aau != NULL )
 		{
 		  *audio_au = *aau;
@@ -1316,7 +1348,7 @@ void output_audio ( clockticks SCR,
 
 		  next_audio_access_unit (buffer, audio_au,
 		  						  cur_sector.length_of_packet_data - bytes_sent, 
-								  audio_frame_start, SCR_delay, aaunit_info_vec );
+								  audio_frame_start, SCR_delay, astrm );
 		} else
 		  {
 			audio_au->markempty();

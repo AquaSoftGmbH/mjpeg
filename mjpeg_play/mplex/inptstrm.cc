@@ -45,7 +45,7 @@ static double ratio [16] = { 0., 1., 0.6735, 0.7031, 0.7615, 0.8055,
 							 0.8437, 0.8935, 0.9157, 0.9815, 1.0255, 1.0695, 1.0950, 1.1575,
 							 1.2015, 0.};
 
-static int frequency [4][4] = 
+static int freq_table [4][4] = 
 {
 	/* MPEG audio V2.5 */
 	{11025,12000,8000,0},
@@ -69,7 +69,7 @@ static unsigned int samples [4] = {384, 1152, 1152, 0};
 
 
 
-static void output_info_audio (Audio_struc *audio_info);
+static void output_info_audio (AudioStream *audio_info);
 
 
 /*************************************************************************
@@ -243,8 +243,7 @@ void check_files (int argc,
 
 void VideoStream::Init (const char *video_file, int stream_num )
 {
-	struct stat stb;
-	prev_stream_length=0;
+	prev_offset=0;
     decoding_order=0;
 	fields_presented=0;
     group_order=0;
@@ -254,25 +253,14 @@ void VideoStream::Init (const char *video_file, int stream_num )
 	pulldown_32 = 0;
 	last_buffered_AU=0;
 
-    prozent = 0;
-    old_prozent=0;
 	max_bits_persec = 0;
 	AU_hdr = SEQUENCE_HEADER;  /* GOP or SEQ Header starting AU? */
-	stream_id = VIDEO_STR_0 + stream_num;
 	
     mjpeg_info ("Scanning Video stream %d for access units information.\n",
 				stream_num);
 
-	/* We actually maintain *two* file-handles one is used for scanning
-	   ahead to pick-up access unit information the other for the reading
-	   done to shuffle data into the multiplexed output file */
-	rawstrm = fopen( video_file, "rb" );
-	if( rawstrm == NULL )
-		mjpeg_error_exit1( "Cannot open for scan and read: %s\n", video_file );
-    fstat(fileno(rawstrm), &stb);
-	file_length = stb.st_size;
- 
-    bs.open( const_cast<char *>(video_file) );
+	InputStream<VAunit,FRAME_CHUNK>::Init( video_file, 
+										   VIDEO_STR_0 + stream_num ); 
     if (bs.getbits( 32)==SEQUENCE_HEADER)
     {
 		num_sequence++;
@@ -318,7 +306,7 @@ void VideoStream::Init (const char *video_file, int stream_num )
 
 }
 
-void VideoStream::fillAUbuffer(int frames_to_buffer)
+void VideoStream::fillAUbuffer(unsigned int frames_to_buffer)
 {
 	last_buffered_AU += frames_to_buffer;
 	mjpeg_info( "Scanning %d video frames to frame %d\n", 
@@ -427,14 +415,14 @@ void VideoStream::fillAUbuffer(int frames_to_buffer)
 			if( access_unit.type == IFRAME )
 			{
 				unsigned int bits_persec = 
-					(unsigned int) ( ((double)(stream_length - prev_stream_length)) *
+					(unsigned int) ( ((double)(stream_length - prev_offset)) *
 									 2*frame_rate / ((double)(2+fields_presented - group_start_field)));
 				
 				if( bits_persec > max_bits_persec )
 				{
 					max_bits_persec = bits_persec;
 				}
-				prev_stream_length = stream_length;
+				prev_offset = stream_length;
 				group_start_pic = decoding_order;
 				group_start_field = fields_presented;
 			}
@@ -496,7 +484,7 @@ void VideoStream::fillAUbuffer(int frames_to_buffer)
 	}
 	last_buffered_AU = decoding_order;
 	num_pictures = decoding_order;	
-	eoscan = bs.eos() || (opt_max_PTS && access_unit.PTS < opt_max_PTS);
+	eoscan = bs.eos() || (opt_max_PTS && access_unit.PTS >= opt_max_PTS);
 
 }
 
@@ -506,7 +494,7 @@ VAunit *VideoStream::next()
 	{
 		if( aunits.curpos() > FRAME_CHUNK )
 		{
-			aunits.flush(128);
+			aunits.flush(FRAME_CHUNK);
 		}
 		fillAUbuffer(FRAME_CHUNK);
 	}
@@ -613,13 +601,198 @@ void VideoStream::output_seqhdr_info ()
 }
 
 /*************************************************************************
+	Get_Info_Audio
+	holt Informationen zu den einzelnen Audio Access Units
+	(Audio frames) and records it.
+*************************************************************************/
+
+
+void AudioStream::Init (
+	char *audio_file,
+	int stream_num
+	)
+
+{
+    unsigned int i;
+   
+    mjpeg_info ("Scanning Audio stream for access units information. \n");
+	InputStream<AAunit,FRAME_CHUNK>::Init( audio_file, 
+										   AUDIO_STR_0 + stream_num );
+	
+	/* A.Stevens 2000 - update to be compatible up to  MPEG2.5
+	 */
+    if (bs.getbits( 11)==AUDIO_SYNCWORD)
+    {
+		num_syncword++;
+		version_id = bs.getbits( 2);
+		layer 		= bs.getbits( 2);
+		protection 		= bs.get1bit();
+		bit_rate 		= bs.getbits( 4);
+		frequency 		= bs.getbits( 2);
+		padding_bit                 = bs.get1bit();
+		bs.get1bit();
+		mode 		= bs.getbits( 2);
+		mode_extension 	= bs.getbits( 2);
+		copyright 		= bs.get1bit();
+		original_copy 	= bs.get1bit ();
+		emphasis		= bs.getbits( 2);
+
+		/* TODO: I'll be the slots counts have changed in the newer versions too... */
+		framesize =
+			bitrate_index[version_id][3-layer][bit_rate]  * 
+			slots [3-layer] *1000 /
+			freq_table[version_id][frequency];
+
+		size_frames[0] = framesize;
+		size_frames[1] = framesize+1;
+		num_frames[padding_bit]++;
+	
+		access_unit.length = size_frames[padding_bit];
+	  
+		samples_per_second = freq_table[version_id][frequency];
+
+		/* Presentation time-stamping  */
+		access_unit.PTS = static_cast<clockticks>(decoding_order) * 
+			static_cast<clockticks>(samples [3-layer]) * 
+			static_cast<clockticks>(CLOCKS)	/ samples_per_second;
+		access_unit.dorder = decoding_order;
+		++decoding_order;
+		aunits.append( access_unit );
+
+    } else
+    {
+		mjpeg_error ( "Invalid MPEG Audio stream header.\n");
+		exit (1);
+    }
+
+
+
+}
+
+void AudioStream::fillAUbuffer(unsigned int frames_to_buffer )
+{
+	unsigned int i;
+	last_buffered_AU += frames_to_buffer;
+
+	mjpeg_info( "Scanning %d MPEG audio frames to frame %d\n", 
+				 frames_to_buffer, last_buffered_AU );
+
+	while (!bs.eos() && 
+		   decoding_order < last_buffered_AU && 
+		   (!opt_max_PTS || access_unit.PTS < opt_max_PTS))
+	{
+
+		skip=access_unit.length-4;
+		if (skip & 0x1) bs.getbits( 8);
+		if (skip & 0x2) bs.getbits( 16);
+		skip=skip>>2;
+
+		for (i=0;i<skip;i++)
+		{
+			bs.getbits( 32);
+		}
+		prev_offset = AU_start;
+		AU_start = bs.bitcount();
+
+		/* Check we have reached the end of have  another catenated 
+		   stream to process before finishing ... */
+		if ( (syncword = bs.getbits( 11))!=AUDIO_SYNCWORD )
+		{
+			bitcount_t bits_to_end = file_length*8 - AU_start;
+			if( bits_to_end > 1024*8  )
+			{
+				/* There appears to be another catenated stream... */
+				int next;
+				mjpeg_warn( "End of component bit-stream ... seeking next\n" );
+				/* Catenated stream must start on byte boundary */
+				syncword = (syncword<<(8-AU_start % 8));
+				next = bs.getbits(8-(AU_start % 8) );
+				syncword = syncword | next;
+				if( syncword != AUDIO_SYNCWORD )
+				{
+					mjpeg_warn("Failed to find start of next stream at %lld prev %lld !\n", AU_start/8, prev_offset/8 );
+					break;
+				}
+			}
+			else
+				/* No catenated stream... finished! */
+				break;
+		}
+
+		bs.getbits( 11); /* Skip version, layer, protection, bitrate,sampling */
+		prozent =(int) bs.bitcount()*100/8/file_length;
+		num_syncword++;
+
+		if ((prozent > old_prozent && verbose > 0))
+		{
+
+			mjpeg_debug ("Got %d frame headers. %2d%%\n",
+						 num_syncword,prozent);
+			old_prozent=prozent;
+		
+		}
+	
+		padding_bit=bs.get1bit();
+		access_unit.length = size_frames[padding_bit];
+	
+		access_unit.PTS = static_cast<clockticks>(decoding_order) * static_cast<clockticks>(samples[3-layer]) * static_cast<clockticks>(CLOCKS)
+			/ samples_per_second;
+
+		decoding_order++;
+		aunits.append( access_unit );
+		num_frames[padding_bit]++;
+
+		bs.getbits( 9);
+
+    }
+	last_buffered_AU = decoding_order;
+	eoscan = bs.eos() || (opt_max_PTS && access_unit.PTS >= opt_max_PTS);
+
+	if( eoscan )
+	{
+		close();
+	}
+}
+
+AAunit *AudioStream::next()
+{
+	if( !eoscan && aunits.curpos()+FRAME_CHUNK > last_buffered_AU  )
+	{
+		if( aunits.curpos() > FRAME_CHUNK )
+		{
+			aunits.flush(FRAME_CHUNK);
+		}
+		fillAUbuffer(FRAME_CHUNK);
+	}
+
+	return aunits.next();
+}
+
+AAunit *AudioStream::lookahead( unsigned int i )
+{
+	assert( i < FRAME_CHUNK-1 );
+	return aunits.lookahead(i);
+}
+
+void AudioStream::close()
+{
+
+    mjpeg_info ("Done, stream bit offset %lld.\n",AU_start);
+	
+    stream_length = AU_start >> 3;
+    bs.close();
+    output_info_audio (this);
+
+}
+
+/*************************************************************************
 	Output_Info_Audio
 	gibt gesammelte Informationen zu den Audio Access Units aus.
 
 	Prints information on audio access units
 *************************************************************************/
 
-static void output_info_audio (Audio_struc *audio_info)
+static void output_info_audio (AudioStream *audio_info)
 {
     unsigned int layer;
     unsigned int bitrate;
@@ -653,7 +826,7 @@ static void output_info_audio (Audio_struc *audio_info)
 		mjpeg_info ("Frequency      : reserved\n");
     else
 		mjpeg_info ("Frequency      :     %d Hz\n",
-				frequency[audio_info->version_id][audio_info->frequency]);
+				freq_table[audio_info->version_id][audio_info->frequency]);
 
     mjpeg_info   ("Mode           : %8u %s\n",
 			  audio_info->mode,mode[audio_info->mode]);
@@ -666,166 +839,4 @@ static void output_info_audio (Audio_struc *audio_info)
 			  audio_info->emphasis,emphasis[audio_info->emphasis]);
 }
 
-/*************************************************************************
-	Get_Info_Audio
-	holt Informationen zu den einzelnen Audio Access Units
-	(Audio frames) and records it.
-*************************************************************************/
-
-
-void get_info_audio (
-	char *audio_file,
-	Audio_struc *audio_info,
-	clockticks first_frame_PTS,
-	unsigned int length,
-	AUStream<AAunit> &audio_info_vec
-	)
-
-{
-    IBitStream audio_bs;
-    bitcount_t AU_start=0;
-	bitcount_t prev_offset;
-    unsigned int framesize;
-	unsigned int padding_bit;
-    unsigned int skip;
-    unsigned int decoding_order=0;
-    unsigned int samples_per_second;
-    AAunit access_unit;
-    unsigned long syncword;
-    unsigned int i;
-    unsigned int prozent;
-    unsigned int old_prozent=0;
-    AUStream<AAunit> &aaunits = audio_info_vec;
-   
-    mjpeg_info ("Scanning Audio stream for access units information. \n");
-    audio_bs.open( audio_file);
-#ifdef REDUNDANT
-    empty_aaunit_struc (&access_unit);
-#endif
-
-
-	/* A.Stevens 2000 - update to be compatible up to  MPEG2.5
-	 */
-    if (audio_bs.getbits( 11)==AUDIO_SYNCWORD)
-    {
-		audio_info->num_syncword++;
-		audio_info->version_id = audio_bs.getbits( 2);
-		audio_info->layer 		= audio_bs.getbits( 2);
-		audio_info->protection 		= audio_bs.get1bit();
-		audio_info->bit_rate 		= audio_bs.getbits( 4);
-		audio_info->frequency 		= audio_bs.getbits( 2);
-		padding_bit                 = audio_bs.get1bit();
-		audio_bs.get1bit();
-		audio_info->mode 		= audio_bs.getbits( 2);
-		audio_info->mode_extension 	= audio_bs.getbits( 2);
-		audio_info->copyright 		= audio_bs.get1bit();
-		audio_info->original_copy 	= audio_bs.get1bit ();
-		audio_info->emphasis		= audio_bs.getbits( 2);
-
-		/* TODO: I'll be the slots counts have changed in the newer versions too... */
-		framesize =
-			bitrate_index[audio_info->version_id][3-audio_info->layer][audio_info->bit_rate]  * 
-			slots [3-audio_info->layer] *1000 /
-			frequency[audio_info->version_id][audio_info->frequency];
-
-		audio_info->size_frames[0] = framesize;
-		audio_info->size_frames[1] = framesize+1;
-		audio_info->num_frames[padding_bit]++;
-	
-		access_unit.length = audio_info->size_frames[padding_bit];
-	  
-		samples_per_second = frequency[audio_info->version_id][audio_info->frequency];
-
-		/* Presentation time-stamping  */
-		access_unit.PTS = static_cast<clockticks>(decoding_order) * 
-			static_cast<clockticks>(samples [3-audio_info->layer]) * 
-			static_cast<clockticks>(CLOCKS)	/ samples_per_second + first_frame_PTS;
-		access_unit.dorder = decoding_order;
-		++decoding_order;
-		aaunits.append( access_unit );
-
-    } else
-    {
-		mjpeg_error ( "Invalid MPEG Audio stream header.\n");
-		exit (1);
-    }
-
-
-    do {
-    
-
-		skip=access_unit.length-4;
-		if (skip & 0x1) audio_bs.getbits( 8);
-		if (skip & 0x2) audio_bs.getbits( 16);
-		skip=skip>>2;
-
-		for (i=0;i<skip;i++)
-		{
-			audio_bs.getbits( 32);
-		}
-		prev_offset = AU_start;
-		AU_start = audio_bs.bitcount();
-
-		/* Check we have reached the end of have  another catenated 
-		   stream to process before finishing ... */
-
-	
-		if ( (syncword = audio_bs.getbits( 11))!=AUDIO_SYNCWORD )
-		{
-			int bits_to_end = length*8 - AU_start;
-			if( bits_to_end > 1024*8  )
-			{
-				/* There appears to be another catenated stream... */
-				int next;
-				mjpeg_warn( "End of component bit-stream ... seeking next\n" );
-				/* Catenated stream must start on byte boundary */
-				syncword = (syncword<<(8-AU_start % 8));
-				next = audio_bs.getbits(8-(AU_start % 8) );
-				syncword = syncword | next;
-				if( syncword != AUDIO_SYNCWORD )
-				{
-					mjpeg_warn("Failed to find start of next stream at %lld prev %lld !\n", AU_start/8, prev_offset/8 );
-					break;
-				}
-			}
-			else
-				/* No catenated stream... finished! */
-				break;
-		}
-
-		audio_bs.getbits( 11); /* Skip version, layer, protection, bitrate,sampling */
-		prozent =(int) audio_bs.bitcount()*100/8/length;
-		audio_info->num_syncword++;
-
-		if ((prozent > old_prozent && verbose > 0))
-		{
-
-			mjpeg_debug ("Got %d frame headers. %2d%%\n",
-						 audio_info->num_syncword,prozent);
-			old_prozent=prozent;
-		
-		}
-	
-		padding_bit=audio_bs.get1bit();
-		access_unit.length = audio_info->size_frames[padding_bit];
-	
-		access_unit.PTS = static_cast<clockticks>(decoding_order) * static_cast<clockticks>(samples[3-audio_info->layer]) * static_cast<clockticks>(CLOCKS)
-			/ samples_per_second +first_frame_PTS;
-
-		decoding_order++;
-		aaunits.append( access_unit );
-		audio_info->num_frames[padding_bit]++;
-
-		audio_bs.getbits( 9);
-
-    } while (!audio_bs.eos() && 
-    		(!opt_max_PTS || access_unit.PTS < opt_max_PTS));
-
-    mjpeg_info ("Done, stream bit offset %lld.\n",AU_start);
-
-    audio_info->stream_length = AU_start >> 3;
-    audio_bs.close();
-    output_info_audio (audio_info);
-
-}
 

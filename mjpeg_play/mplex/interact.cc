@@ -21,7 +21,7 @@ static void Usage(char *str)
 	fprintf( stderr, " -b num  Specify decoder buffers size in kB. (default: 46) [ 20...1000]\n" );
     fprintf( stderr, " -r num  Specify data rate of output stream in kbit/sec\n"
 			         "(default 0=Compute from source streams)\n" );
-	fprintf( stderr, " -l num  Multiplex only num frames (default 0=multiplex all)\n");
+	fprintf( stderr, " -l num  Multiplex only num seconds of material (default 0=multiplex all)\n");
 	fprintf( stderr, " -O num  Specify offset of timestamps (video-audio) in mSec\n");
 	fprintf( stderr, " -s num  Specify sector size in bytes (default: 2324) [256..16384]\n");
 	fprintf( stderr, " -V      Multiplex variable bit-rate video\n");
@@ -116,7 +116,7 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 			break;
           
 		case 'l' : 
- 			opt_max_PTS = (clockticks)atoi(optarg) * (clockticks)CLOCKS;
+ 			opt_max_PTS = static_cast<clockticks>(atoi(optarg)) * CLOCKS;
 			if( opt_max_PTS < 1LL  )
 				Usage(argv[0]);
 			break;
