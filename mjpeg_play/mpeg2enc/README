@@ -1,0 +1,151 @@
+mpeg2enc encodes MJPEG AVIs, Quicktime Files or Edit List Files
+to MPEG-1/2 video streams.
+
+DISCLAIMER:
+
+This software is from the MPEG Software Simulation Group.
+See notices in source code regarding Patents and miscellaneous
+IP issues.
+
+POST  MPEG SSG Development
+
+Rainer Johanni changed the input routine so that "lavtools" Edit
+Lists, AVI's and Quicktime input is accepted, introduced command line
+params instead of a param file and made some simple optimizations.
+
+Andrew Stevens added more intelligent motion compensation and optimised
+some key calculations that run badly on modern highly pipelined machines.
+ 
+Chris Atenasio's contributed MMX2/SSE code for the motion compensation
+macroblock group difference calculation.
+
+Andrew Stevens added MMX1 code for motion compensation and adapted
+Chris' code for his intelligent motion compensation too.
+
+Andrew Stevens added some simple pre-processing filters to improve
+output quality when using noisy (e.g. broadcast) source video.
+
+
+In case you're wondering: the upshot of this disclaimer is that the
+functionality is exactly as per the original but the software now runs
+around 5 times as fast with sensible (search radius 15) motion compensation
+settings, and you can now get half-decent looking results when working with
+typical broadcast quality sources.
+
+USAGE:
+
+Output file name (-o option) is required!
+Usage: ./mpeg2enc [params] inputfiles
+   where possible params are:
+   -m num     MPEG level (1 or 2) default: 1
+   -b num     Bitrate in KBit/sec (default: 1152 KBit/s)
+   -q num     Quality factor [1..31] (1 is best, no default)
+              Bitrate and Quality are mutually exclusive!
+   -o name    Outputfile name (REQUIRED!!!)
+   -r num     Search radius [0..32] (default 0: don't search at all)
+   -s num     Special output format option:
+                 0 output like input, nothing special
+                 1 create half height/width output from interlaced input
+                 2 create 480 wide output from 720 wide input (for SVCD)
+   -d num     Drop lsbs of samples [0..3] (default: 0)
+   -n num     Noise filter (low-pass) [0..2] (default: 0)
+   -f num     Fraction of fast motion estimates to consider in detail (1/num) [2..20] (default: 10)
+[as
+
+FAST MOTION COMPENSATION:
+
+For MPEG to achieve good quality results it has to find a good match
+between each 8*8 "macro-block" of pixels in the current frame and
+an 8*8 region in a preceding or following frame.  The better the match
+the less information it has to drop when compressing.  Obviously, finding
+such a good match in *moving* pictures requires a lot of searching.
+
+To do this (reasonably) quickly we use a trick:  we first search
+coarsely comparing the sums of 2*2 pixel groups rather than individual
+pixels.  This reduces the amount of search by a factor 4 and amount of
+work needed per searched position by another factor of 4.  Since a
+good exact matches (down to half-pixels) will also give a good 2*2
+match we know the best match should be in amoungst the best 2*2
+matches.  However, there may be some false positives.  So we can't
+just work with the very best.  Instead we choose some fraction (the
+default is 1/10) and look for the best exact match corresponding to
+these good 2*2 matches.  Experiments and a bit of simple statistics
+revealed that it was exceedingly rare to miss the best match doing
+this, and even when we did miss the match found was *almost* as good.
+
+Obviously, your mileage may vary so you may want to fiddle with the -f
+setting if you're getting rotten results.  Contact
+Andrew.Stevens@comlab.ox.ac.uk if you think you have found a case
+where the fast compensation fails!
+
+In case you're wondering: the performance gain is a factor of around 2-3.
+
+NOISE FILTERING and BIT DROPPING
+
+MPEG compression assumes that the pictures in a video sequence are
+closely correlated (once you've applied motion compensatino to search
+for good matches).  Unfortunately, if you have a noisy original video
+source this assumption isn't really true.  The noise introduces lots
+of spurious differences betwen actually very similar pictures.  The
+end result is ugly "artifacted" results where MPEG has dropped real
+information in favour of spurious noise.  The solution is to try to
+filter the noise out of the source.   Currently, nothing terribly
+clever is done: just simple smoothing. -n 1 smooths gently and is almost
+imperceptible, -n 2 is rather stronger is noticeable if you compare
+source video.  However, if you really have noisy sources then -n 2 is
+infinitely preferable to the swimming sea of artefacts MPEG otherwise
+generates.
+
+The -d option simply rounds off low-order bits.  Again, sensible if
+that part of the source signal is noise anyway.  However, I (Andrew
+Stevens) don't really know if this makes one jot of difference once 
+MPEG's DCT coefficients have been quantized.  Certainly, not nearly as
+useful as -n.
+
+
+
+PERFORMANCE: MMX/MMX2/SSE (A.Stevens Jul 2000)
+
+In addition to improved fast motion compensation the updated code
+also has x86 assembly language MMX/SSE routines for key motion
+compensation calculations (8*8 and 16*16 block absolute difference sums).
+
+Unfortunately, the original MMX (MMX1) instruction set is utterly
+brainless in that it only permits signed comparison and makes it
+hard to shift between different packed representations.
+In this case: computing a 16 bit sum of packed 8 bit unsigned differences
+is greatly complicated.  Thus the performance gains from moving to MMX
+aren't as spectacular as one might expect: only around 50% speed up.
+
+
+Fortunately, MMX2 as found on Athlon's and Intel chips with SSE adds
+some *really* handy instructions.  Yep, you guessed it, an instruction
+for computing a sum of absolute differences of 8-bit packed data.  They
+might as well have gone the whole hog and called it "MPEGMOTIONCOMP"...
+Chris Atenasio's code works like lightning and was also adapted for
+fast motion compensation search by yours truly.  Speed up is better than
+100% (more than twice as fast).
+
+There have also been some gross-me-out hacky optimisations made
+to the non-MMX code to make it run better on modern pipelined CPU's.
+However, if you're trying to compress long MPEG sequences on a pre-MMX
+x86 CPU you *will* need some serious patience ;-).  I reckon compressing
+a 1 hour TV show is just barely tolerable with the new super-duper fast
+mpeg2enc and 4 300Mhz+  CPU's on the job.
+
+
+STILL MORE PERFORMANCE?
+
+Not easy to see how bit improvements can be made without radical rebuilding of
+the code.  The program still spends 60-70% of its time in motion
+compesation search.  Further speed ups would require still better algorithms.
+Perhaps a hierarchical search?  First 4*4 blocks then 2*2 then 1*1?
+
+BETTER QUALITY?
+
+I don't understand the code well enough to figure out how smart it is in
+allocating band-width.  Its the next thing on the agenda. Better noise filters might be nice too.
+
+
+
+

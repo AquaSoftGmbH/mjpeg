@@ -1,0 +1,13 @@
+Additional Notes on compilation and installation
+
+SSE/MMX Support
+
+If you have a basic MMX CPU compile for "MMX" and uncommment the "MMX"
+lines in the Makefile.  If you have an Athlon or P-III or better
+compile for SSE and uncomment the "SSE" lines in the Makefile.
+
+For the details why: see README
+
+Note that the .o files for MMX and SSE are included as well
+as the assembly language source.  This should save those who can't
+be bothered the job of installing nasm. The files are tiny...
