@@ -32,6 +32,19 @@
 #include "config.h"
 #include "global.h"
 
+#if defined(MMX) || defined(SSE)
+extern void fdct_mmx( short * blk );
+extern void idct_mmx( short * blk );
+#define fdct_fast fdct_mmx
+#define idct_fast idct_mmx
+#else
+extern void fdct( short *blk );
+extern void idct( short *blk );
+#define fdct_fast fdct
+#define idct_fast idct
+#endif
+
+
 /* private prototypes*/
 static void add_pred _ANSI_ARGS_((unsigned char *pred, unsigned char *cur,
   int lx, short *blk));
@@ -56,6 +69,9 @@ short blocks[][64];
         cc = (n<4) ? 0 : (n&1)+1; /* color component index */
         if (cc==0)
         {
+		  /* A.Stevens Jul 2000 Record dct blocks associated with macroblock */
+		  /* We'll use this for quantisation calculations                    */
+		  mbi[k].dctblocks = &blocks[k*block_count+n][0];
           /* luminance */
           if ((pict_struct==FRAME_PICTURE) && mbi[k].dct_type)
           {
@@ -100,7 +116,7 @@ short blocks[][64];
         }
 
         sub_pred(pred[cc]+offs,cur[cc]+offs,lx,blocks[k*block_count+n]);
-        fdct(blocks[k*block_count+n]);
+        fdct_fast(blocks[k*block_count+n]);
       }
 
       k++;
@@ -169,7 +185,7 @@ short blocks[][64];
             offs += chrom_width;
         }
 
-        idct(blocks[k*block_count+n]);
+        idct_fast(blocks[k*block_count+n]);
         add_pred(pred[cc]+offs,cur[cc]+offs,lx,blocks[k*block_count+n]);
       }
 

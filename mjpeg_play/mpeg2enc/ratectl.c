@@ -34,21 +34,50 @@
 #include "global.h"
 
 /* private prototypes */
-static void calc_actj _ANSI_ARGS_((unsigned char *frame));
+static double calc_actj _ANSI_ARGS_((unsigned char *frame));
 static double var_sblk _ANSI_ARGS_((unsigned char *p, int lx));
 
-/* rate control variables */
+/*Constant bit-rate rate control variables */
+/* X's global complexity (Chi! not X!) measures.
+   Actually: average quantisation * bits allocated in *previous* frame
+   d's  virtual reciever buffer fullness
+   r - Rate control feedback gain (in bits/frame)  I.e if the virtual
+       buffer is x% full
+*/
+
 int Xi, Xp, Xb, r, d0i, d0p, d0b;
-double avg_act;
+
+/* R - Remaining bits available in GOP
+   T - Target bits for current frame 
+   d - Current d for quantisation purposes updated using 
+   scaled difference of target bit usage and actual usage */
 static int R, T, d;
+
+/*
+  actsum - Total activity (sum block variances) in frame
+  actcovered - Activity macroblocks so far quantised (used to
+               fine tune quantisation to avoid starving highly
+			   active blocks appearing late in frame...) UNUSED
+  avg_act - Current average activity...
+*/
 static double actsum;
+static double actcovered;
+double avg_act;
+
 static int Np, Nb, S, Q;
 static int prev_mquant;
 
 extern int fix_mquant;
 
+/* Note: eventually we may wish to tweak these to suit image content */
+static double Ki = 1.0;    	/* Down-scaling of I/B/P-frame complexity */
+static double Kb = 1.4;	    /* relative to others in bit-allocation   */
+static double Kp = 1.0;	    /* calculations.  We only need 2 but have all
+							3 for readability */
+
 void rc_init_seq()
 {
+
   /* reaction parameter (constant) */
   if (r==0)  r = (int)floor(2.0*bit_rate/frame_rate + 0.5);
 
@@ -58,19 +87,29 @@ void rc_init_seq()
   /* remaining # of bits in GOP */
   R = 0;
 
-  /* global complexity measure */
+
+  /* global complexity (Chi! not X!) measure of different frame types */
+  /* These are just some sort-of sensible initial values for start-up */
   if (Xi==0) Xi = (int)floor(160.0*bit_rate/115.0 + 0.5);
   if (Xp==0) Xp = (int)floor( 60.0*bit_rate/115.0 + 0.5);
   if (Xb==0) Xb = (int)floor( 42.0*bit_rate/115.0 + 0.5);
 
-  /* virtual buffer fullness */
-  if (d0i==0) d0i = (int)floor(10.0*r/31.0 + 0.5);
-  if (d0p==0) d0p = (int)floor(10.0*r/31.0 + 0.5);
-  if (d0b==0) d0b = (int)floor(1.4*10.0*r/31.0 + 0.5);
+
+  /* TODO: These initialisatino values are plausible for O(1500mbps)
+	 VCD like MPEG-1, but will be silly for higher data-rates they need
+     to be adjusted based on bit_rate. */
+
+  /* virtual buffer fullness - Originally initialised for initial quantisation
+     around 10 (1/3 maximum).  This, however proved excessive so now
+     its 0.15 */
+  
+  if (d0i==0) d0i = (int)floor(Ki*r*0.15 + 0.5);
+  if (d0p==0) d0p = (int)floor(Kp*r*0.15 + 0.5);
+  if (d0b==0) d0b = (int)floor(Kb*r*0.15 + 0.5);
 /*
   if (d0i==0) d0i = (int)floor(10.0*r/(qscale_tab[0] ? 56.0 : 31.0) + 0.5);
   if (d0p==0) d0p = (int)floor(10.0*r/(qscale_tab[1] ? 56.0 : 31.0) + 0.5);
-  if (d0b==0) d0b = (int)floor(1.4*10.0*r/(qscale_tab[2] ? 56.0 : 31.0) + 0.5);
+  if (d0b==0) d0b = (int)floor(K*10.0*r/(qscale_tab[2] ? 56.0 : 31.0) + 0.5);
 */
 
 #ifdef OUTPUT_STAT
@@ -101,8 +140,7 @@ int np,nb;
 #endif
 }
 
-/* Note: we need to substitute K for the 1.4 and 1.0 constants -- this can
-   be modified to fit image content */
+
 
 /* Step 1: compute target bits for current picture being coded */
 void rc_init_pict(frame)
@@ -110,22 +148,37 @@ unsigned char *frame;
 {
   double Tmin;
 
+  /* Allocate target bits for frame based on frames numbers in GOP
+	 weighted by global complexity estimates and B-frame scale factor
+	 T = (Nx * Xx/Kx) / Sigma_j (Nj * Xj / Kj)
+  */
   switch (pict_type)
   {
   case I_TYPE:
-    T = (int) floor(R/(1.0+Np*Xp/(Xi*1.0)+Nb*Xb/(Xi*1.4)) + 0.5);
+
+	/* This *looks* inconsistent (the cost of the I frame doesn't
+	   appear in the calculations for P and B).  However, it works
+	   fine because the I frame calculation is done 1st in each GOP,
+	   so once we hit P and B frames there are no I frames left to
+	   account for with the remaining pool of bits R.
+	*/
+
+    T = (int) floor(R/(1.0+Np*Xp*Ki/(Xi*Kp)+Nb*Xb*Ki/(Xi*Kb)) + 0.5);
     d = d0i;
     break;
   case P_TYPE:
-    T = (int) floor(R/(Np+Nb*1.0*Xb/(1.4*Xp)) + 0.5);
+    T = (int) floor(R/(Np+Nb*Kp*Xb/(Kb*Xp)) + 0.5);
     d = d0p;
     break;
   case B_TYPE:
-    T = (int) floor(R/(Nb+Np*1.4*Xp/(1.0*Xb)) + 0.5);
+    T = (int) floor(R/(Nb+Np*Kb*Xp/(Kp*Xb)) + 0.5);
     d = d0b;
     break;
   }
 
+  /* Never let any frame type bit target drop below 1/8th share to
+	 prevent starvation under extreme circumstances
+  */
   Tmin = (int) floor(bit_rate/(8.0*frame_rate) + 0.5);
 
   if (T<Tmin)
@@ -134,8 +187,19 @@ unsigned char *frame;
   S = bitcount();
   Q = 0;
 
-  calc_actj(frame);
-  actsum = 0.0;
+  /* TODO: A.Stevens Jul 2000 - This modification needs testing visually.
+
+	 Weird.  The original code used the average activity of the
+	 *previous* frame as the basis for quantisation calculations for
+	 rather than the activity in the *current* frame.  That *has* to
+	 be a bad idea..., surely, here we try to be smarter by using the
+	 current values and keeping track of how much of the frames
+	 activitity has been covered as we go along.
+  */
+
+  actsum =  calc_actj(frame );
+  avg_act = actsum/(mb_width*mb_height2);
+  actcovered = 0.0;
 
 #ifdef OUTPUT_STAT
   fprintf(statfile,"\nrate control: start of picture\n");
@@ -143,18 +207,21 @@ unsigned char *frame;
 #endif
 }
 
-static void calc_actj(frame)
+static double calc_actj(frame)
 unsigned char *frame;
 {
   int i,j,k;
   unsigned char *p;
-  double actj,var;
+  double actj,var, sum;
+  unsigned char *q_mat;
 
+  sum = 0.0;
   k = 0;
 
   for (j=0; j<height2; j+=16)
     for (i=0; i<width; i+=16)
     {
+#ifdef ORGINAL_CODE
       p = frame + ((pict_struct==BOTTOM_FIELD)?width:0) + i + width2*j;
 
       /* take minimum spatial activity measure of luminance blocks */
@@ -182,8 +249,31 @@ unsigned char *frame;
 
       actj+= 1.0;
 
-      mbinfo[k++].act = actj;
+#else
+	  /* A.Stevens Jul 2000 Luminance variance *has* to be a rotten measure
+		 of how active a block in terms of bits needed to code a lossless DCT.
+		 E.g. a half-white half-black block has a maximal variance but 
+		 pretty small DCT coefficients.
+
+		 So.... we use the absolute sum of DCT coefficients as our
+		 variance measure.  
+	  */
+	  if( mbinfo[k].mb_type  & MB_INTRA )
+		q_mat = intra_q;
+	  else
+		q_mat = inter_q;
+
+	  actj  = quant_weight_coeff_sum( &mbinfo[k].dctblocks[0], q_mat );
+	  actj += quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], q_mat );
+	  actj += quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], q_mat );
+	  actj += quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], q_mat );	  
+
+#endif
+      mbinfo[k].act = actj;
+	  sum += actj;
+	  ++k;
     }
+  return sum;
 }
 
 void rc_update_pict()
@@ -194,7 +284,6 @@ void rc_update_pict()
   R-= S; /* remaining # of bits in GOP */
   X = (int) floor(S*((0.5*(double)Q)/(mb_width*mb_height2)) + 0.5);
   d+= S - T;
-  avg_act = actsum/(mb_width*mb_height2);
 
   switch (pict_type)
   {
@@ -230,6 +319,7 @@ void rc_update_pict()
   fprintf(statfile," remaining number of B pictures in GOP: Nb=%d\n",Nb);
   fprintf(statfile," average activity: avg_act=%.1f\n", avg_act);
 #endif
+
 }
 
 /* compute initial quantization stepsize (at the beginning of picture) */
@@ -277,22 +367,51 @@ int rc_start_mb()
 int rc_calc_mquant(j)
 int j;
 {
+  static int ctr = 0;
   int mquant;
   double dj, Qj, actj, N_actj;
 
   /* measure virtual buffer discrepancy from uniform distribution model */
-  dj = d + (bitcount()-S) - j*(T/(mb_width*mb_height2));
+  /* dj = d + (bitcount()-S) - j*(T/(mb_width*mb_height2)); */
+
+  /* A.Stevens Jul 2000 - This *has* to be dumb.  Essentially,
+	 it tries to give every block a similar share of the available bits.
+	 This will not properly exploit blocks which need few and save them
+	 for later ones that need them.
+	 
+	 My proposal: we measure how much *information* (total activity)
+	 has been covered and aim to release bits in proportion.  Indeed,
+	 complex blocks get an disproprortionate boost of allocated bits.
+	 
+  */
+	
+  dj = d + (bitcount()-S) - actcovered * T / actsum;
 
   /* scale against dynamic range of mquant and the bits/picture count */
   Qj = dj*31.0/r;
 /*Qj = dj*(q_scale_type ? 56.0 : 31.0)/r;  */
 
-  actj = mbinfo[j].act;
-  actsum+= actj;
 
   /* compute normalized activity */
-  N_actj = (2.0*actj+avg_act)/(actj+2.0*avg_act);
+  actj = mbinfo[j].act;
+  actcovered += actj;
 
+  /*  Heuristic: Decrease quantisation for blocks with lots of
+	  sizeable coefficients.  We assume we just get a mess if
+	  a complex texture's coefficients get chopped...
+
+	 Used to be the seemingly perverse:
+	 (2.0*actj+avg_act)/(actj+2.0*avg_act)
+	 which gently *increases* quantisation of very active blocks.
+  */
+  N_actj = (actj+4.0*avg_act)/(4.0*actj+avg_act);
+
+  /* TODO: Stuff for debugging... remove
+  if( (++ctr) % 8 == 0 )
+	{
+	  printf( "R" ); fflush(stdout);
+	}
+  */
   if (q_scale_type)
   {
     /* modulate mquant with combined buffer and local activity measures */

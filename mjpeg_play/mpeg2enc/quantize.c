@@ -36,6 +36,13 @@ static void iquant1_intra _ANSI_ARGS_((short *src, short *dst,
 static void iquant1_non_intra _ANSI_ARGS_((short *src, short *dst,
   unsigned char *quant_mat, int mquant));
 
+  /* Unpredictable branches suck on modern CPU's... */
+#define fabsshift ((8*sizeof(unsigned int))-1)
+#define fastabs(x) (((x)-(((unsigned int)(x))>>fabsshift)) ^ ((x)>>fabsshift))
+#define signmask(x) (((int)x)>>fabsshift)
+#define samesign(x,y) ((signmask(x) & -y) | ((signmask(x)^-1) & y))
+
+
 /* Test Model 5 quantization
  *
  * this quantizer has a bias of 1/8 stepsize towards zero
@@ -49,84 +56,138 @@ int mquant;
 {
   int i;
   int x, y, d;
+  int clipping;
+  short tmp[64];	/* We buffer result in case we need to adjust quantization
+					   to avoid clipping */
 
-  x = src[0];
-  d = 8>>dc_prec; /* intra_dc_mult */
-  dst[0] = (x>=0) ? (x+(d>>1))/d : -((-x+(d>>1))/d); /* round(x/d) */
 
-  for (i=1; i<64; i++)
-  {
-    x = src[i];
-    d = quant_mat[i];
-#ifdef ORIG_CODE
-    y = (32*(x>=0 ? x : -x) + (d>>1))/d; /* round(32*x/quant_mat) */
-    d = (3*mquant+2)>>2;
-    y = (y+d)/(2*mquant); /* (y+0.75*mquant) / (2*mquant) */
+  /* Inspired by suggestion by Juan.  Quantize a little harder if we clip...
+   */
+
+  do
+	{
+	  clipping = 0;
+	  x = src[0];
+	  d = 8>>dc_prec; /* intra_dc_mult */
+	  tmp[0] = (x>=0) ? (x+(d>>1))/d : -((-x+(d>>1))/d); /* round(x/d) */
+
+
+	  for (i=1; i<64; i++)
+		{
+		  x = src[i];
+		  d = quant_mat[i];
+#ifdef ORIGINAL_CODE
+		  y = (32*(x >= 0 ? x : -x) + (d>>1))/d; /* round(32*x/quant_mat) */
+		  d = (3*mquant+2)>>2;
+		  y = (y+d)/(2*mquant); /* (y+0.75*mquant) / (2*mquant) */
+
+		  /* clip to syntax limits */
+		  if (y > 255)
+			{
+			  if (mpeg1)
+				y = 255;
+			  else if (y > 2047)
+				y = 2047;
+			}
 #else
-    /* RJ: save one divide operation */
-    y = (32*(x>=0 ? x : -x) + (d>>1) + d*((3*mquant+2)>>2))/(quant_mat[i]*2*mquant);
+		  /* RJ: save one divide operation */
+		  y = (32*fastabs(x) + (d>>1) + d*((3*mquant+2)>>2))/(quant_mat[i]*2*mquant);
+		  if ( (y > 255) && (mpeg1 || (y > 2047)) )
+			{
+			  clipping = 1;
+			  mquant += 2;
+			  break;
+			}
 #endif
-
-    /* clip to syntax limits */
-    if (y > 255)
-    {
-      if (mpeg1)
-        y = 255;
-      else if (y > 2047)
-        y = 2047;
-    }
-
-    dst[i] = (x>=0) ? y : -y;
+		  
+		  tmp[i] = samesign(x,y);
 
 #if 0
-    /* this quantizer is virtually identical to the above */
-    if (x<0)
-      x = -x;
-    d = mquant*quant_mat[i];
-    y = (16*x + ((3*d)>>3)) / d;
-    dst[i] = (src[i]<0) ? -y : y;
+		  /* this quantizer is virtually identical to the above */
+		  if (x<0)
+			x = -x;
+		  d = mquant*quant_mat[i];
+		  y = (16*x + ((3*d)>>3)) / d;
+		  dst[i] = (src[i]<0) ? -y : y;
 #endif
-  }
-
-  return 1;
+		}
+	} while( clipping );
+  
+  memcpy( dst, tmp, 64*sizeof(short) );
+  return mquant;
 }
 
-int quant_non_intra(src,dst,quant_mat,mquant)
+/*
+ * Quantisation matrix weighted Coefficient sum
+ * To be used for rate control as a measure of dct block
+ * complexity...
+ *
+ */
+
+double quant_weight_coeff_sum( short *blk, unsigned char * quant_mat )
+{
+  int i;
+  double sum;
+  for( i = 0; i < 64; ++i )
+	sum += ((double)(fastabs(blk[i]) * 16)) / ((double) quant_mat[i]);
+
+  return sum;
+}
+
+int quant_non_intra(src,dst,quant_mat,mquant, mquant_ret)
 short *src, *dst;
 unsigned char *quant_mat;
 int mquant;
+int *mquant_ret;
 {
   int i;
   int x, y, d;
   int nzflag;
+  int clipping;
 
-  nzflag = 0;
+  short tmp[64];	/* We buffer result in case we need to adjust quantization
+					   to avoid clipping */
 
-  for (i=0; i<64; i++)
-  {
-    x = src[i];
-    d = quant_mat[i];
+  /* Inspired by suggestion by Juan.  Quantize a little harder if we clip...
+   */
+
+  do
+	{
+	  clipping = 0;
+	  nzflag = 0;
+	  for (i=0; i<64; i++)
+		{
+		  x = src[i];
+		  d = quant_mat[i];
 #ifdef ORIG_CODE
-    y = (32*(x>=0 ? x : -x) + (d>>1))/d; /* round(32*x/quant_mat) */
-    y /= (2*mquant);
+		  y = (32*(x>=0 ? x : -x) + (d>>1))/d; /* round(32*x/quant_mat) */
+		  y /= (2*mquant);
+		  /* clip to syntax limits */
+		  if (y > 255)
+			{
+			  if (mpeg1)
+				y = 255;
+			  else if (y > 2047)
+				y = 2047;
+			}
 #else
-    /* RJ: save one divide operation */
-    y = (32*(x>=0 ? x : -x) + (d>>1))/(d*2*mquant);
+		  /* RJ: save one divide operation */
+		  y = (32*fastabs(x) + (d>>1))/(d*2*mquant);
+		  if ( (y > 255) && (mpeg1 || (y > 2047)) )
+			{
+			  clipping = 1;
+			  mquant += 2;
+			  break;
+			}		  
 #endif
+		  
+		  if ((tmp[i] = samesign(x,y)) != 0)
+			nzflag=1;
+		}
+	}
+  while( clipping );
 
-    /* clip to syntax limits */
-    if (y > 255)
-    {
-      if (mpeg1)
-        y = 255;
-      else if (y > 2047)
-        y = 2047;
-    }
-
-    if ((dst[i] = (x>=0 ? y : -y)) != 0)
-      nzflag=1;
-  }
-
+  memcpy( dst, tmp, 64*sizeof(short) );
   return nzflag;
 }
 

@@ -45,8 +45,8 @@ global dist1_00_SSE
 
 align 32
 dist1_00_SSE:
-	push ebp		; save stack pointer
-	mov ebp, esp		; so that we can do this
+	push ebp					; save frame pointer
+	mov ebp, esp				; link
 
 	push ebx		; save the pigs
 	push ecx		; make them squeal

@@ -768,7 +768,7 @@ static void readquantmat()
     /* use default non-intra matrix */
     load_niquant = 0;
     for (i=0; i<64; i++)
-      inter_q[i] = 16;
+      inter_q[i] = default_nonintra_quantizer_matrix[i];;
   }
   else
   {

@@ -101,6 +101,7 @@ struct mbinfo {
   int dmvector[2]; /* dual prime vectors */
   double act; /* activity measure */
   int var; /* for debugging */
+  short *dctblocks;
 };
 
 /* motion data */

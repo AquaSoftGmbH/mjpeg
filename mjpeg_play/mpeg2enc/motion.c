@@ -311,8 +311,14 @@ struct mbinfo *mbi;
      * selection is based on intra block variance (var) vs.
      * prediction error variance (vmc)
      *
-     * blocks with small prediction error are always coded non-intra
-     * even if variance is smaller (is this reasonable?)
+     * Used to be: blocks with small prediction error are always 
+	 * coded non-intra even if variance is smaller (is this reasonable?
+	 *
+	 * TODO: A.Stevens Jul 2000
+	 * The bbmpeg guys have found this to be *unreasonable*.
+	 * I'm not sure I buy their solution using vmc*2.  It is probabably
+	 * the vmc>= 9*256 test that is suspect.
+	 * 
      */
     if (vmc>var && vmc>=9*256)
       mbi->mb_type = MB_INTRA;
@@ -513,9 +519,15 @@ struct mbinfo *mbi;
      * selection is based on intra block variance (var) vs.
      * prediction error variance (vmc)
      *
-     * blocks with small prediction error are always coded non-intra
-     * even if variance is smaller (is this reasonable?)
-     */
+     * Used to be: blocks with small prediction error are always 
+	 * coded non-intra even if variance is smaller (is this reasonable?
+	 *
+	 * TODO: A.Stevens Jul 2000
+	 * The bbmpeg guys have found this to be *unreasonable*.
+	 * I'm not sure I buy their solution using vmc*2 in the first comparison.
+	 * It is probabably the vmc>= 9*256 test that is suspect.
+     *
+	 */
     if (vmc>var && vmc>=9*256)
       mbi->mb_type = MB_INTRA;
     else

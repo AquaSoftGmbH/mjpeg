@@ -111,11 +111,12 @@ void putcbp _ANSI_ARGS_((int cbp));
 int quant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
   unsigned char *quant_mat, int mquant));
 int quant_non_intra _ANSI_ARGS_((short *src, short *dst,
-  unsigned char *quant_mat, int mquant));
+  unsigned char *quant_mat, int mquant, int *mquant_ret));
 void iquant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
   unsigned char *quant_mat, int mquant));
 void iquant_non_intra _ANSI_ARGS_((short *src, short *dst,
   unsigned char *quant_mat, int mquant));
+double quant_weight_coeff_sum _ANSI_ARGS_((short *blk, unsigned char *quant_mat ));
 
 /* ratectl.c */
 void rc_init_seq _ANSI_ARGS_((void));
@@ -199,6 +200,23 @@ EXTERN unsigned char default_intra_quantizer_matrix[64]
   26, 27, 29, 32, 35, 40, 48, 58,
   26, 27, 29, 34, 38, 46, 56, 69,
   27, 29, 35, 38, 46, 56, 69, 83
+}
+#endif
+;
+
+/* default non intra quantization matrix */
+EXTERN unsigned char default_nonintra_quantizer_matrix[64]
+#ifdef GLOBAL
+=
+{
+  16, 17, 18, 19, 20, 21, 22, 23,
+  17, 18, 19, 20, 21, 22, 23, 24,
+  18, 19, 20, 21, 22, 23, 24, 25,
+  19, 20, 21, 22, 23, 24, 26, 27,
+  20, 21, 22, 23, 25, 26, 27, 28,
+  21, 22, 23, 24, 26, 27, 28, 30,
+  22, 23, 24, 26, 27, 28, 30, 31,
+  23, 24, 25, 27, 28, 30, 31, 33  
 }
 #endif
 ;
@@ -348,3 +366,9 @@ EXTERN int prog_frame; /* progressive frame */
 /* Type for fast motion compensation search */
 
 typedef unsigned char mcompuint;
+
+/* Global flags controlling encoding behaviour */
+
+EXTERN int fix_mquant;    		/* use fixed quant, range 1 ... 31 */
+EXTERN int constant_bitrate;  	/* Original CBR encoding strategy  */
+EXTERN int output_stats;	    /* Display debugging statistics during coding */

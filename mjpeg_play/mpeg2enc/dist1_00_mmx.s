@@ -45,8 +45,8 @@ global dist1_00_MMX
 
 align 32
 dist1_00_MMX:
-	push ebp		; save stack pointer
-	mov ebp, esp	; so that we can do this
+	push ebp		; save frame pointer
+	mov ebp, esp
 
 	push ebx		; Saves registers (called saves convention in
 	push ecx		; x86 GCC it seems)
