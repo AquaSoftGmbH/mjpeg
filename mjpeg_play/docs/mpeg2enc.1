@@ -2,7 +2,6 @@
 
 .SH "NAME"
 mpeg2enc \- MPEG 1/2 encoder
-
 .SH "SYNOPSIS"
 .B mpeg2enc
 .RB [ -v
@@ -39,10 +38,7 @@ mpeg2enc \- MPEG 1/2 encoder
 .RB [ -h ]
 .RB [ -? ]
 .BI -o \ output_filename
-
 .SH "DESCRIPTION"
-.br
-
 mpeg2enc is heavily enhanced derivative of the MPEG Software
 Simulation Group's MPEG-2 reference encoder.  It accepts streams in a
 simple planar YUV format "YUV4MPEG" produced by the \fBlav2yuv\fP and
@@ -52,7 +48,6 @@ available to permit its use in transcoding applications. The encoder
 currently fully supports the generation of elementary MPEG-1,
 progressive and interlaced frame MPEG-2 streams.  Field encoded MPEG-2
 is also possible but is not currently maintained or supported.
-
 
 For most purposes this elementary stream output will need to be
 multiplexed with layer-II MPEG audio into a program/systems stream
@@ -74,18 +69,14 @@ on the mjpegtools web-site:
 .br
 .IP
 \fBhttp://mjpeg.sourceforge.net\fP
-
-
 .SH "GENERAL FUNCTION LETTERS"
-
 .TP
 .BI -v \ num
 Set verbosity level to num.  0 = warnings and errors only, 1 = information as well, 2=really verbose.
+.TP
 .B -?
 Display a synopsis of the command syntax.
-.br
 .SH "FUNCTION LETTERS CONTROLLING OUTPUT STREAM STRUCTURE"
-
 .TP
 .BR -m\ 1 | 2
 Set MPEG-1 or MPEG-2 encoding.
@@ -123,7 +114,6 @@ If this option is set without a maximum bit-rate being specified then
 quantisation is fixed at the specified value.
 .TP
 .BR -F\ 0 | 1 | 2 | 3
-
 This sets the sequences picture structure and block encoding type for
 MPEG-2 streams.  Setting 0 encodes frame-by-frame with support for
 interlaced video turned off.  This is the most efficient option for
@@ -147,10 +137,7 @@ efficient than encoding as 60field/sec video.  The classic application
 is to transcode a PAL-encoded movie (24fps played too fast at 25 fps!)
 into NTSC (see the -f flag).
 .TP
-
-.BR -g | -G
-.I num
-
+.BI -g " num " -G \ num
 These flags set the minimum and maximum group-of-picture (GOP) size
 for the output MPEG stream.  By default both are set to 12 to suit VCD
 encoding.  If the two values are not identical mpeg2enc applies a
@@ -165,15 +152,13 @@ really only applies to high-quality source material with little noise
 setting GOP size much beyond 21 or 24.  Even with good source material
 diminishing returns set in quite rapidly.
 
-.IP
-Note: mpeg2enc is currently hard-wired to produce 2 B frames between
+Note: Mpeg2enc is currently hard-wired to produce 2 B frames between
 each I/P frame unless the GOP size forces less.  This is reasonable
 for medium to high bit-rates (>= 1Mbps) but probably sub-optimal for
 low-bit-rate encoding.
 .TP
 .BR -Q\ 0.0 .. 4.0 
-
-This flag sets the amount quantisation is reduce for
+This flag sets the amount quantisation is reduced for
 blocks containing unusually large amounts of sharp image detail.
 Setting this value 0.0 produces the most efficient use of bits but may
 cause visible/artefacting around detailed sections.  A larger value
@@ -183,23 +168,18 @@ be boosted at random.  The default is 1.0 (which is actually pretty mild)
 if swimminess occurs turn set to 0.0.
 .TP
 .B -s
-
 This flag forces the encoder to generate a "sequence header" at the start
 of every group-of-pictures.  This is needed by some player hardware to
 support fast forward/rewind/random access functions but is a waste of bits
 otherwise.
-
 .SH "OPTION LETTERS CONTROLLING FORMAT OF DECODED VIDEO"
-
 .TP
 .BR -n\ n | p | s
-
 Force the input stream to be treated as NTSC|PAL|SECAM regardless of
 what the stream header might suggest.  Basically this just sets the
 defaults for a bunch of other options.
 .TP
 .BI -f \ num
-
 Set the frame-rate of the output-stream.  Currently only the standard
 MPEG rates are supported.  Eventually more-or-less arbitrary rates
 will be possible.
@@ -224,7 +204,6 @@ will be possible.
 .br
 .TP
 .BI -a \ num
-
 Set the playback aspect ratio code of the encoded video.
 The exact interpretation of the code varies between MPEG-1 and MPEG-2.
 .IP
@@ -278,9 +257,7 @@ shape the pixels actually have after decoding it simply says what
 shape the correctly decoded image should have ideally.  This allows widely
 resolution and data-rate to be traded-off without require huge numbers of
 scaling codes.
-
 .SH "OPTION LETTERS FOR QUALITY TUNING"
-
 .TP
 .BI -r \ num
 This flag sets the motion compensation search radius.  For most
@@ -306,7 +283,7 @@ The impact on quality is around 10% quantisation (0.2 of a bit of
 precision in encoding textures).  For most purposes the default
 settings will be fine.  However on P-III Katmai etc -4 2 -2 1 gives a
 good near-optimum quality setting with reasonably speed.
-.IP
+.TP
 .B  -N
 Setting this flag adjusts the way texture detail is quantised to
 reduce the maount of high-frequency information encoded. This is very
@@ -314,41 +291,38 @@ useful for
 .I mildy
 noisy sources.  If you have really noisy material the filtering tools
 available in mjpegtools are a much better bet.
+.TP
 .B -h
-Setting this flag makes the encoder encode has much high-frequency information as possible.   This is a good setting for maximising quality at VCD
+Setting this flag makes the encoder encode as much high-frequency information
+as possible.   This is a good setting for maximising quality at VCD
 resolution with good quality low-noise source material.  It can also help
 with "swimmy" material if you can spare the bit-rate!
-
 .SH "OPTION LETTERS FOR CHUNKING THE OUTPUT STREAM"
 .TP
 .BI -S \ num
-
 This flag allows the target size of individual sequences in the final
 multiplexed stream to be set in MBytes. If set  mpeg2enc keeps track
 of how large the eventual stream is likely to be and inserts a sequence
 split (actually: sequence end / sequence start) into the output stream
-each time it reaches the specified limit.  The multiplexor mplex(1) can
+each time it reaches the specified limit.  The multiplexor \fBmplex\fP(1) can
 recognise these splits and start a new multiplexed output file each time
 it encounters one.   In this way it is easy to automatically ensure
 each component sequence file can be burnt onto a CD-R and still be
 played as a stand-alone MPEG sequence.
 .TP
-
 .BI -B \ num
 Since mpeg2enc can't read minds it cannot know in advance what other
 material will be multiplexed with the output video stream.  Thus to
 get its calculations of where to insert split point right it needs to be
 told the combined data-rate of the other material that is eventually to
-be multiplexed with the video.   This flag allows this rate to be specified in K bits/sec.
-
-.SH "SSE/3D-Now!/MMX"
-
+be multiplexed with the video.
+This flag allows this rate to be specified in K bits/sec.
+.SH "SSE, 3D-Now!, MMX"
 mpeg2enc makes extensive use of these SIMD instruction set extension
 on x86 family CPU's.  The routines used are determined dynamically at
 run-time.  It should be noted that using SSE requires operating system
 support.  Old 2.2.x Linux kernels (unless patched ones like RedHat) do
 not have this and so SSE, although physically present, won't be activated.
-
 .SH "BUGS"
 There should be an option to force GOP sizes that permit 2 B frames
 between I/P frames.  Some decoders (even software)  can't handle the case
@@ -363,17 +337,15 @@ muxing/imaging an SVCD.
 
 Is there some kind soul out there with source-code for a good SSE
 (not MMX) DCT and iDCT?
-
 .SH AUTHOR
 This man page was written by Andrew Stevens.
 If you have questions, remarks, problems or you just want to contact
-the developers, the main mailing list for the MJPEG\-tools is:
+the developers, the main mailing list for the MJPEG-tools is:
   \fImjpeg\-users@lists.sourceforge.net\fP
 
-.TP
 For more info, see our website at
-.I http://mjpeg.sourceforge.net
+  \fIhttp://mjpeg.sourceforge.net
 
 .SH "SEE ALSO"
 .BR mplex "(1), " mp2enc "(1), " lavrec "(1), " lavplay "(1), "
-.BR lav2yuv "(1), " lav2wav "(1), " yuvscaler "(1)," mjpegtools "(1)"
+.BR lav2yuv "(1), " lav2wav "(1), " yuvscaler "(1), " mjpegtools "(1)"
