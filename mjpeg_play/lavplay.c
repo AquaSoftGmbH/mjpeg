@@ -111,6 +111,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <sys/time.h>
 //#include <sys/resource.h>
 #include <SDL/SDL.h>
@@ -134,7 +135,11 @@ static int  skip_seconds = 0;
 static double test_factor = 1.0; /* Internal test of synchronizaion only */
 
 /* gz: This makes lavplay play back in software */
-static int soft_play = 1;
+static int soft_play = 0;
+
+/* gz: This is the new handle for MJPEG library */
+struct mjpeg_handle *mjpeg;
+
 
 /* The following variable enables flicker reduction by doubling/reversing
    the fields. If this leads to problems during play (because of
@@ -392,7 +397,6 @@ main(int argc, char ** argv)
    char input_buffer[256];
    long frame_number[256]; /* Must be at least as big as the number of buffers used */
 
-   struct mjpeg_handle *mjpeg;
    char *sbuffer;
    struct mjpeg_params bp;
    struct mjpeg_sync bs;
@@ -405,7 +409,7 @@ main(int argc, char ** argv)
    if(argc < 2) Usage(argv[0]);
 
    nerr = 0;
-   while( (n=getopt(argc,argv,"h:v:s:c:n:t:qxzg")) != EOF)
+   while( (n=getopt(argc,argv,"h:v:s:c:n:t:qSxzg")) != EOF)
    {
       switch(n) {
 
@@ -570,6 +574,7 @@ main(int argc, char ** argv)
        /* The output framebuffer parameters (where the JPEG frames are rendered into) */
        mjpeg_set_framebuf(mjpeg, screen->pixels, screen->w, screen->h, screen->format->BytesPerPixel); 
 
+       /* Set the windows title (currently simply the first file name) */
        sprintf(wintitle, "lavplay %s", el.video_file_list[0]);
        SDL_WM_SetCaption(wintitle, "0000000");  
 
@@ -936,6 +941,7 @@ main(int argc, char ** argv)
 
    /* Stop streaming playback */
    mjpeg_close(mjpeg);
+   if (soft_play) SDL_Quit();
 
    if(sync_corr)
    {
