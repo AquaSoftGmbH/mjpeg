@@ -149,7 +149,8 @@ static int saa7111_attach(struct i2c_device * device)
 
       /* decoder */
       0x06, 0xf3,      /* 06 - HSB at  13(50Hz) /  17(60Hz) pixels after end of last line */
-      0x07, 0x13,      /* 07 - HSS at 113(50Hz) / 117(60Hz) pixels after end of last line */
+      /*0x07, 0x13,     * 07 - HSS at 113(50Hz) / 117(60Hz) pixels after end of last line */
+      0x07, 0xe8,      /* 07 - HSS seems to be needed to work with NTSC, too */
       0x08, 0xc8,      /* 08 - AUFD=1, FSEL=1, EXFIL=0, VTRC=1, HPLL=0, VNOI=0 */
       0x09, 0x01,      /* 09 - BYPS=0, PREF=0, BPSS=0, VBLB=0, UPTCV=0, APER=1 */
       0x0a, 0x80,      /* 0a - BRIG=128 */
