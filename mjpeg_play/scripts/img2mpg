@@ -77,7 +77,6 @@
 # * Add an option for a specific temporary folder.
 # - Add more return error codes.
 # - Testing ImageMagick & MjpegTools binary programs disponibility.
-# - Add an option for showing some image notations (file name, date, etc...).
 #
 # -------------------------------------------------------------------------------------------------------
 # LICENSE :
@@ -703,7 +702,7 @@ while test $CPT -lt $NBFRAMETOTAL;\
     	    echo -ne "Frame Num. $CPT / $NBFRAMETOTAL      \r" >&2
 	else 
 	    COUNTERGUI=`echo $((($CPT*100)/$NBFRAMETOTAL))`
-	    echo -ne "Images encoding (%) : $COUNTERGUI      [`echo $(($CPF-1))`      \r" >&2
+	    echo -ne "Images encoding (%) : $COUNTERGUI      [`echo $(($CPF-1))`      \n" >&2
 	fi
 
         if [ $TRANSITIONENABLE = 0 ]; then
