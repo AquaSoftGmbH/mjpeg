@@ -43,9 +43,9 @@ class InputStream
 {
 public:
 	InputStream( IBitStream &istream ) :
+		stream_length(0),
         bs( istream ),
 		eoscan(false),
-		stream_length(0),
 		last_buffered_AU(0),
 		decoding_order(0),
 		old_frames(0)

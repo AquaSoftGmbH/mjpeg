@@ -271,7 +271,6 @@ void Multiplexor::InitInputStreamsForStills(MultiplexJob & job )
             mjpeg_error_exit1("VCD stills: no more than two streams (one normal one hi-res) possible");
         {
             VCDStillsStream *str[2];
-            ConstantFrameIntervals *intervals[2];
 
             for( i = 0; i<job.video_files.size(); ++i )
             {
@@ -402,12 +401,6 @@ void Multiplexor::ByteposTimecode(bitcount_t bytepos, clockticks &ts)
 	ts = (bytepos*CLOCKS)/static_cast<bitcount_t>(dmux_rate);
 }
 
-
-/**********
- *
- * UpdateSectorHeaders - Update the sector headers after a change in stream
- *                     position / SCR
- **********
 
 /**********
  *
@@ -727,7 +720,6 @@ needed at the start of the stream...
 ******************************************************************/
 void Multiplexor::OutputPrefix( )
 {
-	vector<ElementaryStream *>::iterator str;
     vector<MuxStream *> vmux,amux,emux;
     AppendMuxStreamsOf( vstreams, vmux );
     AppendMuxStreamsOf( astreams, amux );
@@ -870,7 +862,6 @@ void Multiplexor::OutputPrefix( )
 
 void Multiplexor::OutputSuffix()
 {
-	unsigned char *index;
 	psstrm->CreatePack (&pack_header, current_SCR, mux_rate);
 	psstrm->CreateSector (&pack_header, NULL,
 						  0,
@@ -898,23 +889,17 @@ void Multiplexor::Multiplex()
 
 {
 	segment_state seg_state;
-	VAunit *next_vau;
-	unsigned int audio_bytes;
-	unsigned int video_bytes;
-
-	int i;
 	vector<bool> completed;
 	vector<bool>::iterator pcomp;
 	vector<ElementaryStream *>::iterator str;
-	bool video_ended = false;
-	bool audio_ended = false;
 
 	unsigned int packets_left_in_pack = 0; /* Suppress warning */
 	bool padding_packet;
-	bool video_first;
+	bool video_first = true;
 
 	Init( );
 
+	unsigned int i;
     for(i = 0; i < estreams.size() ; ++i )
 		completed.push_back(false);
 
@@ -1100,7 +1085,7 @@ void Multiplexor::Multiplex()
 		// Find the ready-to-mux stream with the most urgent DTS
 		//
 		ElementaryStream *despatch = 0;
-		clockticks earliest;
+		clockticks earliest = 0LL;
 		for( str = estreams.begin(); str < estreams.end(); ++str )
 		{
             /*
@@ -1132,7 +1117,7 @@ void Multiplexor::Multiplex()
 			video_first = false;
 			if( current_SCR >=  earliest && underrun_ignore == 0)
 			{
-				mjpeg_warn( "Stream %02x: data will arrive too late sent(SCR)=%lld required(DTS)=%d", 
+				mjpeg_warn( "Stream %02x: data will arrive too late sent(SCR)=%lld required(DTS)=%lld", 
 							despatch->stream_id, 
 							current_SCR/300, 
 							earliest/300 );
@@ -1237,12 +1222,10 @@ void Multiplexor::Multiplex()
 
     if( underruns> 0 )
 	{
-		mjpeg_error("");
 		mjpeg_error_exit1( "MUX STATUS: Frame data under-runs detected!" );
 	}
 	else
 	{
-		mjpeg_info( "" );
 		mjpeg_info( "MUX STATUS: no under-runs detected.");
 	}
 }

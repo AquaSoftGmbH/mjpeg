@@ -59,8 +59,6 @@ bool LPCMStream::Probe(IBitStream &bs )
 void LPCMStream::Init ( const int _stream_num)
 
 {
-    unsigned int i;
-    unsigned int framesize_code;
     stream_num = _stream_num;
 	MuxStream::Init( PRIVATE_STR_1, 
 					 1,  // Buffer scale
@@ -173,7 +171,6 @@ void LPCMStream::Close()
 	mjpeg_info ("AUDIO_STATISTICS: %02x", stream_id); 
     mjpeg_info ("Audio stream length %lld bytes.", stream_length);
     mjpeg_info   ("Frames         : %8u ",  num_frames[0]);
-    bs.Close();
 }
 
 /*************************************************************************
@@ -206,9 +203,8 @@ LPCMStream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
     bs.Flush( read_start );
     
 	clockticks   decode_time;
-	VAunit *vau;
     bool starting_frame_found = false;
-    uint8_t starting_frame_index;
+    uint8_t starting_frame_index = 0;
 
     int starting_frame_offset = 
         (new_au_next_sec || au_unsent > bytes_read )
@@ -216,7 +212,7 @@ LPCMStream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
         : au_unsent;
 
     unsigned int frames = 0;
-    int bytes_muxed = bytes_read;
+    unsigned int bytes_muxed = bytes_read;
   
 	if (bytes_muxed == 0 || MuxCompleted() )
     {

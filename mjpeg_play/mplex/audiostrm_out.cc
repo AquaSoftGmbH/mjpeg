@@ -40,7 +40,7 @@ AudioStream::AudioStream(IBitStream &ibs, Multiplexor &into) :
 
 void AudioStream::InitAUbuffer()
 {
-	int i;
+	unsigned int i;
 	for( i = 0; i < aunits.BUF_SIZE; ++i )
 		aunits.init( new AAunit );
 }
@@ -80,9 +80,6 @@ void AudioStream::OutputSector ( )
 	clockticks   PTS;
 	unsigned int max_packet_data; 	 
 	unsigned int actual_payload;
-	unsigned int bytes_sent;
-	AAunit *aau;
-	Pack_struc pack;
 	unsigned int old_au_then_new_payload;
 
 	PTS = RequiredDTS();

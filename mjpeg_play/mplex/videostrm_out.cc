@@ -64,7 +64,7 @@ bool VideoStream::Probe(IBitStream &bs )
 
 void VideoStream::InitAUbuffer()
 {
-	int i;
+	unsigned int i;
 	for( i = 0; i < aunits.BUF_SIZE; ++i )
 		aunits.init( new VAunit );
 }
@@ -144,8 +144,6 @@ void VideoStream::OutputSector ( )
 
 	unsigned int max_packet_payload; 	 
 	unsigned int actual_payload;
-	unsigned int prev_au_tail;
-	VAunit *vau;
 	unsigned int old_au_then_new_payload;
 	clockticks  DTS,PTS;
     int autype;

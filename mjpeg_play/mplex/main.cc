@@ -52,9 +52,6 @@ substream in the output file.
 int main (int argc, char* argv[])
 {
 	MultiplexJob job;
-	int     i;
-    off_t audio_bytes, video_bytes;
-    clockticks first_frame_PTS = 0;
 
 	job.SetFromCmdLine(argc, argv);
 

@@ -85,7 +85,7 @@ void  AC3Stream::DisplayAc3HeaderInfo()
         printf( "bsid         = %d\n", bs.GetBits(5) );
         printf( "bsmode       = 0x%1x\n", bs.GetBits(3) ); 
         int acmode = bs.GetBits(3);
-        int nfchans;
+        int nfchans = 0;
         switch( acmode )
         {
         case 0x0 :
@@ -204,7 +204,6 @@ void  AC3Stream::DisplayAc3HeaderInfo()
 void AC3Stream::Init ( const int _stream_num)
 
 {
-    unsigned int i;
     unsigned int framesize_code;
     stream_num = _stream_num;
 	MuxStream::Init( PRIVATE_STR_1, 
@@ -288,9 +287,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 	mjpeg_debug( "Scanning %d AC3 audio frames to frame %d", 
 				 frames_to_buffer, last_buffered_AU );
 
-    IBitStream undo;
     int skip;
-    bool cleanexit = false;
 	while( !bs.eos() 
            && decoding_order < last_buffered_AU 
         )
@@ -375,8 +372,6 @@ void AC3Stream::Close()
     mjpeg_info   ("Syncwords      : %8u",num_syncword);
     mjpeg_info   ("Frames         : %8u padded",  num_frames[0]);
     mjpeg_info   ("Frames         : %8u unpadded", num_frames[1]);
-	
-    bs.Close();
 }
 
 /*************************************************************************
@@ -420,19 +415,18 @@ AC3Stream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
     bs.Flush( read_start );
     rd += bytes_read;
 	clockticks   decode_time;
-	VAunit *vau;
 
-    int first_header = 
+    unsigned int first_header = 
         (new_au_next_sec || au_unsent > bytes_read )
         ? 0 
         : au_unsent;
 
     // BUG BUG BUG: how do we set the 1st header pointer if we have
     // the *middle* part of a large frame?
-    assert( first_header <= to_read-2 );
+    assert( first_header+2 <= to_read );
 
     unsigned int syncwords = 0;
-    int bytes_muxed = bytes_read;
+    unsigned int bytes_muxed = bytes_read;
   
 	if (bytes_muxed == 0 || MuxCompleted() )
     {

@@ -195,10 +195,10 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				avg_frames[access_unit.type-1]+=access_unit.length;
 				aunits.append( access_unit );					
                 decoding_order++;
-				mjpeg_debug( "Found start AU %d @ %lld: DTS=%d", 
+				mjpeg_debug( "Found start AU %d @ %lld: DTS=%ud", 
                              decoding_order,
                              bs.bitcount() / 8-4,
-							 access_unit.DTS/300 );
+							 static_cast<unsigned int>(access_unit.DTS/300) );
 
 				AU_hdr = syncword;
 				AU_start = stream_length;
@@ -327,7 +327,6 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 void VideoStream::Close()
 {
 
-	bs.Close();
     stream_length = (unsigned int)(bs.bitcount() / 8);
     for (int i=0; i<4; i++)
 	{

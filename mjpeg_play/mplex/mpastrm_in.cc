@@ -108,7 +108,6 @@ bool MPAStream::Probe(IBitStream &bs )
 void MPAStream::Init ( const int stream_num )
 
 {
-    unsigned int i;
 	int padding_bit;
 
 	MuxStream::Init( AUDIO_STR_0 + stream_num, 
@@ -191,7 +190,6 @@ unsigned int MPAStream::SizeFrame( int rate_code, int padding )
 
 void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 {
-	unsigned int i;
 	unsigned int padding_bit;
 	last_buffered_AU += frames_to_buffer;
 
@@ -279,7 +277,6 @@ void MPAStream::Close()
     mjpeg_info   ("Frames         : %8u padded",  num_frames[0]);
     mjpeg_info   ("Frames         : %8u unpadded", num_frames[1]);
 	
-    bs.Close();
 }
 
 /*************************************************************************

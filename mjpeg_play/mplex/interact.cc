@@ -137,7 +137,6 @@ static struct option long_options[] =
 bool MultiplexJob::ParseLpcmOpt( const char *optarg )
 {
     char *endptr, *startptr;
-    long number;
     unsigned int samples_sec;
     unsigned int channels;
     unsigned int bits_sample;
@@ -176,7 +175,6 @@ bool MultiplexJob::ParseLpcmOpt( const char *optarg )
 bool MultiplexJob::ParseVideoOpt( const char *optarg )
 {
     char *endptr, *startptr;
-    long number;
     unsigned int buffer_size;
     endptr = const_cast<char *>(optarg);
     do 
@@ -197,12 +195,10 @@ bool MultiplexJob::ParseVideoOpt( const char *optarg )
     return true;
 }
 
-void MultiplexJob::SetFromCmdLine(int argc, char *argv[])
+void MultiplexJob::SetFromCmdLine(unsigned int argc, char *argv[])
 {
     int n;
     outfile_pattern = NULL;
-    long number;
-    char *numptr, *endptr;
 
 #if defined(HAVE_GETLONG)
 	while( (n=getlong(argc,argv,short_options,long_options, NULL)) != -1 )
@@ -324,17 +320,16 @@ void MultiplexJob::SetFromCmdLine(int argc, char *argv[])
 
 
 
-void MultiplexJob::InputStreamsFromCmdLine (int argc, char* argv[] )
+void MultiplexJob::InputStreamsFromCmdLine (unsigned int argc, char* argv[] )
 {
-    IBitStream *bs;
+    IFileBitStream *bs;
     IBitStreamUndo undo;
-    int i;
+    unsigned int i;
     bool bad_file = false;
     
 	for( i = 1; i < argc; ++i )
     {
-        bs = new IBitStream;
-        bs->Open( argv[i] );
+        bs = new IFileBitStream( argv[i] );
         // Remember the streams initial state...
         bs->PrepareUndo( undo);
         if( MPAStream::Probe( *bs ) )
@@ -373,7 +368,6 @@ void MultiplexJob::InputStreamsFromCmdLine (int argc, char* argv[] )
             continue;
         }
         bad_file = true;
-        bs->Close();
         delete bs;
         mjpeg_error ("File %s unrecogniseable!", argv[i]);
     }

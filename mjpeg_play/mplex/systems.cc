@@ -280,7 +280,7 @@ void PS_Stream::BufferPacketHeader( uint8_t *buf,
 {
 
     uint8_t *index = buf;
-	uint8_t *pes_header_len_field;
+	uint8_t *pes_header_len_field = 0;
 
 
     /* konstante Packet Headerwerte eintragen */
@@ -416,12 +416,11 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 	)
 
 {
-    int i,j;
+    int i;
     uint8_t *index;
-    uint8_t *ac3_header;
     uint8_t *size_offset;
 	uint8_t *fixed_packet_header_end;
-	uint8_t *pes_header_len_offset;
+	uint8_t *pes_header_len_offset = 0;
 	unsigned int target_packet_data_size;
 	unsigned int actual_packet_data_size;
 	int packet_data_to_read;
@@ -611,14 +610,14 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
                      fixed_packet_header_end, 
                      actual_packet_data_size+(index-fixed_packet_header_end)
                 );
-            for( j=0; j< bytes_short; ++j)
-                fixed_packet_header_end[j] = static_cast<uint8_t>(STUFFING_BYTE);
+            for( i=0; i< bytes_short; ++i)
+                fixed_packet_header_end[i] = static_cast<uint8_t>(STUFFING_BYTE);
         }
         else
         {
             memmove( index+bytes_short, index,  actual_packet_data_size );
-            for( j=0; j< bytes_short; ++j)
-                *(index+j)=static_cast<uint8_t>(STUFFING_BYTE);
+            for( i=0; i< bytes_short; ++i)
+                *(index+i)=static_cast<uint8_t>(STUFFING_BYTE);
         }
         index += bytes_short;
         bytes_short = 0;
@@ -672,8 +671,9 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
         *(index++) = static_cast<uint8_t>((ISO11172_END & 0x0000ff00)>>8);
         *(index++) = static_cast<uint8_t>(ISO11172_END & 0x000000ff);
     }
-		
-    for (i = 0; i < strm.zero_stuffing; i++)
+
+    unsigned int j;
+    for (j = 0; j < strm.zero_stuffing; j++)
         *(index++) = static_cast<uint8_t>(0);
 	
 

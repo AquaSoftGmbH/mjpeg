@@ -73,9 +73,9 @@ class MultiplexJob : public MultiplexParams
 {
 public:
   MultiplexJob();
-  void SetFromCmdLine( int argc, char *argv[]);
+  void SetFromCmdLine( unsigned int argc, char *argv[]);
 private:
-  void InputStreamsFromCmdLine (int argc, char* argv[] );
+  void InputStreamsFromCmdLine (unsigned int argc, char* argv[] );
   static void Usage(char *program_name);
   bool ParseVideoOpt( const char *optarg );
   bool ParseLpcmOpt( const char *optarg );

@@ -131,9 +131,12 @@ bool IBitStream::ReadIntoBuffer(unsigned int to_read)
     unsigned int read_pow2 = BUFFER_SIZE/4;
     while( read_pow2 < to_read ) 
         read_pow2 <<= 1;
-            
-	i = fread(StartAppendPoint(read_pow2), sizeof(uint8_t), 
-			  static_cast<size_t>(read_pow2), fileh);
+
+
+    i = ReadStreamBytes( StartAppendPoint(read_pow2), 
+                         static_cast<size_t>(read_pow2) );      
+	//i = fread(StartAppendPoint(read_pow2), sizeof(uint8_t), 
+    //			  static_cast<size_t>(read_pow2), fileh);
     Appended(static_cast<unsigned int>(i));
 
 	if ( i == 0 )
@@ -145,31 +148,6 @@ bool IBitStream::ReadIntoBuffer(unsigned int to_read)
 }
 
 
-
-/** open the device to read the bit stream from it 
-@param bs_filename filename to open
-@param buf_size size of the internal buffer 
-*/
-void IBitStream::Open( char *bs_filename, unsigned int buf_size)
-{
-    if( fileh != 0)
-        mjpeg_error_exit1( "Attempt to open already open stream!");
-	if ((fileh = fopen(bs_filename, "rb")) == NULL)
-	{
-		mjpeg_error_exit1( "Unable to open file %s for reading.", bs_filename);
-	}
-	filename = strcpy( new char[strlen(bs_filename)+1], bs_filename );
-
-    SetBufSize(buf_size);
-	eobs = false;
-	if (!ReadIntoBuffer())
-	{
-		if (buffered==0)
-		{
-			mjpeg_error_exit1( "Unable to read from file %s.", bs_filename);
-		}
-	}
-}
 
 
 #define masks(idx) (1<<(idx))
@@ -295,7 +273,7 @@ bool IBitStream::SeekSync(uint32_t sync, int N, int lim)
  *
  ***************/
 
-bool IBitStream::SeekFwdBits( unsigned int bytes_to_seek_fwd)
+void IBitStream::SeekFwdBits( unsigned int bytes_to_seek_fwd)
 { 
     assert(bitidx == 8);
     unsigned int req_byteidx = byteidx + bytes_to_seek_fwd;
@@ -325,7 +303,7 @@ void IBitStream::Flush(bitcount_t flush_upto )
 		mjpeg_error_exit1("INTERNAL ERROR: attempt to flush input beyond buffered amount" );
 
 	if( flush_upto < bfr_start )
-		mjpeg_error_exit1("INTERNAL ERROR: attempt to flush input stream before  first buffered byte %d last is %d", flush_upto, bfr_start );
+		mjpeg_error_exit1("INTERNAL ERROR: attempt to flush input stream before  first buffered byte %lld last is %lld", flush_upto, bfr_start );
 
 	unsigned int bytes_to_flush = 
 		static_cast<unsigned int>(flush_upto - bfr_start);
@@ -371,11 +349,11 @@ unsigned int IBitStream::GetBytes(uint8_t *dst, unsigned int length)
 {
 	unsigned int to_read = length;
 	if( bytereadpos < bfr_start)
-		mjpeg_error_exit1("INTERNAL ERROR: access to input stream buffer @ %d: before first buffered byte (%d)", bytereadpos, bfr_start );
+		mjpeg_error_exit1("INTERNAL ERROR: access to input stream buffer @ %lld: before first buffered byte (%lld)", bytereadpos, bfr_start );
 
 	if(  bytereadpos+length > bfr_start+buffered )
 	{
-		if( !feof(fileh) )
+		if( !EndOfStream() )
         {
 			mjpeg_error("INTERNAL ERROR: access to input stream buffer beyond last buffered byte @POS=%lld END=%d REQ=%lld + %d bytes", 
                         bytereadpos,
@@ -397,50 +375,41 @@ unsigned int IBitStream::GetBytes(uint8_t *dst, unsigned int length)
 	return to_read;
 }
 
-/** Skips forward the bit read pos.  Skipped bytes are not necessarily
-    reads and the buffer is flush to the position skipped to and
-    the byte read position set to match the bit read position.
-*/
 
+/********
+ *
+ * Input stream from a standard File I/O data-source
+ *
+ ********/
 
-void IBitStream::BitsBytesSkipFlush( unsigned int bytes_to_skip )
+IFileBitStream::IFileBitStream( const char *bs_filename,
+                                unsigned int buf_size) :
+    IBitStream()
 {
-    assert( bitidx == 8 );
-    if( byteidx + bytes_to_skip >= buffered )
-    {
-        long to_seek = (bfr_start+byteidx+bytes_to_skip) -
-                       (bfr_start+buffered);
-        bytereadpos = bfr_start+byteidx+bytes_to_skip ;
-        bfr_start = bytereadpos;
-        byteidx = 0;
-        bitreadpos += bytes_to_skip*8;
-        Empty();
-        if( ! fseek( fileh, to_seek, SEEK_CUR ) )
-        {
-            eobs = true;
-        }
-        else
-            ReadIntoBuffer();
-    }
-    else
-    {
-        byteidx += bytes_to_skip;
-        //
-        // Move readpos so it corresponds to the byte buffered
-        // at position byteidx in the read buffer.
-        // N.b. readpos-bfr_start is always in buffer and <=
-        // byteidx
-        bytereadpos += byteidx - (bytereadpos-bfr_start);
-        Flush( bytereadpos );
-        ReadIntoBuffer();
-    }
+	if ((fileh = fopen(bs_filename, "rb")) == NULL)
+	{
+		mjpeg_error_exit1( "Unable to open file %s for reading.", bs_filename);
+	}
+	filename = strcpy( new char[strlen(bs_filename)+1], bs_filename );
+    streamname = filename;
+
+    SetBufSize(buf_size);
+	eobs = false;
+	if (!ReadIntoBuffer())
+	{
+		if (buffered==0)
+		{
+			mjpeg_error_exit1( "Unable to read from %s.", bs_filename);
+		}
+	}
 }
 
 
 /**
-   close the device containing the bit stream after a read process
+   Destructor: close the device containing the bit stream after a read
+   process
 */
-void IBitStream::Close()
+IFileBitStream::~IFileBitStream()
 {
 	if (fileh)
 	{
