@@ -48,4 +48,10 @@ EXTRA_DIST = \
 	tv.xpm \
 	effect_text.xpm \
 	effect_picture.xpm \
-	effect_transition.xpm
+	effect_transition.xpm \
+	encode_all.xpm \
+	encode_video.xpm \
+	encode_audio.xpm \
+	distributed_encoding.xpm \
+	gnome-fontsel.xpm \
+	gnome-color-browser.xpm

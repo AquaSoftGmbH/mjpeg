@@ -44,6 +44,9 @@
 #include "effect_picture.xpm"
 #include "effect_transition.xpm"
 
+#include "gnome-color-browser.xpm"
+#include "gnome-fontsel.xpm"
+
 #define min(a,b) ((a) < (b) ? (a) : (b))
 
 /* structs for the various effect utilities here */
@@ -1734,12 +1737,16 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 		gtk_widget_show(hbox2);
 		hbox2 = gtk_hbox_new(FALSE, 5);
 
-		button = gtk_button_new_with_label("Font");
+		button = gtk_image_label_button(NULL,
+					"Select Font",
+					gnome_fontsel_xpm, 0, GTK_POS_BOTTOM);
 		gtk_signal_connect(GTK_OBJECT(button), "clicked",
 			GTK_SIGNAL_FUNC(select_text_overlay_font), (gpointer)options);
 		gtk_box_pack_start (GTK_BOX (hbox2), button, TRUE, FALSE, 0);
 		gtk_widget_show(button);
-		button = gtk_button_new_with_label("Color");
+		button = gtk_image_label_button(NULL,
+					"Select Color",
+					gnome_color_browser_xpm, 0, GTK_POS_BOTTOM);
 		gtk_signal_connect(GTK_OBJECT(button), "clicked",
 			GTK_SIGNAL_FUNC(select_text_overlay_color), (gpointer)options);
 	}

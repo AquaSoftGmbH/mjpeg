@@ -35,10 +35,22 @@
 #include "pipes.h"
 #include "gtkfunctions.h"
 
+#include "file_new.xpm"
+#include "file_widget_open.xpm"
+#include "encode_all.xpm"
+#include "encode_audio.xpm"
+#include "encode_video.xpm"
+#include "arrows.xpm"
+#include "tv.xpm"
+#include "file_save.xpm"
+#include "file_open.xpm"
+#include "preferences.xpm"
+#include "distributed_encoding.xpm"
+
 /* Constanst defined here */
 /* Limits of the Encoding selections */
-#define Encselect_x 2
-#define Encselect_y 7
+#define Encselect_x 6
+#define Encselect_y 3
 
 /* Some variables defined here */
 GtkWidget *input_entry, *output_entry, *sound_entry, *video_entry;
@@ -92,7 +104,7 @@ void create_file_sound(GtkWidget *widget, gpointer data);
 void file_ok_input( GtkWidget *w, GtkFileSelection *fs );
 void create_file_input(GtkWidget *widget, gpointer data);
 void file_ok_output( GtkWidget *w, GtkFileSelection *fs );
-void create_in_out (GtkWidget *hbox1, GtkWidget *vbox);
+void create_in_out (GtkWidget *table);
 void create_vcd_svcd (GtkWidget *hbox1, GtkWidget *vbox);
 void create_file_output(GtkWidget *widget, gpointer data);
 void video_callback ( GtkWidget *widget, GtkWidget *video_entry );
@@ -101,15 +113,15 @@ void create_file_video(GtkWidget *widget, gpointer data);
 void create_fileselect_video (GtkWidget *hbox1, GtkWidget *vbox);
 void create_mplex_options (GtkWidget *table);
 void encode_all (GtkWidget *widget, gpointer data);
-void create_buttons1 (GtkWidget *hbox1);
-void create_buttons2 (GtkWidget *hbox1);
+void create_buttons1 (GtkWidget *table);
+void create_buttons2 (GtkWidget *table);
 void create_buttons3 (GtkWidget *hbox1);
 void create_mplex (GtkWidget *table);
 void create_status (GtkWidget *hbox1, GtkWidget *vbox);
 void create_option_button(GSList *task_group, GtkWidget *table, 
                          char task[LONGOPT], int encx, int ency);
 void create_task_layout(GtkWidget *table);
-void create_temp_files (GtkWidget *hbox1, GtkWidget *vbox);
+void create_temp_files (GtkWidget *table);
 void set_task(GtkWidget *widget, gpointer data);
 void play_output_stream ( GtkWidget *widget, gpointer data);
 void play_video_stream ( GtkWidget *widget, gpointer data);
@@ -743,54 +755,62 @@ GtkWidget *filew;
 }
 
 /* Create Layout for the input and output fileselection */
-void create_in_out (GtkWidget *hbox1, GtkWidget *vbox)
+void create_in_out (GtkWidget *table)
 {
-GtkWidget *label1, *label2;   
+GtkWidget *label1, *label2, *hbox;
 GtkWidget *input_select, *output_select;
 
   label1 = gtk_label_new ("  Input file : ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
   gtk_widget_set_usize (label1, 70, -2);
-  gtk_box_pack_start (GTK_BOX (hbox1), label1, FALSE, FALSE, 0); 
+  gtk_table_attach_defaults( GTK_TABLE(table), label1, 0,1,0,1);
   gtk_widget_show (label1);
 
+  hbox = gtk_hbox_new(FALSE, 10);
   input_entry = gtk_entry_new ();
   gtk_entry_set_text(GTK_ENTRY(input_entry), enc_inputfile); 
   gtk_signal_connect(GTK_OBJECT(input_entry), "changed",
                      GTK_SIGNAL_FUNC(input_callback), input_entry);
   gtk_widget_set_usize (input_entry, 200, -2);
-  gtk_box_pack_start (GTK_BOX (hbox1), input_entry, FALSE, TRUE, 0);
+  gtk_box_pack_start (GTK_BOX (hbox), input_entry, FALSE, TRUE, 0);
   gtk_widget_show (input_entry);
 
-  input_select = gtk_button_new_with_label ("Select");
+  //input_select = gtk_button_new_with_label ("Select");
+  input_select = gtk_image_label_button(NULL,
+				"Select Input File",
+				file_widget_open_xpm, 0, GTK_POS_BOTTOM);
   gtk_signal_connect(GTK_OBJECT(input_select), "clicked", 
                      GTK_SIGNAL_FUNC(create_file_input), NULL);
-  gtk_box_pack_start (GTK_BOX (hbox1), input_select, FALSE, FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (hbox), input_select, FALSE, FALSE, 0);
   gtk_widget_show (input_select);
+  gtk_table_attach_defaults( GTK_TABLE(table), hbox, 1,2,0,1);
+  gtk_widget_show(hbox);
 
   label2 = gtk_label_new ("  Output file : ");
+  gtk_misc_set_alignment(GTK_MISC(label2), 0.0, GTK_MISC(label2)->yalign);
   gtk_widget_set_usize (label1, 70, -2);
-  gtk_box_pack_start (GTK_BOX (hbox1), label2, FALSE, FALSE, 0); 
+  gtk_table_attach_defaults( GTK_TABLE(table), label2, 0,1,1,2);
   gtk_widget_show (label2);
-     
+
+  hbox = gtk_hbox_new(FALSE, 10);
   output_entry = gtk_entry_new (); 
   gtk_entry_set_text(GTK_ENTRY(output_entry), enc_outputfile); 
   gtk_signal_connect(GTK_OBJECT(output_entry), "changed",
                      GTK_SIGNAL_FUNC(output_callback), output_entry);
   gtk_widget_set_usize (output_entry, 200, -2);
   gtk_widget_show (output_entry);
-  gtk_box_pack_start (GTK_BOX (hbox1), output_entry, FALSE, TRUE, 0);
+  gtk_box_pack_start (GTK_BOX (hbox), output_entry, FALSE, TRUE, 0);
 
-  output_select = gtk_button_new_with_label ("Select");
+  output_select = gtk_image_label_button(NULL,
+				"Select Output File",
+				file_widget_open_xpm, 0, GTK_POS_BOTTOM);
+  //output_select = gtk_button_new_with_label ("Select");
   gtk_signal_connect(GTK_OBJECT(output_select), "clicked", 
                      GTK_SIGNAL_FUNC(create_file_output), NULL);
-  gtk_box_pack_start (GTK_BOX (hbox1), output_select, FALSE, FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (hbox), output_select, FALSE, FALSE, 0);
   gtk_widget_show (output_select);
-
-  gtk_box_pack_start (GTK_BOX (vbox), hbox1, FALSE, FALSE, 0); 
-  gtk_widget_show (hbox1);
-
-  create_temp_files (hbox1, vbox);
-
+  gtk_table_attach_defaults( GTK_TABLE(table), hbox, 1,2,1,2);
+  gtk_widget_show(hbox);
 }
 
 /* Play back the created output (mplexed video and audio) */
@@ -871,68 +891,70 @@ GtkWidget *filew;
 }
 
 /* creating the layout for temp files */
-void create_temp_files (GtkWidget *hbox1, GtkWidget *vbox)
+void create_temp_files (GtkWidget *table)
 {
-GtkWidget *label1;
-
-  hbox1 = gtk_hbox_new (FALSE, 0);
+GtkWidget *label1, *hbox;
 
   /* sound temp file */
   label1 = gtk_label_new ("  Audio file: ");
   gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
   gtk_widget_set_usize (label1, 70, -2);
-  gtk_box_pack_start (GTK_BOX (hbox1), label1, FALSE, FALSE, 0); 
+  gtk_table_attach_defaults( GTK_TABLE(table), label1, 2,3,0,1);
   gtk_widget_show (label1);
 
+  hbox = gtk_hbox_new(FALSE, 10);
   sound_entry = gtk_entry_new ();
   gtk_entry_set_text(GTK_ENTRY(sound_entry), enc_audiofile);
   gtk_signal_connect(GTK_OBJECT(sound_entry), "changed",
                      GTK_SIGNAL_FUNC(sound_callback), sound_entry);
   gtk_widget_set_usize (sound_entry, 200, -2);
-  gtk_box_pack_start (GTK_BOX (hbox1), sound_entry, FALSE, FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (hbox), sound_entry, FALSE, FALSE, 0); 
   gtk_widget_show (sound_entry);
 
-  sound_select = gtk_button_new_with_label ("Select");
+  //sound_select = gtk_button_new_with_label ("Select");
+  sound_select = gtk_image_label_button(NULL,
+				"Select Temporary Audio File",
+				file_widget_open_xpm, 0, GTK_POS_BOTTOM);
   gtk_widget_show (sound_select);
   gtk_signal_connect(GTK_OBJECT(sound_select), "clicked",
                      GTK_SIGNAL_FUNC(create_file_sound), NULL);
-  gtk_box_pack_start (GTK_BOX (hbox1), sound_select, FALSE, FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (hbox), sound_select, FALSE, FALSE, 0); 
   gtk_widget_show (sound_select);
+  gtk_table_attach_defaults( GTK_TABLE(table), hbox, 3,4,0,1);
+  gtk_widget_show(hbox);
 
   label1 = gtk_label_new ("  Video file : ");
   gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
   gtk_widget_set_usize (label1, 75, -2);
-  gtk_box_pack_start (GTK_BOX (hbox1), label1, FALSE, FALSE, 0); 
+  gtk_table_attach_defaults( GTK_TABLE(table), label1, 2,3,1,2);
   gtk_widget_show (label1);
 
+  hbox = gtk_hbox_new(FALSE, 10);
   video_entry = gtk_entry_new ();
   gtk_entry_set_text(GTK_ENTRY(video_entry), enc_videofile);
   gtk_signal_connect(GTK_OBJECT(video_entry), "changed",
                      GTK_SIGNAL_FUNC(video_callback), video_entry);
   gtk_widget_set_usize (video_entry, 200, -2);
-  gtk_box_pack_start (GTK_BOX (hbox1), video_entry, FALSE, FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (hbox), video_entry, FALSE, FALSE, 0); 
   gtk_widget_show (video_entry);
 
-  video_select = gtk_button_new_with_label ("Select");
+  //video_select = gtk_button_new_with_label ("Select");
+  video_select = gtk_image_label_button(NULL,
+				"Select Temporary Video File",
+				file_widget_open_xpm, 0, GTK_POS_BOTTOM);
   gtk_widget_show (video_select);
   gtk_signal_connect(GTK_OBJECT(video_select), "clicked",
                      GTK_SIGNAL_FUNC(create_file_video), NULL);
-  gtk_box_pack_start (GTK_BOX (hbox1), video_select, FALSE, FALSE, 0);
-  gtk_widget_show (hbox1);
-
-  gtk_box_pack_start (GTK_BOX (vbox), hbox1, FALSE, FALSE, 0);
-  gtk_widget_show (hbox1);
-
-  hbox1 = gtk_hbox_new (FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (hbox), video_select, FALSE, FALSE, 0); 
+  gtk_widget_show(video_select);
+  gtk_table_attach_defaults( GTK_TABLE(table), hbox, 3,4,1,2);
+  gtk_widget_show (hbox);
 
   remove_files_after_completion = gtk_check_button_new_with_label
                                   ("Delete temp files after encoding");
   gtk_widget_ref (remove_files_after_completion);
-  gtk_box_pack_start(GTK_BOX(hbox1), remove_files_after_completion, FALSE, FALSE,0);
+  gtk_table_attach_defaults( GTK_TABLE(table), remove_files_after_completion, 2,4,2,3);
   gtk_widget_show (remove_files_after_completion);
-
-  gtk_box_pack_start (GTK_BOX (vbox), hbox1, FALSE, FALSE, 0);
-  gtk_widget_show (hbox1);
 }
 
 /* here all steps of the convert are started */
@@ -962,13 +984,19 @@ void create_buttons1 (GtkWidget *table1)
 {
   GtkWidget *do_all;
 
-  do_all = gtk_button_new_with_label (" Full create ");
+  //do_all = gtk_button_new_with_label (" Full create ");
+  do_all = gtk_image_label_button("Start Encoding",
+				"Start All Encoding Tasks",
+				encode_all_xpm, 0, GTK_POS_BOTTOM);
   gtk_signal_connect (GTK_OBJECT (do_all), "clicked",
                       GTK_SIGNAL_FUNC (encode_all), NULL);
   gtk_table_attach_defaults( GTK_TABLE(table1), do_all, 0,1,0,1);
   gtk_widget_show(do_all);
 
-  create_sound = gtk_button_new_with_label ("Audio Only");
+  //create_sound = gtk_button_new_with_label ("Audio Only");
+  create_sound = gtk_image_label_button("Audio Only",
+				"Start Audio Encoding Task",
+				encode_audio_xpm, 0, GTK_POS_BOTTOM);
   gtk_signal_connect (GTK_OBJECT (create_sound), "clicked",
                       GTK_SIGNAL_FUNC (status_progress_window), NULL);
   gtk_signal_connect (GTK_OBJECT (create_sound), "clicked",
@@ -976,7 +1004,10 @@ void create_buttons1 (GtkWidget *table1)
   gtk_table_attach_defaults( GTK_TABLE(table1), create_sound, 1,2,0,1);
   gtk_widget_show(create_sound);
 
-  do_video = gtk_button_new_with_label ("Video Only");
+  //do_video = gtk_button_new_with_label ("Video Only");
+  do_video = gtk_image_label_button("Video Only",
+				"Start Video Encoding Task",
+				encode_video_xpm, 0, GTK_POS_BOTTOM);
   gtk_signal_connect (GTK_OBJECT (do_video), "clicked",
                       GTK_SIGNAL_FUNC (status_progress_window), NULL);
   gtk_signal_connect (GTK_OBJECT (do_video), "clicked",
@@ -984,7 +1015,10 @@ void create_buttons1 (GtkWidget *table1)
   gtk_table_attach_defaults( GTK_TABLE(table1), do_video, 2,3,0,1);
   gtk_widget_show(do_video);
 
-  mplex_only = gtk_button_new_with_label ("Mplex Only");
+  //mplex_only = gtk_button_new_with_label ("Mplex Only");
+  mplex_only = gtk_image_label_button("Mplex Only",
+				"Mux Existing Video/Audio Files Together",
+				arrows_xpm, 0, GTK_POS_BOTTOM);
   gtk_signal_connect (GTK_OBJECT (mplex_only), "clicked",
                       GTK_SIGNAL_FUNC (status_progress_window), NULL);
   gtk_signal_connect (GTK_OBJECT (mplex_only), "clicked",
@@ -994,32 +1028,44 @@ void create_buttons1 (GtkWidget *table1)
 }
 
 /* the Second line with the Load an Save options */
-void create_buttons2 (GtkWidget *hbox1)
+void create_buttons2 (GtkWidget *table)
 {
   GtkWidget *play_output, *play_video, *set_defaults;
 
-  play_output = gtk_button_new_with_label ("Play output file");
+  //play_output = gtk_button_new_with_label ("Play output file");
+  play_output = gtk_image_label_button("Play Output File",
+				"Play the Output File Using Your Selected Player",
+				tv_xpm, 0, GTK_POS_BOTTOM);
   gtk_signal_connect (GTK_OBJECT (play_output), "clicked",
                       GTK_SIGNAL_FUNC (play_output_stream), NULL);
-  gtk_box_pack_start (GTK_BOX (hbox1), play_output, TRUE, TRUE, 0);
+  gtk_table_attach_defaults( GTK_TABLE(table), play_output, 0,1,1,2);
   gtk_widget_show(play_output);
 
-  play_video = gtk_button_new_with_label ("Play video file");
+  //play_video = gtk_button_new_with_label ("Play video file");
+  play_video = gtk_image_label_button("Play Video File",
+				"Play the Temporary Video File Using Your Selected Player",
+				tv_xpm, 0, GTK_POS_BOTTOM);
   gtk_signal_connect (GTK_OBJECT (play_video), "clicked",
                       GTK_SIGNAL_FUNC (play_video_stream), NULL);
-  gtk_box_pack_start (GTK_BOX (hbox1), play_video, TRUE, TRUE, 0);
+  gtk_table_attach_defaults( GTK_TABLE(table), play_video, 1,2,1,2);
   gtk_widget_show(play_video);
 
-  set_defaults = gtk_button_new_with_label ("Load Encoding Options");
+  //set_defaults = gtk_button_new_with_label ("Load Encoding Options");
+  set_defaults = gtk_image_label_button("Load Encoding Options",
+				"Load Your Default Encoding Options",
+				file_open_xpm, 0, GTK_POS_BOTTOM);
   gtk_signal_connect (GTK_OBJECT (set_defaults), "clicked",
                       GTK_SIGNAL_FUNC (do_defaults), "load");
-  gtk_box_pack_start (GTK_BOX (hbox1), set_defaults, TRUE, TRUE, 0);
+  gtk_table_attach_defaults( GTK_TABLE(table), set_defaults, 2,3,1,2);
   gtk_widget_show(set_defaults);
 
-  set_defaults = gtk_button_new_with_label ("Save Encoding Options");
+  //set_defaults = gtk_button_new_with_label ("Save Encoding Options");
+  set_defaults = gtk_image_label_button("Save Encoding Options",
+				"Save the Current Options as Default",
+				file_save_xpm, 0, GTK_POS_BOTTOM);
   gtk_signal_connect (GTK_OBJECT (set_defaults), "clicked",
                       GTK_SIGNAL_FUNC (do_defaults), "save");
-  gtk_box_pack_start (GTK_BOX (hbox1), set_defaults, TRUE, TRUE, 0);
+  gtk_table_attach_defaults( GTK_TABLE(table), set_defaults, 3,4,1,2);
   gtk_widget_show(set_defaults);
 }
 
@@ -1028,13 +1074,19 @@ void create_buttons3 (GtkWidget *hbox1)
 {
 GtkWidget *distribute, *enhanced_options, *script_gen;
 
-  script_gen = gtk_button_new_with_label ("Script generation");
+  //script_gen = gtk_button_new_with_label ("Script generation");
+  script_gen = gtk_image_label_button("Script Generation",
+				"Create Distributed Encoding Scripts",
+				file_new_xpm, 0, GTK_POS_BOTTOM);
   gtk_signal_connect (GTK_OBJECT (script_gen), "clicked",
                   GTK_SIGNAL_FUNC (open_scriptgen_window), NULL);
   gtk_box_pack_start (GTK_BOX (hbox1), script_gen, TRUE, TRUE, 0);
   gtk_widget_show(script_gen);
 
-  distribute = gtk_button_new_with_label ("Distributed encoding setup");
+  //distribute = gtk_button_new_with_label ("Distributed encoding setup");
+  distribute = gtk_image_label_button("Distributed Encoding Settings",
+				"Change Settings for Distributed Encoding",
+				distributed_encoding_xpm, 0, GTK_POS_BOTTOM);
   gtk_signal_connect (GTK_OBJECT (distribute), "clicked",
 		  GTK_SIGNAL_FUNC (open_distributed_window), text_task);
   gtk_box_pack_start (GTK_BOX (hbox1), distribute, TRUE, TRUE, 0);
@@ -1081,7 +1133,10 @@ void create_option_button(GSList *task_group, GtkWidget *table,
 {
 GtkWidget *button_option;
 
-  button_option = gtk_button_new_with_label (" Option ");
+  //button_option = gtk_button_new_with_label (" Option ");
+  button_option = gtk_image_label_button(" Options ",
+				"Set the Detailed Options for this Encoding Task",
+				preferences_xpm, 0, GTK_POS_RIGHT);
   gtk_signal_connect (GTK_OBJECT (button_option), "clicked",
                       GTK_SIGNAL_FUNC (open_mpeg_window), task);
   gtk_table_attach_defaults (GTK_TABLE (table), button_option, 
@@ -1239,7 +1294,7 @@ GtkWidget *button_mpeg1, *button_mpeg2, *button_vcd, *button_svcd, *button_2lav;
 GSList *task_group;
 
 encx=0;
-ency=5;
+ency=1;
 
 
   button_mpeg1 = gtk_radio_button_new_with_label (NULL, "MPEG - 1");
@@ -1262,6 +1317,9 @@ ency=5;
   create_option_button(task_group, table, "MPEG2", encx+1, ency);
   ency++;
 
+encx = 2;
+ency = 1;
+
   button_vcd = gtk_radio_button_new_with_label(task_group, "VCD (MPEG-1) ");
   gtk_signal_connect (GTK_OBJECT (button_vcd), "toggled",
                       GTK_SIGNAL_FUNC (set_task), (gpointer) "VCD");
@@ -1280,7 +1338,9 @@ ency=5;
   task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_svcd));
   gtk_widget_show (button_svcd);
   create_option_button(task_group, table, "SVCD", encx+1, ency);
-  ency++;
+
+encx = 4;
+ency = 1;
 
   button_divx = gtk_radio_button_new_with_label(task_group, "DivX ");
   gtk_signal_connect (GTK_OBJECT (button_divx), "toggled",
@@ -1325,17 +1385,18 @@ int enc_x,enc_y;
   hbox1 = gtk_hbox_new(FALSE,2);
 
   /* 1st line with the layout of the encoding options */
-  table1 = gtk_table_new(1,4,TRUE);
+  table1 = gtk_table_new(2,4,TRUE);
   gtk_table_set_col_spacings(GTK_TABLE(table1), 20);
   create_buttons1 (table1);
+  create_buttons2 (table1);
   gtk_box_pack_start (GTK_BOX (vbox), table1, TRUE, TRUE, 0);
   gtk_widget_show (table1);
 
   /* 2nd Line with the load and Save layout */
-  hbox1 = gtk_hbox_new (TRUE, 20);
-  create_buttons2 (hbox1);
-  gtk_box_pack_start (GTK_BOX (vbox), hbox1, TRUE, TRUE, 0);
-  gtk_widget_show (hbox1);
+  //hbox1 = gtk_hbox_new (TRUE, 20);
+  //create_buttons2 (hbox1);
+  //gtk_box_pack_start (GTK_BOX (vbox), hbox1, TRUE, TRUE, 0);
+  //gtk_widget_show (hbox1);
 
   separator = gtk_hseparator_new ();
   gtk_box_pack_start (GTK_BOX (vbox), separator, FALSE, TRUE, 5);
@@ -1357,8 +1418,13 @@ int enc_x,enc_y;
   gtk_box_pack_start (GTK_BOX (vbox), label, FALSE, FALSE, 0);
   gtk_widget_show (label);
 
-  hbox1 = gtk_hbox_new (FALSE, 0);
-  create_in_out (hbox1,vbox);
+  //hbox1 = gtk_hbox_new (FALSE, 0);
+  table1 = gtk_table_new(3,4,FALSE);
+  gtk_table_set_col_spacings(GTK_TABLE(table1), 20);
+  create_in_out (table1);
+  create_temp_files (table1);
+  gtk_box_pack_start (GTK_BOX (vbox), table1, TRUE, TRUE, 0);
+  gtk_widget_show (table1);
 
   /* and now the creation of the task layout */
   separator = gtk_hseparator_new ();
@@ -1370,12 +1436,13 @@ int enc_x,enc_y;
 
   /* the table containing the layout */
   table = gtk_table_new (Encselect_x, Encselect_y, FALSE);
+  gtk_table_set_col_spacings(GTK_TABLE(table), 20);
 
   /* task layout */
   label = gtk_label_new ("Select the task:");
   gtk_misc_set_alignment (GTK_MISC (label), 0, 0);
   gtk_table_attach_defaults (GTK_TABLE (table), 
-                              label, enc_x, enc_x+2, enc_y, enc_y+2);
+                              label, enc_x, enc_x+6, enc_y, enc_y+1);
   gtk_widget_show (label);
  
   create_task_layout(table);

@@ -4,12 +4,9 @@ Reported bugs:
 Short term:
 ===========
 * new lavrec options: channel (just as in stv?)
-* add images to remaining "un-images" buttons (esp. lavencode.c)
-    - "power"-button image
-    - more :-)
+* stv demutes audio, studio doesn't
 * If recording src is changed, auto-update the mixer device/slider (audio)
 * Effect-result movies should be used in the editlist (doh)
-* Brightness and sound volume sliders in lavplay-page
 
 Long term:
 ==========
@@ -19,12 +16,11 @@ Long term:
     it should support dragging so the user can place the image
     in the image
 
-Laurens - images:
-=================
-* for the three effect buttons (text, image, scene transition)
-* some encoding buttons?
-* effects: color and font
+images:
+=======
 * scenelist icons for (each of the?) transitions, text/image overlay
+* start/stop/init capture (poweron.xpm/poweroff.xpm)
+* yes/no/close buttons everywhere
 
 Bernhards Problems:
 ===================
