@@ -86,8 +86,8 @@ static int64_t R_cum = 0.0;
 static int64_t e_R_cum = 0.0;
 static int64_t gop_start;
 static int64_t gop_bits = 0;
-static int64_t per_frame_bits;
-static int64_t per_gop_bits;
+static int32_t per_frame_bits;
+static int32_t per_gop_bits;
 static int64_t bits_transported;
 static int64_t bits_used;
 static int32_t buffer_variation = 0;
@@ -292,7 +292,10 @@ void rc_init_seq(int reinit)
 	else
 	{
 		int buffer_safe = 5 * per_frame_bits ;
-		undershoot_carry = (ctl_video_buffer_size - buffer_safe);
+		undershoot_carry = (ctl_video_buffer_size - buffer_safe)/2;
+		mjpeg_info( "vb=%d UC = %d pfb=%d\n", 
+					(int)ctl_video_buffer_size/8,
+					(int)undershoot_carry/8, (int)per_frame_bits/8 );
 		if( undershoot_carry < per_frame_bits/2 )
 			mjpeg_error_exit1( "Buffer appears to be set too small (< a frames variation possible)\n" );
 		undershoot_gain = 3.0 * (46*1024 * 8) / ctl_video_buffer_size;
