@@ -212,6 +212,9 @@ main(int argc, char **argv)
 		frameno++;
 		mjpeg_log(LOG_DEBUG, "frame: %d P5MAGIC cols: %d rows: %d maxval: %d", frameno, columns, rows, maxval);
 		}
+	y4m_fini_frame_info(&oframe);
+	y4m_fini_stream_info(&ostream);
+	exit(0);
 	}
 
 static void
