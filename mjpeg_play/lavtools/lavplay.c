@@ -89,6 +89,12 @@
     eu/eo     Cut (u) or Copy (o) scene (arg1->arg2) into memory
     ep        Paste selection into current position of video
     ed        Delete scene (arg1->arg2) from video
+    ea        Add movie (arg1, be sure that it's mov/avi/movtar!!!)
+              frame arg2-arg3 (if arg2=-1, whole movie) to position arg4
+    es        Set a lowest/highest possible frame (max/min)
+    om        Open movie (arg1) frame arg2-arg3 (arg2=-1 means whole
+              movie). Watch out, this movie should have the same params
+              as the current open movie or weird things may happen!!!
     wa        Save current movie into edit list (arg1)
     ws        Save current selection into memory into edit list (arg1)
 
@@ -212,6 +218,13 @@ static double spas;   /* seconds per audio sample */
 
 int sync_corr = 1;           /* Switch for sync correction */
 
+/* These options are for use in Linux Video Studio - they won't do
+   much bad in normal lavplay use since I will set them to video
+   defaults anyway (0 and el.video_frames-1) */
+
+static int min_frame_num;
+static int max_frame_num;
+
 /* The following two params control the way how synchronization is achieved:
 
    If video is behind audio and "sync_skip_frames", video frames are
@@ -284,15 +297,15 @@ static int inc_frames(long num)
 {
    nframe += num;
 
-   if(nframe<0)
+   if(nframe<min_frame_num)
    {
-      nframe = 0;
+      nframe = min_frame_num;
       play_speed = 0;
       return 0;
    }
-   if(nframe>=el.video_frames)
+   if(nframe>max_frame_num)
    {
-      nframe = el.video_frames-1;
+      nframe = max_frame_num;
       play_speed = 0;
       return 1;
    }
@@ -688,6 +701,10 @@ int main(int argc, char ** argv)
 	/* Get and open input files */
 
 	read_video_files(argv + optind, argc - optind, &el);
+
+	/* Set min/max options so that it runs like it should */
+	min_frame_num = 0;
+	max_frame_num = el.video_frames-1;
 
 	/* Seconds per video frame: */
 
@@ -1167,6 +1184,27 @@ int main(int argc, char ** argv)
 					add_new_frames(movie, nc1, nc2, dest);
 				}
 
+				if(input_buffer[1]=='s')
+				{
+					/* Set lowest/highest frame to display, nc1==-1 means whole movie */
+					int nc1, nc2;
+					sscanf(input_buffer+2,"%d %d",&nc1,&nc2);
+					if(nc1<-1||nc1>nc2||nc2>=el.video_frames)
+					{
+						fprintf(stderr,"Wrong parameters for setting frame borders!\n");
+					}
+					else if (nc1==-1)
+					{
+						min_frame_num = 0;
+						max_frame_num = el.video_frames-1;
+					}
+					else
+					{
+						min_frame_num = nc1;
+						max_frame_num = nc2;
+					}
+				}
+
 				break;
 
 			case 'o':
@@ -1182,6 +1220,7 @@ int main(int argc, char ** argv)
 					char *arguments[1];
 					int nc1, nc2;
 
+					min_frame_num = 0;
 					play_speed = 0;
 					nframe = 0;
 					sscanf(input_buffer+2, "%s %d %d", movie, &nc1, &nc2);
@@ -1194,6 +1233,7 @@ int main(int argc, char ** argv)
 					if (nc1<0) nc1=0;
 					for(i=0;i<nc1;i++) el.frame_list[i] = el.frame_list[i+nc1];
 					el.video_frames = nc2-nc1+1;
+					max_frame_num = el.video_frames-1;
 				}
 
 				break;
