@@ -1394,7 +1394,7 @@ mp2enc is a MPEG layer 2 Audio encoder. The toolame encoder is also able
 to produce an layer 2 file. You can use that one as well.   Toolame is much
 faster than mp2enc but toolame does not peform resampling (48000 to 44100
 samples/second).  Many hardware players will play SVCDs using 48000 rate
-audio.  For mp3 creation I'm be sure you have an encoder.
+audio.  For mp3 creation I'm sure you have an encoder (for example lame).
 
 .PP
 Example:
@@ -1403,8 +1403,10 @@ Example:
 \fB> lav2wav stream.avi \(br mp2enc -o sound.mp2\fP
 
 .PP
-This creates a mpeg sound file out of the stream.avi with 224kBit/sec
-bitrate.
+This creates a mpeg sound file out of the stream.avi with 224kBit/sec (the
+default) bitrate.  The sampling rate default is 48000, so if the input stream is
+other than 48000 it will be resampled.  To specify the sampling rate use the
+option \fB-r\fP.
 
 .PP
 Example
@@ -1413,8 +1415,9 @@ Example
 \fB> cat sound.wav \(br mp2enc -v 2 -V -o sound.mp2\fP
 
 .PP
-This creates a VCD (-V bitrate=224, stereo, sampling rate:44100)
-compatible output from the wav file.
+This creates VCD (-V sets the sampling rate to 44100)
+compatible output from the wav file, resampling the data to 44100Hz if 
+required.
 
 .PP
 With -v 2 mp2enc is more verbose, while encoding you see the number of sec of
@@ -2089,8 +2092,12 @@ VCD Audio creation Example
 \fB> lav2wav stream.avi \(br mp2enc -V -o sound.mp2\fP
 
 .PP
-\fB-V\fP force VCD compatible output (same as: -b 224 -r 44100 -s). For
-hardware players, you should stick to 44.1 224kBps Stereo layer 2 Audio.
+\fB-V\fP force VCD compatible output (same as: -b 224 -r 44100).  The VCD2.0
+specifications allow 128, 192, 224 and 384 kbits/sec for stereo audio and
+64, 96 and 192 kbits/sec for mono audio.  The \fB-V\fP option forces the 
+sampling rate to be 44100.  The default bitrate if \fB-b\fP is not used is
+224kbits/sec.  mp2enc will give an error and exit if an incorrect bitrate is
+used for the number of channels of audio.
 
 .PP
 VCD Video creation Example
@@ -2238,13 +2245,13 @@ SVCD Audio creation Example
 \fB> lav2wav stream.avi \(br mp2enc -V -e -o sound.mp2\fP
 
 .PP
-The SVCD specifications permit a much wider choice of audio rates,
-it is not necessary to use 224 kBit/sec. Any audio rate between
-32 and 384 kBit/sec is permitted. The audio may be VBR (Variable Bit
+The SVCD specifications permit a much wider choice of audio rates than permitted
+for the VCD format.  Any audio rate between
+32 and 384 kBit/sec is permitted and the audio may be VBR (Variable Bit
 Rate). The -e enables the CRC error protection for the audio. The CRC has
-to be enabled to be SVCD conform. But it seems that most players don't
-pay attention to the CRC information. The CRC information need 2 bytes per
-Audio frame
+to be enabled to be strictly SVCD conformant but it seems that most players 
+don't pay attention to the CRC information. The CRC information need 2 bytes per
+audio frame
 
 .PP
 The approximate frame length formula for MPEG-1 layer-II is:
@@ -2433,11 +2440,12 @@ DVD Audio creation Example
 .nr bi 1
 
 .PP
-The sample rate has to be 48kHz. The mp2enc -r option forces 
-the sample rate to 48kHz. If it is not a 48kHz mp2enc will resample 
-the audio to get the sample rate.  If the audio is recorded at 48kHz then
-no resampling is needed and toolame can be used for the encoding (it is much
-faster than mp2enc).
+The sample rate has to be 48kHz (this is the default for non-VCD use). The 
+mp2enc -r option forces the sample rate to 48kHz. If it is not a 48kHz mp2enc 
+will resample the audio to get the sample rate.  If the audio is recorded 
+at 48kHz then no resampling is needed and toolame can be used for the 
+encoding (it is much faster than mp2enc).  It appears that toolame though has
+endian issues and does not run properly on PPC systems (such as OS/X).
 .if \n(ll>1 .RE
 .nr ll -1
 
@@ -3220,7 +3228,9 @@ In the next step you generate the mpeg audio file:
 .nr bi 1
 
 .PP
-forces VCD format, the sampling rate is converted to 44.1kHz from 48kHz
+forces VCD format (the sampling rate is converted to 441000 from 48000).  The
+bitrate and number of channels are not changed but mp2enc will give an error
+if the rate is not appropriate for the number of channels.
 .IP "-v 2"
 .nr bi 1
 
