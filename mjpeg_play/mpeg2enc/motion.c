@@ -55,6 +55,8 @@
 #include "cpu_accel.h"
 #include "simd.h"
 
+#define HEAPS !defined(X86_CPU)
+#define HALF_HEAPS !defined(X86_CPU)
 
 
 /* Macro-block Motion compensation results record */
@@ -91,18 +93,18 @@ extern int do_not_search;
 
 /* private prototypes */
 
-static void frame_ME _ANSI_ARGS_((pict_data_s *picture,
+static void frame_ME (pict_data_s *picture,
 								  motion_comp_s *mc,
 								  int mboffset,
-								  int i, int j, struct mbinfo *mbi));
+								  int i, int j, struct mbinfo *mbi);
 
-static void field_ME _ANSI_ARGS_((pict_data_s *picture,
+static void field_ME (pict_data_s *picture,
 								  motion_comp_s *mc,
 								  int mboffset,
 								  int i, int j, 
 								  struct mbinfo *mbi, 
 								  int secondfield, 
-								  int ipflag));
+								  int ipflag);
 
 static void frame_estimate (
 	unsigned char *org,
@@ -115,18 +117,17 @@ static void frame_estimate (
 	  mb_motion_s *bestbot,
 	 int imins[2][2], int jmins[2][2]);
 
-static void field_estimate 
-_ANSI_ARGS_((pict_data_s *picture,
-	         unsigned char *toporg,
-			 unsigned char *topref, 
-			 unsigned char *botorg, 
-			 unsigned char *botref,
-			 subsampled_mb_s *ssmb,
-			 int i, int j, int sx, int sy, int ipflag,
-			  mb_motion_s *bestfr,
-			  mb_motion_s *best8u,
-			  mb_motion_s *best8l,
-			  mb_motion_s *bestsp));
+static void field_estimate (pict_data_s *picture,
+							unsigned char *toporg,
+							unsigned char *topref, 
+							unsigned char *botorg, 
+							unsigned char *botref,
+							subsampled_mb_s *ssmb,
+							int i, int j, int sx, int sy, int ipflag,
+							mb_motion_s *bestfr,
+							mb_motion_s *best8u,
+							mb_motion_s *best8l,
+							mb_motion_s *bestsp);
 
 static void dpframe_estimate (
 	pict_data_s *picture,
@@ -166,19 +167,33 @@ static int bidir_pred_sad( const mb_motion_s *motion_f,
 
 static int variance(  uint8_t *mb, int lx);
 
+static int nodual_qdist;	/* Can the qdist function return two adjacent
+							   quad-pel distances in one call? */
+static int qdist1 ( uint8_t *blk1, uint8_t *blk2,  int qlx, int qh);
 
 static int fdist1 ( uint8_t *blk1, uint8_t *blk2,  int flx, int fh);
-static int qdist1 ( uint8_t *blk1, uint8_t *blk2,  int qlx, int qh);
+
+int (*pqblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
+							int ilow, int jlow,
+							uint32_t width, uint32_t depth, 
+							int h, int rowstride, mc_result_s *resvec);
+int (*pqblock_near_dist)( uint8_t *blk,  uint8_t *ref,
+						  int basex, int basey,
+						  int across, int down,
+						  int threshold,
+						  int h, int rowstride, mc_result_s *resvec);
+
+
 static int dist1_00( uint8_t *blk1, uint8_t *blk2,  int lx, int h, int distlim);
 static int dist1_01(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 static int dist1_10(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 static int dist1_11(unsigned char *blk1, unsigned char *blk2, int lx, int h);
-static int dist2 _ANSI_ARGS_((unsigned char *blk1, unsigned char *blk2,
-							  int lx, int hx, int hy, int h));
-static int bdist2 _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
-							   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
-static int bdist1 _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
-							   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
+static int dist2 (unsigned char *blk1, unsigned char *blk2,
+							  int lx, int hx, int hy, int h);
+static int bdist2 (unsigned char *pf, unsigned char *pb,
+	unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
+static int bdist1 (unsigned char *pf, unsigned char *pb,
+				   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
 
 static int (*pfdist1) ( uint8_t *blk1, uint8_t *blk2,  int flx, int fh);
 static int (*pqdist1) ( uint8_t *blk1, uint8_t *blk2,  int qlx, int qh);
@@ -197,12 +212,14 @@ static int (*pbdist2) (unsigned char *pf, unsigned char *pb,
 static int (*pbdist1) (unsigned char *pf, unsigned char *pb,
 					   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
 
-static int nodual_qdist;	/* Can the qdist function return two adjacent
-							   quad-pel distances in one call? */
 /*
   Initialise motion compensation - currently purely selection of which
   versions of the various low level computation routines to use
   
+  TODO: The MMX/SSE heaps code is still active (for now) so
+  there is some un-necessary updating of function pointers.
+  Not much point removing it while the not-X86 code is tied to the
+  Mk.I heap based sub-sampling search.
  */
 
 void init_motion()
@@ -222,6 +239,7 @@ void init_motion()
 		pbdist2 = bdist2;
 		nodual_qdist = 1;
 	}
+#ifdef X86_CPU
 	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
 	{
 		fprintf( stderr, "SETTING EXTENDED MMX for MOTION!\n");
@@ -234,12 +252,13 @@ void init_motion()
 		pbdist1 = bdist1_mmx;
 		pdist2 = dist2_mmx;
 		pbdist2 = bdist2_mmx;
+		pqblock_8grid_dists = qblock_8grid_dists_sse;
+		pqblock_near_dist = qblock_near_dist_sse;
 		nodual_qdist = 0;
 	}
 	else if(cpucap & ACCEL_X86_MMX) /* Ordinary MMX CPU */
 	{
 		fprintf( stderr, "SETTING MMX for MOTION!\n");
-
 		pfdist1 = fdist1_MMX;
 		pqdist1 = qdist1_MMX;
 		pdist1_00 = dist1_00_MMX;
@@ -249,9 +268,11 @@ void init_motion()
 		pbdist1 = bdist1_mmx;
 		pdist2 = dist2_mmx;
 		pbdist2 = bdist2_mmx;
+		pqblock_8grid_dists = qblock_8grid_dists_mmx;
+		pqblock_near_dist = qblock_near_dist_mmx;
 		nodual_qdist = 0;
 	}
-
+#endif
 }
 
 
@@ -288,7 +309,7 @@ thresholdrec twopel_threshold;
 thresholdrec onepel_threshold;
 thresholdrec quadpel_threshold;
 
-#if defined(HEAPS) || defined(HALF_HEAPS)
+#if HEAPS || HALF_HEAPS
 static void update_threshold( thresholdrec *rec, int match_dist )
 {
   
@@ -1745,7 +1766,7 @@ void test_heap( sortelt *heap, int heapsize, char *mesg, int n )
 #undef childr
 #undef parent
 
-#ifdef HALF_HEAPS
+#if HALF_HEAPS
 
 static int thin_vector( sortelt vec[], int threshold, int len )
 {
@@ -2399,11 +2420,11 @@ static int build_rchalf_heap(int ihigh, int jhigh,
 
 #define MAX_COARSE_HEAP_SIZE 100*100
 
-#ifdef HALF_HEAPS
+#if HALF_HEAPS
 static sortelt half_match_heap[MAX_COARSE_HEAP_SIZE];
 static blockxy half_matches[MAX_COARSE_HEAP_SIZE];
 #endif
-#ifdef HEAPS
+#if HEAPS
 static sortelt quad_match_heap[MAX_COARSE_HEAP_SIZE];
 static blockxy quad_matches[MAX_COARSE_HEAP_SIZE];
 
@@ -2427,7 +2448,7 @@ static int quad_heap_size;
   matches found so it is a no-no in my book...
 
 */
-#ifndef HEAPS
+#if ! HEAPS
 static void mean_partition( mc_result_s *matches, int len, int times,
 								    int *newlen_res, int *minweight_res)
 {
@@ -2471,7 +2492,7 @@ static void mean_partition( mc_result_s *matches, int len, int times,
 
 static mc_result_s finalres[100*100];
 #endif
-#ifndef HALF_HEAPS
+#if ! HALF_HEAPS
 static mc_result_s halfres[100*100];
 #endif
 
@@ -2482,7 +2503,7 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 	uint8_t *qorgblk;
 	int k;
 	int dist_sum;
-#ifdef HEAPS
+#if HEAPS
 	int i,j;
 	uint8_t *old_qorgblk;
 	int s1,s2;
@@ -2508,7 +2529,7 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 	dist_sum = 0;
 	quad_heap_size = 0;
 
-#ifdef HEAPS
+#if HEAPS
 	if(  nodual_qdist )
 	{
 		/* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
@@ -2644,7 +2665,7 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 #else
 		qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
 		rough_heap_size
-			= qblock_8grid_dists( qorgblk, qblk,
+			= (*pqblock_8grid_dists)( qorgblk, qblk,
 								  ilow, jlow,
 								  ilim, jlim, 
 								  qh, qlx, roughres);
@@ -2665,11 +2686,11 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 			rangey = (roughres[k].y < jlim);
 			++quad_heap_size;
 			quad_heap_size +=
-				qblock_near_dist( roughres[k].blk, qblk, 
-								  roughres[k].x, roughres[k].y,
-								  rangex, rangey,
-								  mean_weight,
-								  qh, qlx, finalres+quad_heap_size);
+				(*pqblock_near_dist)( roughres[k].blk, qblk, 
+									 roughres[k].x, roughres[k].y,
+									 rangex, rangey,
+									 mean_weight,
+									 qh, qlx, finalres+quad_heap_size);
 		}
 
 		mean_partition( finalres, quad_heap_size, 2, 
@@ -2695,10 +2716,10 @@ static int build_half_heap( int ilow,  int ihigh, int jlow, int jhigh,
 						   int flx, int fh,  int searched_quad_size )
 {
 	int i,k,s;
-#ifdef HEAPS
+#if HEAPS
 	sortelt distrec;
 #endif
-#ifndef HALF_HEAPS
+#if ! HALF_HEAPS
 	int min_weight;
 	int ilim = ihigh-ilow;
 	int jlim = jhigh-jlow;
@@ -2714,12 +2735,12 @@ static int build_half_heap( int ilow,  int ihigh, int jlow, int jhigh,
 	half_heap_size = 0;
 	for( k = 0; k < searched_quad_size; ++k )
 	{
-#ifdef HEAPS
+#if HEAPS
 		heap_extract( quad_match_heap, &quad_heap_size, &distrec );
 		matchrec = quad_matches[distrec.index];
 		forgblk =  forg + ((matchrec.y)>>1)*flx +((matchrec.x)>>1);
 #else
-#ifdef HALF_HEAPS
+#if HALF_HEAPS
 		matchrec.x = ilow+finalres[k].x;
 		matchrec.y = jlow+finalres[k].y;
 		forgblk =  forg + ((matchrec.y)>>1)*flx +((matchrec.x)>>1);
@@ -2735,7 +2756,7 @@ static int build_half_heap( int ilow,  int ihigh, int jlow, int jhigh,
 			if( matchrec.x <= ilim && matchrec.y <= jlim )
 			{
 				s = (*pfdist1)( forgblk,fblk,flx,fh);
-#ifdef HALF_HEAPS
+#if HALF_HEAPS
 				half_matches[half_heap_size] = matchrec;
 				half_match_heap[half_heap_size].weight = s;
 				half_match_heap[half_heap_size].index = half_heap_size;
@@ -2768,7 +2789,7 @@ static int build_half_heap( int ilow,  int ihigh, int jlow, int jhigh,
 		/* If we're thresholding check  got a match below the threshold. 
 		 *and* .. stop looking... we've already found a good candidate...
 		 */
-#ifdef HALF_HEAPS
+#if HALF_HEAPS
 		if( fast_mc_threshold && best_fast_dist < twopel_threshold.threshold )
 		{ 
 			break;
@@ -2780,7 +2801,7 @@ static int build_half_heap( int ilow,  int ihigh, int jlow, int jhigh,
 	/* Since heapification is relatively expensive we do a swift
 	   pre-processing step throwing out all candidates that
 	   are heavier than the heap average */
-#ifdef HALF_HEAPS	
+#if HALF_HEAPS	
 	half_heap_size = thin_vector(  half_match_heap, 
 								   dist_sum / half_heap_size, half_heap_size );
 	heapify( half_match_heap, half_heap_size );
@@ -2813,7 +2834,7 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 	blockxy minpos = res->pos;
 	int dmin = INT_MAX;
 	uint8_t *orgblk;
-#ifdef HALF_HEAPS
+#if HALF_HEAPS
 	sortelt distrec;
 #endif
 	int penalty;
@@ -2825,14 +2846,14 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 	/* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
 	/* It can happen (rarely) that the best matches are actually illegal.
 	   In that case we have to carry on looking... */
-#ifdef HALF_HEAPS
+#if HALF_HEAPS
 	do {
 #endif
 		init_search = searched_size;
 		init_size = half_heap_size;
 		for( k = 0; k < searched_size; ++k )
 		{	
-#ifdef HALF_HEAPS
+#if HALF_HEAPS
 			heap_extract( half_match_heap, &half_heap_size, &distrec );
 			matchrec = half_matches[distrec.index];
 #else
@@ -2876,7 +2897,7 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 			}
 
 		}
-#ifdef HALF_HEAPS
+#if HALF_HEAPS
 		searched_size = half_heap_size;
 
 	} while (half_heap_size>0 && dmin == INT_MAX);
@@ -2993,7 +3014,7 @@ static void fullsearch(
 	   only coarsely... on 4-pel boundaries...  */
 
 
-#ifdef HEAPS
+#if HEAPS
 	searched_size = 1 + quad_heap_size / 8;
 	if( searched_size > quad_heap_size )
 		searched_size = quad_heap_size;
@@ -3008,7 +3029,7 @@ static void fullsearch(
     /* Now choose best 1-pel match from what approximates (not exact
 	   due to the pre-processing trick with the mean) the top 1/2 of
 	   the 2*2 matches */
-#ifdef HALF_HEAPS  
+#if HALF_HEAPS  
 	searched_size = 1+ (half_heap_size / fast_mc_frac);
 	if( searched_size > half_heap_size )
 		searched_size = half_heap_size;

@@ -85,6 +85,18 @@ but:
 (c) It is well night impossible to get *any* gains in the MPEG-2
 interlaced (field MC case) which is where you'd really want the speed gains.
 
+(4)	The wonderful DCT quantisation matrix
+	
+	Experiments have revealed that if you're compressing on the margins of	
+	acceptable quality you do *far* better if you squeeze the higher
+	frequency DCT coefficients using the quantisation matrix rather than
+	simply allow the encoder to jack up the global quantisation factor.
+
+	Why?  The latter starts run an unacceptable risk of producing
+	noticeable mosaic-ing due to big DC offssets.  The latter just
+	starts blurring the results by killing off h.f. components.
+
+
 
 	Andrew
 

@@ -7,6 +7,10 @@
  * by y where y > h against a 4 by h block.
  *
  * Used for 4*4 sub-sampled motion compensation calculations.
+ *
+ * This is actually just a shell that uses templates from the included
+ * file "qblock_sad_x86_h.c".  I didn't trust the compiler to do a good
+ * job on nested inlining.  One day I'll experiment.
  * 
  *
  * This file is part of mpeg2enc, a free MPEG-2 video stream encoder
@@ -48,17 +52,29 @@ static inline void mmx_zero_reg (void)
 	pxor_r2r (mm7, mm7);
 }
 
-static inline void load_blk(uint8_t *blk,uint32_t rowstride)
+/*
+ * Load a 4*4 block of 4*4 sub-sampled pels (qpels) into the MMX
+ * registers
+ *
+ */
+
+static __inline__ void load_blk(uint8_t *blk,uint32_t rowstride,int h)
 {
 	movq_m2r( *blk, mm0);
 	blk += rowstride;
 	movq_m2r( *blk, mm1);
+	if( h == 2 )
+		return;
 	blk += rowstride;
 	movq_m2r( *blk, mm2);
 	blk += rowstride;
 	movq_m2r( *blk, mm3);
 }
 
+/*
+ * Do a shift right on the 4*4 block in the MMX registers
+ *
+ */
 static __inline__ void shift_blk(const uint32_t shift)
 {
 	psrlq_i2r( shift,mm0);
@@ -66,6 +82,18 @@ static __inline__ void shift_blk(const uint32_t shift)
 	psrlq_i2r( shift,mm2);
 	psrlq_i2r( shift,mm3);
 }
+
+/*
+ * Compute the Sum absolute differences between the 4*h block in
+ * the MMX registers 
+ *
+ * and the 4*h block pointed to by refblk
+ *
+ * h == 2 || h == 4
+ *
+ * TODO: Currently always loads and shifts 4*4 even if 4*2 is required.
+ *
+ */
 
 static __inline__ int qblock_sad_sse(uint8_t *refblk, 
 								  uint32_t h,
@@ -216,99 +244,18 @@ __inline__ int fastmin( register int x, register int y )
 }
 
 /*
- *
- *
- *
- *
- * Density of sampling grid (in pel)
- *
+ * Do the Extended MMX versions
  */
-
-int qblock_8grid_dists( uint8_t *blk,  uint8_t *ref,
-						int ilow,int jlow,
-						uint32_t width, uint32_t depth, 
-						int h, int rowstride, mc_result_s *resvec)
-{
-	uint32_t x,y;
-	uint8_t *currowblk = blk;
-	uint8_t *curblk;
-	mc_result_s *cres = resvec;
-	int      gridrowstride = rowstride<<1;
-	int      threshold = 100000;
-
-	for( y=0; y <= depth ; y+=8)
-	{
-		curblk = currowblk;
-		for( x = 0; x <= width; x += 8)
-		{
-			int weight;
-			if( (x & 15) == 0 )
-			{
-				load_blk( curblk, rowstride );
-			}
-			weight = qblock_sad_sse(ref, h, rowstride);
-			if( weight <= threshold )
-			{
-				threshold =  fastmin(weight<<2,threshold);
-				cres->weight = (uint16_t)weight;
-				cres->x = (uint8_t)x;
-				cres->y = (uint8_t)y;
-				cres->blk = curblk;
-				++cres;
-			}
-			curblk += 2;
-			shift_blk(16);
-		}
-		currowblk += gridrowstride;
-	}
-	emms();
-	return cres - resvec;
-}
-
+#define SIMD_SUFFIX(x) x##_sse
+#include "qblock_sad_x86_h.c"
+#undef SIMD_SUFFIX
 /*
- * across - Look at neighbours to the right (1 or 0)
- * down   - look at neighbours to below (1 or 0)
+ * Do the original MMX versions
  */
+#define SIMD_SUFFIX(x) x##_mmx
+#include "qblock_sad_x86_h.c"
+#undef SIMD_SUFFIX
 
-int qblock_near_dist( uint8_t *blk,  uint8_t *ref,
-					  int basex, int basey,
-					  int across, int down,
-					  int threshold,
-					  int h, int rowstride, mc_result_s *resvec)
-{
-	int x,y;
-	uint8_t *curblk = blk;
-	mc_result_s *cres = resvec;
-	int start = 1-across;
-	int fin   = across + down + (across&down);
-	int i;
-	int weight;
-	y = basey;
-	for( i = start; i < fin; ++i )
-	{
-		if (i==1)
-		{
-			curblk = blk+rowstride;
-			x=basex;
-			y+=4;
-		}
-		if( i < 2)
-			load_blk( curblk, rowstride );
-		if( i != 1)
-		{
-			x = basex+4;
-			shift_blk(8);
-		}
-		weight = qblock_sad_sse(ref, h, rowstride);
-		if( weight <= threshold )
-		{
-			cres->weight = weight;
-			cres->x = (uint8_t)x;
-			cres->y = (uint8_t)y;
-			cres->blk = curblk;
-			++cres;
-		}
-	}		
-	emms();
-	return cres - resvec;
-}
+
+
+
