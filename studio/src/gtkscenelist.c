@@ -195,6 +195,7 @@ GtkWidget *gtk_scenelist_new(gchar *editlist)
 static void gtk_scenelist_make_empty(GtkSceneList *scenelist)
 {
 	if (scenelist->items) g_list_free(scenelist->items);
+	scenelist->items = NULL;
 	scenelist->num_frames = 0;
 	if (scenelist->scene) g_list_free(scenelist->scene);
 	scenelist->scene = NULL;
@@ -267,6 +268,7 @@ gint gtk_scenelist_open_editlist(GtkSceneList *scenelist, gchar *editlist)
 	scenelist->num_frames = total;
 
 	fclose(fd);
+
 	return 1;
 
 ERROR_READING:
@@ -288,8 +290,7 @@ static void gtk_scenelist_destroy (GtkObject *object)
 
 	/* delete the scenes */
 	for (i=0;i<g_list_length(scenelist->scene);i++)
-		gtk_scene_destroy((GtkScene *) g_list_nth_data(scenelist->items,
-			(gint) g_list_nth_data(scenelist->scene, i)));
+		gtk_scene_destroy(gtk_scenelist_get_scene(scenelist, i));
 	g_list_free(scenelist->scene);
 
 	/* TODO: delete the transitions */
@@ -499,8 +500,18 @@ void gtk_scenelist_draw(GtkWidget *widget)
 
 		if (i+scenelist->current_scene >= 0 && i+scenelist->current_scene < g_list_length(scenelist->scene))
 		{
+#if 0
 			scene = (GtkScene *) g_list_nth_data(scenelist->items,
 				(gint) g_list_nth_data(scenelist->scene, i+scenelist->current_scene));
+#endif
+			scene = gtk_scenelist_get_scene(scenelist,
+				i+scenelist->current_scene);
+			if (!scene)
+			{
+				printf("Error: scene %d == NULL\n",
+					i+scenelist->current_scene);
+				continue;
+			}
 			gdk_pixbuf_render_to_drawable (scene->image, widget->window,
 				widget->style->white_gc, 0, 0,
 				xleft+x_off+i*gdk_pixbuf_get_width(scenelist->background),
@@ -565,8 +576,16 @@ gint gtk_scenelist_write_editlist(GtkSceneList *scenelist, gchar *filename)
 	/* TODO: transition info, blablabla, etc. etc. etc. */
 	for (i=0;i<g_list_length(scenelist->scene);i++)
 	{
+#if 0
 		scene = (GtkScene *) g_list_nth_data(scenelist->items,
 			(gint)g_list_nth_data(scenelist->scene, i));
+#endif
+		scene = gtk_scenelist_get_scene(scenelist, i);
+		if (!scene)
+		{
+			printf("Error: scene %d == NULL\n", i);
+			return 0;
+		}
 		fprintf(fd, "%d %d %d %d %d\n", scene->movie_num,
 			scene->view_start, scene->view_end,
 			scene->scene_start, scene->scene_end);
@@ -663,30 +682,33 @@ void gtk_scenelist_edit_add(GtkSceneList *scenelist, char *movie, gint view_star
 	GtkScene *scene, *scene1;
 	int i;
 
-	if (scene_num < 0 || scene_num >= g_list_length(scenelist->scene)) return;
+	if (scene_num < 0 || scene_num > g_list_length(scenelist->scene)) return;
 	scene1 = gtk_scenelist_get_scene(scenelist, scene_num);
 	for (i=0;i<g_list_length(scenelist->movie);i++)
 	{
 		if (!strcmp(movie, (char *)g_list_nth_data(scenelist->movie, i)))
-			break;
-
-		if (i == g_list_length(scenelist->movie)-1)
-			i = g_list_length(scenelist->movie);
+			goto no_insert;
 	}
-	if (i == g_list_length(scenelist->movie))
-		g_list_append(scenelist->movie, (gpointer)movie);
+	scenelist->movie = g_list_append(scenelist->movie, (gpointer)movie);
+
+no_insert:
 	scene = gtk_scene_new(view_start, view_end,
 			scene_start, scene_end,
-			scene1->start_total, i, movie);
+			scene1?scene1->start_total:0, i, movie);
 
+	/* and finally, insert the new scene into the scenelist */
 	scenelist->items = g_list_insert(scenelist->items, (gpointer) scene,
 		(gint)g_list_nth_data(scenelist->scene, scene_num));
-	scenelist->scene = g_list_insert(scenelist->scene, g_list_nth_data(scenelist->scene, scene_num),
+	scenelist->scene = g_list_insert(scenelist->scene,
+		g_list_nth_data(scenelist->scene, scene_num),
 		scene_num);
 
+	/* change the starting point frame.nr. of each scene and move it */
 	for (i=scene_num+1;i<g_list_length(scenelist->scene);i++)
 	{
-		((gint)(g_list_nth(scenelist->scene, i)->data))++;
+		((gint) g_list_nth(scenelist->scene, i)->data)++;
+		scene1 = gtk_scenelist_get_scene(scenelist, i);
+		scene1->start_total += (view_end - view_start + 1);
 	}
 }
 
@@ -710,7 +732,10 @@ void gtk_scenelist_edit_delete(GtkSceneList *scenelist, gint scene_num)
 		scene->start_total -= diff;
 	}
 
-	gtk_scenelist_draw(GTK_WIDGET(scenelist));
+	if (scenelist->selected_scene >= g_list_length(scenelist->scene))
+		gtk_scenelist_select(scenelist, scenelist->selected_scene - 1);
+	else
+		gtk_scenelist_draw(GTK_WIDGET(scenelist));
 }
 
 

@@ -709,9 +709,7 @@ void add_scene_to_editlist(GtkWidget *widget, gpointer data)
 		im->video_filename,
 		im->startframe,
 		im->stopframe,
-		GTK_SCENELIST(scenelist)->selected_scene==
-			g_list_length(GTK_SCENELIST(scenelist)->scene)-1?
-			0 :
+		GTK_SCENELIST(scenelist)->selected_scene<0 ? 0 :
 			gtk_scenelist_get_scene(GTK_SCENELIST(scenelist),
 				GTK_SCENELIST(scenelist)->selected_scene)->start_total); 
 	command_to_lavplay_edit(NULL,temp);
@@ -720,9 +718,11 @@ void add_scene_to_editlist(GtkWidget *widget, gpointer data)
 	gtk_scenelist_edit_add(GTK_SCENELIST(scenelist),
 		im->video_filename, im->startframe, im->stopframe,
 		im->startscene, im->stopscene,
-		GTK_SCENELIST(scenelist)->selected_scene + 1);
+		GTK_SCENELIST(scenelist)->selected_scene<0 ? 0 :
+			GTK_SCENELIST(scenelist)->selected_scene);
 	gtk_scenelist_select(GTK_SCENELIST(scenelist),
-		GTK_SCENELIST(scenelist)->selected_scene + 1);
+		GTK_SCENELIST(scenelist)->selected_scene<0 ? 0 :
+			GTK_SCENELIST(scenelist)->selected_scene);
 
 	save_eli_temp_file();
 }
@@ -832,7 +832,9 @@ void clear_editlist(GtkWidget *widget, gpointer data)
 int open_eli_file(char *filename)
 {
 	gtk_scenelist_open_editlist(GTK_SCENELIST(scenelist), filename);
+	gtk_scenelist_draw(scenelist);
 	save_eli_temp_file();
+	return 1;
 }
 
 void save_eli_file(char *target)
