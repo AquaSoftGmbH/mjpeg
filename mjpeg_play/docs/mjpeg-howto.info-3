@@ -1,13 +1,178 @@
-Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.5 aus
-/tmp/linuxdoc-dir-3079/sgmltmp.mjpeg-howto.info.2.
+This is mjpeg-howto.info, produced by makeinfo version 4.5 from
+/tmp/linuxdoc-dir-6277/sgmltmp.mjpeg-howto.info.2.
 
    \input texinfo
 
 
-File: mjpeg-howto.info,  Node: If you want to do every step on your own it has to look like this,  Up: Transcoding of existing MPEG-2
+File: mjpeg-howto.info,  Node: Frame rate conversion,  Prev: Scaling and offset correction,  Up: Optimizing the stream
 
-If you want to do every step on your own it has to look like this
-=================================================================
+Frame rate conversion
+=====================
+
+   Ever needed to convert the framerate from PAL to NTSC or the other
+direction around ? Or something much simpler like converting the
+framerate from 24FPS to 24000:1001 for conversation from a film frame
+rate to a valid NTSC frame rate.
+
+   Than `yuvfps' is your program. It can lower the framerate by dropping
+frames, or create a higher framerate by replicating frames. If you have
+a wrong framerate in the header you can only change the header of the
+YUV stream and not modify the stream.
+
+   Because the frames are only replicated (copied) you should denoise
+first and then change the framerate and scale at als last step. If you
+have a interlaced source you should also deinterlace before changeing
+the framerate. If you create a higher frame rate it is very likely that
+you will have weird flickers when you play it back. If you convert PAL
+to NTSC (30000:1001 FPS about 29,97 FPS) the frame rate will lower by
+about the factor 480/576 (NTSC lines / PAL lines).  If you lower the
+frame rate from PAL to NTSC (at 24000:1001) or NTSC FILM (24FPS) the
+bitrate will be about (480 Lines * 24 FPS) / (576 Lines * 25FPS).  If
+you change the frame rate before denoising the yuvdenoise will have
+problems finding the noise across the frames, so the needed bandwith
+will slightly increase.
+
+   Example
+
+   `> lav2yuv video.eli | yuvfps -r 30000:1001 | yuvscaler -O SVCD |
+mpeg2enc -f 4 -o video_ntsc_svcd.m2v'
+
+   This is a example to convert the source video to a NTSC video
+running at 30000:1001 FPS (or about 29,97FPS) at SVCD size.
+
+   Example
+
+   `> lav2yuv video.eli | yuvdenoise -F | yuvfps -r 24000:1001 |
+yuvscaler -O SIZE_720x480 | mpeg2enc -f 3 -b 4000 -q 7 -o
+video_ntsc.m2v'
+
+   This example shows how you should use the tools. Denoise first and
+than change the framerate and in the last step change the image size.
+
+   It can happen that yuvscaler or mpeg2enc do not detect the TV norm
+correct. If that happens you have to add the norm option `-n n/p/s' to
+the program that chooses the wrong norm.
+
+   If you know that the header tells the wrong framerate, you can
+simply change the framerate of the yuv header this way:
+
+   `> lav2yuv video.eli | yuvfps -r 25:1 -c | mpeg2enc -f 3 -b 4000 -q
+7 -o video_pal.m2v'
+
+   You need the `-c' option. To tell yuvfps that it only should change
+the header of the stream. With the `-r 25:1' you tell yuvfps the frame
+rate it should write into the header. In your example the PAL frame
+rate of 25 FPS. You always have to use the fractional form.
+
+   If you know that the header is wrong, and you need a different output
+bitrate you can do this in a single step:
+
+   `> lav2yuv video.eli | yuvfps -s 24:1 -r 25:1 | mpeg2enc -o
+video.m1v'
+
+
+File: mjpeg-howto.info,  Node: Transcoding of existing MPEG-2,  Next: Trading Quality/Speed,  Prev: Optimizing the stream,  Up: Top
+
+Transcoding of existing MPEG-2
+******************************
+
+   For transcoding existing MPEG-2 streams from digital TV cards or DVD
+a lower data-rate than for broadcast will give good results.  Standard
+VCD 1152 kbps typically works just fine for MPEG1. The difference is in
+the Signal/Noise ratio of the original. The noise in the analog stuff
+makes it much harder to compress.
+
+   One other very good guide that helps you transcoding videos can be
+found at: http://www.bunkus.org/dvdripping4linux/index.html
+
+   You will also need to manually adjust the audio delay offset
+relative to video when multiplexing. Very often around 150ms delay
+seems to do the trick.
+
+   You have to download the ac3dec and mpeg2dec packages. You can find
+them at mjpeg homepage ( http://sourceforge.net/projects/mjpeg ).  You
+also need sox and toolame.
+
+   In the scripts directory there is a `mpegtranscode' script that does
+most of the work.
+
+   So transcoding looks like this:
+
+   `> mjpegtranscode -V -o vcd_stream mpeg2src.mpg'
+
+`-V'
+     set's the options so that a VCD compatible stream is generated
+
+`-o vcd_stream'
+     a vcd_stream.m1v (video) and vcd_stream.mp2 (audio) is created
+
+`mpeg2src.mpg'
+     specifies the source stream
+
+
+   The script prints also something like this:
+
+   `> SYNC 234 mSec'
+
+   You will need to adjust the audio/video startup delays when
+multiplexing to ensure audio and video are synchronized.  The exact
+delay (in milliseconds) that you need to pass to mplex to synchronize
+audio and video using the "-v"" is printed by the extract_ac3 tool
+labeled "SYNC" when run with the "s" flag. This is the value th
+mjpegtranscode script prints out after the `SYNC' word.
+
+   Then you need to multiplex them like this:
+
+   `> mplex -f 1 -O 234 vcd_stream.mp2 vcd_stream.m1v -o lowrate.mpg'
+
+`-f 1'
+     Mux format is set to VCD
+
+`-O 234'
+     Video timestamp offset in mSec, generated by the mjpegtranscoding
+     script, there negative values are allowed
+
+`vcd_stream.mp2 & vcd_stream.m1v'
+     generated files by the script
+
+`lowrate.mpg'
+     the VCD compatible output stream
+
+
+   Here we have a SVCD (MPEG-2 video) example:
+
+   `> mjpegtranscode -S -o svcd_stream mpeg2src.mpg'
+
+   You have to multiplex it with:
+
+   `> mplex -f 4 -O 234 svcd_stream.mp2 svcd_stream.m2v -o lowrate.mpg'
+
+   `Problem:' There is sometimes a problem with NTSC and VCD playback
+because movies may be recoded with 3:2 pulldown NTSC with 60
+fields/sec. mpeg2dec is designed for playback on computers and
+generates the original 24frames/sec bitrate. If you encode the video
+now 30frames/sec video is created. This video is now much too short for
+the encoded audio.
+
+   The transcoding can be made to work but it must be done manually:
+
+   `> cat mpeg2src.mpg | mpeg2dec -s -o YUVs | mpeg2enc -I 0 -f 4 -q 9
+-V 230 -p -P -o svcd_stream.m2v'
+
+   The -p tells mpeg2enc to generate header flags for 3:2 pull down of
+24fps movie. It may also work if you do not add the -p flag.  You do
+not need the -p flag when transcoding to VCD format because it is not
+supported in mpeg1.
+
+* Menu:
+
+* If you want to do every step on your own it will look something like this::
+
+
+File: mjpeg-howto.info,  Node: If you want to do every step on your own it will look something like this,  Up: Transcoding of existing MPEG-2
+
+If you want to do every step on your own it will look something like this
+=========================================================================
 
    Extracting Audio:
 
@@ -15,9 +180,9 @@ If you want to do every step on your own it has to look like this
 2>/dev/null'
 
    One of the first lines showed contains the label "SYNC" you have to
-use this time afterwards for the multiplexing. The 2>/dev/null
-redirects the output of ac3dec to /dev/null.  In the next step you
-generate the mpeg audio file:
+use this time later when multiplexing. The 2>/dev/null redirects the
+output of ac3dec to /dev/null.  In the next step you generate the mpeg
+audio file:
 
    `> cat sound.wav | mp2enc -V -v 2 -o audio.mp2'
 
@@ -37,12 +202,9 @@ generate the mpeg audio file:
 /dev/stdin -t wav -r 44100 /dev/stdout | toolame -p 2 -b 224 /dev/stdin
 audio.mp2
 
-   This should you command look like when you want to use `toolame'.
-One of the first lines again output contains the label "SYNC".  You
+   One of the first lines again output contains the label "SYNC".  You
 have to use this time (referred to as "SYNC_value" below) when doing the
 multiplexing.
-
-   You can generate VCD and SVCD videos, and own mpeg1/2 videos.
 
    For VCD creation use:
 
@@ -172,7 +334,7 @@ test.avi'
 
    `NOTE:'You need much disk space. 1GB of video has a size of about 2GB
 at SVCD format and of course disk space is needed for some temp files.
-Converting the Video to mjpeg also takes some time.  On my Athlon 500 I
+Converting the video to mjpeg also takes some time.  On my Athlon 500 I
 never get more than 6-7 Frames a second.  You loose quality each time
 you convert a stream into an other format!
 
@@ -215,7 +377,7 @@ significantly better compression to be achieved for the same quality.
 The trick is to generate video streams that use big video buffers
 (500KB or more) and variable bitrate encoding (the -f, -q flag to
 mpeg2enc). Software players will often also correctly play back the
-much more efficient MPEG layer 3 (yes, "MP3" audio format.  A good Mp3
+more efficient MPEG layer 3 (yes, "MP3" audio format.  A good MP3
 encoder like lame will produce results comparable to layer 2 at 224Kbps
 at 128Kbps or 160Kbps.
 
@@ -226,7 +388,7 @@ SMP and distributed Encoding
 ****************************
 
    The degree to which mpeg2enc tries to split work between concurrently
-executing threads is controlled by the -M oder -multi-thread [0..32]
+executing threads is controlled by the -M or -multi-thread [0..32]
 option. This optimizes mpeg2enc for the specified number of CPUs. By
 default (-M 1), mpeg2enc runs with just a little multi-threading:
 reading of frames happens concurrently with compression. This is done
@@ -240,18 +402,19 @@ tight you may find turning off multithreading altogether by setting -M
 mpeg2enc by setting the number of concurrently executing encoding
 threads's you wish to utilize (e.g. -M 2). Setting -M 2 or -M 3 on a
 2-way machine should allow you to speed up encoding by around 80%.
+Values above 3 are accepted but have very little effect even on 4 cpu
+systems.
 
    If you have a real fast SMP machine (currently 1.Aug.03) like a dual
-Athlon MP 2600 or something similair. The -M 2 and the filtering might
-not keep both (or more)  CPU's busy. Ther the use of the buffer or bfr
-programm in combination with 10-20MB buffer helps to keep both CPUs
-busy.
+Athlon MP 2600 or something similar the -M 2 and the filtering might not
+keep both (or more)  CPU's busy. The use of the buffer or bfr program
+with a 10-20MB buffer helps to keep both CPUs busy.
 
-   Obviously, if your encoding pipeline contains several filtering
-stages it is likely that you can keep two or more CPU's busy
-simultaneously even without using -M. Denoising using yuvdenoise or
-yuvmedianfilter is particular demanding and uses almost as much
-processing power as MPEG encoding.
+   Obviously if your encoding pipeline contains several filtering stages
+it is likely that you can keep two or more CPU's busy simultaneously
+even without using -M. Denoising using yuvdenoise or yuvmedianfilter is
+particular demanding and uses almost as much processing power as MPEG
+encoding.
 
    It you more than one computer you can also split the encoding
 pipeline between computers using the standard 'rsh' or 'rcmd' remote
@@ -261,7 +424,7 @@ shell execution commands. For example, if you have two computers:
 yuvdenoise" | mpeg2enc -f 4 -o mycapture.m2vi'
 
    Here the computer where you execute the command is doing the MPEG
-encoding whilst "machine1" is the machine that is decoding scaling and
+encoding and "machine1" is the machine that is decoding scaling and
 denoising the captured video.
 
    Obviously, for this to work "machine1" has to be able to access the
@@ -348,7 +511,7 @@ lot of stuff added from the HINTS which Andrew Stevens (
 andrew.stevens@nexgo.de ) created. Wolfgang Goeller checked the
 document for bugs and spelling mistakes.
 
-   And there a some people that helped me with program descriptions and
+   And to the people who have helped me with program descriptions and
 hints, `thanks'
 
 
