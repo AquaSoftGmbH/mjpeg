@@ -1,3 +1,4 @@
+
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(lav_io.c)
 
@@ -160,7 +161,12 @@ esac
 
 
 
-AM_PATH_MOVTAR(0.0.2, have_movtar="yes", have_movtar="no")
+AM_PATH_MOVTAR(0.0.2, 
+	[
+		AC_DEFINE(BUILD_MOVTAR)		
+		have_movtar="yes"
+	],
+	have_movtar="no")
 AC_SUBST(MOVTAR_CFLAGS)
 AC_SUBST(MOVTAR_LIBS)
 
