@@ -46,7 +46,9 @@
 #include "blend_fields.h"
 #include "transform_block.h"
 
-int BLKthreshold=2500;
+int BLKmedian=256;
+int BLKquantile25=256;
+int BLKquantile75=256;
 
 int search_radius=24;
 int verbose = 0;
@@ -361,6 +363,62 @@ main (int argc, char *argv[])
 	return (0);
 }
 
+int qsort_cmp_medianvector ( const void * x, const void * y )
+{
+	int a = *(const int*)x;
+	int b = *(const int*)y;
+	if (a<b)  return -1;
+	else
+		if (a>b)  return  1;
+		else
+			return 0;
+}
+
+int qsort_cmp_medianSAD ( const void * x, const void * y )
+{
+	int a = *(const uint32_t*)x;
+	int b = *(const uint32_t*)y;
+	if (a<b)  return -1;
+	else
+		if (a>b)  return  1;
+		else
+			return 0;
+}
+
+struct vector medianvector (struct vector v1, struct vector v2, struct vector v3, struct vector v4)
+{
+	struct vector v;
+	int xlist[4];
+	int ylist[4];
+
+	xlist[0] = v1.x;
+	xlist[1] = v2.x;
+	xlist[2] = v3.x;
+	xlist[3] = v4.x;
+
+	ylist[0] = v1.y;
+	ylist[1] = v2.y;
+	ylist[2] = v3.y;
+	ylist[3] = v4.y;
+
+	/* need to sort the vectors for median calculation */
+	qsort ( xlist, 4, sizeof(xlist[0]), qsort_cmp_medianvector );
+	qsort ( ylist, 4, sizeof(ylist[0]), qsort_cmp_medianvector );
+
+	/* even median is mean of two centered values */
+	v.x = (xlist[1]+xlist[2])>>1;
+	v.y = (ylist[1]+ylist[2])>>1;
+
+	return v;
+}
+
+uint32_t medianSAD (uint32_t * SADlist, int n)
+{
+	qsort ( SADlist, n, sizeof(SADlist[0]), qsort_cmp_medianSAD);
+
+	return (SADlist[n/2]+SADlist[n/2+1])>>1;
+}
+
 struct vector
 search_forward_vector( int x, int y , struct vector topleft , struct vector top, struct vector left, struct vector co)
 {
@@ -369,23 +427,26 @@ search_forward_vector( int x, int y , struct vector topleft , struct vector top,
 	{
 		int x;
 		int y;
-	} search_path[5000];
+	} search_path[15000];
 	static int cnt=0;
 
 	struct vector v;
 	struct vector mean;
+	struct vector median;
 	int vx,vy;
 	int r=search_radius;
 	uint32_t min,mmin;
 	uint32_t SAD,SAD2;
 
-
 	if(!initialized)
 	{
+
+		if(search_radius>72) search_radius = 72;
+
 		for(r=1;r<=search_radius;r++)
 		{
-			for(vy=-32;vy<=32;vy++)
-				for(vx=-32;vx<=32;vx++)
+			for(vy=-64;vy<=64;vy+=4) // it doesn't make sense to search some y-values
+				for(vx=-64;vx<=64;vx++)
 				{
 					if( (vx*vx+vy*vy) <= (r*r) &&
 						(vx*vx+vy*vy) >  ((r-1)*(r-1)) )
@@ -402,11 +463,13 @@ search_forward_vector( int x, int y , struct vector topleft , struct vector top,
 
 	mean.x = (top.x + left.x + topleft.x + co.x )/4;
 	mean.y = (top.y + left.y + topleft.y + co.y )/4;
+	median = medianvector( topleft , top, left, co);
 
 	/* initialize best-match with (0,0)MV SAD */
 	min  = 	psad_00( frame20[0]+x+y*width, frame10[0]+x+y*width, width, 16, 0 );
-	min +=  psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+x/2+y*width/4, width/2, 8 );
-	min +=  psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+x/2+y*width/4, width/2, 8 );
+	//min += 	psad_00( frame20[0]+x+y*width+16, frame10[0]+x+y*width+16, width, 32, 0 );
+	//min +=  psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+x/2+y*width/4, width/2, 8 );
+	//min +=  psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+x/2+y*width/4, width/2, 8 );
 	v.x  = 0;
 	v.y  = 0;
 
@@ -414,10 +477,24 @@ search_forward_vector( int x, int y , struct vector topleft , struct vector top,
 	if ( (x>>4)>0 && (y>>4)>0 )
 	{
 #if 1
+		/* check median predictor */
+		SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+median.x)+(y+median.y)*width, width, 16, 0 );
+		//SAD  = psad_00( frame20[0]+x+y*width+16, frame10[0]+(x+mean.x)+(y+mean.y)*width+16, width, 32, 0 );
+		//SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+mean.x)/2+(y+mean.y)*width/4, width/2, 8 );
+		//SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+mean.x)/2+(y+mean.y)*width/4, width/2, 8 );
+		if (SAD<min)
+		{
+			min = SAD;
+			v.x = median.x;
+			v.y = median.y;
+		}
+#endif
+#if 1
 		/* check colocated predictor */
 		SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+co.x)+(y+co.y)*width, width, 16, 0 );
-		SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+co.x)/2+(y+co.y)*width/4, width/2, 8 );
-		SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+co.x)/2+(y+co.y)*width/4, width/2, 8 );
+		//SAD  = psad_00( frame20[0]+x+y*width+16, frame10[0]+(x+co.x)+(y+co.y)*width+16, width, 32, 0 );
+		//SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+co.x)/2+(y+co.y)*width/4, width/2, 8 );
+		//SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+co.x)/2+(y+co.y)*width/4, width/2, 8 );
 		if (SAD<min)
 		{
 			min = SAD;
@@ -428,8 +505,9 @@ search_forward_vector( int x, int y , struct vector topleft , struct vector top,
 #if 1
 		/* check top predictor */
 		SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+top.x)+(y+top.y)*width, width, 16, 0 );
-		SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+top.x)/2+(y+top.y)*width/4, width/2, 8 );
-		SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+top.x)/2+(y+top.y)*width/4, width/2, 8 );
+		//SAD  = psad_00( frame20[0]+x+y*width+16, frame10[0]+(x+top.x)+(y+top.y)*width+16, width, 32, 0 );
+		//SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+top.x)/2+(y+top.y)*width/4, width/2, 8 );
+		//SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+top.x)/2+(y+top.y)*width/4, width/2, 8 );
 		if (SAD<min)
 		{
 			min = SAD;
@@ -440,8 +518,9 @@ search_forward_vector( int x, int y , struct vector topleft , struct vector top,
 #if 1
 		/* check left predictor */
 		SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+left.x)+(y+left.y)*width, width, 16, 0 );
-		SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+left.x)/2+(y+left.y)*width/4, width/2, 8 );
-		SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+left.x)/2+(y+left.y)*width/4, width/2, 8 );
+		//SAD  = psad_00( frame20[0]+x+y*width+16, frame10[0]+(x+left.x)+(y+left.y)*width+16, width, 32, 0 );
+		//SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+left.x)/2+(y+left.y)*width/4, width/2, 8 );
+		//SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+left.x)/2+(y+left.y)*width/4, width/2, 8 );
 		if (SAD<min)
 		{
 			min = SAD;
@@ -451,9 +530,10 @@ search_forward_vector( int x, int y , struct vector topleft , struct vector top,
 #endif
 #if 1
 		/* check top-left predictor */
-		SAD  = psad_00( frame20[0]+x+y*width, frame21[0]+(x+topleft.x)+(y+topleft.y)*width, width, 16, 0 );
-		SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame21[1]+(x+topleft.x)/2+(y+topleft.y)*width/4, width/2, 8 );
-		SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame21[2]+(x+topleft.x)/2+(y+topleft.y)*width/4, width/2, 8 );
+		SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+topleft.x)+(y+topleft.y)*width, width, 16, 0 );
+		//SAD  = psad_00( frame20[0]+x+y*width+16, frame10[0]+(x+topleft.x)+(y+topleft.y)*width+16, width, 32, 0 );
+		//SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+topleft.x)/2+(y+topleft.y)*width/4, width/2, 8 );
+		//SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+topleft.x)/2+(y+topleft.y)*width/4, width/2, 8 );
 		if (SAD<min)
 		{
 			min = SAD;
@@ -464,8 +544,9 @@ search_forward_vector( int x, int y , struct vector topleft , struct vector top,
 #if 1
 		/* check mean predictor */
 		SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+mean.x)+(y+mean.y)*width, width, 16, 0 );
-		SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+mean.x)/2+(y+mean.y)*width/4, width/2, 8 );
-		SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+mean.x)/2+(y+mean.y)*width/4, width/2, 8 );
+		//SAD  = psad_00( frame20[0]+x+y*width+16, frame10[0]+(x+mean.x)+(y+mean.y)*width+16, width, 32, 0 );
+		//SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+mean.x)/2+(y+mean.y)*width/4, width/2, 8 );
+		//SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+mean.x)/2+(y+mean.y)*width/4, width/2, 8 );
 		if (SAD<min)
 		{
 			min = SAD;
@@ -475,32 +556,34 @@ search_forward_vector( int x, int y , struct vector topleft , struct vector top,
 #endif
 	}
 
-	/* if one of the predictors is good, we should be below BLKthreshold, now
+	/* if one of the predictors is good, we should be below BLKquantile75, now
      * if not, do a full search for this block ... shit happens... :)
      */
-	if(min>BLKthreshold)
+	if(min>BLKquantile75)
 	{
 		min  = psad_00( frame20[0]+x+y*width, frame10[0]+x+y*width, width, 16, 0 );
-		min += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+x/2+y*width/4, width/2, 8 );
-		min += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+x/2+y*width/4, width/2, 8 );
+		//min  = psad_00( frame20[0]+x+y*width+16, frame10[0]+x+y*width+16, width, 32, 0 );
+		//min += psad_sub22( frame20[1]+x/2+y*width/4, frame21[1]+x/2+y*width/4, width/2, 8 );
+		//min += psad_sub22( frame20[2]+x/2+y*width/4, frame21[2]+x/2+y*width/4, width/2, 8 );
 		v.x = 0;
 		v.y = 0;
 
-		if(min>(BLKthreshold))
 		for(r = 0 ; r < cnt ; r++)
 		{
 			vx = search_path[r].x;
 			vy = search_path[r].y;
 
 			SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+vx)+(y+vy)*width, width, 16, 0 );
-			SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+vx)/2+(y+vy)*width/4, width/2, 8 );
-			SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+vx)/2+(y+vy)*width/4, width/2, 8 );
+			//SAD  = psad_00( frame20[0]+x+y*width+16, frame10[0]+(x+vx)+(y+vy)*width+16, width, 32, 0 );
+			//SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+vx)/2+(y+vy)*width/4, width/2, 8 );
+			//SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+vx)/2+(y+vy)*width/4, width/2, 8 );
 			if( SAD<min )
 			{
 				/* this check avoids trouble with repeating patterns ... */
 				SAD2  = psad_00( frame20[0]+x+y*width, frame21[0]+(x+vx/2)+(y+vy/2)*width, width, 16, 0 );
-				SAD2 += psad_sub22( frame20[1]+x/2+y*width/4, frame21[1]+(x+vx/2)/2+(y+vy/2)*width/4, width/2, 8 );
-				SAD2 += psad_sub22( frame20[2]+x/2+y*width/4, frame21[2]+(x+vx/2)/2+(y+vy/2)*width/4, width/2, 8 );
+				//SAD2  = psad_00( frame20[0]+x+y*width+16, frame21[0]+(x+vx/2)+(y+vy/2)*width+16, width, 32, 0 );
+				//SAD2 += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+vx/2)/2+(y+vy/2)*width/4, width/2, 8 );
+				//SAD2 += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+vx/2)/2+(y+vy/2)*width/4, width/2, 8 );
 
 				if(SAD2<min)
 				{
@@ -509,12 +592,13 @@ search_forward_vector( int x, int y , struct vector topleft , struct vector top,
 					v.y   = vy;
 				}
 			}
-			/* abort the search as soon, as we get below the threshold */
-			if(min<(BLKthreshold)) break;
+			/* abort the search as soon, as we get below the 25% quantile */
+			if(min<(BLKquantile25)) break;
 		}
 	}
 
-	v.sad = min;
+	/* we need the SAD of the current field for statistics, not of the upcoming-next one */
+	v.sad = psad_00( frame20[0]+x+y*width, frame21[0]+(x+v.x/2)+(y+v.y/2)*width, width, 16, 0 );
 	return v;
 }
 
@@ -524,7 +608,7 @@ motion_compensate_field (void)
 	int x,y;
 	static struct vector fv[45][36];
 	struct vector bv[45][36];
-	uint32_t BLKmatch=0;
+	uint32_t SADlist[768*576/16/16];
 	int cnt=0;
 	
 	for(y=0;y<height;y+=16)
@@ -537,17 +621,32 @@ motion_compensate_field (void)
 											fv[x>>4][(y>>4)-1],
 											fv[(x>>4)-1][y>>4],
 											fv[x>>4][y>>4]);
-			BLKmatch+=fv[x>>4][y>>4].sad;
+			SADlist[cnt]=fv[x>>4][y>>4].sad;
 			cnt++;
 		}
 	}
-	BLKthreshold += (BLKmatch/cnt);
-	BLKthreshold /= 2;
-	if(BLKthreshold<2500) BLKthreshold=2500;
+
+	BLKmedian     *= 15;
+	BLKquantile25 *= 15;
+	BLKquantile75 *= 15;
+	BLKmedian     += medianSAD(SADlist,cnt);
+	BLKquantile25 += SADlist[cnt/4];
+	BLKquantile75 += SADlist[cnt/4*3];
+	BLKmedian     >>= 4;
+	BLKquantile25 >>= 4;
+	BLKquantile75 >>= 4;
+	
+	/* limit values to lower-boundary to avoid unnessecary searches*/
+	if(BLKquantile25 <  384) BLKquantile25 =  384;
+	if(BLKmedian     <  768) BLKmedian     =  768;
+	if(BLKquantile75 < 2560) BLKquantile75 = 2560;
+
+	fprintf(stderr,"BLKmedian = %i BLK-Q25%% = %i BLK-Q75%% = %i \n",BLKmedian,BLKquantile25,BLKquantile75);
 
 	for(y=0;y<height;y+=16)
 		for(x=0;x<width;x+=16)
 		{
+			if (fv[x>>4][y>>4].sad<=BLKquantile75)
 			{
 				transform_block_Y  (frame5[0]+x+y*width,
 									frame21[0]+(x+fv[x>>4][y>>4].x/2)+(y+fv[x>>4][y>>4].y/2)*width, width );
@@ -555,6 +654,16 @@ motion_compensate_field (void)
 									frame21[1]+(x+fv[x>>4][y>>4].x/2)/2+(y+fv[x>>4][y>>4].y/2)/2*width/2, width/2 );
 				transform_block_UV  (frame5[2]+x/2+y/2*width/2,
 									frame21[2]+(x+fv[x>>4][y>>4].x/2)/2+(y+fv[x>>4][y>>4].y/2)/2*width/2, width/2 );
+			}
+			else
+			if(1)
+			{
+				transform_block_Y  (frame5[0]+x+y*width,
+									frame20[0]+x+y*width, width );
+				transform_block_UV  (frame5[1]+x/2+y/2*width/2,
+									frame20[1]+x/2+y/2*width/2, width/2 );
+				transform_block_UV  (frame5[2]+x/2+y/2*width/2,
+									frame20[2]+x/2+y/2*width/2, width/2 );
 			}
 		}
 }
