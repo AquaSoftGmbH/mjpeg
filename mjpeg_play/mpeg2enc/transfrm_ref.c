@@ -236,6 +236,12 @@ void init_transform(void)
 #else
 	    psub_pred = ALTIVEC_SUFFIX(sub_pred);
 #endif
+
+#if ALTIVEC_TEST_FUNCTION(field_dct_best)
+	    pfield_dct_best = ALTIVEC_TEST_SUFFIX(field_dct_best);
+#else
+	    pfield_dct_best = ALTIVEC_SUFFIX(field_dct_best);
+#endif
 	}
 #endif /* HAVE_ALTIVEC */
 	init_fdct();
