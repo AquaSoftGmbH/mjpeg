@@ -36,10 +36,6 @@ int decode_jpeg_raw(unsigned char *jpeg_data, int len,
 void error(char *text);
 void Usage(char *str);
 int readframe(int numframe, unsigned char *frame[]);
-int median_cmp(const void *p1, const void *p2);
-void median_filter_area(unsigned char *input, unsigned char *output, 
-			int width, int height, int span);
-void median_filter(void);
 void writeoutYUV4MPEGheader(void);
 void writeoutframeinYUV4MPEG(unsigned char *frame[]);
 void streamout(void);
@@ -103,7 +99,7 @@ static float mpeg2_framerates[] = { 0, 23.976, 24.0, 25.0, 29.970, 30.0, 50.0, 5
 
 unsigned char *frame_buf[3]; /* YUV... */
 unsigned char *read_buf[3];
-unsigned char *median_buf[3];
+unsigned char *double_buf[3];
 
 unsigned char luma_blank[720 * 480];
 unsigned char chroma_blank[720 * 480];
@@ -111,8 +107,6 @@ unsigned char chroma_blank[720 * 480];
 int	verbose = 2;
 
 EditList el;
-
-
 
 void error(char *text)
 {
@@ -133,6 +127,7 @@ void Usage(char *str)
   printf("                 1 create half height/width output from interlaced input\n");
   printf("                 2 create 480 wide output from 720 wide input (for SVCD)\n");
   printf("                 3 create 352 wide output from 720 wide input (for vcd)\n");
+  printf("                 4 create 480 x 480 output from 720 x 240 input (for svcd)\n");
   printf("   -d num     Drop lsbs of samples [0..3] (default: 0)\n");
   printf("   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
   printf("   -m         Force mono-chrome\n");
@@ -205,7 +200,7 @@ static void init()
 		size = chroma_output_width*chroma_output_height;
 
     read_buf[i] = bufalloc(size);
-    median_buf[i] = bufalloc(size);
+    double_buf[i] = bufalloc(size);
   }
 
   filter_buf =  bufalloc( output_width*output_height );
@@ -228,9 +223,36 @@ int readframe(int numframe, unsigned char *frame[])
 
    len = el_get_video_frame(jpeg_data, numframe, &el);
 
-   res = decode_jpeg_raw(jpeg_data,len,el.video_inter,
-                         chroma_format,output_width,output_height,
-                         frame[0],frame[1],frame[2]);
+   if (param_special == 4) {
+	res = decode_jpeg_raw(jpeg_data,len,el.video_inter,
+		chroma_format, output_width, output_height/2,
+                frame[0],frame[1],frame[2]);
+   } else {
+	res = decode_jpeg_raw(jpeg_data,len,el.video_inter,
+		chroma_format, output_width, output_height,
+                frame[0],frame[1],frame[2]);
+   }
+
+   if (param_special == 4) {
+	for(i=0; i < output_height/2; i++) {
+		memcpy(&double_buf[0][i * output_width * 2], &read_buf[0][i * output_width], output_width);
+		memcpy(&double_buf[0][i * output_width * 2 + output_width], &read_buf[0][i * output_width], output_width);
+	}
+
+	for(i=0; i < chroma_height/2; i++) {
+		memcpy(&double_buf[1][i * chroma_width * 2], &read_buf[1][i * chroma_width], chroma_width);
+		memcpy(&double_buf[1][i * chroma_width * 2 + chroma_width], &read_buf[1][i * chroma_width], chroma_width);
+
+		memcpy(&double_buf[2][i * chroma_width * 2], &read_buf[2][i * chroma_width], chroma_width);
+		memcpy(&double_buf[2][i * chroma_width * 2 + chroma_width], &read_buf[2][i * chroma_width], chroma_width);
+	}
+
+	frame[0] = double_buf[0];
+	frame[1] = double_buf[1];
+	frame[2] = double_buf[2];
+   }
+
+
    if(res) 
 	 { 
 	   fprintf(stderr,"Warning: Decoding of Frame %d failed\n",numframe);
@@ -341,65 +363,6 @@ int readframe(int numframe, unsigned char *frame[])
 
 }
 
-int median_cmp(const void *p1, const void *p2)
-{
-	return *(unsigned char *)p1 - *(unsigned char *)p2;
-}
-
-
-void median_filter_area(unsigned char *input, unsigned char *output, 
-			int width, int height, int span)
-{
-	unsigned char	list[9];
-	unsigned char	*ptr;
-	unsigned char	*ptr1;
-	unsigned char	*ptr2;
-	unsigned char	*ptr3;
-	int		y;
-	int		x;
-
-	for(y=1; y < height -1; y++) {
-		ptr1 = &input[(y-1) * span];
-		ptr2 = ptr1 + span;
-		ptr3 = ptr2 + span;
-		ptr  = &output[y * span];
-
-		for(x=1;  x < width-1; x++) {
-			list[0] = ptr1[0];
-			list[1] = ptr1[1];
-			list[2] = ptr1++[2];
-			list[3] = ptr2[0];
-			list[4] = ptr2[1];
-			list[5] = ptr2++[2];
-			list[6] = ptr3[0];
-			list[7] = ptr3[1];
-			list[8] = ptr3++[2];
-			qsort(list, 9, 1, median_cmp);
-			*ptr++ = list[4];
-		}
-	}
-
-}
-
-void median_filter(void)
-{
-	median_filter_area(&frame_buf[0][luma_offset+luma_left_size], &median_buf[0][luma_offset+luma_left_size], 
-		active_width, active_height, output_width);
-
-	median_filter_area(&frame_buf[1][chroma_offset+chroma_left_size], 
-		&median_buf[1][chroma_offset+chroma_left_size], 
-		chroma_width, chroma_height, chroma_output_width);
-
-	median_filter_area(&frame_buf[2][chroma_offset+chroma_left_size], 
-		&median_buf[2][chroma_offset+chroma_left_size], 
-		chroma_width, chroma_height, chroma_output_width);
-
-
-	frame_buf[0] = median_buf[0];
-	frame_buf[1] = median_buf[1];
-	frame_buf[2] = median_buf[2];
-}
-
 /*
   Raw write does *not* guarantee to write the entire buffer load if it
   becomes possible to do so.  This does...
@@ -449,8 +412,7 @@ void writeoutYUV4MPEGheader(void)
 		 fprintf( stderr, "+++ WARNING: unrecognised frame-rate -  no MPEG2 rate code can be specified... encoder is likely to fail!\n" );
 	 }
 	 
-	 sprintf(str,"YUV4MPEG %d %d %d\n",
-			 output_width,output_height, frame_rate_code);
+	 sprintf(str,"YUV4MPEG %d %d %d\n", output_width, output_height, frame_rate_code);
 	 do_write(out_fd,str,strlen(str));
 }
 
@@ -527,9 +489,6 @@ void streamout(void)
 	for( framenum = 0; framenum < el.video_frames ; ++framenum )
 	{
 		readframe(framenum,frame_buf);
-#ifdef	NEVER
-		median_filter();
-#endif
 		writeoutframeinYUV4MPEG(frame_buf);
 	}
 }
@@ -587,7 +546,7 @@ char *argv[];
 
       case 's':
         param_special = atoi(optarg);
-        if(param_special<0 || param_special>3)
+        if(param_special<0 || param_special>4)
         {
           fprintf(stderr,"-s option requires arg 0, 1, 2 or 3\n");
           nerr++;
@@ -634,8 +593,9 @@ char *argv[];
   output_width  = el.video_width;
   output_height = el.video_height;
 
-  if(param_special==1)
-  {
+  switch(param_special) {
+
+  case 1:
     if(el.video_inter)
     {
       output_width  = (el.video_width/2) &0xfffffff0;
@@ -646,10 +606,9 @@ char *argv[];
       fprintf(stderr,"-s 1 may only be set for interlaced video sources\n");
       Usage(argv[0]);
     }
-  }
+    break;
 
-  if(param_special==2)
-  {
+  case 2:
     if(el.video_width > 700)
     {
       output_width  = 480;
@@ -659,10 +618,9 @@ char *argv[];
       fprintf(stderr,"-s 2 may only be set for 720 pixel wide video sources\n");
       Usage(argv[0]);
     }
-  }
+    break;
 
-  if(param_special==3)
-  {
+  case 3:
     if(el.video_width > 700)
     {
       output_width  = 352;
@@ -670,6 +628,19 @@ char *argv[];
     else
     {
       fprintf(stderr,"-s 3 may only be set for 720 pixel wide video sources\n");
+      Usage(argv[0]);
+    }
+    break;
+
+  case 4:
+    if(el.video_width > 700)
+    {
+      output_width  = 480;
+      output_height = 480;
+    }
+    else
+    {
+      fprintf(stderr,"-s 4 may only be set for 720 pixel wide video sources\n");
       Usage(argv[0]);
     }
   }
