@@ -377,12 +377,14 @@ difference_frame (void)
 void
 correct_frame2 (void)
 {
-  register uint8_t * src;
-  register uint8_t * dst;
-  register uint8_t * dif;
-  register int q,q1,q2,q3,q4,q5,q6,q7,q8,q9;
-  register int c;
-//  float f;
+  uint8_t * src;
+  uint8_t * dst;
+  uint8_t * dif;
+  int q;
+  int c;
+  //register int m;
+  int f1=0;
+  int f2=0;
   
   /* Only correct Y portion... Cr and Cb remain uncorrected and have to
    * fade to the right value in about 2..3 frames
@@ -396,35 +398,19 @@ correct_frame2 (void)
 
   for (c = 0; c < (W*H); c++)
   {
-    /* get Y-error from 0..255 */
+    q = *(src)-*(dst);
+    q = (q<0)? -q:q;
 
-    q1 = *(src-W-1)-*(dst-W-1);
-    q2 = *(src-W+0)-*(dst-W+0);
-    q3 = *(src-W+1)-*(dst-W+1);
-    q4 = *(src  -1)-*(dst  -1);
-    q5 = *(src  +0)-*(dst  +0);
-    q6 = *(src  +1)-*(dst  +1);
-    q7 = *(src+W-1)-*(dst+W-1);
-    q8 = *(src+W+0)-*(dst+W+0);
-    q9 = *(src+W+1)-*(dst+W+1);
-    
-    q1 = (q1<0)? -q1:q1;
-    q2 = (q2<0)? -q2:q2;
-    q3 = (q3<0)? -q3:q3;
-    q4 = (q4<0)? -q4:q4;
-    q5 = (q5<0)? -q5:q5;
-    q6 = (q6<0)? -q6:q6;
-    q7 = (q7<0)? -q7:q7;
-    q8 = (q8<0)? -q8:q8;
-    q9 = (q9<0)? -q9:q9;
-    
-    q = (q1+q2+q3+q4+q5+q6+q7+q8+q9)/9;
-    q = (q+3*q5)>>2;
+    f1 = (255*(q-denoiser.threshold))/denoiser.threshold;
+    f1 = (f1>255)? 255:f1;
+    f1 = (f1<0)?     0:f1;
+    f2 = 255-f1;
 
     if (q>denoiser.threshold)
     {
-      *(dst) = *(src);
+	*(dst)=(*(dst)*f2 + *(src)*f1)/255;;
     }
+
     dst++;
     src++;
   }
@@ -434,14 +420,27 @@ correct_frame2 (void)
   
   for (c = 0; c < (W2*H2); c++)
   {
-    /* get Y-error from 0..255 */
-    
-    q = *(src    )-*(dst    );
+    q = *(src) - *(dst) ;
     q = (q<0)? -q:q;
     
+    f1 = (255*(q-denoiser.threshold))/denoiser.threshold;
+    f1 = (f1>255)? 255:f1;
+    f1 = (f1<0)?     0:f1;
+    f2 = 255-f1;
+
     if (q>denoiser.threshold)
-      *(dst)=*(src);    
-    
+    {
+	if(c>W2 && c<(W2*H2-W2))
+	{
+	    *(dst)=( (*(src) + *(src+W2) + *(src-W2))*f1/3 +  
+		     (*(dst) + *(dst+W2) + *(dst-W2))*f2/3 )/255;
+	}
+	else
+	{
+	    *(dst)=(*(dst)*f2 + *(src)*f1)/255;;
+	}
+    }
+
     dst++;
     src++;
   }
@@ -451,14 +450,27 @@ correct_frame2 (void)
   
   for (c = 0; c < (W2*H2); c++)
   {
-    /* get Y-error from 0..255 */
-    
-    q = *(src    )-*(dst    );
+    q = *(src) - *(dst) ;
     q = (q<0)? -q:q;
     
+    f1 = (255*(q-denoiser.threshold))/denoiser.threshold;
+    f1 = (f1>255)? 255:f1;
+    f1 = (f1<0)?     0:f1;
+    f2 = 255-f1;
+
     if (q>denoiser.threshold)
-      *(dst)=*(src);    
-    
+    {
+	if(c>W2 && c<(W2*H2-W2))
+	{
+	    *(dst)=( (*(src) + *(src+W2) + *(src-W2))*f1/3 +  
+		     (*(dst) + *(dst+W2) + *(dst-W2))*f2/3 )/255;
+	}
+	else
+	{
+	    *(dst)=(*(dst)*f2 + *(src)*f1)/255;;
+	}
+    }
+
     dst++;
     src++;
   }
@@ -471,8 +483,9 @@ denoise_frame_pass2 (void)
   register uint8_t * dst[3];
   register int d;
   register int c;
-  int t=denoiser.pp_threshold;
-  
+  int f1=0;
+  int f2=0;
+
   src[Yy]=denoiser.frame.tmp[Yy]+32*W;
   src[Cr]=denoiser.frame.tmp[Cr]+16*W2;
   src[Cb]=denoiser.frame.tmp[Cb]+16*W2;
@@ -490,11 +503,13 @@ denoise_frame_pass2 (void)
       
     d = *(dst[Yy])-*(src[Yy]);
     d = (d<0)? -d:d;
+
+    f1 = (255*d)/denoiser.pp_threshold;
+    f1 = (f1>255)? 255:f1;
+    f1 = (f1<0)?     0:f1;
+    f2 = 255-f1;
     
-    if( d > (t/2) )
-    {
-      *(dst[Yy]) = *(src[Yy]);
-    }
+    *(dst[Yy]) =( *(src[Yy])*f1 +*(dst[Yy])*f2 )/255;
 
     dst[Yy]++;
     src[Yy]++;
@@ -503,25 +518,26 @@ denoise_frame_pass2 (void)
   /* Cr and Cb */
   for (c = 0; c < (W2*H2); c++)
   {
-    *(dst[Cr]) = ( *(dst[Cr]) * 2 + *(src[Cr]) )/3;
-      
+    *(dst[Cr]) = ( *(dst[Cr]) * 2 + *(src[Cr]) )/3;      
     d = *(dst[Cr])-*(src[Cr]);
     d = (d<0)? -d:d;
     
-    if( d > t )
-    {
-      *(dst[Cr]) =  ( *(src[Cr]) + *(dst[Cr]) )/2 ;
-    }
+    f1 = (255*(d-denoiser.pp_threshold))/denoiser.pp_threshold;
+    f1 = (f1>255)? 255:f1;
+    f1 = (f1<0)?     0:f1;
+    f2 = 255-f1;
+    *(dst[Cr]) =( *(src[Cr])*f1 +*(dst[Cr])*f2 )/255;
 
-    *(dst[Cb]) = ( *(dst[Cb]) * 2 + *(src[Cb]) )/3;
-      
+
+    *(dst[Cb]) = ( *(dst[Cb]) * 2 + *(src[Cb]) )/3;      
     d = *(dst[Cb])-*(src[Cb]);
     d = (d<0)? -d:d;
     
-    if( d > t )
-    {
-      *(dst[Cb]) =  ( *(src[Cb]) + *(dst[Cb]) )/2 ;
-    }
+    f1 = (255*(d-denoiser.pp_threshold))/denoiser.pp_threshold;
+    f1 = (f1>255)? 255:f1;
+    f1 = (f1<0)?     0:f1;
+    f2 = 255-f1;
+    *(dst[Cb]) =( *(src[Cb])*f1 +*(dst[Cb])*f2 )/255;
 
     dst[Cr]++;
     src[Cr]++;
@@ -591,7 +607,7 @@ denoise_frame(void)
         vector.x=0;
         vector.y=0;
 
-        if(!low_contrast_block(x,y) && 
+        if( !low_contrast_block(x,y) && 
           x>(denoiser.border.x) && y>(denoiser.border.y+32) &&
           x<(denoiser.border.x+denoiser.border.w) && y<(denoiser.border.y+32+denoiser.border.h) 
           )        

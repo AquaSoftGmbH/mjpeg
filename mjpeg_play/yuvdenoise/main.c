@@ -64,9 +64,9 @@ int main(int argc, char *argv[])
   
   /* setup denoiser's global variables */
   denoiser.radius          = 8;
-  denoiser.threshold       = 5; /* assume medium noise material */
-  denoiser.pp_threshold    = 5; /* same for postprocessing */
-  denoiser.delay           = 2; /* short delay for good regeneration of rapid sequences */
+  denoiser.threshold       = 8; /* assume medium noise material */
+  denoiser.pp_threshold    = 4; /* same for postprocessing */
+  denoiser.delay           = 3; /* short delay for good regeneration of rapid sequences */
   denoiser.postprocess     = 1;
   denoiser.luma_contrast   = 100;
   denoiser.chroma_contrast = 100;
@@ -477,8 +477,8 @@ display_help(void)
   "-r <8...24>        Limit the search radius to that value. Usually it will\n"
   "                   not make sense to go higher than 16. Esp. for VCD sizes.\n"
   "\n"
-  "-b <x>,<y>,<w>,<h> Set active image area. Every pixel outside will be turned\n"
-  "                   to <16,128,128> => pure black. This can save a lot of bits\n"
+  "-b <x>,<y>,<w>,<h> Set active image area. Every pixel outside will be set\n"
+  "                   to <16,128,128> (\"pure black\"). This can save a lot of bits\n"
   "                   without even touching the image itself (eg. on 16:9 movies\n"
   "                   on 4:3 (VCD and SVCD)\n"
   "\n"
@@ -486,7 +486,7 @@ display_help(void)
   "\n"
   "-C <0...255>       Set chrominance contrast in percent. AKA \"Saturation\"\n"
   "\n"
-  "-S <0...255>       Set sharpness in percent. WARNING: do not set to high\n"
+  "-S <0...255>       Set sharpness in percent. WARNING: do not set too high\n"
   "                   as this will gain bit-noise.\n"
   "\n"
   "-F                 Force deinterlacing. By default denoise interlaced.\n"

@@ -25,7 +25,7 @@ void (*deinterlace) (void);
 void 
 deinterlace_noaccel(void)
 {
-  unsigned int d;
+  unsigned int d=0;
   unsigned int min;
   register int x;
   register int y;
@@ -113,7 +113,7 @@ deinterlace_noaccel(void)
 void 
 deinterlace_mmx(void)
 {
-  uint32_t d;
+  uint32_t d=0;
   uint16_t a[4]={0,0,0,0};
   unsigned int min;
   register int x;
