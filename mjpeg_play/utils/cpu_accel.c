@@ -75,14 +75,20 @@ static int x86_accel (void)
     int32_t AMD;
     int32_t caps;
 
+	/* Slightly weirdified cpuid that preserves the ebx and edi required
+	   by gcc for PIC offset table and frame pointer */
+	   
 #define cpuid(op,eax,ebx,ecx,edx)	\
-    asm ("cpuid"			\
+    asm ( "pushl %%ebx\n" \
+	      "cpuid\n" \
+	      "movl   %%ebx, %%esi\n" \
+	      "popl   %%ebx\n"  \
 	 : "=a" (eax),			\
-	   "=b" (ebx),			\
+	   "=S" (ebx),			\
 	   "=c" (ecx),			\
 	   "=d" (edx)			\
 	 : "a" (op)			\
-	 : "cc")
+	 : "cc", "edi")
 
     asm ("pushfl\n\t"
 	 "popl %0\n\t"
@@ -93,12 +99,12 @@ static int x86_accel (void)
 	 "pushfl\n\t"
 	 "popl %0"
          : "=a" (eax),
-	       "=b" (ebx)
+	       "=c" (ecx)
 	 :
 	 : "cc");
 
 
-    if (eax == ebx)		// no cpuid
+    if (eax == ecx)		// no cpuid
 	return 0;
 
     cpuid (0x00000000, eax, ebx, ecx, edx);
