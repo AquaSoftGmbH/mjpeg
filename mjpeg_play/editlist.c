@@ -48,7 +48,7 @@ static int open_video_file(char *filename, EditList *el)
    for(i=0;i<el->num_video_files;i++)
       if(strcmp(realname,el->video_file_list[i])==0)
       {
-         printf("File %s allready open\n",realname);
+         printf("File %s already open\n",realname);
          return i;
       }
 

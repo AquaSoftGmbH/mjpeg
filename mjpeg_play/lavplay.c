@@ -351,6 +351,7 @@ void Usage(char *progname)
    fprintf(stderr, "   -q         Do NOT quit at end of video\n");
    fprintf(stderr, "   -x         Exchange fields of an interlaced video\n");
    fprintf(stderr, "   -z         Zoom video to fill screen as much as possible\n");
+   fprintf(stderr, "   -S         Use software MJPEG playback (based on SDL and libmjpeg)\n");
    exit(1);
 }
 
@@ -524,9 +525,12 @@ main(int argc, char ** argv)
 
    if (soft_play)
      {
+       char wintitle[255];
+
        /* Now initialize SDL */
        /* Set the video mode (800x600 at native depth) */
-       screen = SDL_SetVideoMode(800, 600, 0, SDL_HWSURFACE /*| SDL_FULLSCREEN */);
+       screen = SDL_SetVideoMode(el.video_width, 
+				 el.video_height, 0, SDL_HWSURFACE /*| SDL_FULLSCREEN */);
        SDL_EventState(SDL_KEYDOWN, SDL_ENABLE);
        SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
        
@@ -564,10 +568,10 @@ main(int argc, char ** argv)
        mjpeg->unlock_update_screen_callback = unlock_update_screen;
 
        /* The output framebuffer parameters (where the JPEG frames are rendered into) */
-       mjpeg->framebuf_addr = screen->pixels;
-       mjpeg->framebuf_w = screen->w;
-       mjpeg->framebuf_h = screen->h;
-       mjpeg->bytespp = screen->format->BytesPerPixel; 
+       mjpeg_set_framebuf(mjpeg, screen->pixels, screen->w, screen->h, screen->format->BytesPerPixel); 
+
+       sprintf(wintitle, "lavplay %s", el.video_file_list[0]);
+       SDL_WM_SetCaption(wintitle, "0000000");  
 
        unlock_update_screen();
      }
