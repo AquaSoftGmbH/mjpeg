@@ -61,34 +61,41 @@ int main(int argc, char *argv[])
   y4m_init_stream_info (&streaminfo);
   y4m_init_frame_info (&frameinfo);
   
-  /* open input stream */
-  if ((errno = y4m_read_stream_header (fd_in, &streaminfo)) != Y4M_OK)
-    {
-      mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!\n", y4m_strerr (errno));
-      exit (1);
-    }
-
   /* setup denoiser's global variables */
-  denoiser.frame.w         = y4m_si_get_width(&streaminfo);
-  denoiser.frame.h         = y4m_si_get_height(&streaminfo);
-  frame_offset             = 32*denoiser.frame.w;
   denoiser.radius          = 8;
   denoiser.threshold       = 5; /* assume medium noise material */
   denoiser.pp_threshold    = 5; /* same for postprocessing */
   denoiser.delay           = 2; /* short delay for good regeneration of rapid sequences */
-  denoiser.border.x        = 0;
-  denoiser.border.y        = 0;
-  denoiser.border.w        = denoiser.frame.w;
-  denoiser.border.h        = denoiser.frame.h;
   denoiser.postprocess     = 1;
   denoiser.luma_contrast   = 100;
   denoiser.chroma_contrast = 100;
   denoiser.sharpen         = 125; /* very little sharpen by default */
   denoiser.deinterlace     = 0;
   denoiser.mode            = 0; /* initial mode is progressive */
+  denoiser.border.x        = 0;
+  denoiser.border.y        = 0;
+  denoiser.border.w        = 0;
+  denoiser.border.h        = 0;
   
   /* process commandline */
   process_commandline(argc, argv);
+
+  /* open input stream */
+  if ((errno = y4m_read_stream_header (fd_in, &streaminfo)) != Y4M_OK)
+    {
+      mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!\n", y4m_strerr (errno));
+      exit (1);
+    }
+  denoiser.frame.w         = y4m_si_get_width(&streaminfo);
+  denoiser.frame.h         = y4m_si_get_height(&streaminfo);
+  frame_offset             = 32*denoiser.frame.w;
+  if(denoiser.border.w == 0)
+  {
+      denoiser.border.x        = 0;
+      denoiser.border.y        = 0;
+      denoiser.border.w        = denoiser.frame.w;
+      denoiser.border.h        = denoiser.frame.h;
+  }
 
   /* stream is interlaced and shall not be
    * deinterlaced ?
