@@ -238,13 +238,24 @@ int y4m_xtag_addlist(y4m_xtag_list_t *dest, const y4m_xtag_list_t *src)
 void y4m_init_stream_info(y4m_stream_info_t *info)
 {
   if (info == NULL) return;
-  /* initialize info */
+  /* init substructures */
+  y4m_init_xtag_list(&(info->x_tags));
+  /* set defaults */
+  y4m_clear_stream_info(info);
+}
+
+
+void y4m_clear_stream_info(y4m_stream_info_t *info)
+{
+  if (info == NULL) return;
+  /* clear/initialize info */
   info->width = Y4M_UNKNOWN;
   info->height = Y4M_UNKNOWN;
   info->interlace = Y4M_UNKNOWN;
   info->framerate = y4m_fps_UNKNOWN;
   info->sampleaspect = y4m_sar_UNKNOWN;
-  y4m_init_xtag_list(&(info->x_tags));
+  info->framelength = Y4M_UNKNOWN;
+  y4m_xtag_clearlist(&(info->x_tags));
 }
 
 
@@ -317,8 +328,18 @@ y4m_xtag_list_t *y4m_si_xtags(y4m_stream_info_t *si)
 void y4m_init_frame_info(y4m_frame_info_t *info)
 {
   if (info == NULL) return;
-  /* initialize info */
+  /* init substructures */
   y4m_init_xtag_list(&(info->x_tags));
+  /* set defaults */
+  y4m_clear_frame_info(info);
+}
+
+
+void y4m_clear_frame_info(y4m_frame_info_t *info)
+{
+  if (info == NULL) return;
+  /* clear/initialize info */
+  y4m_xtag_clearlist(&(info->x_tags));
 }
 
 
@@ -329,15 +350,15 @@ void y4m_copy_frame_info(y4m_frame_info_t *dest, const y4m_frame_info_t *src)
   y4m_copy_xtag_list(&(dest->x_tags), &(src->x_tags));
 }
 
-y4m_xtag_list_t *y4m_fi_xtags(y4m_frame_info_t *fi)
-{ return &(fi->x_tags); }
-
 void y4m_fini_frame_info(y4m_frame_info_t *info)
 {
   if (info == NULL) return;
   y4m_fini_xtag_list(&(info->x_tags));
 }
 
+
+y4m_xtag_list_t *y4m_fi_xtags(y4m_frame_info_t *fi)
+{ return &(fi->x_tags); }
 
 
 /*************************************************************************
@@ -467,6 +488,8 @@ int y4m_read_stream_header(int fd, y4m_stream_info_t *i)
    int n;
    int err;
 
+  /* start with a clean slate */
+  y4m_clear_stream_info(i);
    /* read the header line */
    for (n = 0, p = line; n < Y4M_LINE_MAX; n++, p++) {
      if (read(fd, p, 1) < 1) 
@@ -534,6 +557,8 @@ int y4m_read_frame_header(int fd, y4m_frame_info_t *i)
   int n;
   ssize_t remain;
   
+  /* start with a clean slate */
+  y4m_clear_frame_info(i);
   /* This is more clever than read_stream_header...
      Try to read "FRAME\n" all at once, and don't try to parse
      if nothing else is there...

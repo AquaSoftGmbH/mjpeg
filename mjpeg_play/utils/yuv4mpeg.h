@@ -260,6 +260,9 @@ void y4m_init_stream_info(y4m_stream_info_t *i);
 /* finalize a stream_info structure */
 void y4m_fini_stream_info(y4m_stream_info_t *i);
 
+/* reset stream_info back to default/unknown values */
+void y4m_clear_stream_info(y4m_stream_info_t *info);
+
 /* make one stream_info into a copy of another */
 void y4m_copy_stream_info(y4m_stream_info_t *dest,
 			  const y4m_stream_info_t *src);
@@ -286,6 +289,9 @@ void y4m_init_frame_info(y4m_frame_info_t *i);
 
 /* finalize a frame_info structure */
 void y4m_fini_frame_info(y4m_frame_info_t *i);
+
+/* reset frame_info back to default/unknown values */
+void y4m_clear_frame_info(y4m_frame_info_t *info);
 
 /* make one frame_info into a copy of another */
 void y4m_copy_frame_info(y4m_frame_info_t *dest,
@@ -327,7 +333,8 @@ ssize_t y4m_write(int fd, const void *buf, size_t len);
 /* parse a string of stream header tags */
 int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i);
 
-/* read a stream header from file descriptor fd */
+/* read a stream header from file descriptor fd
+   (the current contents of stream_info are erased first) */
 int y4m_read_stream_header(int fd, y4m_stream_info_t *i);
 
 /* write a stream header to file descriptor fd */
@@ -344,7 +351,8 @@ int y4m_write_stream_header(int fd, const y4m_stream_info_t *i);
  *
  ************************************************************************/
 
-/* read a frame header from file descriptor fd */
+/* read a frame header from file descriptor fd 
+   (the current contents of frame_info are erased first) */
 int y4m_read_frame_header(int fd, y4m_frame_info_t *i);
 
 /* write a frame header to file descriptor fd */
