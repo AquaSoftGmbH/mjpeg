@@ -239,6 +239,6 @@ const uint8_t dummy_svcd_scan_data[14]
 ;
 
 
-const uint8_t map_non_linear_mquant[113];
-const uint8_t non_linear_mquant_table[32];
+extern const uint8_t map_non_linear_mquant[113];
+extern const uint8_t non_linear_mquant_table[32];
 
