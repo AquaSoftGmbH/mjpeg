@@ -5,46 +5,40 @@ The lavtools stand for "Linux/Audio video tools" and are released
 under the General GNU Public Licence, see the COPYING file for
 details.
 
-Required Software
+Recomended Software
 -----------------
 
 ***
-*** Software you *must* have installed
+*** Software you should have installed 
 ***
+*** Note: Not all programms work on every platform
+***
+
+0) automake - Tool for automatically generating GNU style Makefile.in's
+Here the version 1.5 is needed
+Look at: http://www.gnu.org/software/automake
 
 1) The GLib library - http://www.gtk.org
 (libglib .... is included in the standard distributions)
 
+Version 1.2.0 or newer. 
 
-2) The SDL library -  http://www.libsdl.org/
-   I used SDL 1.1.6 for development, please tell me if the 
-   new SDL versions won't compile with this software ! 
+2) The GTKMM libary - http://www.iki.fi/terop/gtk/gtk--.html
+Aviable with the most distributions.
+
+Is a C++ wrapper for GTK, needed for glav
+
+3) The SDL library -  http://www.libsdl.org/
+   I used SDL 1.1.6 for development (minimal SDL version 1.1.3) 
 
 	Some rather tricky and difficult to repeat problems centred around the
 	use of pre-compiled versions of this library.  If software
 	playback crashes out on you immediately try compiling and
 	installing SDL from source-code.
 
-3) A reasonably up-to-date installation of the "xforms" library.  For
-RedHat systems the xforms-0.88.1-1 rpm's (you need the -devel too) on
-the RedHat rpm mirrors are known to work.
-
-Irritatingly some older installation make the header "X11/forms.h" whilst
-more recent ones use "forms.h".  If compilation stops with one of these
-files missing make sure you have forms installed.  The 0.88.1-1 rpm's
-for RedHat seem to work fine.
-
-Warning: there's a bug in the Debian testing that means attempting to
-install the xforms .deb tends to force dselect to deselect XFree86-4.0.x!
-Be careful!
-
-Hopefully in the next release xforms will be replaced by a more stable
-library like gtk+.
-
-
 4) The MMX enhanced jpeg library from the same place you got this package.
 
-http://download.sourceforge.net/mjpeg/jpeg-mmx-0.1.3.tar.gz
+http://sourceforge.net/project/showfiles.php?group_id=5776
 
 The configure scripts look for this in same parent directory as the
 directory containing this file, /usr/local/src/jpeg-mmx by default.
@@ -58,9 +52,7 @@ do. This header file is needed so that the colour-space conversion
 routines to be used by the jpeg library can be correctly set for the
 state of the X display.
 
-
 Compile: 
-
 ./configure
 make
 
@@ -70,59 +62,39 @@ The configure script for mjpegtool looks for the library in
 /usr/local/src/jpeg-mmx by default.  If you unpacked and compiled it 
 elsewhere use the --jpeg-mmx flag to tell it where.
 
-
-5) The libmovtar library for handling audio/video streams in "movtar" format.
-Very handy for hacking around, moving between formats, and experimentation.
-
-
-http://download.sourceforge.net/mjpeg/libmovtar-0.1.2.tar.gz
-
-Compile and install: 
-
-./configure
-make
-make install     
-
-You'll need to be able to write to /usr/local/lib and /usr/local/include
-for the install.
-
-
-6) A recent version of the "nasm" assembler for compiling the pure
-assembly language routines in the MPEG encoder.
-
 ***
 ***
 *** Software you'll find useful
 ***
 ***
 
-1) Quicktime4Linux - http://heroine.linuxave.net/quicktime.html
+1)Quicktime4Linux - http://heroine.linuxave.net/quicktime.html
 
 If you want to be able to read/write/edit video in Quicktime
-format you'll need Adam William's Quicktime librery.
+format you'll need Adam William's Quicktime librery. 
+This is not the original Quicktime librery it it patched to fit 
+better into the mjpegtools.
 
-The configure scripts look for this
-/usr/local/src/quicktime.4linux-1.3 You can specify another directory
+The configure scripts look for this:
+/usr/local/src/quicktime4linux-1.4 
+/usr/local/src/quicktime4linux-1.3 
+/usr/local/src/quicktime
+/usr/src/quicktime
+
+You can specify another directory
 using the --with-quicktime flag to the ./configure script.
 
 IMPORTANT NOTE:  Although you can compile mjpegtools with the stock
-1.3 release this will prevent effective use of the MMX JPEG library
+1.4 release this will prevent effective use of the MMX JPEG library
 for software playback.  This is because Quicktime4linux includes its
 own version of the JPEG library.   To make full use of the JPEG library
 you need to prevent Quicktime4linux linking in its own JPEG library.
 A (tiny) patch to the Quicktime4linux source that does this can be found
 
-http://download.sourceforge.net/mjpeg/quicktime4linux-1.3.patch
-
-If you want to make full use of the MMX JPEG lib apply this patch with 
-
-patch < quicktime4linux-1.3.patch
-
-before building quicktime4linux with
+http://sourceforge.net/project/showfiles.php?group_id=5776
 
 ./configure
 make
-
 
 2) The "xawtv" Package for Linux TV
 
@@ -143,7 +115,6 @@ versions.
 
 (www.freshmeat.net is also a good source for all kind of Linux soft !)
 
-
 4) If you want to transcode MPEG-2 video from DTV or DVD formats
 you'll want to get the ac3dec and mpeg2dec decoder tools with the
 appropriate output plugin's for producing streamed wav and lavtools
@@ -153,7 +124,37 @@ their main cvs branches / distributions.  As a stop-gap a couple of
 working snapshots in tarball form can be found in the ftp files
 area of mjpeg.sourceforge.net.
 
-ftp://mjpeg.sourceforge.net/pub/mjpeg
+http://sourceforge.net/project/showfiles.php?group_id=5776
+
+5) The libmovtar library for handling audio/video streams in "movtar" format.
+Very handy for hacking around, moving between formats, and experimentation.
+
+http://sourceforge.net/project/showfiles.php?group_id=5776
+
+Compile and install:
+
+./configure
+make
+make install
+
+You'll need to be able to write to /usr/local/lib and /usr/local/include
+for the install.
+
+
+6) A recent version of the "nasm" assembler for compiling the pure
+assembly language routines in the MPEG encoder.
+
+7) libDV - digital video supoort (IEEE 1394 (a.k.a. FireWire or i.Link))
+
+http://libdv.sourceforge.net/
+
+Needed if you want to capture from a IEEE 1394 device (camcorder).
+
+8) AVIFILE - divx encoding support
+
+http://avifile.sourceforge.net/
+
+Needed for lav2divx, encoding from lav videos to divx.
 
 ***
 ***
