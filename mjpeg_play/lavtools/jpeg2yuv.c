@@ -93,7 +93,7 @@ static void usage(char *prog)
 	  "  -v num        verbosity (0,1,2)                  [1]\n"
 	  "  -b framenum   starting frame number              [0]\n"
 	  "  -f framerate  framerate for output stream (fps)     \n"
-          "  -a sar        output sample aspect ratio         [1:1]\n" 
+          "  -A sar        output sample aspect ratio         [1:1]\n" 
 	  "  -n numframes  number of frames to process        [-1 = all]\n"
 	  "  -j {1}%%{2}d{3} Read JPEG frames with the name components as follows:\n"
 	  "               {1} JPEG filename prefix (e g rendered_ )\n"
@@ -150,11 +150,11 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
 
   /* parse options */
   for (;;) {
-    if (-1 == (c = getopt(argc, argv, "I:hv:L:b:j:n:f:l:R:a:")))
+    if (-1 == (c = getopt(argc, argv, "I:hv:L:b:j:n:f:l:R:A:")))
       break;
     switch (c) {
 
-    case 'a':
+    case 'A':
       sts = y4m_parse_ratio(&param->aspect_ratio, optarg);
       if (sts != Y4M_OK)
          mjpeg_error_exit1("Invalid aspect ratio: %s", optarg);

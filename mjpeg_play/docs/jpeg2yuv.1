@@ -11,6 +11,8 @@ jpeg2yuv \- Convert jpeg images to the yuv format.
 .IR num ]
 .RB [ \-I
 .IR num ]
+.RB [ \-A
+.IR ratio ]
 .RB [ \-L
 .IR num ]
 .RB [ \-n 
@@ -36,6 +38,9 @@ Frame offset:  skip output of the first 'num' frames.  (default: 0)
 .TP 5
 .BI \-f " num"
 Set the frame rate of stream accepts the same numbers.  No default, this option has to be specified.
+.TP 5
+.BI \-A " ratio"
+Sample aspect ratio.  Default is square pixels (1:1)
 .TP 5
 .BI \-I " num"
 interlacing mode:
