@@ -36,7 +36,7 @@ int main(int argc, char **argv)
 	int	thresh_percentage = 10, highpass = 48, luma_center = 28;
 	int	luma_radius = 4, u_chroma_center = 128, u_chroma_radius = 4;
 	int	v_chroma_center = 128, v_chroma_radius = 4;
-	int	pixel_thresh, num_dark;
+	int	pixel_thresh, num_dark, num_replaced;
         u_char  *yuv[3];
         y4m_stream_info_t istream, ostream;
         y4m_frame_info_t iframe;
@@ -182,7 +182,7 @@ gotenough:
  * Frame exceeds the threshold for number of dark pixels.  Go thru the
  * data and replace the pixels with the 'center' values.
 */
-		for	(i = 0; i < height; i++)
+		for	(num_replaced = 0, i = 0; i < height; i++)
 			{
 			for	(j = 0; j < width; j++)
 				{
@@ -209,9 +209,11 @@ gotenough:
 
 					yuv[1][(i/2) * (width/2) + (j/2)] = u_chroma_center;
 					yuv[2][(i/2) * (width/2) + (j/2)] = v_chroma_center;
+					num_replaced++;
 					}
 				}
 			}
+		mjpeg_info("frame %d replaced %d", frames, num_replaced);
 outputframe:
                 y4m_write_frame(fileno(stdout), &ostream, &iframe, yuv);
                 }
