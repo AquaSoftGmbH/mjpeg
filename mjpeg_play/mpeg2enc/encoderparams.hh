@@ -140,6 +140,7 @@ public:
 	bool ignore_constraints;	/* Disabled conformance checking of
 								 * hor_size, vert_size and
 								 * samp_rate */
+    bool dualprime;             /* Use dual prime motion compensation */
 			
 
 	bool prog_seq; /* progressive sequence */

@@ -72,12 +72,13 @@ MPEG2EncOptions::MPEG2EncOptions()
     vbv_buffer_still_size = 0;
     force_interlacing = Y4M_UNKNOWN;
     input_interlacing = Y4M_UNKNOWN;
-    hack_svcd_hds_bug = 1;
-    hack_altscan_bug = 0;
     mpeg2_dc_prec = 1;
     ignore_constraints = 0;
     unit_coeff_elim = 0;
 	verbose = 1;
+    hack_svcd_hds_bug = 1;
+    hack_altscan_bug = 0;
+    hack_nodualprime = 0;
 };
 
 

@@ -64,6 +64,8 @@ mpeg2enc \- MPEG-1/2 encoder
 .IR -40..40 ]
 .RB [ -R | --b-per-refframe
 .IR 0..2 ]
+.RB [ --no-altscan-mpeg2 ]
+.RB [ --no-dualprime-mpeg2 ]
 .RB [ -? | --help ]
 .B -o|--output
 .I filename
@@ -301,6 +303,14 @@ play at 4:3 aspect ratio.
 .BR --no-constraints
 .PP
 This flag deactivates all constraints for the maximum video samplerate or video resolution. Its purpose is to allow the encoding of unusual resolutions of MPEG-video (e.g. 2200 x 576, 160 degrees FOV VR-theatre MPEG movies), but should be used with care: It can possible circumvent a number of other security checks, and untested settings can cause mpeg2enc to crash in this mode. 
+.PP
+.BR --no-altscan-mpeg2
+.PP
+This flag deactivates the use of the 'alternate' macroblock scan pattern for MPEG2 encoding.  Normally this pattern is used but a few elderly software decoders had bugs relating to this feature.  You should never need to use this flag.
+.PP
+.BR --no-dualprime-mpeg2
+.PP
+MPEG-2 supports a special motion compensation mode for P-frame only streams that can somewhat improve compression.  A number of software plays do not support this mode (which means they're not really MPEG-2 or even DVD players!).  If you want to use such players (e.g. ogle) you need to turn on this flag.
 .PP
 .BR -z|--playback-field-order b|t
 .PP

@@ -863,7 +863,7 @@ void MacroBlock::FrameMEs()
 
             best_of_kind_me.push_back( me );
 
-			if ( eparams.M==1 &&
+			if ( eparams.dualprime &&
                  dpframe_estimate(picture,oldrefimg[0],&ssmb,
                                   i,j>>1,
                                   best_fieldmvs,
@@ -1110,7 +1110,7 @@ void MacroBlock::FieldME()
 		dmc8f = field8uf_mc.sad + field8lf_mc.sad;
 		dctl_dp = 100000000;		/* Suppress compiler warning */
 
-		if ( eparams.M==1 && !picture.ipflag)  /* generic condition which permits Dual Prime */
+		if ( eparams.dualprime && !picture.ipflag)  /* No DP on IP field */
 		{
 			dpfield_estimate(picture,
 							 topref,botref,ssmb.mb,i,j,

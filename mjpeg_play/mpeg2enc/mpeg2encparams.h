@@ -67,6 +67,7 @@ struct MPEG2EncParams
     int input_interlacing;
     int hack_svcd_hds_bug;
     int hack_altscan_bug;
+    int hack_nodualprime;
     int mpeg2_dc_prec;
     int ignore_constraints;
     int unit_coeff_elim;
