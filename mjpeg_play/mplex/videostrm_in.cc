@@ -76,8 +76,7 @@ void VideoStream::ScanFirstSeqHeader()
 
 
 
-void VideoStream::Init ( const int stream_num,
-						 const char *video_file )
+void VideoStream::Init ( const int stream_num )
 {
 	mjpeg_debug( "SETTING video buffer to %d\n", muxinto.video_buffer_size );
 	MuxStream::Init( VIDEO_STR_0+stream_num,
@@ -86,11 +85,13 @@ void VideoStream::Init ( const int stream_num,
 					 0,  // Zero stuffing
 					 muxinto.buffers_in_video,
 					 muxinto.always_buffers_in_video);
-    mjpeg_info( "Scanning Video stream %d for access units information.\n",
-				 stream_num);
+    mjpeg_info( "Scanning for header info: Video stream %02x (%s) \n",
+                VIDEO_STR_0+stream_num,
+                bs.filename
+                );
 	InitAUbuffer();
 
-	InputStream::Init( video_file, 4*1024*1024 );
+	SetBufSize( 4*1024*1024 );
 	ScanFirstSeqHeader();
 
 	/* Skip to the end of the 1st AU (*2nd* Picture start!)

@@ -54,13 +54,14 @@ private:
 class StillsStream : public VideoStream
 {
 public:
-	StillsStream(OutputStream &into, FrameIntervals *frame_ints) :
-		VideoStream( into ),
+	StillsStream( IBitStream &ibs, 
+                  OutputStream &into, FrameIntervals *frame_ints) :
+		VideoStream( ibs, into ),
 		current_PTS(0LL),
 		current_DTS(0LL),
 		intervals( frame_ints )
 		{}
-	void Init( const char *input_file);
+	void Init( );
 private:
 	virtual void NextDTSPTS( clockticks &DTS, clockticks &PTS );
 	clockticks current_PTS;
@@ -75,8 +76,9 @@ private:
 class VCDStillsStream : public StillsStream
 {
 public:
-	VCDStillsStream(OutputStream &into, FrameIntervals *frame_ints) :
-		StillsStream( into, frame_ints ),
+	VCDStillsStream( IBitStream &ibs,  
+                     OutputStream &into, FrameIntervals *frame_ints) :
+		StillsStream( ibs, into, frame_ints ),
 		sibling( 0 )
 		{}
 	

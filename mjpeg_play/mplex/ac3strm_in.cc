@@ -60,8 +60,8 @@ static const unsigned int ac3_frequency[4] =
 { 48000, 44100, 32000, 0};
 
 
-AC3Stream::AC3Stream(OutputStream &into) : 
-	AudioStream( into )
+AC3Stream::AC3Stream(IBitStream &ibs, OutputStream &into) : 
+	AudioStream( ibs, into )
 {
 }
 
@@ -78,8 +78,7 @@ bool AC3Stream::Probe(IBitStream &bs )
  *************************************************************************/
 
 
-void AC3Stream::Init ( const int stream_num, 
-					   const char *audio_file)
+void AC3Stream::Init ( const int stream_num)
 
 {
     unsigned int i;
@@ -95,10 +94,12 @@ void AC3Stream::Init ( const int stream_num,
 					 muxinto.buffers_in_audio,
 					 muxinto.always_buffers_in_audio
 		);
-    mjpeg_info ("Scanning Audio stream for access units information. \n");
+    mjpeg_info ("Scanning for header info: Audio stream %02x (%s)\n",
+                AUDIO_STR_0 + stream_num,
+                bs.filename
+                );
 
 	InitAUbuffer();
-	InputStream::Init( audio_file, 512*1024 );
 	
     if (bs.getbits(16)==AC3_SYNCWORD)
     {

@@ -27,13 +27,13 @@
 #include "interact.hh"
 #include "outputstream.hh"
 
-void StillsStream::Init ( const char *video_file )
+void StillsStream::Init ( )
 {
 	int stream_id;
 	int buffer_size;
-    mjpeg_info( "Scanning Stills stream for access units information.\n" );
+
+	SetBufSize( 4*1024*1024 );
 	InitAUbuffer();
-	InputStream::Init( video_file );
 	ScanFirstSeqHeader();
 
 	mjpeg_debug( "SETTING video buffer to %d\n", muxinto.video_buffer_size );
@@ -44,7 +44,7 @@ void StillsStream::Init ( const char *video_file )
 		{
 			stream_id = VIDEO_STR_0+2 ;
 			buffer_size = vbv_buffer_size*2048;
-			mjpeg_info( "Stream %02x: high-resolution VCD stills %d KB each\n", 
+			mjpeg_info( "Stills Stream %02x: high-resolution VCD stills %d KB each\n", 
 						stream_id,
 						buffer_size );
 			if( buffer_size < 46*1024 )
@@ -55,7 +55,7 @@ void StillsStream::Init ( const char *video_file )
 		{
 			stream_id = VIDEO_STR_0+1 ;
 			buffer_size = 46*1024;
-			mjpeg_info( "Stream %02x: normal VCD stills\n", stream_id );
+			mjpeg_info( "Stills Stream %02x: normal VCD stills\n", stream_id );
 		}
 		break;
 	case MPEG_FORMAT_SVCD_STILL :
@@ -63,14 +63,14 @@ void StillsStream::Init ( const char *video_file )
 		{
 			stream_id = VIDEO_STR_0+1;
 			buffer_size = 230*1024;
-			mjpeg_info( "Stream %d: high-resolution SVCD stills.\n", 
+			mjpeg_info( "Stills Stream %02x: high-resolution SVCD stills.\n", 
 						stream_id );
 		}
 		else
 		{
 			stream_id = VIDEO_STR_0+1 ;
 			buffer_size = 230*1024;
-			mjpeg_info( "Stream %d: normal-resolution SVCD stills.\n", stream_id );
+			mjpeg_info( "Stills Stream %02x: normal-resolution SVCD stills.\n", stream_id );
 		}
 		break;
 	defaut:

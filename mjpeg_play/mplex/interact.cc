@@ -196,53 +196,54 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 
 void check_files (int argc,
 				  char* argv[],
-                  vector<char *> &mpa_files,
-                  vector<char *> &ac3_files,
-				  vector<char *> &video_files
+                  vector<IBitStream *> &mpa_files,
+                  vector<IBitStream *> &ac3_files,
+				  vector<IBitStream *> &video_files
 	)
 {
-    IBitStream bs;
+    IBitStream *bs;
     BitStreamUndo undo;
     int i;
     bool bad_file = false;
     
 	for( i = 1; i < argc; ++i )
     {
-        bs.open( argv[i] );
-        bs.prepareundo( undo);
-        if( MPAStream::Probe( bs ) )
+        bs = new IBitStream;
+        bs->open( argv[i] );
+        // Remember the streams initial state...
+        bs->prepareundo( undo);
+        if( MPAStream::Probe( *bs ) )
         {
             mjpeg_info ("File %s looks like an MPEG Audio stream.\n" ,argv[i]);
-            mpa_files.push_back( argv[i] );
-            goto recognised;
+            mpa_files.push_back( bs );
+            continue;
         }
 
-        bs.undochanges( undo);
-        if( AC3Stream::Probe( bs ) )
+        bs->undochanges( undo);
+        if( AC3Stream::Probe( *bs ) )
         {
             mjpeg_info ("File %s looks like an AC3 Audio stream.\n",
                         argv[i]);
-            ac3_files.push_back( argv[i] );
-            goto recognised;
+            ac3_files.push_back( bs );
+            continue;
         }
-        bs.undochanges( undo);
-        if( VideoStream::Probe( bs ) )
+        bs->undochanges( undo);
+        if( VideoStream::Probe( *bs ) )
         {
             mjpeg_info ("File %s looks like an MPEG Video stream.\n",
                         argv[i]);
-            video_files.push_back( argv[i] );
-            goto recognised;
+            video_files.push_back( bs );
+            continue;
         }
-
-        mjpeg_error ("Files %s unrecogniseable!\n", argv[i]);
-
-recognised:
-        bs.close();
+        bad_file = true;
+        bs->close();
+        delete bs;
+        mjpeg_error ("File %s unrecogniseable!\n", argv[i]);
     }
     
     if( bad_file )
     {
-        mjpeg_error_exit1( "Bad file(s)... exiting.\n");
+        mjpeg_error_exit1( "Unrecogniseable file(s)... exiting.\n");
     }
         
 }

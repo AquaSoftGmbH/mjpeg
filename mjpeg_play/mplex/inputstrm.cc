@@ -67,9 +67,10 @@ MuxStream::BufferSizeCode()
 
 
 
-ElementaryStream::ElementaryStream( OutputStream &into, 
+ElementaryStream::ElementaryStream( IBitStream &ibs,
+                                    OutputStream &into, 
 									stream_kind _kind) : 
-//	MuxStream( stream_id,  buf_scale, buf_size, zero_stuffing ),
+    InputStream( ibs ),
 	muxinto( into ),
 	kind(_kind),
     buffer_min(INT_MAX),

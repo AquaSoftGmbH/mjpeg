@@ -17,7 +17,6 @@ public:
 	fpos_t actpos;
 	bitcount_t totbits;
 	bitcount_t buffer_start;
-	// TODO THis should be replaced with something based on bit-rate...
 	bitcount_t readpos;
 	uint8_t *bfr;
 	unsigned int bfr_size;
@@ -30,7 +29,8 @@ class BitStream : public BitStreamUndo
 {
 public:
 	FILE *fileh;
-	static const unsigned int BUFFER_SIZE = 2*1024 * 1024;
+	static const unsigned int BUFFER_SIZE = 512 * 1024;
+	const char *filename;
 public:
 	BitStream();
 	~BitStream();
@@ -49,6 +49,7 @@ public:
 class IBitStream : public BitStream {
 public:
 	void open( char *bs_filename, unsigned int buf_size = BUFFER_SIZE);
+	void SetBufSize( unsigned int buf_size);
 	void close();
 	uint32_t get1bit();
 	uint32_t getbits(int N);

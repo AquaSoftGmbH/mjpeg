@@ -44,7 +44,8 @@
 class InputStream
 {
 public:
-	InputStream() :
+	InputStream( IBitStream &istream ) :
+        bs( istream ),
 		eoscan(false),
 		stream_length(0),
 		last_buffered_AU(0),
@@ -52,20 +53,15 @@ public:
 		old_frames(0)
 		{}
 
-	void Init( const char *file_name )
+	void SetBufSize( unsigned int buf_size )
 		{
-			bs.open( const_cast<char *>(file_name) );
-		}
-
-	void Init( const char *file_name, int buf_size )
-		{
-			bs.open( const_cast<char *>(file_name), buf_size );
+			bs.SetBufSize( buf_size );
 		}
 
     bitcount_t stream_length;
 protected:
 	off_t      file_length;
-    IBitStream bs;
+    IBitStream &bs;
 	bool eoscan;
 	
 	unsigned int last_buffered_AU;		// decode seq num of last buffered frame + 1
@@ -155,13 +151,10 @@ public:
 class ElementaryStream : public InputStream,
 						 public MuxStream
 {
-protected:
-	virtual void FillAUbuffer(unsigned int frames_to_buffer) = 0;
-	virtual void InitAUbuffer() = 0;
-	AUStream aunits;
 public:
 	enum stream_kind { audio, video, dummy };
-	ElementaryStream( OutputStream &into, 
+	ElementaryStream( IBitStream &ibs,
+                      OutputStream &into, 
 					  stream_kind kind
 					  );
 	virtual void Close() = 0;
@@ -195,6 +188,10 @@ public:
 	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
 
 
+protected:
+	virtual void FillAUbuffer(unsigned int frames_to_buffer) = 0;
+	virtual void InitAUbuffer() = 0;
+	AUStream aunits;
 public:  // TODO should go protected once encapsulation complete
 	     // N.b. currently length=0 is used to indicate an ended
 	     // stream.

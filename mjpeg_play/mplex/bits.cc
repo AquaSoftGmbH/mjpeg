@@ -32,6 +32,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/param.h>
+#include <assert.h>
 #include "mjpeg_logging.h"
 #include "bits.hh"
 
@@ -47,6 +48,7 @@ BitStream::BitStream() :
 	eobs = true;
 	readpos =0LL;
 	bfr = 0;
+	bfr_size = 0;
 }
 
 BitStream::~BitStream()
@@ -57,36 +59,38 @@ BitStream::~BitStream()
 /* initialize buffer, call once before first putbits or alignbits */
 void OBitStream::open(char *bs_filename, unsigned int buf_size)
 {
-  if ((fileh = fopen(bs_filename, "wb")) == NULL)
-  {
-	  mjpeg_error_exit1( "Unable to open file %s for writing; %s\n", 
-						 bs_filename, strerror(errno));
-  }
-  bfr_size = buf_size;
-  if( bfr == 0 )
-	  bfr = new uint8_t[buf_size];
-  else
-  {
-	  delete bfr;
-	  bfr = new uint8_t[buf_size];
-  }
-  // Save multiple buffering...
-  setvbuf(fileh, 0, _IONBF, 0 );
-  bitidx = 8;
-  byteidx = 0;
-  totbits = 0LL;
-  outbyte = 0;
+	if ((fileh = fopen(bs_filename, "wb")) == NULL)
+	{
+		mjpeg_error_exit1( "Unable to open file %s for writing; %s\n", 
+						   bs_filename, strerror(errno));
+	}
+	filename = strcpy( new char[strlen(bs_filename)+1], bs_filename );
+	bfr_size = buf_size;
+	if( bfr == 0 )
+		bfr = new uint8_t[buf_size];
+	else
+	{
+		delete bfr;
+		bfr = new uint8_t[buf_size];
+	}
+	// Save multiple buffering...
+	setvbuf(fileh, 0, _IONBF, 0 );
+	bitidx = 8;
+	byteidx = 0;
+	totbits = 0LL;
+	outbyte = 0;
 }
 
 void OBitStream::close()
 {
-  if (fileh)
-  {
-    if (byteidx != 0)
-      fwrite(bfr, sizeof(uint8_t), byteidx, fileh);
-    fclose(fileh);
-    fileh = NULL;
-  }
+	if (fileh)
+	{
+		if (byteidx != 0)
+			fwrite(bfr, sizeof(uint8_t), byteidx, fileh);
+		fclose(fileh);
+		delete filename;
+		fileh = NULL;
+	}
 }
 
 void OBitStream::putbyte()
@@ -104,41 +108,41 @@ void OBitStream::putbyte()
 /* write rightmost n (0<=n<=32) bits of val to outfile */
 void OBitStream::putbits(int val, int n)
 {
-  int i;
-  unsigned int mask;
+	int i;
+	unsigned int mask;
 
-  mask = 1 << (n - 1); /* selects first (leftmost) bit */
-  for (i = 0; i < n; i++)
-  {
-    totbits += 1;
-    outbyte <<= 1;
-    if (val & mask)
-      outbyte |= 1;
-    mask >>= 1; /* select next bit */
-    bitidx--;
-    if (bitidx == 0) /* 8 bit buffer full */
-      putbyte();
-  }
+	mask = 1 << (n - 1); /* selects first (leftmost) bit */
+	for (i = 0; i < n; i++)
+	{
+		totbits += 1;
+		outbyte <<= 1;
+		if (val & mask)
+			outbyte |= 1;
+		mask >>= 1; /* select next bit */
+		bitidx--;
+		if (bitidx == 0) /* 8 bit buffer full */
+			putbyte();
+	}
 }
 
 /* write rightmost bit of val to outfile */
 void OBitStream::put1bit(int val)
 {
-  totbits += 1;
-  outbyte <<= 1;
-  if (val & 0x1)
-    outbyte |= 1;
-  bitidx--;
-  if (bitidx == 0) /* 8 bit buffer full */
-    putbyte();
+	totbits += 1;
+	outbyte <<= 1;
+	if (val & 0x1)
+		outbyte |= 1;
+	bitidx--;
+	if (bitidx == 0) /* 8 bit buffer full */
+		putbyte();
 }
 
 
 /* zero bit stuffing to next byte boundary (5.2.3, 6.2.1) */
 void OBitStream::alignbits()
 {
-  if (bitidx != 8)
-    putbits( 0, bitidx);
+	if (bitidx != 8)
+		putbits( 0, bitidx);
 }
 
 
@@ -198,7 +202,7 @@ void IBitStream::flush(bitcount_t flush_upto )
 */
 void IBitStream::prepareundo( BitStreamUndo &undo)
 {
-  undo = *(static_cast<BitStreamUndo*>(this));
+	undo = *(static_cast<BitStreamUndo*>(this));
 }
 
 
@@ -237,42 +241,61 @@ unsigned int IBitStream::read_buffered_bytes(uint8_t *dst, unsigned int length)
 void IBitStream::open( char *bs_filename, unsigned int buf_size)
 {
 
-  if ((fileh = fopen(bs_filename, "rb")) == NULL)
-  {
-	  mjpeg_error_exit1( "Unable to open file %s for reading.\n", bs_filename);
-  }
+	if ((fileh = fopen(bs_filename, "rb")) == NULL)
+	{
+		mjpeg_error_exit1( "Unable to open file %s for reading.\n", bs_filename);
+	}
+	filename = strcpy( new char[strlen(bs_filename)+1], bs_filename );
 
-  bfr_size = buf_size;
-  if( bfr == NULL )
-	  bfr = new uint8_t[buf_size];
-  else
-  {
-	  delete bfr;
-	  bfr = new uint8_t[buf_size];
-  }
+	bfr_size = buf_size;
+	if( bfr == NULL )
+		bfr = new uint8_t[buf_size];
+	else
+	{
+		delete bfr;
+		bfr = new uint8_t[buf_size];
+	}
 
-  byteidx = 0;
-  bitidx = 8;
-  totbits = 0LL;
-  bufcount = 0;
-  eobs = false;
-  if (!refill_buffer())
-  {
-    if (bufcount==0)
-    {
-		mjpeg_error_exit1( "Unable to read from file %s.\n", bs_filename);
-    }
-  }
+	byteidx = 0;
+	bitidx = 8;
+	totbits = 0LL;
+	bufcount = 0;
+	eobs = false;
+	if (!refill_buffer())
+	{
+		if (bufcount==0)
+		{
+			mjpeg_error_exit1( "Unable to read from file %s.\n", bs_filename);
+		}
+	}
 }
 
 
+/* open the device to read the bit stream from it */
+void IBitStream::SetBufSize( unsigned int new_buf_size)
+{
+	assert( bfr != NULL ); // Must be open first!
+	assert( new_buf_size >= bfr_size );	// Can only be increased in size...
+    if( bfr_size != new_buf_size )
+	{
+		uint8_t *new_buf = new uint8_t[new_buf_size];
+		memcpy( new_buf, bfr, static_cast<size_t>(bfr_size) );
+		delete bfr;
+		bfr_size = new_buf_size;
+		bfr = new_buf;
+	}
+
+}
 
 /*close the device containing the bit stream after a read process*/
 void IBitStream::close()
 {
-  if (fileh)
-    fclose(fileh);
-  fileh = NULL;
+	if (fileh)
+	{
+		fclose(fileh);
+		delete filename;
+	}
+	fileh = NULL;
 }
 
 
@@ -283,111 +306,120 @@ uint8_t IBitStream::masks[8]={0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80};
 /*read 1 bit from the bit stream */
 uint32_t IBitStream::get1bit()
 {
-  unsigned int bit;
+	unsigned int bit;
 
-  if (eobs)
-    return 0;
+	if (eobs)
+		return 0;
 
-  bit = (bfr[byteidx] & masks[bitidx - 1]) >> (bitidx - 1);
-  totbits++;
-  bitidx--;
-  if (!bitidx)
-  {
-    bitidx = 8;
-    byteidx++;
-    if (byteidx == bufcount)
-    {
-		unsigned int org_bufcount=bufcount;
-		refill_buffer();
-    }
-  }
-
-  return bit;
-}
-
-/*read N bits from the bit stream */
-uint32_t IBitStream::getbits(int N)
-{
-  uint32_t val = 0;
-  int i = N;
-  unsigned int j;
-
-  // Optimize: we are on byte boundary and want to read multiple of bytes!
-  if ((bitidx == 8) && ((N & 7) == 0))
-  {
-    i = N >> 3;
-    while (i > 0)
-    {
-      if (eobs)
-        return 0;
-      val = (val << 8) | bfr[byteidx];
-      byteidx++;
-      totbits += 8;
-	  if (byteidx == bufcount)
-	  {
-		  unsigned int org_bufcount=bufcount;
-		  refill_buffer();
-	  }
-      i--;
-    }
-  }
-  else
-  {
-    while (i > 0)
-    {
-      if (eobs)
-        return 0;
-
-      j = (bfr[byteidx] & masks[bitidx - 1]) >> (bitidx - 1);
-      totbits++;
-      bitidx--;
-      if (!bitidx)
-      {
-        bitidx = 8;
-        byteidx++;
+	bit = (bfr[byteidx] & masks[bitidx - 1]) >> (bitidx - 1);
+	totbits++;
+	bitidx--;
+	if (!bitidx)
+	{
+		bitidx = 8;
+		byteidx++;
 		if (byteidx == bufcount)
 		{
 			unsigned int org_bufcount=bufcount;
 			refill_buffer();
 		}
-      }
-      val = (val << 1) | j;
-      i--;
-    }
-  }
-  return val;
+	}
+
+	return bit;
+}
+
+/*read N bits from the bit stream */
+uint32_t IBitStream::getbits(int N)
+{
+	uint32_t val = 0;
+	int i = N;
+	unsigned int j;
+
+	// Optimize: we are on byte boundary and want to read multiple of bytes!
+	if ((bitidx == 8) && ((N & 7) == 0))
+	{
+		i = N >> 3;
+		while (i > 0)
+		{
+			if (eobs)
+				return 0;
+			val = (val << 8) | bfr[byteidx];
+			byteidx++;
+			totbits += 8;
+			if (byteidx == bufcount)
+			{
+				unsigned int org_bufcount=bufcount;
+				refill_buffer();
+			}
+			i--;
+		}
+	}
+	else
+	{
+		while (i > 0)
+		{
+			if (eobs)
+				return 0;
+
+			j = (bfr[byteidx] & masks[bitidx - 1]) >> (bitidx - 1);
+			totbits++;
+			bitidx--;
+			if (!bitidx)
+			{
+				bitidx = 8;
+				byteidx++;
+				if (byteidx == bufcount)
+				{
+					unsigned int org_bufcount=bufcount;
+					refill_buffer();
+				}
+			}
+			val = (val << 1) | j;
+			i--;
+		}
+	}
+	return val;
 }
 
 
 /* This function seeks for a byte aligned sync word (max 32 bits) in the bit stream and
-  places the bit stream pointer right after the sync.
-  This function returns 1 if the sync was found otherwise it returns 0  */
+   places the bit stream pointer right after the sync.
+   This function returns 1 if the sync was found otherwise it returns 0  */
 
 bool IBitStream::seek_sync(uint32_t sync, int N, int lim)
 {
-  uint32_t val, val1;
-  uint32_t maxi = ((1U<<N)-1); /* pow(2.0, (double)N) - 1 */;
-  if( maxi == 0 )
-  {
-	  maxi = 0xffffffff;
-  }
-  while (bitidx != 8)
-  {
-    get1bit();
-  }
+	uint32_t val, val1;
+	uint32_t maxi = ((1U<<N)-1); /* pow(2.0, (double)N) - 1 */;
+	if( maxi == 0 )
+	{
+		maxi = 0xffffffff;
+	}
+	while (bitidx != 8)
+	{
+		get1bit();
+	}
 
-  val = getbits(N);
-  if( eobs )
-  	return false;
-  while ((val & maxi) != sync && --lim)
-  {
-    val <<= 8;
-    val1 = getbits( 8 );
-    val |= val1;
-    if( eobs )
-    	return false;
-  }
+	val = getbits(N);
+	if( eobs )
+		return false;
+	while ((val & maxi) != sync && --lim)
+	{
+		val <<= 8;
+		val1 = getbits( 8 );
+		val |= val1;
+		if( eobs )
+			return false;
+	}
   
-  return (!!lim);
+	return (!!lim);
 }
 
+
+
+/* 
+ * Local variables:
+ *  c-file-style: "stroustrup"
+ *  tab-width: 4
+ *  indent-tabs-mode: nil
+ * End:
+ */

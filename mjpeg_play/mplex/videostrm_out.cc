@@ -28,8 +28,8 @@
 #include "outputstream.hh"
 
 
-VideoStream::VideoStream(OutputStream &into )	:
-	ElementaryStream(into, ElementaryStream::video ),
+VideoStream::VideoStream(IBitStream &ibs, OutputStream &into )	:
+	ElementaryStream( ibs, into, ElementaryStream::video ),
 	num_sequence(0),
 	num_seq_end(0),
 	num_pictures(0),

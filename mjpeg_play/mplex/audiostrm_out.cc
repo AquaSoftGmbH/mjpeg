@@ -29,8 +29,8 @@
 
 
 
-AudioStream::AudioStream(OutputStream &into) : 
-	ElementaryStream( into,  ElementaryStream::audio ),
+AudioStream::AudioStream(IBitStream &ibs, OutputStream &into) : 
+	ElementaryStream( ibs, into,  ElementaryStream::audio ),
 	num_syncword(0)
 {
     FRAME_CHUNK = 24;

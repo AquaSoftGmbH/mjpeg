@@ -87,8 +87,8 @@ static const unsigned int mpa_samples [4] = {384, 1152, 1152, 0};
 
 
 
-MPAStream::MPAStream(OutputStream &into) : 
-	AudioStream( into )
+MPAStream::MPAStream(IBitStream &ibs, OutputStream &into) : 
+	AudioStream( ibs, into )
 {
 }
 
@@ -105,8 +105,7 @@ bool MPAStream::Probe(IBitStream &bs )
  *************************************************************************/
 
 
-void MPAStream::Init ( const int stream_num, 
-						 const char *audio_file)
+void MPAStream::Init ( const int stream_num )
 
 {
     unsigned int i;
@@ -121,10 +120,12 @@ void MPAStream::Init ( const int stream_num,
 					 muxinto.buffers_in_audio,
 					 muxinto.always_buffers_in_audio
 		);
-    mjpeg_info ("Scanning Audio stream for access units information. \n");
+    mjpeg_info ("Scanning for header info: Audio stream %02x (%s)\n",
+                AUDIO_STR_0 + stream_num,
+                bs.filename
+                );
 
 	InitAUbuffer();
-	InputStream::Init( audio_file, 512*1024 );
 	
 	/* A.Stevens 2000 - update to be compatible up to  MPEG2.5
 	 */

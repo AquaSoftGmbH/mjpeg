@@ -27,9 +27,8 @@
 class VideoStream : public ElementaryStream
 {
 public:
-	VideoStream(OutputStream &into);
-	void Init( const int stream_num,
-			   const char *input_file);
+	VideoStream(IBitStream &ibs, OutputStream &into);
+	void Init( const int stream_num );
     static bool Probe(IBitStream &bs );
 
 	void Close();
@@ -127,8 +126,8 @@ protected:
 class DVDVideoStream : public VideoStream
 {
 public:
-	DVDVideoStream(OutputStream &into) : 
-        VideoStream( into )
+	DVDVideoStream(IBitStream &ibs,OutputStream &into) : 
+        VideoStream( ibs, into )
         {
             gop_control_packet = true;
         }

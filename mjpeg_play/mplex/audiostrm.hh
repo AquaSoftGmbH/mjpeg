@@ -29,8 +29,8 @@
 class AudioStream : public ElementaryStream
 {
 public:   
-    AudioStream(OutputStream &into );
-    virtual void Init(const int stream_num, const char *audio_file) = 0;
+    AudioStream(IBitStream &ibs, OutputStream &into );
+    virtual void Init(const int stream_num) = 0;
     virtual void Close() = 0;
 
     void OutputSector();
@@ -66,8 +66,8 @@ protected:
 class MPAStream : public AudioStream
 {
 public:   
-    MPAStream(OutputStream &into );
-    virtual void Init(const int stream_num, const char *audio_file);
+    MPAStream(IBitStream &ibs, OutputStream &into );
+    virtual void Init(const int stream_num);
     static bool Probe(IBitStream &bs);
     virtual void Close();
     virtual unsigned int NominalBitRate();
@@ -90,8 +90,8 @@ private:
 class AC3Stream : public AudioStream
 {
 public:   
-    AC3Stream(OutputStream &into );
-    virtual void Init(const int stream_num, const char *audio_file);
+    AC3Stream(IBitStream &ibs,OutputStream &into );
+    virtual void Init(const int stream_num);
     static bool Probe(IBitStream &bs);
     virtual void Close();
     virtual unsigned int NominalBitRate();

@@ -45,9 +45,9 @@
 
 int main (int argc, char* argv[])
 {
-    vector<char *> mpa_files;
-    vector<char *> ac3_files;
-    vector<char *> video_files;
+    vector<IBitStream *> mpa_files;
+    vector<IBitStream *> ac3_files;
+    vector<IBitStream *> video_files;
     char    *multi_file = NULL;	
 	int     i;
 	int     optargs;
@@ -86,9 +86,10 @@ int main (int argc, char* argv[])
 				for( i = 0; i<video_files.size(); ++i )
 				{
 					intervals[i] = new ConstantFrameIntervals( frame_interval );
-					str[i] = new VCDStillsStream(ostrm, intervals[i] );
+					str[i] = new VCDStillsStream( *video_files[i],
+												  ostrm, intervals[i] );
 					strms.push_back( str[i] );
-					str[i]->Init( video_files[i] );
+					str[i]->Init();
 				}
 				if( video_files.size() == 2 )
 				{
@@ -105,14 +106,14 @@ int main (int argc, char* argv[])
 				ConstantFrameIntervals *intervals;
 				StillsStream *str;
 				intervals = new ConstantFrameIntervals( frame_interval );
-				str = new StillsStream(ostrm, intervals );
+				str = new StillsStream( *video_files[0],ostrm, intervals );
 				strms.push_back( str );
-				str->Init( video_files[0] );
+				str->Init();
 			}
 			for( i = 0 ; i < mpa_files.size() ; ++i )
 			{
-				AudioStream *audioStrm = new MPAStream(ostrm);
-				audioStrm->Init ( i, mpa_files[i]);
+				AudioStream *audioStrm = new MPAStream( *mpa_files[i], ostrm);
+				audioStrm->Init ( i);
 				strms.push_back(audioStrm);
 			}
 			break;
@@ -141,22 +142,22 @@ int main (int argc, char* argv[])
 			// The first DVD video stream is made the master stream...
 			//
 			if( i == 0 && opt_mux_format ==  MPEG_FORMAT_DVD )
-				videoStrm = new DVDVideoStream(ostrm);
+				videoStrm = new DVDVideoStream( *video_files[i], ostrm);
 			else
-				videoStrm = new VideoStream(ostrm);
-			videoStrm->Init( i, video_files[i] );
+				videoStrm = new VideoStream( *video_files[i],ostrm);
+			videoStrm->Init( i );
 			strms.push_back( videoStrm );
 		}
 		for( i = 0 ; i < mpa_files.size() ; ++i )
 		{
-			AudioStream *audioStrm = new MPAStream(ostrm);
-			audioStrm->Init ( i, mpa_files[i]);
+			AudioStream *audioStrm = new MPAStream( *mpa_files[i], ostrm);
+			audioStrm->Init ( i );
 			strms.push_back(audioStrm);
 		}
 		for( i = 0 ; i < ac3_files.size() ; ++i )
 		{
-			AudioStream *audioStrm = new AC3Stream(ostrm);
-			audioStrm->Init ( i, ac3_files[i]);
+			AudioStream *audioStrm = new AC3Stream( *ac3_files[i], ostrm);
+			audioStrm->Init ( i );
 			strms.push_back(audioStrm);
 		}
 		
