@@ -122,10 +122,9 @@ void stats()
   struct mbinfo *mbi;
 
 	/* TODO: DELETE Restricted range for my own tests... */
-	if( frame_num < 30 || frame_num > 50 )
+	if( frame_num > 4  )
 		return;
-	if( pict_type != I_TYPE )
-	  return;
+
   nmb = mb_width*mb_height2;
 
   n_skipped=n_intra=n_ncoded=n_blocks=n_interp=n_forward=n_backward=0;
@@ -267,8 +266,9 @@ void stats()
       putc('\n',statfile);
     }
   }
+#endif
 
-  if (pict_type!=I_TYPE && frame_num > 10 && frame_num < 13)
+  if (pict_type!=I_TYPE )
   {
     fprintf(statfile,"\nforward motion vectors (first vector, horizontal):\n");
 
@@ -422,9 +422,8 @@ void stats()
 
   }
 
-#endif
     
-
+#if 0
   /* useful for debugging */
   fprintf(statfile,"\nmacroblock info dump:\n");
 
@@ -443,7 +442,7 @@ void stats()
 	  ++k;
 	}
   }
-#if 0
+
   for (j=1; j<5; j++)
   {
     for (i=5; i<11_width; i++)

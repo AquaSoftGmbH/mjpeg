@@ -497,11 +497,20 @@ static void readparmfile()
   motion_data = (struct motion_data *)malloc(M*sizeof(struct motion_data));
   if (!motion_data)
     error("malloc failed\n");
+    
+    /*	A.Stevens 2000: The search radius has to be a multiple of 4 for the new fast motion
+    	compensation search to work correctly.  We simply round it up if needs be.
+	*/
 
-  if(param_searchrad*M>127)
+  if(param_searchrad*M>127 )
   {
-     param_searchrad = 127/M;
-     fprintf(stderr,"Search radius reduced to %d\n",param_searchrad);
+     fprintf(stderr,"Search radius too large (radius * %d > 127)\n");
+     exit(1);
+  }
+  if( param_searchrad % 4 != 0 )
+  {
+  	param_searchrad = (param_searchrad / 4) * 4;
+  	fprintf( stderr, "Adjusting search radius to a multiple of 4: %d\n", param_searchrad);
   }
   c = 5;
   if(param_searchrad*M<64) c = 4;

@@ -212,7 +212,7 @@ int quant_weight_coeff_sum( short *blk, unsigned short * i_quant_mat )
  * (except for the DC coefficient)
  *
 	PRECONDITION: src dst point to *disinct* memory buffers...
-	              of block_count *adjact* short[64] arrays...
+	              of block_count *adjacent* short[64] arrays...
  *
  */
 
@@ -257,14 +257,21 @@ int *nonsat_mquant;
 		  nzflag = flags & 0xffff0000;
 		  
 		  /* If we're saturating simply bump up quantization and start from scratch...
+		     if we can't avoid saturation by quantising then we're hosed and we fall
+		     back to saturation using the old C code.
 		   */
 		  
 		  if( (flags & 0xff00) != 0 )
 			{
-			  mquant = next_larger_quant( mquant );
-			  /* if(!quiet)
-			  	printf( "*M");
-				*/
+			  int new_mquant = next_larger_quant( mquant );
+			  if( new_mquant != mquant )
+			  	mquant = new_mquant;
+			  else
+			  {
+			    saturated = 1;
+			    break;
+			  }
+
 			  comp = 0; 
 			  pdst = dst;
 			  psrc = src;
@@ -283,7 +290,7 @@ int *nonsat_mquant;
 			 && (flags & 0xff) == 0 );
 	}
   
-  if( (flags & 0xff) != 0)
+  if( (flags & 0xff) != 0 || saturated) /* Coefficient out of range or can't avoid saturation */
 #endif
 	{
 	  if( !quiet )

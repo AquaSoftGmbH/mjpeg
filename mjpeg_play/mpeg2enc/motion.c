@@ -1543,7 +1543,7 @@ int *dmcp,*vmcp;
  * Heaps of distance estimates for motion compensation search
  */
 
-/* A.Stevens 2000: TODO: distance measures must fit into short 
+/* A.Stevens 2000: WARNING: distance measures must fit into short 
    or bad things will happen! */
 struct _sortelt 
  {
@@ -2191,192 +2191,6 @@ static void best_graddesc_match( int ilow, int ihigh, int jlow, int jhigh,
 
 #endif
 
-/* 
- *   Vector of motion compensations plus a heap of the associated
- *   weights (macro-block distances).
- *  TODO: Should be put into nice tidy records...
- */
-
-#define MAX_COARSE_HEAP_SIZE 100*100
-
-static sortelt half_match_heap[MAX_COARSE_HEAP_SIZE];
-static matchelt half_matches[MAX_COARSE_HEAP_SIZE];
-static int half_heap_size;
-static sortelt quad_match_heap[MAX_COARSE_HEAP_SIZE];
-static matchelt quad_matches[MAX_COARSE_HEAP_SIZE];
-static int quad_heap_size;
-static sortelt rough_match_heap[MAX_COARSE_HEAP_SIZE];
-static matchelt rough_matches[MAX_COARSE_HEAP_SIZE];
-static int rough_heap_size;
-
-
-/*
-  Build a distance based heap of the 4*4 sub-sampled motion compensations.
-
-  N.b. You'd think it would be worth exploiting the fact that using
-  MMX/SSE you can do two adjacent 4*4 blocks of 4*4 sums in about the
-  same as one.  Well it does save some time but its really very little...
-  
-  Similarly, you might think it worth collecting first on 8*8
-  boundaries and then considering neighbours of the better ones.
-  This makes stuff faster but apprecieably reduces the quality of the
-  matches found so its a no-no in my book...
-
-*/
-  
-static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh, 
-							mcompuint *qorg, mcompuint *qblk, int qlx, int qh )
-{
-  mcompuint *qorgblk;
-  mcompuint *old_qorgblk;
-  sortelt distrec;
-  matchelt matchrec;
-  int i,j,k;
-  int s1,s2;
-  int dist_sum;
-  int searched_rough_size;
-  int best_quad_dist;
-
-  /* N.b. we may ignore the right hand block of the pair going over the
-	 right edge as we have carefully allocated a margin to spare us
-	 the check.  The *final* motion compensation calculations
-	 performed on the results of this pass *do* filter out
-	 out-of-range blocks though...
-  */
-
-  rough_heap_size = 0;
-  dist_sum = 0;
-  if( nodual_qdist )
-	{
-	  /* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
-	  qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
-	  for( j = jlow; j <= jhigh; j += 4 )
-		{
-		  old_qorgblk = qorgblk;
-		  for( i = ilow; i <= ihigh; i += 4 )
-			{
-			  s1 = (*pqdist1)( qorgblk,qblk,qlx,qh) & 0xffff;
-			  quad_matches[quad_heap_size].dx = i;
-			  quad_matches[quad_heap_size].dy = j;
-			  quad_match_heap[quad_heap_size].index = quad_heap_size;
-			  quad_match_heap[quad_heap_size].weight =s1;
-			  dist_sum += s1;
-			  ++quad_heap_size;
-			  qorgblk += 1;
-			}
-		  qorgblk = old_qorgblk + qlx;
-		}
-	}
-  else
-	{
-	
-	  qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
-	  for( j = jlow; j <= jhigh; j += 8 )
-		{
-		  old_qorgblk = qorgblk;
-		  k = 0;
-		  for( i = ilow; i <= ihigh; i+= 8  )
-			{
-
-			  s1 = (*pqdist1)( qorgblk,qblk,qlx,qh);
-			  s2 = (s1 >> 16) & 0xffff;
-			  s1 = s1 & 0xffff;
-			  dist_sum += s1+s2;
-			  rough_match_heap[rough_heap_size].weight = s1;
-			  rough_match_heap[rough_heap_size].index = rough_heap_size;	
-			  rough_match_heap[rough_heap_size+1].weight = s2;
-			  rough_match_heap[rough_heap_size+1].index = rough_heap_size+1;	
-			  rough_matches[rough_heap_size].dx = i;
-			  rough_matches[rough_heap_size].dy = j;
-			  rough_matches[rough_heap_size+1].dx = i+16;
-			  rough_matches[rough_heap_size+1].dy = j;
-			  /* A sneaky fast way way of binning out-of-limits estimates ... */
-			  rough_heap_size += 1 + (i+16 <= ihigh);
-
-			  /* NTOE:  If you change the grid size you *must* adjust this code... too */
-	
-			  qorgblk+=2;
-			  k = (k+2)&3;
-			  /* Original branchy code... so you can see what this stuff is meant to
-				 do!!!!
-				 if( k == 0 )
-				 {
-				 qorgblk += 4;
-				 i += 16;
-				 }
-			  */
-			  qorgblk += (k==0)<<2;
-			  i += (k==0)<<4;
-		  
-			}
-		  qorgblk = old_qorgblk + (qlx<<1);
-		}
-	
-	  heapify( rough_match_heap, rough_heap_size );
-
-	  best_quad_dist = rough_match_heap[0].weight;	
-
-	  /* 
-		 We now use the better-than-average matches on 8-pel boundaries 
-		 as starting points for matches on 4-pel boundaries...
-	  */
-	  quad_heap_size = 0;
-	  searched_rough_size = 1+rough_heap_size / 3;
-
-	  dist_sum = 0;
-	  for( k = 0; k < searched_rough_size; ++k )
-		{
-		  heap_extract( rough_match_heap, &rough_heap_size, &distrec );
-		  matchrec = rough_matches[distrec.index];
-		  qorgblk =  qorg + (matchrec.dy>>2)*qlx +(matchrec.dx>>2);
-		  quad_matches[quad_heap_size].dx = matchrec.dx;
-		  quad_matches[quad_heap_size].dy = matchrec.dy;
-		  quad_match_heap[quad_heap_size].index = quad_heap_size;
-		  quad_match_heap[quad_heap_size].weight = distrec.weight;
-		  dist_sum += distrec.weight;	
-		  ++quad_heap_size;	  
-
-		  for( i = 1; i < 4; ++i )
-			{
-			  int x, y;
-			  x = matchrec.dx + (i & 0x1)*4;
-			  y = matchrec.dy + (i >>1)*4;
-			  s1 = (*pqdist1)( qorgblk+(i & 0x1),qblk,qlx,qh) & 0xffff;
-			  dist_sum += s1;
-			  if( s1 < best_quad_dist )
-		  		best_quad_dist = s1;
-
-			  quad_match_heap[quad_heap_size].weight = s1;
-			  quad_match_heap[quad_heap_size].index = quad_heap_size;
-			  quad_matches[quad_heap_size].dx = x;
-			  quad_matches[quad_heap_size].dy = y;
-			  quad_heap_size += (x <= ihigh && y <= jhigh);
-
-			  if( i == 2 )
-				qorgblk += qlx;
-			}
-		  /* If we're thresholding check  got a match below the threshold. 
-		   *and* .. stop looking... we've already found a good candidate...
-		   */
-		  /*  Doesn't work well - disabled.
-			  if( fast_mc_threshold && 
-			  best_quad_dist < quadpel_threshold.threshold )
-			  { 
-			  break;
-			  }
-		  */
-
-		}
-	}
-
-
-  heapify( quad_match_heap, quad_heap_size );
-  /* Update the fast motion match average using the best 2*2 match */
-  /* Poor results... disabled...
-	 update_threshold( &quadpel_threshold, quad_match_heap[0].weight ); */
-
-  return quad_heap_size;
-}
 
 #ifdef TEST_RCSUM_SEARCH
 
@@ -2535,19 +2349,193 @@ static int build_rchalf_heap(int ihigh, int jhigh,
 
   return half_heap_size;
 }
+#endif
+
+
+
+/* 
+ *   Vector of motion compensations plus a heap of the associated
+ *   weights (macro-block distances).
+ *  TODO: Should be put into nice tidy records...
+ */
+
+#define MAX_COARSE_HEAP_SIZE 100*100
+
+static sortelt half_match_heap[MAX_COARSE_HEAP_SIZE];
+static matchelt half_matches[MAX_COARSE_HEAP_SIZE];
+static int half_heap_size;
+static sortelt quad_match_heap[MAX_COARSE_HEAP_SIZE];
+static matchelt quad_matches[MAX_COARSE_HEAP_SIZE];
+static int quad_heap_size;
+static sortelt rough_match_heap[MAX_COARSE_HEAP_SIZE];
+static matchelt rough_matches[MAX_COARSE_HEAP_SIZE];
+static int rough_heap_size;
+
+
+/*
+  Build a distance based heap of the 4*4 sub-sampled motion compensations.
+
+  N.b. You'd think it would be worth exploiting the fact that using
+  MMX/SSE you can do two adjacent 4*4 blocks of 4*4 sums in about the
+  same as one.  Well it does save some time but its really very little...
+  
+  Similarly, you might think it worth collecting first on 8*8
+  boundaries and then considering neighbours of the better ones.
+  This makes stuff faster but appreciably reduces the quality of the
+  matches found so it is a no-no in my book...
+
+*/
+  
+static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh, 
+							mcompuint *qorg, mcompuint *qblk, int qlx, int qh )
+{
+  mcompuint *qorgblk;
+  mcompuint *old_qorgblk;
+  sortelt distrec;
+  matchelt matchrec;
+  int i,j,k;
+  int s1,s2;
+  int dist_sum;
+  int searched_rough_size;
+  int best_quad_dist;
+
+  /* N.b. we may ignore the right hand block of the pair going over the
+	 right edge as we have carefully allocated the buffer oversize to ensure
+	 no memory faults.  The later motion compensation calculations
+	 performed on the results of this pass will filter out
+	 out-of-range blocks...
+  */
+
+  rough_heap_size = 0;
+  dist_sum = 0;
+  if( nodual_qdist )
+	{
+	  /* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
+	  qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
+	  for( j = jlow; j <= jhigh; j += 4 )
+		{
+		  old_qorgblk = qorgblk;
+		  for( i = ilow; i <= ihigh; i += 4 )
+			{
+			  s1 = (*pqdist1)( qorgblk,qblk,qlx,qh) & 0xffff;
+			  quad_matches[quad_heap_size].dx = i;
+			  quad_matches[quad_heap_size].dy = j;
+			  quad_match_heap[quad_heap_size].index = quad_heap_size;
+			  quad_match_heap[quad_heap_size].weight =s1;
+			  dist_sum += s1;
+			  ++quad_heap_size;
+			  qorgblk += 1;
+			}
+		  qorgblk = old_qorgblk + qlx;
+		}
+	}
+  else
+	{
+	
+	  qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
+	  for( j = jlow; j <= jhigh; j += 8 )
+		{
+		  old_qorgblk = qorgblk;
+		  k = 0;
+		  for( i = ilow; i <= ihigh; i+= 8  )
+			{
+
+			  s1 = (*pqdist1)( qorgblk,qblk,qlx,qh);
+			  s2 = (s1 >> 16) & 0xffff;
+			  s1 = s1 & 0xffff;
+			  dist_sum += s1+s2;
+			  rough_match_heap[rough_heap_size].weight = s1;
+			  rough_match_heap[rough_heap_size].index = rough_heap_size;	
+			  rough_match_heap[rough_heap_size+1].weight = s2;
+			  rough_match_heap[rough_heap_size+1].index = rough_heap_size+1;	
+			  rough_matches[rough_heap_size].dx = i;
+			  rough_matches[rough_heap_size].dy = j;
+			  rough_matches[rough_heap_size+1].dx = i+16;
+			  rough_matches[rough_heap_size+1].dy = j;
+			  /* A sneaky fast way way of discarding out-of-limits estimates ... */
+			  rough_heap_size += 1 + (i+16 <= ihigh);
+
+			  /* NOTE:  If you change the grid size you *must* adjust this code... too */
+	
+			  qorgblk+=2;
+			  k = (k+2)&3;
+			  /* Original branchy code... so you can see what this stuff is meant to
+				 do!!!!
+				 if( k == 0 )
+				 {
+				 qorgblk += 4;
+				 i += 16;
+				 }
+			  */
+			  qorgblk += (k==0)<<2;
+			  i += (k==0)<<4;
+		  
+			}
+		  qorgblk = old_qorgblk + (qlx<<1);
+		}
+	
+	  heapify( rough_match_heap, rough_heap_size );
+
+	  best_quad_dist = rough_match_heap[0].weight;	
+
+	  /* 
+		 We now use the good matches on 8-pel boundaries 
+		 as starting points for matches on 4-pel boundaries...
+	  */
+	  quad_heap_size = 0;
+	  searched_rough_size = 1+rough_heap_size / 3;
+
+	  dist_sum = 0;
+	  for( k = 0; k < searched_rough_size; ++k )
+		{
+		  heap_extract( rough_match_heap, &rough_heap_size, &distrec );
+		  matchrec = rough_matches[distrec.index];
+		  qorgblk =  qorg + (matchrec.dy>>2)*qlx +(matchrec.dx>>2);
+		  quad_matches[quad_heap_size].dx = matchrec.dx;
+		  quad_matches[quad_heap_size].dy = matchrec.dy;
+		  quad_match_heap[quad_heap_size].index = quad_heap_size;
+		  quad_match_heap[quad_heap_size].weight = distrec.weight;
+		  dist_sum += distrec.weight;	
+		  ++quad_heap_size;	  
+
+		  for( i = 1; i < 4; ++i )
+			{
+			  int x, y;
+			  x = matchrec.dx + (i & 0x1)*4;
+			  y = matchrec.dy + (i >>1)*4;
+			  s1 = (*pqdist1)( qorgblk+(i & 0x1),qblk,qlx,qh) & 0xffff;
+			  dist_sum += s1;
+			  if( s1 < best_quad_dist )
+		  		best_quad_dist = s1;
+
+			  quad_match_heap[quad_heap_size].weight = s1;
+			  quad_match_heap[quad_heap_size].index = quad_heap_size;
+			  quad_matches[quad_heap_size].dx = x;
+			  quad_matches[quad_heap_size].dy = y;
+			  quad_heap_size += (x <= ihigh && y <= jhigh);
+
+			  if( i == 2 )
+				qorgblk += qlx;
+			}
+
+		}
+	}
+
+
+  heapify( quad_match_heap, quad_heap_size );
+
+  return quad_heap_size;
+}
+
 
 /* Build a distance based heap of the 2*2 sub-sampled motion
   compensations using the best 4*4 matches as starting points.  As
-make   with with the 4*4 matches We don't collect them densely as they're
-  just search starting points and ones that are 2 out should still
+  with with the 4*4 matches We don't collect them densely as they're
+  just search starting points for 1-pel search and ones that are 1 out should still
   give better than average matches...  
-
-  TODO: We should add a flag to
-  let the use select between dense and sparse sampling...
 
 */
 
-#endif
 
 static int build_half_heap(int ihigh, int jhigh, 
 					        mcompuint *forg,  mcompuint *fblk, 
@@ -2644,13 +2632,7 @@ static int build_half_heap(int ihigh, int jhigh,
 }
 
 /*
-  Using the 2*2 matches as starting points we search for
-  the best 1-pel.  Note that we have to explore 16 possible
-  match for each 2*2 match, as they former are sampled sparsely
-  on 4-pel boundaries.
-
-  TODO: should be some flags to control whethere 4*4 and 2*2
-  are sampled sparsely or densely.
+  Search for the best 1-pel match with 1-pel of a good 2*2-pel match.
 */
 
 
@@ -2682,13 +2664,6 @@ static void find_best_one_pel( mcompuint *org, mcompuint *blk,
 		  matchrec = half_matches[distrec.index];
 		  orgblk = org + matchrec.dx+lx*matchrec.dy;
 		  
-		  /* Gross hack for pipelined CPU's: we allow the distance
-		  computation to "go off the edge".  We know this
-		  won't cause memory faults because the fast motion
-		  data sits off the end of the ordinary stuff. N.b. we
-		  *do* exclude any eventual off the edge matches though...
-		  */
-
 		  if( matchrec.dx <= xmax && matchrec.dy <= ymax )
 		  {
 			  d = (*pdist1_00)(orgblk,blk,lx,h, dmin);
@@ -2725,11 +2700,6 @@ static void find_best_one_pel( mcompuint *org, mcompuint *blk,
 
 			  }      
 		  }
-				  /* DEBUG: Remove once you've pinned down this phenomenon.. */
-		  if( dmin == INT_MAX )
-			  {
-				  printf( "Null updates pos %d %d lim %d %d\n", matchrec.dx, matchrec.dy, xmax, ymax );
-			  }
 
 	  }
 
@@ -2744,6 +2714,10 @@ static void find_best_one_pel( mcompuint *org, mcompuint *blk,
  
 /*
  * full search block matching
+ *
+ * A.Stevens 2000: This is now a big misnomer.  The search is now a hierarchical/sub-sampling
+ * search not a full search.  However, experiments have shown it is always close to
+ * optimal and almost always very close or optimal.
  *
  * blk: top left pel of (16*h) block
  * fblk: top element of fast motion compensation block corresponding to blk
@@ -2775,7 +2749,6 @@ int *iminp,*jminp;
 #ifdef ORIGINAL_CODE
   int s,k,l;
 #else
-  int quad_rad_x, quad_rad_y;
   mcompuint *forg = (mcompuint*)(org+fsubsample_offset);
   mcompuint *qorg = (mcompuint*)(org+qsubsample_offset);
   mcompuint *orgblk;
@@ -2859,12 +2832,11 @@ int *iminp,*jminp;
   }
 #else
   
-  /* Round sx/sy up to a multiple of 8 so that to make life
-	 simple in initial fast 4*4 pel searches  */
-  quad_rad_x = ((sx + 3) / 4)*4;
-  quad_rad_y = ((sy + 3) / 4)*4;
+  	/* The search radii are *always* multiples of 4 to avoid messiness in the initial
+	4*4 pel search.  This is handled by the parameter checking/processing code in readparmfile()
+	 */
   
- if( (quad_rad_x>>1)*(quad_rad_y>>1) > MAX_COARSE_HEAP_SIZE )
+ if( (sx>>1)*(sy>>1) > MAX_COARSE_HEAP_SIZE )
 	{
 	  fprintf( stderr, "Search radius %d too big for search heap!\n", sxy );
 	  exit(1);
@@ -2876,13 +2848,13 @@ int *iminp,*jminp;
 	   4*4 pel sums (4*4 sub-sampled) rather than actual pel's.  
 	   1/16 the size...
 	*/
-  jlow = j0-quad_rad_y;
+  jlow = j0-sy;
   jlow = jlow < 0 ? 0 : jlow;
-  jhigh =  j0+quad_rad_y;
+  jhigh =  j0+sy;
   jhigh = jhigh > ymax ? ymax : jhigh;
-  ilow = i0-quad_rad_x;
+  ilow = i0-sx;
   ilow = ilow < 0 ? 0 : ilow;
-  ihigh =  i0+quad_rad_x;
+  ihigh =  i0+sx;
   ihigh = ihigh > xmax ? xmax : ihigh;
 
 
@@ -3037,7 +3009,7 @@ int *iminp,*jminp;
   
   if( imin < 0 || imin > xmax*2 || jmin > ymax*2 || jmin < 0 )
 	{
-	  printf( "Out of bounds suggestions B %d %d %d  %d %d %d %d X%d Y%d!\n", 
+	  printf( "WARNING: Out of bounds suggestions B %d %d %d  %d %d %d %d X%d Y%d!\n", 
 			  imin, jmin, dmin,
 			  ilow, ihigh, jlow, jhigh,
 				  xmax*2, ymax*2
