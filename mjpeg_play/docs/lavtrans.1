@@ -12,17 +12,17 @@ lavtrans \- Convert MJPEG videos to other MJPEG video formats
 .I lavfile1 \fP[\fIlavfile2 \fP...\fI lavfileN\fP]
 
 .SH "DESCRIPTION"
-\fBlavtrans\fP can be used to convert the recorded videos from MJPEG
-one "container" format  to another. It can also be used to split
+\fBlavtrans\fP can be used to convert the recorded videos from one MJPEG
+"container" format  to another one. It can also be used to split
 the streams, or do destructive edits.
 
-Like all the other \fBmjpegtools\fP(1) lavtrans can also accept an
+Like all the other \fBmjpegtools\fP(1) lavtrans also accept a
 edit list file in place of actual video files. This allows it to be
 used to construct a stand-alone copy of the editted video sequence
 described in the editlist.
 
 Note that lavtrans can only change the container type of MJPEG video,
-no its format.  As such it is not possible to use it combine streams of
+not the format.  As such it is not possible to use it combine streams of
 different format.
 
 .SH "OPTIONS"
