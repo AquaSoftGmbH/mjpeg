@@ -59,7 +59,8 @@ int main(int argc, char **argv)
    int wav_fd;
    long data[64];
    int have_percent_n = 0;
-
+   char format = 0;
+   char *dotptr;
    char chOutFile[128] = "\0";
    int iOutNum = 1;
    unsigned long ulOutputBytes = 0;
@@ -179,6 +180,17 @@ int main(int argc, char **argv)
       mjpeg_error_exit1("Insufficient string space to create output filename");
    }
 
+   /* Checking for the output format */
+   if((dotptr = strrchr(argv[3], '.'))) 
+     {
+#ifdef HAVE_LIBQUICKTIME
+       if(!strcasecmp(dotptr+1, "mov") || !strcasecmp(dotptr+1, "qt")
+               || !strcasecmp(dotptr+1, "moov")) format = 'q';
+#endif
+       if(!strcasecmp(dotptr+1, "avi")) format = 'a';
+     }
+
+
    
    /* outer loop */
    while(1)
@@ -246,7 +258,8 @@ int main(int argc, char **argv)
          
          i++;
          /* check for exceeding maximum output file size */
-         if( (ulOutputBytes >> 20) >= (unsigned long)MAX_MBYTES_PER_FILE_32 )
+         if  ( ((ulOutputBytes >> 20) >= (unsigned long)MAX_MBYTES_PER_FILE_32 )
+             && (format != 'q') )
          {
 	    if (have_percent_n)
               {
