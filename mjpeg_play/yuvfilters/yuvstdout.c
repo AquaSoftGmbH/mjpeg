@@ -41,11 +41,11 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
   if (!(h = YfAllocateTask(&yuvstdout, sizeof *h, h0)))
     return NULL;
   y4m_init_stream_info(&si);
-  si.width       = h0->width;
-  si.height      = h0->height;
-  si.framerate   = mpeg_framerate(h0->fpscode);
-  si.interlace   = h0->interlace;
-  si.aspectratio = h0->aspectratio;
+  y4m_si_set_width(&si, h0->width);
+  y4m_si_set_height(&si, h0->height);
+  y4m_si_set_framerate(&si, mpeg_framerate(h0->fpscode));
+  y4m_si_set_interlace(&si, h0->interlace);
+  y4m_si_set_sampleaspect(&si, h0->aspectratio);
   if (y4m_write_stream_header(1, &si) != Y4M_OK) {
     YfFreeTask(h);
     h = NULL;

@@ -79,7 +79,7 @@ void usage(const char *progname)
   fprintf(stdout, "  -o n     frame offset (skip n input frames) [0]\n");
   fprintf(stdout, "  -n n     frame count (output n frames; 0 == all of them) [0]\n");
   fprintf(stdout, "  -F n:d   framerate [30000:1001 = NTSC]\n");
-  fprintf(stdout, "  -A n:d   display aspect ratio [4:3]\n");
+  fprintf(stdout, "  -A w:h   pixel aspect ratio [1:1]\n");
   fprintf(stdout, "  -I x     interlacing [p]\n");
   fprintf(stdout, "             p = none/progressive\n");
   fprintf(stdout, "             t = top-field-first\n");
@@ -104,7 +104,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
 
   cl->offset = 0;
   cl->framecount = 0;
-  cl->aspect = y4m_aspect_4_3;
+  cl->aspect = y4m_sar_SQUARE;
   cl->interlace = Y4M_ILACE_NONE;
   cl->framerate = y4m_fps_NTSC;
   cl->interleave = 0;
@@ -192,7 +192,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
   mjpeg_info("Command-line Parameters:\n");
   mjpeg_info("             framerate:  %d:%d\n",
 	     cl->framerate.n, cl->framerate.d);
-  mjpeg_info("  display aspect ratio:  %d:%d\n",
+  mjpeg_info("    pixel aspect ratio:  %d:%d\n",
 	     cl->aspect.n, cl->aspect.d);
   mjpeg_info("             interlace:  %s%s\n",
 	     mpeg_interlace_code_definition(cl->interlace),
@@ -457,7 +457,7 @@ void setup_output_stream(int fdout, cl_info_t *cl,
     y4m_si_set_height(sinfo, ppm->height * 2);
     *field_height = ppm->height;
   }
-  y4m_si_set_aspectratio(sinfo, cl->aspect);
+  y4m_si_set_sampleaspect(sinfo, cl->aspect);
   y4m_si_set_interlace(sinfo, cl->interlace);
   y4m_si_set_framerate(sinfo, cl->framerate);
 

@@ -47,11 +47,11 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
   h = YfAllocateTask(&yuvstdin, sizeof *h + framebytes, h0);
   if (!h)
     goto FINI_SI;
-  h->width       = si.width;
-  h->height      = si.height;
-  h->fpscode     = mpeg_framerate_code(si.framerate);
-  h->interlace   = si.interlace;
-  h->aspectratio = si.aspectratio;
+  h->width       = y4m_si_get_width(&si);
+  h->height      = y4m_si_get_height(&si);
+  h->fpscode     = mpeg_framerate_code(y4m_si_get_framerate(&si));
+  h->interlace   = y4m_si_get_interlace(&si);
+  h->aspectratio = y4m_si_get_sampleaspect(&si);
  FINI_SI:
   y4m_fini_stream_info(&si);
   return h;

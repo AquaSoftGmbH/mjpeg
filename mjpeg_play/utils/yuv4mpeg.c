@@ -240,7 +240,7 @@ void y4m_init_stream_info(y4m_stream_info_t *info)
   info->height = Y4M_UNKNOWN;
   info->interlace = Y4M_UNKNOWN;
   info->framerate = y4m_fps_UNKNOWN;
-  info->aspectratio = y4m_aspect_UNKNOWN;
+  info->sampleaspect = y4m_sar_UNKNOWN;
   y4m_init_xtag_list(&(info->x_tags));
 }
 
@@ -253,7 +253,7 @@ void y4m_copy_stream_info(y4m_stream_info_t *dest, y4m_stream_info_t *src)
   dest->height = src->height;
   dest->interlace = src->interlace;
   dest->framerate = src->framerate;
-  dest->aspectratio = src->aspectratio;
+  dest->sampleaspect = src->sampleaspect;
   y4m_copy_xtag_list(&(dest->x_tags), &(src->x_tags));
 }
 
@@ -295,11 +295,11 @@ void y4m_si_set_framerate(y4m_stream_info_t *si, y4m_ratio_t framerate)
 y4m_ratio_t y4m_si_get_framerate(y4m_stream_info_t *si)
 { return si->framerate; }
 
-void y4m_si_set_aspectratio(y4m_stream_info_t *si, y4m_ratio_t aspectratio)
-{ si->aspectratio = aspectratio; }
+void y4m_si_set_sampleaspect(y4m_stream_info_t *si, y4m_ratio_t sar)
+{ si->sampleaspect = sar; }
 
-y4m_ratio_t y4m_si_get_aspectratio(y4m_stream_info_t *si)
-{ return si->aspectratio; }
+y4m_ratio_t y4m_si_get_sampleaspect(y4m_stream_info_t *si)
+{ return si->sampleaspect; }
 
 int y4m_si_get_framelength(y4m_stream_info_t *si)
 { return si->framelength; }
@@ -376,10 +376,10 @@ int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i)
 	i->interlace = Y4M_UNKNOWN; break;
       }
       break;
-    case 'A':  /* display aspect ratio */
-      if ((err = y4m_parse_ratio(&(i->aspectratio), value)) != Y4M_OK)
+    case 'A':  /* sample (pixel) aspect ratio */
+      if ((err = y4m_parse_ratio(&(i->sampleaspect), value)) != Y4M_OK)
 	return err;
-      if (i->aspectratio.n < 0) return Y4M_ERR_RANGE;
+      if (i->sampleaspect.n < 0) return Y4M_ERR_RANGE;
       break;
     case 'X':  /* 'X' meta-tag */
       if ((err = y4m_xtag_add(&(i->x_tags), token)) != Y4M_OK) return err;
@@ -490,7 +490,7 @@ int y4m_write_stream_header(int fd, y4m_stream_info_t *i)
   int err;
 
   y4m_ratio_reduce(&(i->framerate));
-  y4m_ratio_reduce(&(i->aspectratio));
+  y4m_ratio_reduce(&(i->sampleaspect));
   n = snprintf(s, sizeof(s), "%s W%d H%d F%d:%d I%s A%d:%d",
 	       Y4M_MAGIC,
 	       i->width,
@@ -499,7 +499,7 @@ int y4m_write_stream_header(int fd, y4m_stream_info_t *i)
 	       (i->interlace == Y4M_ILACE_NONE) ? "p" :
 	       (i->interlace == Y4M_ILACE_TOP_FIRST) ? "t" :
 	       (i->interlace == Y4M_ILACE_BOTTOM_FIRST) ? "b" : "?",
-	       i->aspectratio.n, i->aspectratio.d);
+	       i->sampleaspect.n, i->sampleaspect.d);
   if ((n < 0) || (n > Y4M_LINE_MAX)) return Y4M_ERR_HEADER;
   if ((err = y4m_snprint_xtags(s + n, sizeof(s) - n - 1, &(i->x_tags))) 
       != Y4M_OK) 
@@ -726,11 +726,11 @@ void y4m_log_stream_info(log_level_t level, const char *prefix,
 	  (i->interlace == Y4M_ILACE_TOP_FIRST) ? "top-field-first" :
 	  (i->interlace == Y4M_ILACE_BOTTOM_FIRST) ? "bottom-field-first" :
 	  "anyone's guess");
-  if ((i->aspectratio.n == 0) && (i->aspectratio.d == 0))
-    mjpeg_log(level, "%saspect ratio:  ?:?\n", prefix);
+  if ((i->sampleaspect.n == 0) && (i->sampleaspect.d == 0))
+    mjpeg_log(level, "%ssample aspect ratio:  ?:?\n", prefix);
   else
-    mjpeg_log(level, "%saspect ratio:  %d:%d\n", prefix,
-	      i->aspectratio.n, i->aspectratio.d);
+    mjpeg_log(level, "%ssample aspect ratio:  %d:%d\n", prefix,
+	      i->sampleaspect.n, i->sampleaspect.d);
 }
 
 

@@ -28,12 +28,12 @@
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
 
-#define PIXEL_AVG \
-        diff = reference - *++pixel; \
+#define PIXEL_AVG                                    \
+        diff = reference - *++pixel;                 \
         if (diff < threshold && diff > -threshold) { \
-                        total += *pixel; \
-                        count++; \
-	}
+          total += *pixel;                           \
+          count++;                                   \
+        }
 
 int verbose = 1;
 unsigned char	*input_frame[3];
@@ -100,6 +100,7 @@ main(int argc, char *argv[])
    (void)mjpeg_default_handler_verbosity(verbose);
 
 	y4m_init_stream_info(&istream);
+	y4m_init_stream_info(&ostream);
 	y4m_init_frame_info(&iframe);
 
 	i = y4m_read_stream_header(input_fd, &istream);
@@ -139,6 +140,9 @@ main(int argc, char *argv[])
 		mjpeg_debug( "%02d: %6.2f\n", i,
 			(((double)avg_replace[i]) * 100.0)/(double)(avg));
 	}
+	y4m_fini_stream_info(&istream);
+	y4m_fini_stream_info(&ostream);
+	y4m_fini_frame_info(&iframe);
 	exit(0);
 }
 

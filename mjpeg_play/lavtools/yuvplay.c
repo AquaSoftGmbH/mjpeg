@@ -37,10 +37,10 @@ SDL_Rect rect;
 static int got_sigint = 0;
 
 static void usage () {
-   fprintf (stdout, "Usage: lavpipe/lav2yuv... | yuvplay [options]\n"
-                    "  -s : size (width x height)\n"
-			        "  -f : frame rate (overrides stream rate)\n"
-      );
+  fprintf(stdout, "Usage: lavpipe/lav2yuv... | yuvplay [options]\n"
+	  "  -s : display size, width x height\n"
+	  "  -f : frame rate (overrides rate in stream header)\n"
+	  );
 }
 
 static void sigint_handler (int signal) {
@@ -116,10 +116,15 @@ int main(int argc, char *argv[])
 
    if ((screenwidth <= 0) || (screenheight <= 0)) {
      /* no user supplied screen size, so let's use the stream info */
-     y4m_ratio_t aspect = y4m_si_get_aspectratio(&streaminfo);
+     y4m_ratio_t aspect = y4m_si_get_sampleaspect(&streaminfo);
        
-     if (!(Y4M_RATIO_EQL(aspect, y4m_aspect_UNKNOWN))) {
-       /* if aspect ratio supplied, use it */
+     if (!(Y4M_RATIO_EQL(aspect, y4m_sar_UNKNOWN))) {
+       /* if pixel aspect ratio present, use it */
+#if 1
+       /* scale width, but maintain height (line count) */
+       screenheight = frame_height;
+       screenwidth = frame_width * aspect.n / aspect.d;
+#else
        if ((frame_width * aspect.d) < (frame_height * aspect.n)) {
 	 screenwidth = frame_width;
 	 screenheight = frame_width * aspect.d / aspect.n;
@@ -127,6 +132,7 @@ int main(int argc, char *argv[])
 	 screenheight = frame_height;
 	 screenwidth = frame_height * aspect.n / aspect.d;
        }
+#endif
      } else {
        /* unknown aspect ratio -- assume square pixels */
        screenwidth = frame_width;

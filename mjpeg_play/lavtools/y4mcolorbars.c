@@ -61,10 +61,10 @@ void usage(const char *progname)
   fprintf(stdout, "\n");
   fprintf(stdout, "Options:  (defaults specified in [])\n");
   fprintf(stdout, "\n");
-  fprintf(stdout, "  -W w     frame width [640]\n");
+  fprintf(stdout, "  -W w     frame width [720]\n");
   fprintf(stdout, "  -H h     frame height [480]\n");
   fprintf(stdout, "  -F n:d   framerate (as ratio) \n");
-  fprintf(stdout, "  -A n:d   display aspect ratio [4:3]\n");
+  fprintf(stdout, "  -A w:h   pixel aspect ratio [10:11]\n");
   fprintf(stdout, "  -I x     interlacing [p]\n");
   fprintf(stdout, "             p = none/progressive\n");
   fprintf(stdout, "             t = top-field-first\n");
@@ -88,13 +88,13 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
   int i;
   int c;
 
-  cl->aspect = y4m_aspect_4_3;
   cl->interlace = Y4M_ILACE_NONE;
   cl->framerate = y4m_fps_NTSC;
   cl->framecount = 1;
   cl->ss_mode = SSM_420_JPEG;
-  cl->width = 640;
+  cl->width = 720;
   cl->height = 480;
+  cl->aspect = y4m_sar_NTSC_CCIR601;
 
   while ((c = getopt(argc, argv, "A:F:I:W:H:n:S:h")) != -1) {
     switch (c) {
@@ -171,7 +171,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
   mjpeg_info("            frame size:  %dx%d\n", cl->width, cl->height);
   mjpeg_info("             framerate:  %d:%d\n",
 	     cl->framerate.n, cl->framerate.d);
-  mjpeg_info("  display aspect ratio:  %d:%d\n",
+  mjpeg_info("    pixel aspect ratio:  %d:%d\n",
 	     cl->aspect.n, cl->aspect.d);
   mjpeg_info("             interlace:  %s\n",
 	     mpeg_interlace_code_definition(cl->interlace));
@@ -379,7 +379,7 @@ int main(int argc, char **argv)
   /* Setup streaminfo and write output header */
   y4m_si_set_width(&sinfo, cl.width);
   y4m_si_set_height(&sinfo, cl.height);
-  y4m_si_set_aspectratio(&sinfo, cl.aspect);
+  y4m_si_set_sampleaspect(&sinfo, cl.aspect);
   y4m_si_set_interlace(&sinfo, cl.interlace);
   y4m_si_set_framerate(&sinfo, cl.framerate);
   y4m_write_stream_header(fdout, &sinfo);

@@ -1108,7 +1108,7 @@ main (int argc, char *argv[])
       y4m_si_set_height (&streaminfo, input_height);
       y4m_si_set_interlace (&streaminfo, input_interlaced);
       y4m_si_set_framerate (&streaminfo, frame_rate);
-      y4m_si_set_aspectratio (&streaminfo, y4m_aspect_UNKNOWN);
+      y4m_si_set_sampleaspect (&streaminfo, y4m_sar_UNKNOWN);
     }
 
   // INITIALISATIONS

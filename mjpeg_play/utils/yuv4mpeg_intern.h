@@ -42,12 +42,17 @@
 #define Y4M_FPS_NTSC_FIELD { 60000, 1001 }
 #define Y4M_FPS_60         { 60, 1 }
 
-/* standard (MPEG-2) display aspect ratios */
-#define Y4M_ASPECT_UNKNOWN { 0, 0 }
-#define Y4M_ASPECT_1_1     { 1, 1 }
-#define Y4M_ASPECT_4_3     { 4, 3 }
-#define Y4M_ASPECT_16_9    { 16, 9 }
-#define Y4M_ASPECT_221_100 { 221, 100 }
+/* standard sample/pixel aspect ratios */
+#define Y4M_SAR_UNKNOWN        {   0, 0  }
+#define Y4M_SAR_SQUARE         {   1, 1  }
+#define Y4M_SAR_NTSC_CCIR601   {  10, 11 }
+#define Y4M_SAR_NTSC_16_9      {  40, 33 }
+#define Y4M_SAR_NTSC_SVCD_4_3  {  15, 11 }
+#define Y4M_SAR_NTSC_SVCD_16_9 {  20, 11 }
+#define Y4M_SAR_PAL_CCIR601    {  59, 54 }
+#define Y4M_SAR_PAL_16_9       { 118, 81 }
+#define Y4M_SAR_PAL_SVCD_4_3   {  59, 36 }
+#define Y4M_SAR_PAL_SVCD_16_9  {  59, 27 }
 
 
 #endif __YUV4MPEG_INTERN_H__

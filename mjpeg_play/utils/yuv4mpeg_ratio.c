@@ -38,13 +38,17 @@ const y4m_ratio_t y4m_fps_PAL_FIELD  = Y4M_FPS_PAL_FIELD;
 const y4m_ratio_t y4m_fps_NTSC_FIELD = Y4M_FPS_NTSC_FIELD;
 const y4m_ratio_t y4m_fps_60         = Y4M_FPS_60;
 
-/* useful list of standard (MPEG-2) display aspect ratios */
-const y4m_ratio_t y4m_aspect_UNKNOWN = Y4M_ASPECT_UNKNOWN;
-const y4m_ratio_t y4m_aspect_1_1     = Y4M_ASPECT_1_1;     /* square TV???  */
-const y4m_ratio_t y4m_aspect_4_3     = Y4M_ASPECT_4_3;     /* standard TV   */
-const y4m_ratio_t y4m_aspect_16_9    = Y4M_ASPECT_16_9;    /* widescreen TV */
-const y4m_ratio_t y4m_aspect_221_100 = Y4M_ASPECT_221_100; /* even wider... */
-
+/* useful list of standard pixel aspect ratios */
+const y4m_ratio_t y4m_sar_UNKNOWN        = Y4M_SAR_UNKNOWN;
+const y4m_ratio_t y4m_sar_SQUARE         = Y4M_SAR_SQUARE;
+const y4m_ratio_t y4m_sar_NTSC_CCIR601   = Y4M_SAR_NTSC_CCIR601;
+const y4m_ratio_t y4m_sar_NTSC_16_9      = Y4M_SAR_NTSC_16_9;
+const y4m_ratio_t y4m_sar_NTSC_SVCD_4_3  = Y4M_SAR_NTSC_SVCD_4_3;
+const y4m_ratio_t y4m_sar_NTSC_SVCD_16_9 = Y4M_SAR_NTSC_SVCD_16_9;
+const y4m_ratio_t y4m_sar_PAL_CCIR601    = Y4M_SAR_PAL_CCIR601;
+const y4m_ratio_t y4m_sar_PAL_16_9       = Y4M_SAR_PAL_16_9;
+const y4m_ratio_t y4m_sar_PAL_SVCD_4_3   = Y4M_SAR_PAL_SVCD_4_3;
+const y4m_ratio_t y4m_sar_PAL_SVCD_16_9  = Y4M_SAR_PAL_SVCD_16_9;
 
 
 /*

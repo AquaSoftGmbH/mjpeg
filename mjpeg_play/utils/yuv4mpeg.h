@@ -71,15 +71,18 @@ extern const y4m_ratio_t y4m_fps_NTSC_FIELD; /* 60000/1001 NTSC field rate */
 extern const y4m_ratio_t y4m_fps_60;         /* 60fps                      */
 
 /************************************************************************
- *  useful standard (MPEG-2) display aspect ratios
+ *  useful standard sample (pixel) aspect ratios
  ************************************************************************/
-extern const y4m_ratio_t y4m_aspect_UNKNOWN;
-extern const y4m_ratio_t y4m_aspect_1_1;      /* square TV???  */
-extern const y4m_ratio_t y4m_aspect_4_3;      /* standard TV   */
-extern const y4m_ratio_t y4m_aspect_16_9;     /* widescreen TV */
-extern const y4m_ratio_t y4m_aspect_221_100;  /* even wider... */
-
-
+extern const y4m_ratio_t y4m_sar_UNKNOWN;
+extern const y4m_ratio_t y4m_sar_SQUARE;        /* square pixels */
+extern const y4m_ratio_t y4m_sar_NTSC_CCIR601;  /* 525-line (NTSC) Rec.601 */
+extern const y4m_ratio_t y4m_sar_NTSC_16_9;     /* 16:9 NTSC/Rec.601       */
+extern const y4m_ratio_t y4m_sar_NTSC_SVCD_4_3; /* NTSC SVCD 4:3           */
+extern const y4m_ratio_t y4m_sar_NTSC_SVCD_16_9;/* NTSC SVCD 16:9          */
+extern const y4m_ratio_t y4m_sar_PAL_CCIR601;   /* 625-line (PAL) Rec.601  */
+extern const y4m_ratio_t y4m_sar_PAL_16_9;      /* 16:9 PAL/Rec.601        */
+extern const y4m_ratio_t y4m_sar_PAL_SVCD_4_3;  /* PAL SVCD 4:3            */
+extern const y4m_ratio_t y4m_sar_PAL_SVCD_16_9; /* PAL SVCD 16:9           */
 
 
 /************************************************************************
@@ -111,9 +114,9 @@ typedef struct _y4m_stream_info {
   /* values from header */
   int width;
   int height;
-  int interlace;           /* see Y4M_ILACE_* definitions below */
-  y4m_ratio_t framerate;   /* frames-per-second;     0:0 == unknown */
-  y4m_ratio_t aspectratio; /* display width/height;  0:0 == unknown */
+  int interlace;            /* see Y4M_ILACE_* definitions below   */
+  y4m_ratio_t framerate;    /* frames-per-second;   0:0 == unknown */
+  y4m_ratio_t sampleaspect; /* pixel width/height;  0:0 == unknown */
   /* computed/derivative values */
   int framelength;    /* bytes of data per frame (not including header) */
   /* mystical X tags */
@@ -243,8 +246,8 @@ void y4m_si_set_interlace(y4m_stream_info_t *si, int interlace);
 int y4m_si_get_interlace(y4m_stream_info_t *si);
 void y4m_si_set_framerate(y4m_stream_info_t *si, y4m_ratio_t framerate);
 y4m_ratio_t y4m_si_get_framerate(y4m_stream_info_t *si);
-void y4m_si_set_aspectratio(y4m_stream_info_t *si, y4m_ratio_t aspectratio);
-y4m_ratio_t y4m_si_get_aspectratio(y4m_stream_info_t *si);
+void y4m_si_set_sampleaspect(y4m_stream_info_t *si, y4m_ratio_t sar);
+y4m_ratio_t y4m_si_get_sampleaspect(y4m_stream_info_t *si);
 int y4m_si_get_framelength(y4m_stream_info_t *si);
 
 /* access stream_info xtag_list */
@@ -421,15 +424,15 @@ int y4m_allow_unknown_tags(int yn);
 
 
   The currently supported tags for the STREAM-HEADER:
-     W - integer frame width, pixels, should be > 0
-     H - integer frame height, pixels, should be > 0
-     I - char interlacing:  p - progressive (none)
+     W - [integer] frame width, pixels, should be > 0
+     H - [integer] frame height, pixels, should be > 0
+     I - [char] interlacing:  p - progressive (none)
                             t - top-field-first
                             b - bottom-field-first
 		            ? - unknown
-     F - ratio frame-rate, 0:0 == unknown
-     A - ratio display aspect ratio, 0:0 == unknown
-     X - character string 'metadata' (unparsed, but passed around)
+     F - [ratio] frame-rate, 0:0 == unknown
+     A - [ratio] sample (pixel) aspect ratio, 0:0 == unknown
+     X - [character string] 'metadata' (unparsed, but passed around)
 
   The currently supported tags for the FRAME-HEADER:
      X - character string 'metadata' (unparsed, but passed around)
