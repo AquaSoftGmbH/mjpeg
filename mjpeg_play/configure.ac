@@ -46,6 +46,10 @@ AC_ARG_ENABLE(zalpha,
               AC_HELP_STRING([--enable-zalpha],
                              [include MPEG Z/Alpha support in mplex (see
                               http://www.geofront.se/products_software_mza.php)]))
+
+AC_ARG_WITH(extra-cflags,
+            AC_HELP_STRING([--with-extra-cflags=flags],
+                           [Options to be added to CFLAGS (optional)]))
 AC_ARG_WITH(libquicktime,
             AC_HELP_STRING([--without-libquicktime],
                            [Do not use libquicktime.]),
@@ -81,6 +85,10 @@ dnl configure AS and ASFLAGS... a pity nasm doesn't take  flags similar to cc
 dnl CCAS=nasm
 dnl CCASFLAGS=
 AM_PROG_AS
+
+if test x"$with_extra_cflags" != "x"; then
+   CFLAGS="$CFLAGS $with_extra_cflags"
+fi
 
 dnl maddog:  What about CHECK-ALLOCA????
 AC_CHECK_HEADERS([fenv.h stdint.h inttypes.h sys/types.h getopt.h alloca.h sys/soundcard.h malloc.h])
@@ -484,6 +492,7 @@ dnl maddog:  check out AC-COMPILE-WARNINGS ???????
 
 CFLAGS="$ARCHFLAGS $CFLAGS"
 CXXFLAGS="$ARCHFLAGS $CXXFLAGS"
+
 if test "x${GCC}" != "xyes" ; then
   enable_compile_warnings=no
 fi
