@@ -422,7 +422,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
         { "video-buffer",      1, 0, 'V' },
         { "video-norm",        1, 0, 'n' },
         { "sequence-length",   1, 0, 'S' },
-        { "3-2-pulldown",      1, &vid32_pulldown, 1 },
+        { "3-2-pulldown",      0, &vid32_pulldown, 1 },
         { "keep-hf",           0, 0, 'H' },
         { "reduce-hf",         1, 0, 'N' },
         { "sequence-header-every-gop", 0, &seq_hdr_every_gop, 1},
