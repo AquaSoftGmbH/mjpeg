@@ -107,7 +107,6 @@ mjpeg_default_handler_verbosity(int verbosity)
 {
   int prev_verb = mjpeg_log_verbosity;
   mjpeg_log_verbosity = LOG_WARN - verbosity;
-  printf("VERB = %d\n", mjpeg_log_verbosity);
   return prev_verb;
 }
 
