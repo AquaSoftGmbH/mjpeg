@@ -31,7 +31,6 @@ int main(int argc, char **argv)
     int    i, n, c, interlace, frames, err;
     int    ywidth, yheight, uvwidth, uvheight, ylen, uvlen;
     int    verbose = 0, fdin;
-    int    SS_H = 2, SS_V = 2;
     int    NlumaX = 4, NlumaY = 4, NchromaX = 4, NchromaY = 4;
     float  BWlumaX = 0.75, BWlumaY = 0.75, BWchromaX = 0.6, BWchromaY = 0.6;
     float  **lumaXtaps, **lumaYtaps, **chromaXtaps, **chromaYtaps;
@@ -78,37 +77,10 @@ int main(int argc, char **argv)
     err = y4m_read_stream_header(fdin, &istream);
     if (err != Y4M_OK)
 	mjpeg_error_exit1("Input stream error: %s\n", y4m_strerr(err));
-    else
-	{
-	    /* try to find a chromass xtag... */
-	    y4m_xtag_list_t *xtags = y4m_si_xtags(&istream);
-	    const char *tag = NULL;
-	    int n;
-	    
-	    for	(n = y4m_xtag_count(xtags) - 1; n >= 0; n--) 
-		{
-		    tag = y4m_xtag_get(xtags, n);
-		    if (!strncmp("XYSCSS=", tag, 7)) break;
-		}
-	    if	((tag != NULL) && (n >= 0))
-		{
-		    /* parse the tag */
-		    tag += 7;
-		    if	(!strcmp("411", tag))
-			{
-			    SS_H = 4;
-			    SS_V = 1;
-			} 
-		    else if (!strcmp(tag, "420") || 
-			     !strcmp(tag, "420MPEG2") || 
-			     !strcmp(tag, "420PALDV") || 
-			     !strcmp(tag,"420JPEG"))
-			{
-			    SS_H = 2;
-			    SS_V = 2;
-			} 
-		}
-	}
+
+    if	(y4m_si_get_plane_count(&istream) != 3)
+	mjpeg_error_exit1("Only the 3 plane formats supported");
+
     i = y4m_si_get_interlace(&istream);
     switch (i)
         {
@@ -124,12 +96,13 @@ int main(int argc, char **argv)
 	    interlace = 0;
 	    break;
         }
-    ywidth = y4m_si_get_width(&istream);
+
+    ywidth = y4m_si_get_width(&istream);	/* plane 0 = Y */
     yheight = y4m_si_get_height(&istream);
     ylen = ywidth * yheight;
-    uvwidth = ywidth/SS_H;
-    uvheight = yheight/SS_V;
-    uvlen = uvwidth * uvheight;
+    uvwidth = y4m_si_get_plane_width(&istream, 1);	/* planes 1&2 = U+V */
+    uvheight = y4m_si_get_plane_height(&istream, 1);
+    uvlen = y4m_si_get_plane_length(&istream, 1);
     
     /* initialize output stream */
     y4m_init_stream_info(&ostream);
@@ -164,9 +137,7 @@ int main(int argc, char **argv)
     get_coeff(chromaYtaps, NchromaY, BWchromaY);
 
     if (verbose)
-	mjpeg_log(LOG_INFO, "W %d H %d R %d/%d Fsize %d\n", 
-		ywidth, yheight, istream.framerate.n,
-		istream.framerate.d, istream.framelength);
+	y4m_log_stream_info(LOG_INFO, "", &istream);
     
     /* main processing loop */
     for (frames=0; y4m_read_frame(fdin,&istream,&iframe,yuvinout) == Y4M_OK; frames++)
@@ -218,7 +189,6 @@ int main(int argc, char **argv)
     y4m_fini_frame_info(&iframe);
     y4m_fini_stream_info(&istream);
     y4m_fini_stream_info(&ostream);
-    
     exit(0);
 }
 
