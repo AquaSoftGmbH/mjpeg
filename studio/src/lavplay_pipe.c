@@ -163,7 +163,18 @@ void process_lavplay_input(char *msg)
 
 	if(msg[0]=='@')
 	{
-		sscanf(msg+1,"%c%d/%d/%d",&lavplay_norm,&cur_pos,&total_frames,&cur_speed);
+		int n, tot=0;
+		for (n=0;msg[n];n++)
+			if (msg[n]=='/')
+				tot++;
+		if (tot==2)
+			sscanf(msg+1,"%c%d/%d/%d",&lavplay_norm,&cur_pos,&total_frames,&cur_speed);
+		else
+		{
+			int norm_num;
+			sscanf(msg+1,"%d/%d/%d/%d",&norm_num,&cur_pos,&total_frames,&cur_speed);
+			lavplay_norm = (norm_num==25)?'p':'n';
+		}
 		set_lavplay_log(lavplay_norm, cur_pos, cur_speed);
 		return;
 	}
