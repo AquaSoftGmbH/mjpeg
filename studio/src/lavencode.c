@@ -534,16 +534,13 @@ void video_convert()
    }
 
    /* Here, the command for the pipe for yuvscaler may be added */
-/* Old Version now checking for "as is"          */
-//   if ((strlen((*pointenc).input_use) > 0) ||
-//       (strlen((*pointenc).output_size) > 0) ||
-//       (strlen((*pointenc).mode_keyword) > 0) )
      if ((strcmp((*pointenc).input_use,"as is") != 0) ||
          (strcmp((*pointenc).output_size,"as is") != 0) ||
          (strcmp((*pointenc).mode_keyword,"as is") != 0) )
    {
       n = 0;
       yuvscaler_command[n] = YUVSCALER_LOCATION; n++;
+      yuvscaler_command[n] = "-v 0"; n++;
       if (strlen((*pointenc).input_use) > 0 &&
           strcmp((*pointenc).input_use,"as is") )
       {
@@ -639,24 +636,43 @@ void video_convert()
 /* mplexing the encodet streams */
 void mplex_convert()
 {
-   char *mplex_command[256];
-   char command[256];
-   static char temp1[16];
-   int n;
+char *mplex_command[256];
+char command[256];
+static char temp1[16], temp2[16], temp3[16];
+int n;
 
-   error = 0;
-   progress_encoding = 3;
+error = 0;
+progress_encoding = 3;
 
    if (progress_label) gtk_label_set_text(GTK_LABEL(progress_label),
       "Multiplexing: mplex");
 
    n = 0;
    mplex_command[n] = MPLEX_LOCATION; n++;
-   if ((*pointenc).muxformat != 0) {
+   if ((*pointenc).muxformat != 0) 
+   {
       sprintf(temp1, "%i", (*pointenc).muxformat);
       mplex_command[n] = "-f"; n++;
       mplex_command[n] = temp1; n++;
    }
+   if ((*pointenc).streamdatarate != 0)
+   {
+      sprintf(temp2, "%i", (*pointenc).streamdatarate);
+      mplex_command[n] = "-r"; n++;
+      mplex_command[n] = temp2; n++;
+   }  
+   if ((*pointenc).decoderbuffer != 46)
+   {
+      sprintf(temp2, "%i", (*pointenc).decoderbuffer);
+      mplex_command[n] = "-r"; n++;
+      mplex_command[n] = temp3; n++;
+   }
+   if ((*pointenc).muxvbr[0] == '-' )
+   {
+      mplex_command[n] = (*pointenc).muxvbr; 
+      n++;
+   }  
+
    mplex_command[n] = enc_audiofile; n++;
    mplex_command[n] = enc_videofile; n++;
    mplex_command[n] = "-o"; n++;
@@ -1063,13 +1079,35 @@ GtkWidget *button_option;
 
 }
 
+/* set the task to do and the video extension */
 void set_task(GtkWidget *widget, gpointer data)
 {
+char temp[3];
+int i;
 
-  if (strcmp ((char*)data,"MPEG1") == 0)
+for (i = 0; i < 3; i++)
+  temp[i]='\0';
+
+  if      (strcmp ((char*)data,"MPEG1") == 0)
     pointenc = &encoding;
   else if (strcmp ((char*)data,"MPEG2") == 0)
-    pointenc = &encoding2;
+      pointenc = &encoding2;
+  else if (strcmp ((char*)data,"VCD")   == 0)
+    pointenc = &encoding_vcd;
+  else if (strcmp ((char*)data,"SVCD")  == 0)
+       pointenc = &encoding_svcd;
+
+  sprintf(temp,"%c",enc_videofile[strlen(enc_videofile)-2]);
+
+  if ( (strcmp(temp , "1") == 0) || (strcmp(temp , "2") == 0) )
+    {
+      if ((strcmp ((char*)data,"MPEG2") == 0) || (strcmp ((char*)data,"SVCD") == 0))
+         enc_videofile[strlen(enc_videofile)-2] = '2';
+      else 
+         enc_videofile[strlen(enc_videofile)-2] = '1';
+
+      gtk_entry_set_text(GTK_ENTRY(video_entry), enc_videofile);
+    }       
 
   if (verbose)
     printf(" Set encoding task to %s \n",(char*)data);
@@ -1109,8 +1147,8 @@ ency=2;
   ency++;
 
   button_vcd = gtk_radio_button_new_with_label(task_group, " VCD (MPEG-1) ");
-//  gtk_signal_connect (GTK_OBJECT (button_vcd), "toggled",
-//                      GTK_SIGNAL_FUNC (force_options), (gpointer) "VCD");
+  gtk_signal_connect (GTK_OBJECT (button_vcd), "toggled",
+                      GTK_SIGNAL_FUNC (set_task), (gpointer) "VCD");
   gtk_table_attach_defaults (GTK_TABLE (table), button_vcd, 
                                     encx, encx+1, ency, ency+1);
   task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_vcd));
@@ -1119,8 +1157,8 @@ ency=2;
   ency++;
  
   button_svcd = gtk_radio_button_new_with_label(task_group, "SVCD (MPEG-2) ");
-//  gtk_signal_connect (GTK_OBJECT (button_svcd), "toggled",
-//                      GTK_SIGNAL_FUNC (force_options), (gpointer) "SVCD");
+  gtk_signal_connect (GTK_OBJECT (button_svcd), "toggled",
+                      GTK_SIGNAL_FUNC (set_task), (gpointer) "SVCD");
   gtk_table_attach_defaults (GTK_TABLE (table), button_svcd, 
                                     encx, encx+1, ency, ency+1);
   task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_svcd));

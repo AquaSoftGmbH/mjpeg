@@ -60,6 +60,9 @@ void set_videobit (GtkWidget *widget, gpointer data);
 void set_searchrad (GtkWidget *widget, gpointer data);
 void init_tempenco(gpointer task);
 void show_data(gpointer task);
+void set_decoderbuffer(GtkWidget *widget, gpointer data);
+void set_datarate (GtkWidget *widget, gpointer data);
+void set_vbr (GtkWidget *widget, gpointer data);
 
 /* Some variables */
 GList *samples = NULL;
@@ -73,8 +76,8 @@ GtkWidget *combo_entry_scalermode, *combo_entry_outputformat;
 GtkWidget *combo_entry_samples, *combo_entry_noisefilter, *combo_entry_audiobitrate;
 GtkWidget *combo_entry_samplebitrate, *button_force_stereo, *button_force_mono;
 GtkWidget *button_force_vcd, *combo_entry_searchradius, *combo_entry_muxfmt;
-GtkWidget *combo_entry_videobitrate;
-
+GtkWidget *combo_entry_videobitrate, *combo_entry_decoderbuffer, *switch_vbr; 
+GtkWidget *combo_entry_streamrate;
 /* =============================================================== */
 /* Start of the code */
 
@@ -89,8 +92,12 @@ void init_tempenco(gpointer task)
     point = &encoding;
   else if (strcmp ((char*)task,"MPEG2") == 0)
     point = &encoding2;
+  else if (strcmp ((char*)task,"VCD") == 0)
+    point = &encoding_vcd;
+  else if (strcmp ((char*)task,"SVCD") == 0)
+    point = &encoding_svcd;
   else 
-    point = &encoding;
+    point = &encoding; /* fallback should never be used ;) */
 
 
   sprintf(tempenco.notblacksize,"%s",(*point).notblacksize);
@@ -110,6 +117,9 @@ void init_tempenco(gpointer task)
   tempenco.bitrate=(*point).bitrate;
   tempenco.searchradius=(*point).searchradius;
   tempenco.muxformat=(*point).muxformat;
+  sprintf(tempenco.muxvbr,"%s",(*point).muxvbr);
+  tempenco.streamdatarate=(*point).streamdatarate;
+  tempenco.decoderbuffer=(*point).decoderbuffer;
 }
 
 /* setting the values of the GTK_ENTRY's */
@@ -151,10 +161,10 @@ char val[LONGOPT];
   if (tempenco.forcevcd[0] == '-')
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(button_force_vcd),TRUE);
 
-  sprintf(val,"%i",encoding.bitrate);
+  sprintf(val,"%i",tempenco.bitrate);
   gtk_entry_set_text(GTK_ENTRY(combo_entry_videobitrate),val);
 
-  sprintf(val,"%i",encoding.searchradius);
+  sprintf(val,"%i",tempenco.searchradius);
   gtk_entry_set_text(GTK_ENTRY(combo_entry_searchradius),val);
 
   /* Mplex Options how do I change this ? */
@@ -162,6 +172,18 @@ char val[LONGOPT];
   for (i = 0; i < tempenco.muxformat ;i++)
     muxformat = g_list_next (muxformat);
   gtk_entry_set_text(GTK_ENTRY(combo_entry_muxfmt), muxformat->data);
+
+  if (tempenco.muxvbr[0] == '-')
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(switch_vbr),TRUE);
+
+  sprintf(val,"%i",tempenco.decoderbuffer);
+  gtk_entry_set_text(GTK_ENTRY(combo_entry_decoderbuffer), val);
+
+  if ( tempenco.streamdatarate == 0)
+    sprintf(val,"auto");
+  else
+    sprintf(val,"%i",tempenco.streamdatarate);
+  gtk_entry_set_text(GTK_ENTRY(combo_entry_streamrate), val);
 }
 
 /* set the noisfilter for lav2yuv */
@@ -242,6 +264,62 @@ int i;
 
   if (verbose)
     printf(" selected output format: %i \n", tempenco.outputformat);
+}
+
+/* set the decoder buffer size for mplex and mpeg2enc */
+void set_decoderbuffer(GtkWidget *widget, gpointer data)
+{
+char *test;
+int i;
+
+  i = 0;
+
+  test = gtk_entry_get_text(GTK_ENTRY(widget));
+
+  i = atoi ( test );
+
+  if ( (i >= 20) && (i <= 1000) )
+    tempenco.decoderbuffer = i;
+
+  if (verbose)
+    printf(" Set decoder buffer to : %i kB\n", tempenco.decoderbuffer);
+}
+
+/* set the vbr flag for the multiplexer */
+void set_vbr(GtkWidget *widget, gpointer data)
+{
+int i;
+
+  if (GTK_TOGGLE_BUTTON (widget)->active)
+    sprintf(tempenco.muxvbr,"-V");
+  else
+    for (i = 0; i < SHORTOPT; i++)
+      tempenco.muxvbr[i]='\0'; 
+ 
+  if (verbose)
+    printf(" Set the mux vbr flag to : %s \n",tempenco.muxvbr);
+}
+
+/* set the data rate of the multiplexed stream */
+void set_datarate(GtkWidget *widget, gpointer data)
+{
+char *test;
+int i;
+
+  i = 0;
+
+  test = gtk_entry_get_text(GTK_ENTRY(widget));
+
+  if(strcmp(test,"auto") != 0)
+  {
+    i = atoi ( test );
+    tempenco.streamdatarate = i;
+  }
+  else 
+    tempenco.streamdatarate = 0;
+  
+  if (verbose)
+    printf(" Set Stream data rate to : %i kB\n", tempenco.streamdatarate);
 }
 
 /* set the mplex format */
@@ -347,13 +425,31 @@ char *test;
 /* creating the options for mplex */
 void create_mplex_encoding (GtkWidget *table, int *tx, int *ty)
 {
-GtkWidget *combo_muxfmt; 
+GtkWidget *label1, *combo_muxfmt, *combo_decoderbuffer, *combo_streamrate;
+GList *streamdata = NULL;
+GList *decoderbuffer = NULL;
+
+  decoderbuffer = g_list_append (decoderbuffer, "20");
+  decoderbuffer = g_list_append (decoderbuffer, "46");
+  decoderbuffer = g_list_append (decoderbuffer, "100");
+  decoderbuffer = g_list_append (decoderbuffer, "200");
+  decoderbuffer = g_list_append (decoderbuffer, "1000");
+
+  streamdata = g_list_append (streamdata, "auto");
+  streamdata = g_list_append (streamdata, "1412");
+  streamdata = g_list_append (streamdata, "1770");
+  streamdata = g_list_append (streamdata, "2280");
+  streamdata = g_list_append (streamdata, "2780");
 
   g_list_first(muxformat);
 
   printf("\n laenge %i \n",g_list_length (g_list_first(muxformat)));
-
  
+  label1 = gtk_label_new ("  Mux format: ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1, *tx, *tx+1, *ty, *ty+1);
+  gtk_widget_show (label1);
+
   combo_muxfmt = gtk_combo_new();
   gtk_combo_set_popdown_strings (GTK_COMBO (combo_muxfmt), muxformat);
   combo_entry_muxfmt = GTK_COMBO (combo_muxfmt)->entry;
@@ -362,6 +458,48 @@ GtkWidget *combo_muxfmt;
                       GTK_SIGNAL_FUNC (set_mplex_muxfmt), NULL);
   gtk_table_attach_defaults (GTK_TABLE (table), combo_muxfmt, *tx+1,*tx+2,*ty,*ty+1);
   gtk_widget_show (combo_muxfmt);
+  (*ty)++;
+
+  label1 = gtk_label_new ("  Decoder buffer size: ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1, *tx, *tx+1, *ty, *ty+1);
+  gtk_widget_show (label1);
+
+  combo_decoderbuffer = gtk_combo_new();
+  gtk_combo_set_popdown_strings (GTK_COMBO (combo_decoderbuffer), decoderbuffer);
+  combo_entry_decoderbuffer = GTK_COMBO (combo_decoderbuffer)->entry;
+  gtk_signal_connect(GTK_OBJECT(combo_entry_decoderbuffer), "changed",
+                      GTK_SIGNAL_FUNC (set_decoderbuffer), NULL);
+  gtk_widget_set_usize (combo_decoderbuffer, 60, -2);
+  gtk_table_attach_defaults (GTK_TABLE(table), 
+                             combo_decoderbuffer, *tx+1,*tx+2,*ty,*ty+1);
+  gtk_widget_show (combo_decoderbuffer);
+  (*ty)++;
+
+  label1 = gtk_label_new ("  Datarate of streams: ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1, *tx, *tx+1, *ty, *ty+1);
+  gtk_widget_show (label1);
+
+  combo_streamrate = gtk_combo_new();
+  gtk_combo_set_popdown_strings (GTK_COMBO (combo_streamrate), streamdata);
+  combo_entry_streamrate = GTK_COMBO (combo_streamrate)->entry;
+  gtk_signal_connect(GTK_OBJECT(combo_entry_streamrate), "changed",
+                      GTK_SIGNAL_FUNC (set_datarate), NULL);
+  gtk_widget_set_usize (combo_streamrate, 60, -2);
+  gtk_table_attach_defaults (GTK_TABLE(table), 
+                             combo_streamrate, *tx+1,*tx+2,*ty,*ty+1);
+  gtk_widget_show (combo_streamrate);
+  (*ty)++;
+
+  switch_vbr = gtk_check_button_new_with_label (" Mux VBR ");
+  gtk_widget_ref (switch_vbr);
+  gtk_signal_connect (GTK_OBJECT (switch_vbr), "toggled",
+                      GTK_SIGNAL_FUNC (set_vbr), NULL);
+  gtk_table_attach_defaults (GTK_TABLE(table), switch_vbr, *tx+1,*tx+2,*ty,*ty+1);
+  gtk_widget_show (switch_vbr);
+
+
 }
 
 /* set output bitrate for the audio */
@@ -750,7 +888,7 @@ GtkWidget *label, *table;
 int tx,ty; /* tabele size x, y */
 
 tx = 2;
-ty = 9;
+ty = 10;
 
   table = gtk_table_new (tx,ty,FALSE);
   tx = 0;
@@ -766,6 +904,7 @@ ty = 9;
   label = gtk_label_new (" Mplex option: ");
   gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+1, ty, ty+1);
   gtk_widget_show(label);
+  ty++;
 
   create_mplex_encoding (table, &tx, &ty);
 
@@ -773,7 +912,7 @@ ty = 9;
   gtk_widget_show(table);
 }
 
-/* Create the audio and mplex layout */
+/* Create the video encoding layout */
 void create_yuv2mpeg_layout(GtkWidget *hbox)
 {
 GtkWidget *label, *table;
@@ -821,6 +960,9 @@ void accept_mpegoptions(GtkWidget *widget, gpointer data)
   (*point).bitrate=tempenco.bitrate;
   (*point).searchradius=tempenco.searchradius;
   (*point).muxformat=tempenco.muxformat;
+  sprintf((*point).muxvbr,"%s",tempenco.muxvbr);
+  (*point).streamdatarate=tempenco.streamdatarate;
+  (*point).decoderbuffer=tempenco.decoderbuffer;
 
 }
 

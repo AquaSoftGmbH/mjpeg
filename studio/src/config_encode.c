@@ -56,7 +56,9 @@ void save_section(FILE *fp, struct encodingoptions *point,char section[LONGOPT])
 void load_common(void);
 void load_section(char section[LONGOPT],struct encodingoptions *point);
 void print_encoding_options(char section[LONGOPT],struct encodingoptions *point);
-
+void do_preset_mpeg2(struct encodingoptions *point);
+void do_preset_vcd(struct encodingoptions *point);
+void do_preset_svcd(struct encodingoptions *point);
 
 /* config.c */
 int chk_dir(char *name);
@@ -75,6 +77,7 @@ char t_ininterlace_type[LONGOPT];
 
 /* ================================================================= */
 
+/* set the structs to default values */
 void set_structs_default(struct encodingoptions *point)
 {
 int i;
@@ -93,6 +96,7 @@ int i;
       (*point).forcestereo[i]    ='\0';
       (*point).forcemono[i]      ='\0';
       (*point).forcevcd[i]       ='\0';
+      (*point).muxvbr[i]         ='\0';
     }
 
   (*point).addoutputnorm = 0;
@@ -101,12 +105,39 @@ int i;
   (*point).noisefilter = 0;
   (*point).audiobitrate = 0;
   (*point).outputbitrate = 0;
-  (*point).bitrate = 0;
-  (*point).searchradius = 0;
-  (*point).muxformat = 0;
+  (*point).bitrate = 1152;
+  (*point).searchradius   = 0;
+  (*point).muxformat      = 0;
+  (*point).streamdatarate = 0;
+  (*point).decoderbuffer  = 46;
 
+  sprintf((*point).output_size,"as is");
 }
 
+/* set some mpeg2 specific options */
+void do_preset_mpeg2(struct encodingoptions *point)
+{
+  (*point).muxformat = 3;
+  (*point).bitrate = 2500;
+}
+
+/* set some VCD specific options */
+void do_preset_vcd(struct encodingoptions *point)
+{
+  (*point).muxformat   = 1;
+  sprintf((*point).forcevcd,"-V");
+}
+
+/* set some SVCD specific options */
+void do_preset_svcd(struct encodingoptions *point)
+{
+  (*point).muxformat = 4;
+  sprintf((*point).forcevcd,"-V");
+  sprintf((*point).output_size,"SVCD");
+  (*point).bitrate = 2500;
+}
+
+/* load the common things */
 void load_common()
 {
 char *val;
@@ -161,8 +192,6 @@ int i;
 
   if (NULL != (val = cfg_get_str(section,"Encode_Output_size")))
       sprintf((*point).output_size, val);
-  else
-      sprintf((*point).output_size,"as is");
 
   if (NULL != (val = cfg_get_str(section,"Encode_Mode_keyword")))
       sprintf((*point).mode_keyword, val);
@@ -208,8 +237,6 @@ int i;
 
   if (-1 != (i = cfg_get_int(section,"Encode_Video_Bitrate")))
         (*point).bitrate = i;
-  else
-        (*point).bitrate = 1152;
 
   if (-1 != (i = cfg_get_int(section,"Encode_Searchradius")))
         (*point).searchradius = i;
@@ -218,11 +245,19 @@ int i;
 
   if (-1 != (i = cfg_get_int(section,"Encode_Muxformat")))
         (*point).muxformat = i;
-  else
-        (*point).muxformat = 0;
 
+  if (NULL != (val = cfg_get_str(section,"Encode_Mux_VBR")))
+    if ( 0 != strcmp(val,"as is"))
+      sprintf((*point).muxvbr, val);
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Stream_Datarate")))
+        (*point).streamdatarate = i;
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Decoder_Buffer")))
+        (*point).decoderbuffer = i;
 }
 
+/* show the current options */
 void print_encoding_options(char section[LONGOPT], struct encodingoptions *point)
 {
   printf("\n Encoding options of %s \n",section);
@@ -238,10 +273,13 @@ void print_encoding_options(char section[LONGOPT], struct encodingoptions *point
   printf("Encoding Audio Samplerate : \'%i\' \n",     (*point).outputbitrate);
   printf("Encoding Audio force stereo: \'%s\' \n",      (*point).forcestereo);
   printf("Encoding Audio force mono: \'%s\' \n",          (*point).forcemono);
-  printf("Encoding Audio force Vcd: \'%s\' \n",            (*point).forcevcd);
+  printf("Encoding Audio force VCD: \'%s\' \n",            (*point).forcevcd);
   printf("Encoding Video Bitrate: \'%i\' \n",               (*point).bitrate);
   printf("Encoding Searchradius : \'%i\' \n",          (*point).searchradius);
   printf("Encoding Mplex Format : \'%i\' \n",             (*point).muxformat);
+  printf("Encoding Mux VBR : \'%s\' \n",                     (*point).muxvbr);
+  printf("Encoding Stream Datarate : \'%i\' \n",     (*point).streamdatarate);
+  printf("Encoding Decoder Buffer Size : \'%i\' \n",  (*point).decoderbuffer);
 }
 
 void load_config_encode()
@@ -256,10 +294,19 @@ int have_config;
     have_config = 1;
 
   point = &encoding; 
-  set_structs_default(point);
-  
+  set_structs_default(point);  /* set struct to the defaults */
+
   point = &encoding2;
-  set_structs_default(point);
+  set_structs_default(point);  /* set struct to the defaults */
+  do_preset_mpeg2(point);     /* set some mpeg2 specific options */
+
+  point = &encoding_vcd;
+  set_structs_default(point);  /* set struct to the defaults */
+  do_preset_vcd(point);     /* set some VCD specific options */
+
+  point = &encoding_svcd;
+  set_structs_default(point);  /* set struct to the defaults */
+  do_preset_svcd(point);     /* set some SVCD specific options */
  
   /* Saved bu not in the structs */
   encoding_syntax_style = 0;
@@ -285,6 +332,18 @@ int have_config;
   strncpy(section,"MPEG2",LONGOPT);
   point = &encoding2; 
   load_section("MPEG2",point);
+  if (verbose)
+    print_encoding_options(section,point);
+
+  strncpy(section,"VCD",LONGOPT);
+  point = &encoding_vcd; 
+  load_section("VCD",point);
+  if (verbose)
+    print_encoding_options(section,point);
+
+  strncpy(section,"SVCD",LONGOPT);
+  point = &encoding_svcd; 
+  load_section("SVCD",point);
   if (verbose)
     print_encoding_options(section,point);
 
@@ -358,6 +417,14 @@ void save_section(FILE *fp, struct encodingoptions *point, char section[LONGOPT]
 
   fprintf(fp,"Encode_Muxformat = %i\n", (*point).muxformat);
 
+  if ((*point).muxvbr[0] == '-')
+    fprintf(fp,"Encode_Mux_VBR = %s\n", (*point).muxvbr);
+  else
+    fprintf(fp,"Encode_Mux_VBR = %s\n", "as is");
+
+  fprintf(fp,"Encode_Stream_Datarate = %i\n", (*point).streamdatarate);
+  fprintf(fp,"Encode_Decoder_Buffer = %i\n", (*point).decoderbuffer);
+
 }
 
 /* Save the current encoding configuration */
@@ -395,6 +462,12 @@ FILE *fp;
  
   point = &encoding2; 
   save_section(fp,point,"MPEG2");
+ 
+  point = &encoding_vcd; 
+  save_section(fp,point,"VCD");
+ 
+  point = &encoding_svcd; 
+  save_section(fp,point,"SVCD");
  
   if (verbose) printf("Configuration of the encoding options saved\n");
 
