@@ -624,6 +624,12 @@ static int lavrec_output_video_frame(lavrec_t *info, uint8_t *buff, long size, l
          "Max filesize reached, opening next output file");
       OpenNewFlag = 1;
    }
+   if( info->max_file_frames > 0 &&  settings->stats->num_frames % info->max_file_frames == 0)
+   {
+      lavrec_msg(LAVREC_MSG_INFO, info,
+         "Max number of frames reached, opening next output file");
+      OpenNewFlag = 1;
+   }
    if (settings->output_status > 0 && settings->MBytes_fs_free < MIN_MBYTES_FREE)
    {
       lavrec_msg(LAVREC_MSG_INFO, info,

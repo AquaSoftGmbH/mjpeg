@@ -99,6 +99,12 @@
  *      format and need a specific filesize limit, for example to be
  *      able to burn the video files to CD (650 MB).
  *
+ *   --max-file-frames --- The maximum number of frames per video file
+ *      Intended for those that would like to record video in MJPEG
+ *      format and need a specific number of frames per file, for
+ *      example to be able to perform easy file and frame number
+ *      arithmetics when cutting video manually.
+ *
  *   --file-flush  --- How often (in frames) the current output 
  *       file (if any) should be flushed to disk.  (default:60).
  *       Set to 0 if your chosen file-system and system tuning
@@ -253,6 +259,7 @@ static void Usage(char *progname)
 	fprintf(stderr, "  --software-encoding         Use software JPEG-encoding (for BTTV-capture)\n");
 	fprintf(stderr, "  --num-procs num             Number of encoding processes (default: 1)\n");
 	fprintf(stderr, "  --max-file-size num         Maximum size per file (in MB)\n");
+	fprintf(stderr, "  --max-file-frames num       Maximum number of frames per file\n");
 	fprintf(stderr, "  --file-flush num            Flush capture file to disk every num frames\n");
 
 	fprintf(stderr, "  -v/--verbose [012]          verbose level (default: 0)\n");
@@ -842,6 +849,10 @@ static int set_option(const char *name, char *value)
 	{
 		info->max_file_size_mb = atoi(optarg);
 	}
+	else if (strcmp(name, "max-file-frames")==0)
+	{
+		info->max_file_frames = atoi(optarg);
+	}
 	else if (strcmp(name, "file-flush")==0)
 	{
 		info->flush_count = atoi(optarg);
@@ -888,6 +899,7 @@ static void check_command_line_options(int argc, char *argv[])
 		{"software-encoding",0,0,0},   /* --software-encoding    */
 		{"num-procs"        ,1,0,0},   /* --num-procs            */
 		{"max-file-size"    ,1,0,0},   /* --max-file-size        */
+		{"max-file-frames"  ,1,0,0},   /* --max-file-frames      */
 		{"file-flush"       ,1,0,0},   /* --file-flush           */
 		{"frequency"        ,1,0,0},   /* --frequency/-F         */
 		{0,0,0,0}
