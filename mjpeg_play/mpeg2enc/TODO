@@ -2,36 +2,46 @@ Short Term
 
 1.	Tidy up defaults for gop sizes etc for NTSC vs. PAL
 
-2.	Librarify for gstreamer
+2.	The order of return from block_dist1_MMXE is silly.  Why not
+	retune in the order it is held and adjust find_best_one_pel_MMXE to
+	suit.  
 
-Medium Term
+3.	The rate control code is now a mess of int64_t , double and int. Needs
+	tidying...
 
 
-1.  	Bring field sequence MC/prediction to same level as progressive	
-	sequence.
-	
-2.	Get MMX routines written fast_motion_data.
-
-3.  Check out using dist2 for initial MC calculations as well as final
-	selection?
-
-4.	Sort out that wretched vbv verification code.
-
-	The code for scene-change gop sizing and ending sequences can in
+4.	The code for scene-change gop sizing and ending sequences can in
 	some circumstances mess up as the sizing takes no account of
 	the fact the when a sequence split occurs the I-frame tempref is
 	0 not M-1.
 
+
+Medium Term
+
+0.	Librarify for gstreamer
+
+
+/1.  	Bring field sequence MC/prediction to same level as progressive	
+	sequence.
+	
+2.	Improve locality of reference by motion-estimating entire 4x4, 2x2, 1x1
+phases in a single pass rather doing each for each Macroblock.
+
+3.  Check out using dist2 for initial MC calculations as well as final
+	selection?
+
+4.  Decouple motion estimation and encoding passes to allow backup-and-retry
+	and two-pass encoding.
+
+5.	Add low-passing for high-activity regions when a specified quantisation
+	level is exceeded (or block boundary edge energy exceeds some threshold?).
+
+6.	Sort out that wretched vbv verification code.
+
 	The mblockq_ sub-routines intended specification should be documented...
 
-5.	Code Hygiene...
+7.	Code Hygiene...
 	Is all theblock_count dependant code is o.k. for YUV422 and YUV444?
 
-	The order of return from block_dist1_MMXE is silly.  Why not
-	retun in the order it is held and adjust find_best_one_pel_MMXE to
-	suit.  
-
-	The rate control code is now a mess of int64_t , double and int. Needs
-	tidying...
 
 

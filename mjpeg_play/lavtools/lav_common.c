@@ -165,17 +165,50 @@ void frame_YUV420P_deinterlace(uint8_t **frame,
 }
 #endif
 
-int luminance_mean(uint8_t *frame, int w, int h )
+/***********************
+ *
+ * Take a random(ish) sampled mean of a frame luma and chroma
+ * Its intended as a rough and ready hash of frame content.
+ * The idea is that changes above a certain threshold are treated as
+ * scene changes.
+ *
+ **********************/
+
+int luminance_mean(uint8_t *frame[], int w, int h )
 {
-	uint8_t *p = frame;
-	uint8_t *lim = frame + w*h;
+	uint8_t *p;
+	uint8_t *lim;
 	int sum = 0;
+	int count = 0;
+	p = frame[0];
+	lim = frame[0] + w*(h-1);
 	while( p < lim )
 	{
-		sum += (p[0] + p[1]) + (p[2] + p[3]) + (p[4] + p[5]) + (p[6] + p[7]);
-		p += 8;
+		sum += (p[0] + p[1]) + (p[w-3] + p[w-2]);
+		p += 31;
+		count += 4;
 	}
-	return sum / (w * h);
+
+    w = w / 2;
+	h = h / 2;
+
+	p = frame[1];
+	lim = frame[1] + w*(h-1);
+	while( p < lim )
+	{
+		sum += (p[0] + p[1]) + (p[w-3] + p[w-2]);
+		p += 31;
+		count += 4;
+	}
+	p = frame[2];
+	lim = frame[2] + w*(h-1);
+	while( p < lim )
+	{
+		sum += (p[0] + p[1]) + (p[w-3] + p[w-2]);
+		p += 31;
+		count += 4;
+	}
+	return sum / count;
 }
 
 

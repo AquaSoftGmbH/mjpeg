@@ -120,7 +120,7 @@ typedef struct {
    uint8_t chroma_blank[768 * 480];
 } LavBuffers;
 
-int luminance_mean(uint8_t *frame, int w, int h);
+int luminance_mean(uint8_t *frame[], int w, int h);
 int decode_jpeg_raw(uint8_t *jpeg_data, int len,
                     int itype, int ctype, int width, int height,
                     uint8_t *raw0, uint8_t *raw1,

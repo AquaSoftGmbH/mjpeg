@@ -228,7 +228,7 @@ static void set_2nd_field_params(pict_data_s *picture)
  *
  ************************************/
 
-#define SCENE_CHANGE_THRESHOLD 6
+#define SCENE_CHANGE_THRESHOLD 4
 
 static int find_gop_length( int gop_start_frame, 
 							int I_frame_temp_ref,
@@ -241,27 +241,33 @@ static int find_gop_length( int gop_start_frame,
       istrm_nframes if the number of frames in the stream if the end
       of stream has is reached before this frame...
     */
+    int max_change = 0;
+    int gop_len;
 	int cur_lum_mean = 
-		frame_lum_mean( gop_start_frame+gop_max_len+I_frame_temp_ref );
+		frame_lum_mean( gop_start_frame+gop_min_len-min_b_grp+I_frame_temp_ref );
 	int pred_lum_mean;
 
-	/* Search backwards from max gop length for I-frame candidate
-	   adjusting for I-frame temporal reference.
-       If permissible GOP size range is 1 or empty simply set gop_max_len..
-	*/
     if( gop_min_len >= gop_max_len )
-        i = gop_max_len;
+        gop_len = gop_max_len;
     else
     {
-        for( i = gop_max_len; i >= gop_min_len; i -= min_b_grp )
+        /* Search forwards from min gop length for I-frame candidate
+           which has the largest change in mean luminance.
+        */
+        gop_len = 0;
+        for( i = gop_min_len; i <= gop_max_len; i += min_b_grp )
         {
-            pred_lum_mean = frame_lum_mean( gop_start_frame+i+I_frame_temp_ref-min_b_grp );
-            if( abs(cur_lum_mean-pred_lum_mean ) >= SCENE_CHANGE_THRESHOLD )
-                break;
+            pred_lum_mean = frame_lum_mean( gop_start_frame+i+I_frame_temp_ref);
+            if( abs(cur_lum_mean-pred_lum_mean ) >= SCENE_CHANGE_THRESHOLD 
+                && abs(cur_lum_mean-pred_lum_mean ) > max_change )
+            {
+                max_change = abs(cur_lum_mean-pred_lum_mean );
+                gop_len = i;
+            }
             cur_lum_mean = pred_lum_mean;
         }
 
-        if( i < gop_min_len )
+        if( gop_len == 0 )
         {
 
             /* No scene change detected within maximum GOP length.
@@ -269,57 +275,62 @@ static int find_gop_length( int gop_start_frame,
                GOP next would put scene change into the GOP after-next
                that would need a GOP smaller than minimum to handle...
             */
-            pred_lum_mean = 
-                frame_lum_mean( gop_start_frame+gop_max_len+I_frame_temp_ref );
+            gop_len = gop_max_len;
             for( j = gop_max_len+min_b_grp; j < gop_max_len+gop_min_len; j += min_b_grp )
             {
-                cur_lum_mean = frame_lum_mean( gop_start_frame+j+I_frame_temp_ref );
-                if(  abs(cur_lum_mean-pred_lum_mean ) >= SCENE_CHANGE_THRESHOLD )
-                    break;
+                cur_lum_mean = 
+                    frame_lum_mean( gop_start_frame+j+I_frame_temp_ref );
+                if( abs(cur_lum_mean-pred_lum_mean ) >= SCENE_CHANGE_THRESHOLD
+                    &&  abs(cur_lum_mean-pred_lum_mean > max_change )
+                    )
+                {
+                    max_change = abs(cur_lum_mean-pred_lum_mean );
+                    gop_len = j;
+                }
             }
 		
-            /* If a max length GOP next would cause a scene change in a
-               place where the GOP after-next would be under-size to handle it
-               *and* making the current GOP minimum size would allow an acceptable
-               GOP after-next size the next GOP to give it and after-next
-               roughly equal sizes
+            /* If a max length GOP next would cause a scene change in
+               a place where the GOP after-next would be under-size to
+               handle it *and* making the current GOP minimum size
+               would allow an acceptable GOP after-next size the next
+               GOP to give it and after-next roughly equal sizes
                otherwise simply set the GOP to maximum length
             */
 
-            if( j < gop_max_len+gop_min_len )
+            if( gop_len > gop_max_len 
+                && gop_len < gop_max_len+gop_min_len )
             {
-                if( j < 2*gop_min_len )
+                if( gop_len < 2*gop_min_len )
                 {
                     mjpeg_info("GOP min length too small to permit scene-change on GOP boundary %d\n", j);
                     /* Its better to put the missed transition at the end
                        of a GOP so any eventual artefacting is soon washed
                        out by an I-frame*/
-                    i = gop_min_len;
+                    gop_len = gop_min_len;
                 }
                 else
                 {
                     /* If we can make the two GOPs near the transition
                        similarly sized */
-                    i = j /2;
+                    i = gop_len /2;
                     if( i%min_b_grp != 0 )
                         i+=(min_b_grp-i%min_b_grp);
-                    if( j-i < gop_min_len || j > gop_max_len )
-                        i = gop_min_len;
+                    if( gop_len-i < gop_min_len )
+                        gop_len = gop_min_len;
+                    if( gop_len > gop_max_len )
+                        gop_len = gop_max_len;
                 }
 				
             }
             else
-                i = gop_max_len;
+                gop_len = gop_max_len;
         }
     }
-	if( i != gop_max_len )
-		mjpeg_debug( "GOP nonstandard size %d\n", i );
-
 	/* last GOP may contain less frames! */
-	if (i > istrm_nframes-gop_start_frame)
-		i = istrm_nframes-gop_start_frame;
-	mjpeg_info( "GOP_SIZE = %d\n", i);
-	return i;
+	if (gop_len > istrm_nframes-gop_start_frame)
+		gop_len = istrm_nframes-gop_start_frame;
+	mjpeg_info( "GOP LENGTH = %d\n", gop_len);
+	return gop_len;
 
 }
 

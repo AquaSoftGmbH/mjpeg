@@ -254,8 +254,9 @@ static void set_format_presets()
 		param_mpeg = 1;
 		param_bitrate = 1151929;
 		param_video_buffer_size = 46;
-        param_min_GOP_size = 12;
-        param_max_GOP_size = 12;
+        param_preserve_B = true;
+        param_min_GOP_size = 9;
+		param_max_GOP_size = param_norm == 'n' ? 18 : 15;
 		mjpeg_info("VCD default options selected\n");
 		
 	case MPEG_FORMAT_VCD_NSR : /* VCD format, non-standard rate */
@@ -294,6 +295,8 @@ static void set_format_presets()
 			param_quant = 8;
 		if( param_svcd_scan_data == -1 )
 			param_svcd_scan_data = 1;
+		if( param_min_GOP_size == -1 )
+            param_min_GOP_size = 9;
         param_seq_hdr_every_gop = 1;
         break;
 

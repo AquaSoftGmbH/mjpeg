@@ -45,7 +45,7 @@ and files created as needed.
 2.1		What is the difference between MPEG-1 and MPEG-2.
 
 MPEG-2 is (basically) a superset of MPEG-1 that is much more flexible
-in terms of data-rates and formats can handle interlaced video.
+in terms of data-rates and formats and can handle interlaced video.
 There's more to it than that but most of the the other differences
 relate to support for digital TV broadcasting.
 
@@ -53,16 +53,35 @@ relate to support for digital TV broadcasting.
 
 The MPEG-4 video compression standard provides somewhat better
 compression at low-to-medium bit-rates (up to around 1Mbps).
-Basically, MPEG-4 gives useful pictures where MPEG-1 or MPEG-2 would
-start to break down.  At higher data-rates MPEG's own figures suggest
-MPEG-4 gains less and less.  MPEG-4 is also not really set up to
-encode interlaced video. Basically, if you want to put an acceptable
-quality encoding of a Movie onto 1 CD MPEG-4 is the sensible choice.
-If you want higher quality and are willing to use 2 CD's MPEG-1/2 will
-work at least as well.  If you need to encode interlaced material
-MPEG-2 is a sensible choice.
+Basically, MPEG-4 still gives useful pictures where MPEG-1 or MPEG-2
+would start to break down. To do this it has special encoding modes
+for efficiently encoding subsampled (down-scaled) images and for
+masking the artefacts caused by very low data-rate encoding.  At
+higher data-rates these features aren't really needed and bring
+relatively little. MPEG's own figures suggest MPEG-4 gains about 15%
+over MPEG-1/2 at around 1MBps,  more at lower rates less and between 5-10%
+at datarates above 2Mbps.
 
-2.3	 What is the "multiplexing" business?
+These figures are, however, for encoders working with comparable
+parameters.  One reason why DivX seemed to be such a big leap over
+MPEG-1 was that most MPEG-1 encoders generated very conservative
+MPEG-1 like that used for standard VCD disks. When encoding for a
+Software decoder running on a computer lots of extra MPEG features can
+be used to improve compression.  Top amoungst these is the use of variable bit
+rate encoding and assuming large buffers in the decoder.
+
+Basically, if you want to put an acceptable quality encoding of a
+Movie onto 1 CD MPEG-4 is the sensible choice.  If you want higher
+quality and are willing to use 2 CD's or more MPEG-1/2 will work at
+least as well and will allow you to use VCD and SVCD formats that can be
+played on DVD players.
+
+If you need to encode interlaced material at high quality MPEG-2 is a
+sensible choice because MPEG-4 cannot encode interlaced video
+directly.  It needs it to be deinterlaced first.
+
+
+2.3	 What is this "multiplexing" business?
 
 An MPEG video stream (as found say on a DVD) is actually one or more
 video streams proper interleaved with one or more audio streams in a
