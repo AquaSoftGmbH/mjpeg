@@ -1,13 +1,15 @@
-%define prefix /usr
+%define prefix  /usr/local
+%define version 1.5.4
+@define release 1
 
 Summary: Tools for recording, editing, playing back and mpeg/divx-encoding video under linux
 Name: mjpegtools
-Version: 1.5.4
-Release: 1
+Version: %{version}
+Release: %{release}
 Copyright: GPL
 Group: Applications/Multimedia
 Prefix: %{prefix}
-Source0: http://prdownloads.sourceforge.net/mjpeg/mjpegtools-1.5.4.tar.gz
+Source0: http://prdownloads.sourceforge.net/mjpeg/mjpegtools-%{version}.tar.gz
 Source1: http://prdownloads.sourceforge.net/mjpeg/quicktime4linux-1.4-patched.tar.gz
 Source2: http://prdownloads.sourceforge.net/mjpeg/libmovtar-0.1.2a.tar.gz
 Source3: http://prdownloads.sourceforge.net/mjpeg/jpeg-mmx-0.1.3.tar.gz
@@ -34,7 +36,7 @@ make
 make --prefix=%{prefix}
 make install
 
-%setup -b 0 -n mjpegtools-1.5.4
+%setup -b 0 -n mjpegtools-%{version}
 ./configure --with-quicktime=`pwd`/../quicktime4linux-1.4-patch \
 	--with-jpeg-mmx=`pwd`/../jpeg-mmx \
 	--with-movtar-prefix=`pwd`/../libmovtar-0.1.2 \
@@ -50,8 +52,17 @@ make install
 
 %files
 %defattr(-,root,root)
-%doc README
+%doc README README.DV README.avilib README.glav README.lavpipe README.transist AUTHORS COPYING
 
+%{prefix}/lib/liblavplay*so*
+%{prefix}/lib/liblavrec*so*
+%{prefix}/lib/liblavfile*so*
+%{prefix}/lib/liblavjpeg*so*
+%{prefix}/lib/libmjpegutils.a
+%{prefix}/lib/liblavplay.a
+%{prefix}/lib/liblavrec.a
+%{prefix}/lib/liblavfile.a
+%{prefix}/lib/liblavjpeg.a
 %{prefix}/bin/lavplay
 %{prefix}/bin/lavrec
 %{prefix}/bin/lav2wav
@@ -79,13 +90,16 @@ make install
 %{prefix}/bin/yuvycsnoise
 %{prefix}/bin/yuvkineco
 %{prefix}/bin/yuvfilter
+${prefix}/include/mjpegtools/*.h
 %{prefix}/bin/movtar_play
 %{prefix}/bin/movtar_split
 %{prefix}/bin/movtar_unify
 %{prefix}/bin/movtar_index
 %{prefix}/bin/movtar_setinfo
 %{prefix}/bin/movtar_yuv422
-
+%{prefix}/bin/movtar-config
+%{prefix}/lib/libmovtar.a
+%{prefix}/include/movtar.h
 %{prefix}/man/man1/lav2wav.1
 %{prefix}/man/man1/lav2yuv.1
 %{prefix}/man/man1/lavpipe.1
@@ -96,7 +110,6 @@ make install
 %{prefix}/man/man1/mp2enc.1
 %{prefix}/man/man1/mpeg2enc.1
 %{prefix}/man/man1/mplex.1
-%{prefix}/man/man1/xlav.1
 %{prefix}/man/man1/yuv2lav.1
 %{prefix}/man/man1/yuvplay.1
 %{prefix}/man/man1/yuvscaler.1
