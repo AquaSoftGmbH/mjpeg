@@ -47,7 +47,7 @@ extern  void sub_pred_mmx (uint8_t *pred, uint8_t *cur,
 						  int lx, int16_t *blk);
 
 
-static __inline__ void
+static inline void
 mmx_sum_4_word_accs( mmx_t *accs, int32_t *res )
 {
 	movq_m2r( *accs, mm1 );
@@ -65,7 +65,7 @@ mmx_sum_4_word_accs( mmx_t *accs, int32_t *res )
 }
 
 
-static __inline__ void
+static inline void
 sum_sumsq_8bytes( uint8_t *cur_lum_mb, 
 				  uint8_t *pred_lum_mb,
 				  mmx_t *sumtop_accs,

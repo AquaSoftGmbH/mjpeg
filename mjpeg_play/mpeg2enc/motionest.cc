@@ -152,7 +152,7 @@ inline int mv_coding_penalty( int mv_x, int mv_y )
  *
  */
 
-static __inline__ int unidir_pred_var( const MotionCand *motion,
+static inline int unidir_pred_var( const MotionCand *motion,
 							uint8_t *mb,  
 							int lx, 
 							int h)
@@ -166,7 +166,7 @@ static __inline__ int unidir_pred_var( const MotionCand *motion,
  * compensated block.
  */
 
-static __inline__ int bidir_pred_var( const MotionCand *motion_f, 
+static inline int bidir_pred_var( const MotionCand *motion_f, 
 									  const MotionCand *motion_b,
 									  uint8_t *mb,  
 									  int lx, int h)
@@ -266,7 +266,7 @@ static int bidir_var_sum( MotionCand *lum_mc_f,
  * Sum of chrominance variance of a block.
  */
 
-static __inline__ int chrom_var_sum( SubSampledImg *ssblk, int h, int lx )
+static inline int chrom_var_sum( SubSampledImg *ssblk, int h, int lx )
 {
     uint32_t var1, var2, dummy_mean;
     assert( (h>>1) == 8 || (h>>1) == 16 );
@@ -282,7 +282,7 @@ static __inline__ int chrom_var_sum( SubSampledImg *ssblk, int h, int lx )
  * Compute SAD for bi-directionally motion compensated blocks...
  */
 
-static __inline__ int bidir_pred_sad( const MotionCand *motion_f, 
+static inline int bidir_pred_sad( const MotionCand *motion_f, 
 									  const MotionCand *motion_b,
 									  uint8_t *mb,  
 									  int lx, int h)

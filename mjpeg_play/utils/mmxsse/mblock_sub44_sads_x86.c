@@ -47,7 +47,7 @@
  * registers
  *
  */
-static __inline__ void load_blk(uint8_t *blk,uint32_t rowstride,int h)
+static inline void load_blk(uint8_t *blk,uint32_t rowstride,int h)
 {
 	movq_m2r( *blk, mm0);
 	movq_m2r( *(blk+rowstride), mm1);
@@ -81,7 +81,7 @@ static __inline__ void load_blk(uint8_t *blk,uint32_t rowstride,int h)
  *
  */
 
-static __inline__ void init_qblock_sad_mmxe(uint8_t *refblk,uint32_t h,uint32_t rowstride)
+static inline void init_qblock_sad_mmxe(uint8_t *refblk,uint32_t h,uint32_t rowstride)
 {
     /* load refblk into mm6 and mm7 */
 
@@ -101,7 +101,7 @@ static __inline__ void init_qblock_sad_mmxe(uint8_t *refblk,uint32_t h,uint32_t 
     }
 }
 
-static __inline__ int qblock_sad_mmxe(uint8_t *refblk, 
+static inline int qblock_sad_mmxe(uint8_t *refblk, 
 								  uint32_t h,
 								  uint32_t rowstride)
 {
@@ -143,13 +143,11 @@ static __inline__ int qblock_sad_mmxe(uint8_t *refblk,
   mm4      Used for accumulating partial SAD
  */
 
-static __inline__ void init_qblock_sad_mmx(uint8_t *refblk,uint32_t h,uint32_t rowstride)
+static inline void init_qblock_sad_mmx(uint8_t *refblk,uint32_t h,uint32_t rowstride)
 {
 }
 
-static __inline__ int qblock_sad_mmx(uint8_t *refblk, 
-								  uint32_t h,
-								  uint32_t rowstride)
+static inline int qblock_sad_mmx(uint8_t *refblk, uint32_t h, uint32_t rowstride)
 {
 	int res;
 	pxor_r2r 	(mm4,mm4);

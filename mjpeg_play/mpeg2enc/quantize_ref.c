@@ -73,16 +73,13 @@ void init_x86_quantization( struct QuantizerCalls *calls,
 #endif
 
 #define fabsshift ((8*sizeof(unsigned int))-1)
-
 #define signmask(x) (((int)x)>>fabsshift)
-static __inline__ int intsamesign(int x, int y)
+static inline int intsamesign(int x, int y)
 {
 	return (y+(signmask(x) & -(y<<1)));
 }
-
 #undef signmask
 #undef fabsshift
-
 
 /*
  * Return the code for a quantisation level
