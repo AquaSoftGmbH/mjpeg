@@ -1,5 +1,5 @@
 Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.5 aus
-/tmp/linuxdoc-dir-2918/sgmltmp.mjpeg-howto.info.2.
+/tmp/linuxdoc-dir-2175/sgmltmp.mjpeg-howto.info.2.
 
    \input texinfo
 
@@ -304,7 +304,7 @@ File: mjpeg-howto.info,  Node: VCD Multiplexing Example,  Next: Creating the CD,
 VCD Multiplexing Example
 ------------------------
 
-   `> mplex -f 1 sound.mpg video.mpg -o vcd_out.mpg'
+   `> mplex -f 1 sound.mp2 video.mpg -o vcd_out.mpg'
 
    The -f 1 option turns on a lot of weird stuff that otherwise has no
 place in a respectable multiplexer!

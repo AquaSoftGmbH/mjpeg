@@ -1,0 +1,175 @@
+Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.5 aus
+/tmp/linuxdoc-dir-2175/sgmltmp.mjpeg-howto.info.2.
+
+   \input texinfo
+
+
+File: mjpeg-howto.info,  Node: Trading Quality/Speed,  Next: SMP and distributed Encoding,  Prev: Transcoding of existing MPEG-2,  Up: Top
+
+Trading Quality/Speed
+*********************
+
+   If absolute quality is your objective a modest improvement can be
+achieved using the -4 and -2 flags.  These control how ruthlessly
+mpeg2enc discards bad looking matches between sections of adjacent
+frames during the early stages of the search when it is working with
+4*4 and 2*2 clusters of pixels rather than individual pixels. Setting
+-4 1 -2 1 maximizes quality. -4 4 -2 4 maximizes speed. Note that
+because the statistical criteria mpeg2enc uses for discarding bad
+looking matches are usually fairly reliable the increase/decrease in
+quality is modest (but noticeable).
+
+   Reducing the radius of the search for matching sections of images
+also increases speed. However due to the way the search algorithm works
+the search radius is in effect rounded to the nearest multiple of 8.
+Furthermore, on modern CPU's the speed gained by reducing the radius
+below 16 is not large enough to make the marked quality reduction
+worthwhile for most applications.
+
+* Menu:
+
+* Creating streams to be played from disk using Software players::
+
+
+File: mjpeg-howto.info,  Node: Creating streams to be played from disk using Software players,  Up: Trading Quality/Speed
+
+Creating streams to be played from disk using Software players
+==============================================================
+
+   Usually MPEG player software is much more flexible than the hardware
+built into DVD and VCD players. This flexibility allows for
+significantly better compression to be achieved for the same quality.
+The trick is to generate video streams that use big video buffers
+(500KB or more) and variable bitrate encoding (the -f, -q flag to
+mpeg2enc). Software players will often also correctly play back the
+much more efficient MPEG layer 3 (yes, "MP3" audio format.  A good Mp3
+encoder like lame will produce results comparable to layer 2 at 224Kbps
+at 128Kbps or 160Kbps.
+
+
+File: mjpeg-howto.info,  Node: SMP and distributed Encoding,  Next: Interoperability,  Prev: Trading Quality/Speed,  Up: Top
+
+SMP and distributed Encoding
+****************************
+
+   The degree to which mpeg2enc tries to split work between concurrently
+executing threads is controlled by the -M oder -multi-thread [0..32]
+option. This optimizes mpeg2enc for the specified number of CPUs. By
+default (-M 1), mpeg2enc runs with just a little multi-threading:
+reading of frames happens concurrently with compression. This is done
+to allow encoding pipelines that are split across several machines (see
+below) to work efficiently without the need for special buffering
+programs.  If you are encoding on a single-CPU machine where RAM is
+tight you may find turning off multithreading altogether by setting -M
+0 works slightly more efficiently.
+
+   For SMP machines with two ore more processors you can speed up
+mpeg2enc by setting the number of concurrently executing encoding
+threads's you wish to utilize (e.g. -M 2). Setting -M 2 or -M 3 on a
+2-way machine should allow you to speed up encoding by around 80%.
+
+   Obviously, if your encoding pipeline contains several filtering
+stages it is likely that you can keep two or more CPU's busy
+simultaneously even without using -M. Denoising using yuvdenoise or
+yuvmedianfilter is particular demanding and uses almost as much
+processing power as MPEG encoding.
+
+   It you more than one computer you can also split the encoding
+pipeline between computers using the standard 'rsh' or 'rcmd' remote
+shell execution commands. For example, if you have two computers:
+
+   `> rsh machine1 lav2yuv "mycapture.eli | yuvscaler -O SVCD |
+yuvdenoise" | mpeg2enc -f 4 -o mycapture.m2vi'
+
+   Here the computer where you execute the command is doing the MPEG
+encoding whilst "machine1" is the machine that is decoding scaling and
+denoising the captured video.
+
+   Obviously, for this to work "machine1" has to be able to access the
+video and the computer where the command is executed has to have space
+for the encoded video. In practice, it is usually well worth setting up
+network file-storage using "NFS" or other packages if you are going to
+do stuff like this.  If you have three computers you can take this a
+stage further, one computer could do the decoding and scaling, the next
+could do denoising and the third could do MPEG encoding:
+
+   `> rsh machine1 "lav2yuv mycapture.eli | yuvscaler -O SVCD" |
+yuvdenoise | rsh machine3 mpeg2enc -f 4 -o mycapture.m2v'
+
+   `NOTE:'How the remote command executions are set up so that the data
+is sent direct from the machine that produces it to the machine that
+consumes it.
+
+   In practice for this to be worthwhile the network you are using must
+be fast enough to avoid becoming a bottleneck. For Pentium-III class
+machines or above you will need a 100Mbps Ethernet.
+
+   For really fast machines a switched 100MBps Ethernet (or better!) may
+be needed.Setting up the rshd ("Remote Shell Daemon" needed for rsh to
+do its work and configuring "rsh" is beyond the scope of this document,
+but its a standard package and should be easily installed and activated
+on any Linux or BSD distribution.
+
+   Be aware that this is potentially a security issue so use with care
+on machines that are visible to outside networks!
+
+
+File: mjpeg-howto.info,  Node: Interoperability,  Prev: SMP and distributed Encoding,  Up: Top
+
+Interoperability
+****************
+
+   Quicktime files capturing using lavrec can be edited using
+Broadcast2000.  But Broadcast2000 is not available any more on
+heroinewarrior.  mjpeg AVI files captured using the streamer tool from
+the xawtv package can be edited and compressed and played back using
+software.  Hardware playback is not possible for such files due to
+limitations in the Zoran hardware currently supported. Videos recorded
+with NuppelVideo can also be processed with the mjpeg tools.
+
+   If you have a Macintosh (MAC) and want to use the mjpeg tools look
+there: http://www.sjoki.uta.fi/~shmhav/SVCD_on_a_Macintosh.txt and
+http://homepage.mac.com/rnc/
+
+   MPEG files produced using the tools are know to play back correctly
+on:
+
+   * dxr2 (hardware decoder card)
+
+   * xine http://xine.sourceforge.net/
+
+   * oms http://www.linuxvideo.org/
+
+   * dvdview http://rachmaninoff.informatik.uni-mannheim.de/dvdview/
+
+   * xmovie http://heroinewarrior.com/xmovie.php3
+
+   * mplayer http://mplayer.sourceforge.net/
+
+   * vlc http://www.videolan.org/
+
+   * MPEG1 only: mtv http://www.mpegtv.com/
+
+   * MPEG1 only: gtv
+     http://packages.debian.org/stable/graphics/smpeg-gtv.html
+
+   * MS Media player version 6 and 7
+
+   * SW DVD Player
+
+   To find out what you HW-player (most of the time DVD player) can do
+take a look at: http://www.vcdhelp.com
+
+   It seems that the MS Media player likes MPEG-1 streams more if you
+have used -f 1 when multiplexing.
+
+   If you have any problems or suggestions feel free to mail me
+(Bernhard Praschinger): waldviertler@users.sourceforge.net There is a
+lot of stuff added from the HINTS which Andrew Stevens (
+andrew.stevens@nexgo.de ) created. Wolfgang Goeller checked the
+document for bugs and spelling mistakes.
+
+   And there a some people that helped me with program descriptions and
+hints, `thanks'
+
+
