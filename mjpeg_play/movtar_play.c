@@ -305,7 +305,7 @@ int main(int argc,char** argv)
   atexit(SDL_Quit);
   
   /* Set the video mode (800x600 at native depth) */
-  screen = SDL_SetVideoMode(800, 600, 0, SDL_HWSURFACE | SDL_FULLSCREEN);
+  screen = SDL_SetVideoMode(800, 600, 0, SDL_HWSURFACE /*| SDL_FULLSCREEN*/);
   if ( screen == NULL )  
     ComplainAndExit(); 
 
@@ -327,6 +327,7 @@ int main(int argc,char** argv)
     {
       readnext();
       frame++;
+           SDL_Delay(5000);
     }
   while((frame < 200) && !movtar_eof(movtarfile));
 

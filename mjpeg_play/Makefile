@@ -21,7 +21,7 @@ all:    $(M_OBJS)
 movtar_play: movtar.c movtar_play.c ./jpeg-6b-mmx/libjpeg.a
 	gcc movtar.c movtar_play.c ./jpeg-6b-mmx/libjpeg.a $(C_FLAGS) $(L_FLAGS) $(USE_ALSA) -o movtar_play
 
-./jpeg-6b-mmx/libjpeg.a: ./jpeg-6b-mmx/jdapimin.c ./jpeg-6b-mmx/jdmerge.c ./jpeg-6b-mmx/jidctfst.c
+./jpeg-6b-mmx/libjpeg.a: ./jpeg-6b-mmx/jdapimin.c ./jpeg-6b-mmx/jdmerge.c ./jpeg-6b-mmx/jidctfst.c ./jpeg-6b-mmx/jidctint.c
 	cd jpeg-6b-mmx; make; cd ..; 
 
 install:
