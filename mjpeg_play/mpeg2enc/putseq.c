@@ -228,7 +228,7 @@ static void set_2nd_field_params(pict_data_s *picture)
  *
  ************************************/
 
-#define SCENE_CHANGE_THRESHOLD 4
+#define SCENE_CHANGE_THRESHOLD 6
 
 static int find_gop_length( int gop_start_frame, 
 							int I_frame_temp_ref,
@@ -419,7 +419,7 @@ static void gop_start( stream_state_s *ss )
 		if( ss->i == 0 )
 			ss->gop_length =  
 				find_gop_length( ss->gop_start_frame, 0, 
-								 ctl_N_min-(ctl_M-1), ctl_N_max-(ctl_M-1),
+								 ctl_N_min, ctl_N_max,
 								 ctl_M_min);
 		else
 			ss->gop_length = 

@@ -90,7 +90,9 @@ static int param_searchrad  = 16;
 static int param_mpeg       = 1;
 static int param_aspect_ratio = 0;
 static int param_frame_rate  = 0;
-static int param_fieldenc   = -1; /* 0: progressive, 1: bottom first, 2: top first, 3 = progressive seq, interlace frames with field MC and DCT in picture */
+static int param_fieldenc   = -1; /* 0: progressive, 
+                                     1 = progressive seq, 
+                                     interlace frames with field MC and DCT in picture */
 static int param_norm       = 0;  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
 static int param_44_red	= 2;
 static int param_22_red	= 3;	
@@ -112,6 +114,8 @@ static int param_pad_stills_to_vbv_buffer_size = 0;
 static int param_vbv_buffer_still_size = 0;
 static int param_force_interlacing = Y4M_UNKNOWN;
 static int param_input_interlacing;
+static int param_hack_dxr2_bug = 0;
+static int param_hack_svcd_hds_bug = 0;
 
 /* Input Stream parameter values that have to be further processed to
    set encoding options */
@@ -180,7 +184,6 @@ static void Usage(char *str)
 "    Sets MPEG 2 motino estimation and encoding modes:\n"
 "    0 = Progressive (non-interlaced)(Movies)\n"
 "    1 = Interlaced source material (video)\n"
-"    2 = Progressive with DXR2 playback bug workaround\n)"
 "--motion-search-radius|-r num\n"
 "    Motion compensation search radius [0..32] (default 16)\n"
 "--reduction-4x4|num\n"
@@ -227,6 +230,11 @@ static void Usage(char *str)
 "    Force setting of playback field order to bottom or top first\n"
 "--multi-thread|-M num\n"
 "    Activate multi-threading to optimise through on a system with num CPU's\n""    [0..32], 0=no multithreading, (default: 1)\n"
+"--hack-dxr2-bug\n"
+"    Work-around DXR2 playback bug for progressive streams\n)"
+"--hack-svcd-hds-bug\n"
+"    Force SVCD horizontal_display_size to be 480 - standards say 540 or 720\n"
+"    But many DVD/SVCD players screw up with these values.\n"
 "--help|-?\n"
 "    Print this lot out!\n"
 	);
@@ -268,7 +276,7 @@ static void set_format_presets()
 		mjpeg_info( "Selecting generic MPEG2 output profile\n");
 		param_mpeg = 2;
 		if( param_fieldenc == -1 )
-			param_fieldenc = 3;
+			param_fieldenc = 1;
 		if( param_video_buffer_size == 0 )
 			param_video_buffer_size = 46 * param_bitrate / 1151929;
 		break;
@@ -284,7 +292,7 @@ static void set_format_presets()
 		mjpeg_info( "Selecting SVCD output profile\n");
 		param_mpeg = 2;
 		if( param_fieldenc == -1 )
-			param_fieldenc = 3;
+			param_fieldenc = 1;
 		if( param_quant == 0 )
 			param_quant = 8;
 		if( param_svcd_scan_data == -1 )
@@ -353,7 +361,7 @@ static void set_format_presets()
 		mjpeg_info( "Selecting SVCD Stills output profile\n");
 		param_mpeg = 2;
 		if( param_fieldenc == -1 )
-			param_fieldenc = 3;
+			param_fieldenc = 1;
 		/* We choose a generous nominal bit-rate as its VBR anyway
 		   there's only one frame per sequence ;-). It *is* too small
 		   to fill the frame-buffer in less than one PAL/NTSC frame
@@ -402,7 +410,7 @@ static void set_format_presets()
 		if( param_bitrate == 0 )
 			param_bitrate = 7500000;
 		if( param_fieldenc == -1 )
-			param_fieldenc = 3;
+			param_fieldenc = 1;
 		param_min_GOP_size = 6;
 		param_max_GOP_size = 15;
 		param_video_buffer_size = 230;
@@ -535,9 +543,9 @@ static int check_param_constraints()
 				++nerr;
 			}
 		}
-		if( param_fieldenc != 0 && param_fieldenc != 4 )
+		if( param_fieldenc != 0 )
 		{
-			mjpeg_error( "3:2 pulldown only possible for frame pictures (-I 0 or 4)\n");
+			mjpeg_error( "3:2 pulldown only possible for frame pictures (-I 0)\n");
 			++nerr;
 		}
 	}
@@ -643,6 +651,8 @@ static const char	short_options[]=
 		{ "reduce-hf",         0, &param_hf_quant, 1 },
 		{ "sequence-header-every-gop", 0, &param_seq_hdr_every_gop, 1},
 		{ "no-dummy-svcd-SOF", 0, &param_svcd_scan_data, 0 },
+        { "hack-dxr2-bug",     0, &param_hack_dxr2_bug, 1},
+        { "hack-svcd-hds-bug", 0, &param_hack_svcd_hds_bug, 1},
 		{ "playback-field-order", 1, 0, 'z'},
 		{ "multi-thread",      1, 0, 'M' },
 		{ "help",              0, 0, '?' },
@@ -655,7 +665,8 @@ static const char	short_options[]=
 #endif
 	{
 		switch(n) {
-
+        case 0 :                /* Flag setting handled by getopt-long */
+            break;
 		case 'b':
 			param_bitrate = atoi(optarg)*1000;
 			break;
@@ -717,11 +728,9 @@ static const char	short_options[]=
 
 		case 'I':
 			param_fieldenc = atoi(optarg);
-			if( param_fieldenc != 0 
-				&& param_fieldenc != 3 
-				&& param_fieldenc != 4)
+			if( param_fieldenc < 0 || param_fieldenc > 1 )
 			{
-				mjpeg_error("-I option requires 0, 3 or 4 (1 and 2 not current supported)\n");
+				mjpeg_error("-I option requires 0 or 1\n");
 				++nerr;
 			}
 			break;
@@ -1046,7 +1055,7 @@ static void init_encoder()
 		break;
 	}
 
-	ctl_progonly_dct_me = (param_fieldenc==4);
+	ctl_progonly_dct_me = param_hack_dxr2_bug;
 	ctl_44_red		= param_44_red;
 	ctl_22_red		= param_22_red;
 	
@@ -1144,7 +1153,7 @@ static void init_mpeg_parms(void)
 	if( ctl_M >= ctl_N_min )
 		ctl_M = ctl_N_min-1;
 	opt_mpeg1           = (param_mpeg == 1);
-	opt_fieldpic        = (param_fieldenc==1 || param_fieldenc == 2);
+	opt_fieldpic        = 0;
 	opt_prog_seq        = (param_mpeg == 1 || param_fieldenc == 0);
 	opt_pulldown_32     = param_32_pulldown;
 
@@ -1238,10 +1247,19 @@ static void init_mpeg_parms(void)
 	case MPEG_FORMAT_SVCD :
     case MPEG_FORMAT_DVD :
         /* It would seem DVD and perhaps SVCD demand a 540 pixel display size
-           for 4:3 aspect video.
+           for 4:3 aspect video. However, many players expect 480 and go weird
+           if this isn't set...
         */
-		opt_display_horizontal_size  = opt_aspectratio == 2 ? 540 : 720;
-		opt_display_vertical_size    = opt_vertical_size;
+        if( param_hack_svcd_hds_bug )
+        {
+            opt_display_horizontal_size  = opt_horizontal_size;
+            opt_display_vertical_size    = opt_vertical_size;
+        }
+        else
+        {
+            opt_display_horizontal_size  = opt_aspectratio == 2 ? 540 : 720;
+            opt_display_vertical_size    = opt_vertical_size;
+        }
 		break;
 	default:
 		opt_display_horizontal_size  = opt_horizontal_size;
@@ -1250,11 +1268,8 @@ static void init_mpeg_parms(void)
 	}
 
 	opt_dc_prec         = 1;  /* 9 bits */
-	if( param_fieldenc == 2 )
-		opt_topfirst  = 1;
-	else if (param_fieldenc == 1)
-		opt_topfirst = 0;
-	else if( ! opt_prog_seq )
+    opt_topfirst = 0;
+	if( ! opt_prog_seq )
 	{
 		int fieldorder;
 		if( param_force_interlacing != Y4M_UNKNOWN ) 
@@ -1274,7 +1289,8 @@ static void init_mpeg_parms(void)
 
 	opt_frame_pred_dct_tab[0] 
 		= opt_frame_pred_dct_tab[1] 
-		= opt_frame_pred_dct_tab[2] = param_mpeg == 1 ? 1 : (param_fieldenc == 0);
+		= opt_frame_pred_dct_tab[2] 
+        = (param_mpeg == 1 || param_fieldenc == 0) ? 1 : 0;
 
 	opt_qscale_tab[0] 
 		= opt_qscale_tab[1] 
@@ -1491,7 +1507,7 @@ static void init_mpeg_parms(void)
 	if (opt_prog_seq && opt_fieldpic != 0)
 	{
 		mjpeg_info("prog sequence - forcing progressive frame encoding\n");
-		opt_fieldpic = 1;
+		opt_fieldpic = 0;
 	}
 
 
