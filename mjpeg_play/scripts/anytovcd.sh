@@ -23,8 +23,10 @@ AUD_TRACK="1"
 FILTERING="none"
 FILTER_TYPE="median"
 VCD_TYPE="dvd"
+OUT_NORM="pal"
+ENC_TOOL="mpeg2enc"
 QUALITY="best"
-VERSION="2"
+VERSION="3"
 
 BFR="bfr"
 FFMPEG="ffmpeg"
@@ -37,6 +39,7 @@ TRANSCODE="transcode"
 Y4MSCALER="y4mscaler"
 Y4MSPATIALFILTER="y4mspatialfilter"
 YUVDENOISE="yuvdenoise"
+YUVFPS="yuvfps"
 YUVMEDIANFILTER="yuvmedianfilter"
 
 probe_aud_fmt ()
@@ -88,10 +91,19 @@ show_help ()
     echo "-a    audio track number (1)      "
     echo "-b    blind mode (no video)       "
     echo "-d    don't scale video           "
+    echo "-e    video encoder tool          "
+    echo "      avail. : mpeg2enc (default) "
+    echo "      or ffmpeg (experimental)    "
     echo "-i    input file                  "
+    echo "-I    force input ilace flag      "
+    echo "      avail. : none, top_first and"
+    echo "               bottom_first       "
     echo "-f    filtering method (*none*)   "
     echo "      avail.: light, medium, heavy"
     echo "-m    mute mode (no audio)        "
+    echo "-n    output norm in case of input"
+    echo "      with non-standard framerate "
+    echo "      pal (default) or ntsc       "
     echo "-p    output type (default = dvd) "
     echo "      avail. : cvd, dvd, dvd_wide,"
     echo "               svcd and vcd       "
@@ -123,15 +135,18 @@ for BIN in ${FFMPEG} ${MPEG2ENC} ${MPLEX} ${PGMTOY4M} ${TRANSCODE}; do
 
 done
 
-while getopts a:bdf:i:mp:q:t:v OPT
+while getopts a:bde:f:i:I:mn:p:q:t:v OPT
 do
     case ${OPT} in
     a)    AUD_TRACK="${OPTARG}";;
     b)    BLIND_MODE="1";;
     d)    SCALING="none";;
+    e)    ENC_TOOL="${OPTARG}";;
     i)    VIDEO_SRC="${OPTARG}"; AUDIO_SRC="${VIDEO_SRC}";;
+    I)    INTERLACING="${OPTARG}";;
     f)    FILTERING="${OPTARG}";;
     m)    MUTE_MODE="1";;
+    n)    OUT_NORM="${OPTARG}";;
     p)    VCD_TYPE="${OPTARG}";;
     q)    QUALITY="${OPTARG}";;
     t)    FILTER_TYPE="${OPTARG}";;
@@ -151,14 +166,33 @@ fi
 AUD_FMT_SRC="`probe_aud_fmt "${AUDIO_SRC}" ${AUD_TRACK}`"
 AUD_FREQ_SRC="`probe_aud_freq "${AUDIO_SRC}" ${AUD_TRACK}`"
 VID_FPS_SRC="`probe_vid_fps "${VIDEO_SRC}"`"
-VID_ILACE_SRC="`probe_vid_ilace "${VIDEO_SRC}"`"
 VID_SAR_SRC="`probe_vid_sar "${VIDEO_SRC}"`"
 VID_FMT_SRC="`probe_vid_fmt "${VIDEO_SRC}"`"
+
+# input interlacing
+if test "${INTERLACING}" == "none"; then
+
+    VID_ILACE_SRC="p"
+
+elif test "${INTERLACING}" == "top_first"; then
+
+    VID_ILACE_SRC="t"
+
+elif test "${INTERLACING}" == "bottom_first"; then
+
+    VID_ILACE_SRC="b"
+
+else
+
+    VID_ILACE_SRC="`probe_vid_ilace "${VIDEO_SRC}"`"
+
+fi
 
 if test "${VID_SAR_SRC}" == "0:0"; then
     VID_SAR_SRC="1:1"
 fi
 
+FF_ENC="${FFMPEG} -v 0 -f yuv4mpegpipe -i /dev/stdin -bf 2"
 MPEG2ENC="${MPEG2ENC} -v 0 -M 0 -R 2 -P -s -2 1 -E -5"
 PGMTOY4M="${PGMTOY4M} -r ${VID_FPS_SRC} -i ${VID_ILACE_SRC} -a ${VID_SAR_SRC}"
 Y4MSCALER="${Y4MSCALER} -v 0"
@@ -207,9 +241,12 @@ if test "${VCD_TYPE}" == "cvd"; then
     AUDIO_OUT="out.ac3"
     MPEG_OUT="out.mpg"
 
+    FF_ENC="${FF_ENC} -target dvd -f rawvideo"
     MPEG2ENC="${MPEG2ENC} -f 8"
     Y4MSCALER="${Y4MSCALER} -O preset=cvd -S option=cubicCR"
     MPLEX="${MPLEX} -f 8"
+    
+    VID_ILACE_OUT="${VID_ILACE_SRC}"
 
     AUD_FMT_OUT="ac3"
     AUD_BITRATE_OUT="192"
@@ -222,10 +259,13 @@ elif test "${VCD_TYPE}" == "dvd"; then
     AUDIO_OUT="out.ac3"
     MPEG_OUT="out.mpg"
 
+    FF_ENC="${FF_ENC} -target dvd -f rawvideo -dc 10"
     MPEG2ENC="${MPEG2ENC} -f 8 -b 8000 -D 10"
     Y4MSCALER="${Y4MSCALER} -O preset=dvd -S option=cubicCR"
     MPLEX="${MPLEX} -f 8"
 
+    VID_ILACE_OUT="${VID_ILACE_SRC}"
+    
     AUD_FMT_OUT="ac3"
     AUD_BITRATE_OUT="192"
     AUD_FREQ_OUT="48000"
@@ -237,10 +277,13 @@ elif test "${VCD_TYPE}" == "dvd_wide"; then
     AUDIO_OUT="out.ac3"
     MPEG_OUT="out.mpg"
 
+    FF_ENC="${FF_ENC} -target dvd -f rawvideo -dc 10"
     MPEG2ENC="${MPEG2ENC} -f 8 -b 8000 -D 10"
     Y4MSCALER="${Y4MSCALER} -O preset=dvd_wide -S option=cubicCR"
     MPLEX="${MPLEX} -f 8"
 
+    VID_ILACE_OUT="${VID_ILACE_SRC}"
+    
     AUD_FMT_OUT="ac3"
     AUD_BITRATE_OUT="192"
     AUD_FREQ_OUT="48000"
@@ -252,10 +295,13 @@ elif test "${VCD_TYPE}" == "svcd"; then
     AUDIO_OUT="out.mp2"
     MPEG_OUT="out-%d.mpg"
 
+    FF_ENC="${FF_ENC} -target svcd -f rawvideo"
     MPEG2ENC="${MPEG2ENC} -f 4 -B 256 -S 797"
     Y4MSCALER="${Y4MSCALER} -O preset=svcd -S option=cubicCR"
     MPLEX="${MPLEX} -f 4"
 
+    VID_ILACE_OUT="${VID_ILACE_SRC}"
+    
     AUD_FMT_OUT="mp2"
     AUD_BITRATE_OUT="224"
     AUD_FREQ_OUT="44100"
@@ -267,10 +313,13 @@ elif test "${VCD_TYPE}" == "vcd"; then
     AUDIO_OUT="out.mp2"
     MPEG_OUT="out-%d.mpg"
 
+    FF_ENC="${FF_ENC} -target vcd -f rawvideo -me_range 64"
     MPEG2ENC="${MPEG2ENC} -f 1 -B 256 -S 797"
     Y4MSCALER="${Y4MSCALER} -O preset=vcd -S option=cubic"
     MPLEX="${MPLEX} -f 1"
 
+    VID_ILACE_OUT="p"
+    
     AUD_FMT_OUT="mp2"
     AUD_BITRATE_OUT="224"
     AUD_FREQ_OUT="44100"
@@ -287,6 +336,32 @@ else
     echo "Error : the specified output type/profile is inexistant."
     show_help
     exit 2
+
+fi
+
+# output interlacing
+if test "${VID_ILACE_OUT}" == "b"; then
+
+    FF_ENC="${FF_ENC} -ildct -ilme -top 0"
+
+elif test "${VID_ILACE_OUT}" == "t"; then
+
+    FF_ENC="${FF_ENC} -ildct -ilme -top 1"
+
+fi
+
+# output framerate
+if test "${VID_FPS_SRC}" == "30000:1001" || test "${VID_FPS_SRC}" == "24000:1001" || test "${VID_FPS_SRC}" == "25:1"; then
+
+    VID_FPS_OUT="${VID_FPS_SRC}"
+
+elif test "${OUT_NORM}" == "ntsc"; then
+
+    VID_FPS_OUT="30000:1001"
+
+else
+
+    VID_FPS_OUT="25:1"
 
 fi
 
@@ -368,6 +443,18 @@ else
 
 fi
 
+# video framerate correction
+if test "${VID_FPS_SRC}" == "${VID_FPS_OUT}"; then
+
+    FRC=""
+
+else
+
+    test_bin ${YUVFPS}
+    FRC="${YUVFPS} -r ${VID_FPS_OUT} |"
+
+fi
+
 # video scaler
 if test "${SCALING}" == "none"; then
 
@@ -381,7 +468,23 @@ else
 fi
 
 # video encoder
-ENCODER="${MPEG2ENC} -o ${VIDEO_OUT}"
+if test "${ENC_TOOL}" == "ffmpeg"; then
+
+    test_bin ${FFMPEG}
+    ENCODER="${FF_ENC} -y ${VIDEO_OUT}"
+
+elif test "${ENC_TOOL}" == "mpeg2enc"; then
+
+    test_bin ${MPEG2ENC}
+    ENCODER="${MPEG2ENC} -o ${VIDEO_OUT}"
+
+else
+
+    echo "Error : the specified video encoder tool is not used by this script."
+    show_help
+    exit 2
+
+fi
 
 # audio resampler
 if test "${AUD_FREQ_SRC}" == "${AUD_FREQ_OUT}"; then
@@ -416,7 +519,7 @@ fi
 # video (de)coding
 if ! test "${BLIND_MODE}" == "1"; then
 
-    eval "${DECODER} ${FILTER} ${SCALER} ${PIPE_BUFFER} ${ENCODER}"
+    eval "${DECODER} ${FILTER} ${FRC} ${SCALER} ${PIPE_BUFFER} ${ENCODER}"
 
 fi
 
