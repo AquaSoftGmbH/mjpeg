@@ -349,7 +349,7 @@ filter_buffer(int width, int height, int row_stride,
 						  )
 					 ) >> 4;
 			} else {
-				*outpix = total / count;
+				*outpix = (total + count/2) / count;
  			}
 			++refpix;
 			++outpix;
