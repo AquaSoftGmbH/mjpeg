@@ -275,6 +275,7 @@ lav_file_t *lav_open_output_file(char *filename, char format,
                     int asize, int achans, long arate)
 {
    lav_file_t *lav_fd = (lav_file_t*) malloc(sizeof(lav_file_t));
+   char *extension;
 
    if(lav_fd==0) { internal_error=ERROR_MALLOC; return 0; }
 
@@ -284,19 +285,20 @@ lav_file_t *lav_open_output_file(char *filename, char format,
    lav_fd->qt_fd       = 0;
    lav_fd->format      = format;
    /* Sanity check: do not create a quicktime file that is named with .avi */
-   if(rindex(filename, '.') != NULL)
+   extension = rindex(filename, '.');
+   if (extension != NULL)
    {
-      if((format == 'a' || format == 'A') && strcmp(rindex(filename, '.')+1, "avi")) {
+      extension++;
+      if((format == 'a' || format == 'A') && strcmp(extension, "avi")) {
         internal_error = ERROR_FORMAT;
         return 0;
       }
-      if(format == 'q' && (strcmp(rindex(filename, '.')+1, "qt") 
-           && strcmp(rindex(filename, '.')+1, "mov") && strcmp(rindex(filename, '.')+1,"moov"))) {
+      if (format == 'q' && strcmp(extension, "qt")
+           && strcmp(extension, "mov") && strcmp(extension,"moov")) {
         internal_error = ERROR_FORMAT;
         return 0;
       }
-      if(format == 'j' && strcmp(rindex(filename, '.')+1, "jpg")
-           && strcmp(rindex(filename, '.')+1, "jpeg")) {
+      if (format == 'j' && strcmp(extension,"jpg") && strcmp(extension,"jpeg")){
         internal_error = ERROR_FORMAT;
         return 0;
       }
