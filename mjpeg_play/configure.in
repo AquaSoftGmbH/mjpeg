@@ -303,6 +303,12 @@ if test x$with_aviplay = x ; then
   fi
 else
   if test -d $with_aviplay ; then
+    if test -d $with_aviplay/include ; then
+      if test -d $with_aviplay/lib/.libs ; then
+        with_aviplay_i=/include
+        with_aviplay_l=/lib/.libs
+      fi
+    fi
     have_aviplay=true
   fi
 fi
