@@ -275,7 +275,7 @@ struct option CmdLineMultiplexJob::long_options[] =
 	{ "sync-offset",    	1, 0, 'O' },
 	{ "vbr",      	        1, 0, 'V' },
 	{ "system-headers",    1, 0, 'h' },
-	{ "split-segment",     0, 0, 'M' },
+	{ "ignore-seqend-markers",     0, 0, 'M' },
 	{ "max-segment-size",  1, 0, 'S' },
 	{ "mux-limit",   	    1, 0, 'l' },
 	{ "packets-per-pack",  1, 0, 'p' },
@@ -445,8 +445,9 @@ void CmdLineMultiplexJob::Usage(char *str)
     "  Create System header in every pack in generic formats\n"
 	"--max-segment-size|-S size\n"
     "  Maximum size of output file(s) in Mbyte (default: 0) (no limit)\n"
-	"--split-segment|-M\n"
-    "  Simply split a sequence across files rather than building run-out/run-in\n"
+	"--ignore-seqend-markers|-M\n"
+    "  Don't switch to a new output file if a  sequence end marker\n"
+	"  is encountered ithe input video.\n"
     "--workaround|-W workaround [, workaround ]\n"
 	"--help|-?\n"
     "  Print this lot out!\n", str);

@@ -267,7 +267,7 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
         video_buffers_iframe_only = false;
 		break;
 	}
-	
+	printf( "MAX = %lld\n", max_segment_size );
 }
 
 /**************************************
@@ -1131,7 +1131,7 @@ void Multiplexor::Multiplex()
 					}
 						
 					runout_PTS = master->NextRequiredPTS();
-                    mjpeg_info( "Running out...");
+                    mjpeg_info( "Sequence end marker! Running out...");
                     mjpeg_debug("Run out PTS limit to %lld SCR=%lld", 
                                 runout_PTS/300, 
                                 current_SCR/300 );

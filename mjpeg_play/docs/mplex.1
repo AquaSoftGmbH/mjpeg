@@ -186,13 +186,11 @@ Thus to split a long video across VCD's/SVCD's you have to get the
 MPEG video encoder to introduce sequence splits at the right points
 (see mpeg2enc(1) for details of how to do this).
 .TP
-.B -M|--split-segment
-When splitting a long stream in files based on -S mplex does a certain
-amount of careful "running out" to prevent a GOP or audio frame being
-split.  If the files are simply going to be concatenated for playback
-this "run out" is superfluous and makes it harder for the player to 
-maintain audio/video sync. This flag allows the run-out to be turned
-off.  The DVD profile turns this option on automatically.
+.B -M|--ignore-seqend-markers
+This flag makes mplex ignore sequence end markers embedded in the
+first video stream instead of switching to a new output file.  This is
+sometimes useful splitting a long stream in files based on a -S limit
+that doesn't need a run-in/run-out like (S)VCD.
 .TP
 .B -h|--system-headers
 A system header is generated in every pack rather than just in the first.
