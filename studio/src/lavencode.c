@@ -491,19 +491,47 @@ void video_convert()
    mpeg2enc_command[n] = "-b"; n++;
    sprintf(temp4, "%i", encoding.bitrate);
    mpeg2enc_command[n] =  temp4; n++;
-   if(encoding.mpeglevel != 1) {
-      sprintf(temp5, "%i",encoding.mpeglevel);
-      mpeg2enc_command[n] =  "-m"; n++;
-      mpeg2enc_command[n] =  temp5; n++;
-   }
    if(encoding.searchradius != 16) {
       sprintf(temp6, "%i", encoding.searchradius);
       mpeg2enc_command[n] =  "-r"; n++;
       mpeg2enc_command[n] =  temp6; n++;
    }
-   if(encoding.sequenceheader[1] == 's') {
-      mpeg2enc_command[n] = encoding.sequenceheader; n++;
+
+/* And here the support fpr the different versions vo mjpeg tools */
+   if (encoding_syntax_style == 140)
+   {
+/* Old version, newer below
+ *    if(encoding.mpeglevel != 1) {
+ *       sprintf(temp5, "%i",encoding.mpeglevel);
+ *       mpeg2enc_command[n] =  "-m"; n++;
+ *       mpeg2enc_command[n] =  temp5; n++;
+ *    }
+ *    if(encoding.sequenceheader[1] == 's') {
+ *       mpeg2enc_command[n] = encoding.sequenceheader; n++;
+ *    }
+ */
+     if (encoding.muxformat >= 3)
+       {
+         mpeg2enc_command[n] = "-m"; n++;
+         mpeg2enc_command[n] = "2"; n++; 
+       }
+     if ((encoding.muxformat != 0) && (encoding.muxformat != 3))
+       {
+         mpeg2enc_command[n] = "-s"; n++;
+       }
    }
+   if (encoding_syntax_style == 150)
+   {
+     if(encoding.muxformat != 0) 
+       {
+         sprintf(temp5, "%i",encoding.muxformat);
+         mpeg2enc_command[n] =  "-f"; n++;
+         mpeg2enc_command[n] =  temp5; n++;
+       }
+     
+   }
+
+/* And here again some common stuff */
    mpeg2enc_command[n] = "-o"; n++;
    mpeg2enc_command[n] = enc_videofile; n++;
    mpeg2enc_command[n] = NULL;
@@ -665,11 +693,11 @@ void do_vcd(GtkWidget *widget, gpointer data)
 /* *** Removed because if noting to scale yuvscaler prevents encoding *** */
 /*  gtk_entry_set_text(GTK_ENTRY(combo_entry_scaleroutput), "VCD");  */
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_force_vcd),TRUE );
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_mpeg1),TRUE );
+/*  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_mpeg1),TRUE ); */
   gtk_entry_set_text(GTK_ENTRY(combo_entry_videobitrate),"1152");
   gtk_entry_set_text(GTK_ENTRY(combo_entry_searchradius),"16");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (check_sequence),TRUE );
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_muxfmt),"VCD");
+/*  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (check_sequence),TRUE ); */
+  gtk_entry_set_text(GTK_ENTRY(combo_entry_muxfmt),"standard VCD");
 }
 
 /* set the SVCD options */
@@ -680,10 +708,10 @@ void do_svcd(GtkWidget *widget, gpointer data)
   gtk_entry_set_text(GTK_ENTRY(combo_entry_outputformat), "as is");
   gtk_entry_set_text(GTK_ENTRY(combo_entry_scaleroutput), "SVCD");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_force_vcd),TRUE );
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_mpeg2),TRUE );
+/*  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_mpeg2),TRUE ); */
   gtk_entry_set_text(GTK_ENTRY(combo_entry_videobitrate),"2500");
   gtk_entry_set_text(GTK_ENTRY(combo_entry_searchradius),"16");
-  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (check_sequence),TRUE );
+/*  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (check_sequence),TRUE ); */
   gtk_entry_set_text(GTK_ENTRY(combo_entry_muxfmt),"SVCD");
 }
 
@@ -739,16 +767,22 @@ char val[LONGOPT];
         gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(button_force_vcd),TRUE);
 
   /* Video Options */  
-      if (encoding.mpeglevel == 1)
-        gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_mpeg1),TRUE );
-      if (encoding.mpeglevel == 2)
-        gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_mpeg2),TRUE );
-
+  /*    if (encoding.mpeglevel == 1)
+   *     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_mpeg1),TRUE );
+   *   if (encoding.mpeglevel == 2)
+   *     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_mpeg2),TRUE );
+   */
       sprintf(val,"%i",encoding.bitrate);
       gtk_entry_set_text(GTK_ENTRY(combo_entry_videobitrate),val);
 
       sprintf(val,"%i",encoding.searchradius);
       gtk_entry_set_text(GTK_ENTRY(combo_entry_searchradius),val);
+
+  /* Mplex Options */
+      muxformat = g_list_first (muxformat);
+      for (i = 0; i < encoding.muxformat ;i++)
+        muxformat = g_list_next (muxformat);
+      gtk_entry_set_text(GTK_ENTRY(combo_entry_muxfmt), muxformat->data);
 
       /* No need to set use_yuvplay_pipe here */
 
@@ -1157,31 +1191,32 @@ GList *searchrad = NULL;
   gtk_table_attach_defaults (GTK_TABLE (table), combo_searchradius, 1, 2, 9, 10);
   gtk_widget_show (combo_searchradius);
 
-  label1 = gtk_label_new ("  MPEG level: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 10, 11);
-  gtk_widget_show (label1);
-
-  button_mpeg1 = gtk_radio_button_new_with_label (NULL, "MPEG 1");
-  gtk_signal_connect (GTK_OBJECT (button_mpeg1), "toggled",
-                      GTK_SIGNAL_FUNC (mpeg_option), (gpointer) "-m 1");
-  gtk_table_attach_defaults (GTK_TABLE (table), button_mpeg1, 1, 2, 10, 11);
-  gtk_widget_show (button_mpeg1);
-
-  group_mpeg = gtk_radio_button_group (GTK_RADIO_BUTTON (button_mpeg1));
-  button_mpeg2 = gtk_radio_button_new_with_label(group_mpeg, "MPEG 2");
-  gtk_signal_connect (GTK_OBJECT (button_mpeg2), "toggled",
-                      GTK_SIGNAL_FUNC (mpeg_option), (gpointer) "-m 2");
-  gtk_table_attach_defaults (GTK_TABLE (table), button_mpeg2, 1, 2, 11, 12);
-  group_mpeg = gtk_radio_button_group (GTK_RADIO_BUTTON (button_mpeg2));
-  gtk_widget_show (button_mpeg2);
-
-  check_sequence=gtk_check_button_new_with_label("Sequence Header\nfor every GOP");
-  gtk_widget_ref (check_sequence);
-  gtk_signal_connect (GTK_OBJECT (check_sequence), "toggled",
-                      GTK_SIGNAL_FUNC (set_sequenceheader), NULL);
-  gtk_table_attach_defaults (GTK_TABLE (table), check_sequence, 1, 2, 12, 13);
-  gtk_widget_show (check_sequence);
+/*   label1 = gtk_label_new ("  MPEG level: ");
+ * gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+ * gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 10, 11);
+ * gtk_widget_show (label1);
+ *
+ * button_mpeg1 = gtk_radio_button_new_with_label (NULL, "MPEG 1");
+ * gtk_signal_connect (GTK_OBJECT (button_mpeg1), "toggled",
+ *                     GTK_SIGNAL_FUNC (mpeg_option), (gpointer) "-m 1");
+ * gtk_table_attach_defaults (GTK_TABLE (table), button_mpeg1, 1, 2, 10, 11);
+ * gtk_widget_show (button_mpeg1);
+ *
+ * group_mpeg = gtk_radio_button_group (GTK_RADIO_BUTTON (button_mpeg1));
+ * button_mpeg2 = gtk_radio_button_new_with_label(group_mpeg, "MPEG 2");
+ * gtk_signal_connect (GTK_OBJECT (button_mpeg2), "toggled",
+ *                     GTK_SIGNAL_FUNC (mpeg_option), (gpointer) "-m 2");
+ * gtk_table_attach_defaults (GTK_TABLE (table), button_mpeg2, 1, 2, 11, 12);
+ * group_mpeg = gtk_radio_button_group (GTK_RADIO_BUTTON (button_mpeg2));
+ * gtk_widget_show (button_mpeg2);
+ *
+ * check_sequence=gtk_check_button_new_with_label("Sequence Header\nfor every GOP");
+ * gtk_widget_ref (check_sequence);
+ * gtk_signal_connect (GTK_OBJECT (check_sequence), "toggled",
+ *                     GTK_SIGNAL_FUNC (set_sequenceheader), NULL);
+ * gtk_table_attach_defaults (GTK_TABLE (table), check_sequence, 1, 2, 12, 13);
+ * gtk_widget_show (check_sequence);
+ */
 }
 
 /* set the noisfilter for lav2yuv */ 
@@ -1514,7 +1549,7 @@ void create_video (GtkWidget *table)
   create_video_layout(table);
 }
 
-/* set the number of LSBs dropped */
+/* set the mplex format */
 void set_mplex_muxfmt (GtkWidget *widget, gpointer data)
 {
   gchar *test;
@@ -1546,10 +1581,12 @@ GtkWidget *video_select;
 GtkWidget *sound_select;
 
    muxformat = g_list_append (muxformat, "Auto MPEG 1");
-   muxformat = g_list_append (muxformat, "VCD");
+   muxformat = g_list_append (muxformat, "standard VCD");
    muxformat = g_list_append (muxformat, "user-rate VCD");
    muxformat = g_list_append (muxformat, "Auto MPEG 2");
-   muxformat = g_list_append (muxformat, "SVCD");
+   muxformat = g_list_append (muxformat, "standard SVCD");
+   muxformat = g_list_append (muxformat, "user-rate SVCD");
+   muxformat = g_list_append (muxformat, "DVD");
 
   label1 = gtk_label_new ("  Multiplex format: ");
   gtk_table_attach_defaults (GTK_TABLE (table), label1, 0, 1, 1, 2);
@@ -1840,5 +1877,4 @@ GtkWidget *create_lavencode_layout()
 
   return (vbox_main);
 }
-
 
