@@ -42,9 +42,8 @@ int	threshold_chroma = 2;
 int	radius_luma = 2;
 int	radius_chroma = 2;
 int interlace = 0;
-int	avg_replace[1024];
-int	ovr_replace = 0;
-int	chg_replace = 0;
+#define	NUMAVG	1024
+int	avg_replace[NUMAVG];
 
 static void Usage(char *name )
 {
@@ -60,7 +59,7 @@ int
 main(int argc, char *argv[])
 {
 	int	i;
-	int	avg;
+	long long avg;
 	int	input_fd = 0;
 	int	output_fd = 1;
 	int	horz;
@@ -137,14 +136,15 @@ main(int argc, char *argv[])
 		y4m_write_frame(output_fd, &ostream, &iframe, output_frame);
 	}
 
-	for (avg=0, i=0; i < 64; i++)
+	for (avg=0, i=0; i < NUMAVG; i++)
 		avg += avg_replace[i];
+	mjpeg_info("frames=%d avg=%lld", frame_count, avg);
 
-	mjpeg_info("frames=%d avg=%d replaced=%d", avg, chg_replace, ovr_replace);
-	for (i=0; i < 64; i++) {
+	for (i=0; i < NUMAVG; i++) {
 		mjpeg_debug( "%02d: %6.2f", i,
 			(((double)avg_replace[i]) * 100.0)/(double)(avg));
 	}
+
 	y4m_fini_stream_info(&istream);
 	y4m_fini_stream_info(&ostream);
 	y4m_fini_frame_info(&iframe);
