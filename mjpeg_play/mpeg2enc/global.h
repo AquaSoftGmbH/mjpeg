@@ -364,6 +364,7 @@ EXTERN int opt_dctsatlim;			/* Value to saturated DCT coeffs to */
 EXTERN double opt_frame_rate;		/* frames per second */
 EXTERN double opt_bit_rate;			/* bits per second */
 EXTERN int opt_seq_hdr_every_gop;
+EXTERN int opt_seq_end_every_gop;   /* Useful for Stills sequences... */
 EXTERN int opt_svcd_scan_data;
 EXTERN int opt_vbv_buffer_code;      /* Code for size of VBV buffer (* 16 kbit) */
 EXTERN double opt_vbv_buffer_size;

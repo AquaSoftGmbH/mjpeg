@@ -32,6 +32,6 @@
 #define MPEG_FORMAT_DVD      8
 
 #define MPEG_FORMAT_FIRST 0
-#define MPEG_FORMAT_LAST 5
+#define MPEG_FORMAT_LAST 6
 
 #endif /* __FORMAT_CODES_H__ */

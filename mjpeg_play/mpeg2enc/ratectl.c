@@ -293,6 +293,7 @@ static double T_sum;
 
 void rc_init_GOP(int np, int nb)
 {
+	/* TODO This will be very stingy for stills as they can be VBR */
 	double per_gop_bits = 
 		(double)(1 + np + nb) * opt_bit_rate / opt_frame_rate;
 
@@ -963,9 +964,9 @@ void calc_vbv_delay(pict_data_s *picture)
 		picture->vbv_delay = 65535;
 	}
 #else
-	if( !opt_mpeg1 )
+	if( !opt_mpeg1 || ctl_quant_floor != 0)
 		picture->vbv_delay =  0xffff;
-	else
+	else 
 		picture->vbv_delay =  90000.0/opt_frame_rate/4;
 #endif
 

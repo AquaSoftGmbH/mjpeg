@@ -291,6 +291,7 @@ static int find_gop_length( int gop_start_frame,
 	/* last GOP may contain less frames */
 	if (i > istrm_nframes-gop_start_frame)
 		i = istrm_nframes-gop_start_frame;
+	mjpeg_info( "GOP_SIZE = %d\n", i );
 	return i;
 
 }
@@ -372,7 +373,9 @@ static void gop_start( stream_state_s *ss )
 		frame_periods = (double)(ss->seq_start_frame + ss->i);
 	bits_after_mux = bitcount() + 
 		(uint64_t)((frame_periods / opt_frame_rate) * ctl_nonvid_bit_rate);
-	if( ss->next_split_point != 0LL && 	bits_after_mux > ss->next_split_point )
+	if( (ss->next_split_point != 0LL && bits_after_mux > ss->next_split_point)
+		|| (ss->i != 0 && opt_seq_end_every_gop)
+		)
 	{
 		mjpeg_info( "Splitting sequence this GOP start\n" );
 		ss->next_split_point += ss->seq_split_length;
@@ -394,14 +397,19 @@ static void gop_start( stream_state_s *ss )
 	  In all other GOPs I-frame has a temp_ref of M-1
 	*/
 	
-	if( ss->i == 0 )
-		ss->gop_length =  
-			find_gop_length( ss->gop_start_frame, 0, 
-							 ctl_N_min-(ctl_M-1), ctl_N_max-(ctl_M-1));
+	if( ctl_N_min != ctl_N_max )
+	{
+		if( ss->i == 0 )
+			ss->gop_length =  
+				find_gop_length( ss->gop_start_frame, 0, 
+								 ctl_N_min-(ctl_M-1), ctl_N_max-(ctl_M-1));
+		else
+			ss->gop_length = 
+				find_gop_length( ss->gop_start_frame, ctl_M-1, 
+								 ctl_N_min, ctl_N_max);
+	}
 	else
-		ss->gop_length = 
-			find_gop_length( ss->gop_start_frame, ctl_M-1, 
-							 ctl_N_min, ctl_N_max);
+		ss->gop_length = ctl_N_min;
 	
 			
 	/* First figure out how many B frames we're short from
@@ -428,7 +436,12 @@ static void gop_start( stream_state_s *ss )
 	ss->bigrp_length = (ctl_M-1);
 	
 	/* number of P frames */
-	if (ss->i == 0)
+	if( ctl_M == 0 ) 
+	{
+		ss->bigrp_length = 0;
+		np = 0;
+	}
+	else if (ss->i == 0 )
 	{
 		ss->bigrp_length = 1;
 		np = (ss->gop_length + 2*(ctl_M-1))/ctl_M - 1; /* first GOP */
@@ -525,7 +538,7 @@ static void next_seq_state( stream_state_s *ss )
 	++(ss->b);	
 
 	/* Are we starting a new B group */
-	if( ss->b == ss->bigrp_length )
+	if( ss->b >= ss->bigrp_length )
 	{
 		ss->b = 0;
 		/* Does this need to be a short B group to make the GOP length

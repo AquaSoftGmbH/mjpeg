@@ -100,6 +100,7 @@ static int param_num_cpus = 1;
 static int param_32_pulldown = 0;
 static int param_svcd_scan_data = 0;
 static int param_seq_hdr_every_gop = 0;
+static int param_seq_end_every_gop = 0;
 
 /* reserved: for later use */
 int param_422 = 0;
@@ -198,7 +199,7 @@ static void Usage(char *str)
 	fprintf(stderr, " -v num  Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n");
 	fprintf( stderr, " -f fmt  Set pre-defined mux format.\n");
 	fprintf( stderr, "         [0 = Generic MPEG1, 1 = standard VCD, 2 = VCD,\n");
-	fprintf( stderr, "          3 = Generic MPEG2, 4 = standard SVCD, 5 = user SVCD, 6 = DVD]\n");	
+	fprintf( stderr, "          3 = Generic MPEG2, 4 = standard SVCD, 5 = user SVCD, 6 = VCD Stills sequences, 7 = SVCD Stills sequences, 8 = DVD]\n");	
 	fprintf(stderr,"   -a num     Aspect ratio displayed image [1..14] (default: code for 4:3 in specified norm)\n" );
 	fprintf(stderr,"              0 - Display MPEG1 and MPEG2 aspect ratio code tables\n");
 	fprintf(stderr,"   -F num     Frame rate for encoded video (default: frame rate of input stream)\n");
@@ -285,7 +286,23 @@ void set_format_presets()
 		param_svcd_scan_data = 1;
 		param_seq_hdr_every_gop = 1;
 		break;
-			 
+
+	case MPEG_FORMAT_VCD_STILL :
+		mjpeg_info( "Selecting VCD Stills output profile\n");
+		param_mpeg = 1;
+		/* We choose a generous nominal bit-rate as its VBR anyway
+		   there's only one frame per sequence ;-). It *is* too small
+		   to fill the frame-buffer in less than one PAL/NTSC frame
+		   period though...*/
+		param_bitrate = 8000000;
+		param_video_buffer_size = 46;
+		if( param_quant == 0 )
+			param_quant = 4;
+		param_seq_hdr_every_gop = 1;
+		param_seq_end_every_gop = 1;
+		param_min_GOP_size = 1;
+		param_max_GOP_size = 1;
+		break;
 	}
 }
 
@@ -334,6 +351,7 @@ static int infer_default_params()
 			++nerr;
 		}
 	}
+
 	return nerr;
 }
 
@@ -372,7 +390,10 @@ static int check_param_constraints()
 		++nerr;
 	}
 
-	if(	param_min_GOP_size < 2*param_Bgrp_size ||
+	if(	( param_format != MPEG_FORMAT_VCD_STILL &&
+		  param_format != MPEG_FORMAT_SVCD_STILL &&
+		  param_min_GOP_size < 2*param_Bgrp_size 
+			)  ||
 		param_max_GOP_size+param_max_GOP_size+param_Bgrp_size+1 > 
 		FRAME_BUFFER_SIZE-READ_CHUNK_SIZE  )
 	{
@@ -840,7 +861,10 @@ static void init_mpeg_parms(void)
 
 	ctl_N_min = param_min_GOP_size;      /* I frame distance */
 	ctl_N_max = param_max_GOP_size;
+	mjpeg_info( "GOP SIZE %d %d\n", ctl_N_min, ctl_N_max );
 	ctl_M = param_Bgrp_size;             /* I or P frame distance */
+	if( ctl_M >= ctl_N_min )
+		ctl_M = ctl_N_min-1;
 	opt_mpeg1           = (param_mpeg == 1);
 	opt_fieldpic        = (param_fieldenc!=0 && param_fieldenc != 3);
 	opt_prog_seq        = (param_mpeg == 1 || param_fieldenc == 0);
@@ -857,7 +881,12 @@ static void init_mpeg_parms(void)
 		mjpeg_error_exit1( "Generic format - must specify bit-rate!\n" );
 	}
 
-	if( param_mpeg == 1 )
+	if( param_format == MPEG_FORMAT_VCD_STILL )
+	{
+		opt_vbv_buffer_code = 23;
+		opt_bit_rate = param_bitrate;
+	}
+	else if( param_mpeg == 1 )
 	{
 		/* Scale VBV relative to VCD  */
 		opt_bit_rate = MAX(10000, param_bitrate);
@@ -882,6 +911,7 @@ static void init_mpeg_parms(void)
 	ctl_video_buffer_size = param_video_buffer_size * 1024 * 8;
 	
 	opt_seq_hdr_every_gop = param_seq_hdr_every_gop;
+	opt_seq_end_every_gop = param_seq_end_every_gop;
 	opt_svcd_scan_data = param_svcd_scan_data;
 	ctl_seq_length_limit = param_seq_length_limit;
 	ctl_nonvid_bit_rate = param_nonvid_bitrate * 1000;

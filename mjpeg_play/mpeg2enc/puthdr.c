@@ -111,11 +111,7 @@ void putseqext()
   putbits(opt_chroma_format,2); /* chroma_format */
   putbits(opt_horizontal_size>>12,2); /* horizontal_size_extension */
   putbits(opt_vertical_size>>12,2); /* vertical_size_extension */
-  if(opt_mpeg1 && ctl_quant_floor != 0) {
-    putbits(-1,12);
-  } else {
-    putbits(((int)ceil(opt_bit_rate/400.0))>>18,12); /* bit_rate_extension */
-  }
+  putbits(((int)ceil(opt_bit_rate/400.0))>>18,12); /* bit_rate_extension */
   putbits(1,1); /* marker_bit */
   putbits(opt_vbv_buffer_code>>10,8); /* vbv_buffer_size_extension */
   putbits(0,1); /* low_delay  -- currently not implemented */
