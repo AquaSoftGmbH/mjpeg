@@ -870,7 +870,7 @@ n=0;
    if ((*option).decoderbuffer != 46)
    {
       sprintf(temp3, "%i", (*option).decoderbuffer);
-      mplex_command[n] = "-r"; n++;
+      mplex_command[n] = "-b"; n++;
       mplex_command[n] = temp3; n++;
    }
    if ((*option).muxvbr[0] == '-' )
