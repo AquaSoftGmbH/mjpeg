@@ -133,9 +133,10 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
 		buffers_in_audio = 1;
 		always_buffers_in_audio = 1;
 		vcd_zero_stuffing = 0;
-        dtspts_for_all_vau = 0;
-        timestamp_iframe_only = false;
-        video_buffers_iframe_only = false;
+		vbr = true;
+        	dtspts_for_all_vau = 0;
+        	timestamp_iframe_only = false;
+        	video_buffers_iframe_only = false;
 		break;
 
 	case MPEG_FORMAT_SVCD :
