@@ -1,8 +1,8 @@
 all:	main.o
-	gcc -pg -o yuvdeinterlace main.o -L ../utils/ -lmjpegutils -lm
+	gcc -o yuvdeinterlace main.o -L ../utils -L ../utils/.libs -lmjpegutils -lmotion -lcpuaccel -lm
 
 main.o:	main.c
-	gcc -pg -O6 -funroll-all-loops -finline-functions -Wall -I.. -I ../utils -c main.c
+	gcc -O6 -funroll-all-loops -finline-functions -Wall -I.. -I ../utils -c main.c
 
 clean:
 	rm -f *.o *~

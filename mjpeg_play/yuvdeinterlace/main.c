@@ -321,16 +321,16 @@ blend_fields (void)
 	korr3 /= width*(height/2);
 	korr3 = 1-sqrt(korr3)/256;
 
-	if(korr2>=korr1)
+	if(korr2>=(korr1*0.9999))
 	{
-		mjpeg_log(LOG_INFO," %3.1f(%3.1f) %3.1f %3.1f -- mode: PROGRESSIVE SCAN",
+		mjpeg_log(LOG_INFO," di:%3.0f(%3.0f) pr:%3.0f de:%3.0f -- mode: PROGRESSIVE",
 			korr1*100,mean_korr1*100,korr2*100,korr3*100);
 		mode=1;
 	}
 	else		
-		if(korr3>=korr1)
+		if(korr3>=(korr1*0.9999))
 		{
-			mjpeg_log(LOG_INFO," %3.1f(%3.1f) %3.1f %3.1f -- mode: TELECINED VIDEO",
+			mjpeg_log(LOG_INFO," di:%3.0f(%3.0f) pr:%3.0f de:%3.0f -- mode: TELECINED",
 				korr1*100,mean_korr1*100,korr2*100,korr3*100);
 			mode=2;
 		}
@@ -338,15 +338,15 @@ blend_fields (void)
 		{
 			mode=0;
 
-			if(korr1<(mean_korr1*0.975))
+			if(korr1<(mean_korr1*0.950))
 			{
 				mode=3;
-				mjpeg_log(LOG_INFO," %3.1f(%3.1f) %3.1f %3.1f -- mode: INTERLACED VIDEO (M2)",
+				mjpeg_log(LOG_INFO," di:%3.0f(%3.0f) pr:%3.0f de:%3.0f -- mode: ILACED (2-FAST)",
 					korr1*100,mean_korr1*100,korr2*100,korr3*100);
 			}
 			else
 			{
-				mjpeg_log(LOG_INFO," %3.1f(%3.1f) %3.1f %3.1f -- mode: INTERLACED VIDEO (M1)",
+				mjpeg_log(LOG_INFO," di:%3.0f(%3.0f) pr:%3.0f de:%3.0f -- mode: ILACED (MC)",
 					korr1*100,mean_korr1*100,korr2*100,korr3*100);
 			}
 		}
