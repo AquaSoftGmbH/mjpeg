@@ -1,12 +1,9 @@
 /*
-movtar_unify (V1.0)
-===================
+jpeg2yuv
+========
 
-  Combines a movtar file without sound (or several JPEG files) 
-  and a wav audio file into a movtar stream with sound.
 
-  Simple usage: movtar_split -w wavfile -i inmovtar -o outmovtar <options> 
-  (see movtar_split -h for help (or have a look at the function "usage"))
+  (see jpeg2yuv -h for help (or have a look at the function "usage"))
   
   Copyright (C) 1999 Gernot Ziegler (gz@lysator.liu.se)
 
