@@ -862,8 +862,9 @@ static void *parencodeworker(void *start_arg)
 		mp_semaphore_signal( &picture_started, 1);
 
 		/* ALWAYS do-able */
-		mjpeg_info("Frame %d %c %d %d",  
-				   picture->decode,  pict_type_char[picture->pict_type],
+		mjpeg_info("Frame %d  %c %d %d",  
+				   picture->decode,  
+                   pict_type_char[picture->pict_type],
 				   picture->temp_ref,
 				   picture->present);
 
@@ -890,24 +891,24 @@ static void *parencodeworker(void *start_arg)
 #ifdef ORIGINAL_PHASE_BASED_PROC
 		if( ctl_refine_from_rec )
 		{
-			sync_guard_test( picture->ref_frame_completion );
+			sync_guard_test( &picture->ref_frame->completion );
 			motion_estimation(picture);
 		}
 		else
 		{
 			motion_estimation(picture);
-			sync_guard_test( picture->ref_frame_completion );
+			sync_guard_test( &picture->ref_frame->completion );
 		}
 		predict(picture);
 
 		/* No dependency */
 		transform(picture);
 #else
-        sync_guard_test( picture->ref_frame_completion );
+        sync_guard_test( &picture->ref_frame->completion );
         encodembs(picture);
 #endif
 		/* Depends on previous frame completion for IB and P */
-		sync_guard_test( picture->prev_frame_completion );
+		sync_guard_test( &picture->prev_frame->completion );
 		picture->PutHeadersAndEncoding(*encparams.bitrate_controller);
 
 		reconstruct(picture);
@@ -1027,31 +1028,38 @@ void putseq(void)
 		/* Each bigroup starts once all the B frames of its predecessor
 		   have finished.
 		*/
+        int index;
+        char type;
 		if ( ss.b == 0)
 		{
+            type = 'R';
 			cur_ref_idx = (cur_ref_idx + 1) % ctl_max_active_ref_frames;
+            index = cur_ref_idx;
 			old_ref_picture = new_ref_picture;
 			new_ref_picture = &ref_pictures[cur_ref_idx];
-			new_ref_picture->ref_frame_completion = &old_ref_picture->completion;
-			new_ref_picture->prev_frame_completion = &cur_picture->completion;
+			new_ref_picture->ref_frame = old_ref_picture;
+			new_ref_picture->prev_frame = cur_picture;
 			new_ref_picture->Set_IP_Frame(&ss);
 			cur_picture = new_ref_picture;
 		}
 		else
 		{
+            type = 'B';
+
 			Picture *new_b_picture;
 			/* B frame: no need to change the reference frames.
 			   The current frame data pointers are a 3rd set
 			   seperate from the reference data pointers.
 			*/
 			cur_b_idx = ( cur_b_idx + 1) % ctl_max_active_b_frames;
+            index = cur_b_idx;
 			new_b_picture = &b_pictures[cur_b_idx];
 			new_b_picture->oldorg = new_ref_picture->oldorg;
 			new_b_picture->oldref = new_ref_picture->oldref;
 			new_b_picture->neworg = new_ref_picture->neworg;
 			new_b_picture->newref = new_ref_picture->newref;
-			new_b_picture->ref_frame_completion = &new_ref_picture->completion;
-			new_b_picture->prev_frame_completion = &cur_picture->completion;
+			new_b_picture->ref_frame = new_ref_picture;
+			new_b_picture->prev_frame = cur_picture;
 			new_b_picture->Set_B_Frame( &ss );
 			cur_picture = new_b_picture;
 		}
@@ -1079,6 +1087,7 @@ void putseq(void)
 		++frame_num;
 	}
 	
+        
 	/* Wait for final frame's encoding to complete */
 	if( ctl_max_encoding_frames > 1 )
 		sync_guard_test( &cur_picture->completion );

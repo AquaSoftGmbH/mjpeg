@@ -113,8 +113,8 @@ public:
 	/* multiple-reader/single-writer channels Synchronisation  
 	   sync only: no data is "read"/"written"
 	 */
-	sync_guard_t *ref_frame_completion;
-	sync_guard_t *prev_frame_completion;
+    Picture *ref_frame;
+    Picture *prev_frame;
 	sync_guard_t completion;
 
 	/* picture encoding source data  */

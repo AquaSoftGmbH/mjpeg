@@ -18,6 +18,12 @@ IN PROGRESS
 	- Dynamic B/P selection and selection of I frames 
 	without memory-expensive look-ahead.
 
+	- Improve memory management.  Selecting Picture's from a single pool
+	rather than seperate B / I|P pools will save memory buffers.  Also,
+	really there is no need for DCT blocks for every picture as encoding
+	is basically serial!!
+
+
 Near Future improvements
 
 0.  Replace current variance based motion estimation mode selection

@@ -1326,7 +1326,7 @@ static void init_encoder(void)
     ctl_max_active_ref_frames = 
         ctl_M == 0 ? ctl_max_encoding_frames : (ctl_max_encoding_frames+2);
     ctl_max_active_b_frames = 
-        ctl_M <= 1 ? 0 : ctl_max_encoding_frames;
+        ctl_M <= 1 ? 0 : ctl_max_encoding_frames+1;
 
 	ctl_44_red		= param_44_red;
 	ctl_22_red		= param_22_red;

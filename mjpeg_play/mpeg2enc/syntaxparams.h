@@ -52,7 +52,7 @@
   How many frames to read in one go
 */
 
-#define READ_CHUNK_SIZE 1
+#define READ_CHUNK_SIZE 3
 
 /*
   How many frames encoding may be concurrently under way.
