@@ -1000,7 +1000,7 @@ static int lavrec_software_init(lavrec_t *info)
    }
    settings->breq.count = info->MJPG_numbufs;
    settings->breq.size = info->MJPG_bufsize*1024;
-   settings->MJPG_buff = (char *) malloc(sizeof(char)*settings->breq.size); // *settings->breq.count);
+   settings->MJPG_buff = (char *) malloc(sizeof(char)*settings->breq.size*settings->breq.count);
    if (!settings->MJPG_buff)
    {
       lavrec_msg (LAVREC_MSG_ERROR, info,
