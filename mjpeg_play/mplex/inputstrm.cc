@@ -83,7 +83,6 @@ ElementaryStream::NextAU()
 	Aunit *p_au = next();
 	if( p_au != NULL )
 	{
-        mjpeg_info( "NEXT: %d %d\n", stream_id, p_au->dorder );
 		au = p_au;
 		au_unsent = p_au->length;
 		return true;
