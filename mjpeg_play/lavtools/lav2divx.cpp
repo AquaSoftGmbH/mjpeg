@@ -796,7 +796,7 @@ main ( int argc, char **argv )
 
 	for ( int currentframe = 0; currentframe < opt_endframe; currentframe++ )
 	{
-		readframe ( currentframe, buffer.frame_buf, &bounds, &param, &buffer, el );
+		readframe ( currentframe, buffer.read_buf, &bounds, &param, &buffer, el );
 
 		gettimeofday ( &tv, &tz );
 		if ( ( tv.tv_sec != oldtime ) && ( !opt_guess ) )
@@ -818,9 +818,9 @@ main ( int argc, char **argv )
 		//
 		if ( asis < 1 )	//faster
 		{
-			memcpy ( framebuffer, buffer.frame_buf[0], yplane );
-			memcpy ( framebuffer + yplane, buffer.frame_buf[2], vplane );
-			memcpy ( framebuffer + yplane + vplane, buffer.frame_buf[1], uplane );
+			memcpy ( framebuffer, buffer.read_buf[0], yplane );
+			memcpy ( framebuffer + yplane, buffer.read_buf[2], vplane );
+			memcpy ( framebuffer + yplane + vplane, buffer.read_buf[1], uplane );
 		}
 		else		// slower, but handles cropping.
 		{
@@ -832,11 +832,11 @@ main ( int argc, char **argv )
 				int chromaoffset = ( yy / 2 ) * chromaw;
 				int chromaoffsetsrc = ( ( yy + opt_y ) / 2 ) * chromawidth;
 				memcpy ( framebuffer + yy * opt_w,
-					 buffer.frame_buf[0] + ( yy + opt_y ) * param.output_width + opt_x, opt_w );
-				memcpy ( framebuffer + yplane + chromaoffset, buffer.frame_buf[2] + chromaoffsetsrc + chromax,
+					 buffer.read_buf[0] + ( yy + opt_y ) * param.output_width + opt_x, opt_w );
+				memcpy ( framebuffer + yplane + chromaoffset, buffer.read_buf[2] + chromaoffsetsrc + chromax,
 					 chromaw );
 				memcpy ( framebuffer + yplane + vplane + chromaoffset,
-					 buffer.frame_buf[1] + chromaoffsetsrc + chromax, chromaw );
+					 buffer.read_buf[1] + chromaoffsetsrc + chromax, chromaw );
 			}
 		}
 
