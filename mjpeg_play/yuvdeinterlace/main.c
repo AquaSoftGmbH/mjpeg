@@ -40,6 +40,9 @@
 #include "mjpeg_logging.h"
 #include "motionsearch.h"
 
+int fast_mode=0;
+int field_order = 1;
+int bttv_hack = 0;
 int width = 0;
 int height = 0;
 
@@ -83,6 +86,11 @@ uint8_t f5cr[512 * 384];
 uint8_t f5cb[512 * 384];
 uint8_t *frame5[3] = { f5y, f4cr, f4cb };
 
+uint8_t f6y[1024 * 768];
+uint8_t f6cr[512 * 384];
+uint8_t f6cb[512 * 384];
+uint8_t *frame6[3] = { f6y, f4cr, f4cb };
+
 struct vector
 {
 	int x;
@@ -110,6 +118,7 @@ void aa_interpolation (uint8_t * frame[3], int field);
 int
 main (int argc, char *argv[])
 {
+	char c;
 	int fd_in = 0;
 	int fd_out = 1;
 	int errno = 0;
@@ -117,6 +126,38 @@ main (int argc, char *argv[])
 	y4m_frame_info_t frameinfo;
 	y4m_stream_info_t streaminfo;
 
+	mjpeg_log (LOG_INFO,
+		   "-------------------------------------------------");
+	mjpeg_log (LOG_INFO,
+		   "       Motion-Compensating-Deinterlacer          ");
+	mjpeg_log (LOG_INFO,
+		   "-------------------------------------------------");
+
+  	while ((c = getopt (argc, argv, "hbf")) != -1)
+  	{
+    	switch (c)
+    	{
+    		case 'h':
+   			{
+				mjpeg_log(LOG_INFO," -b activates the bttv-chroma-hack ");
+				mjpeg_log(LOG_INFO," -f fast-mode (field-interpolation)");
+        		exit (0);
+        		break;
+      		}
+    		case 'b':
+   			{
+        		bttv_hack=1;
+        		break;
+      		}
+    		case 'f':
+   			{
+        		fast_mode=1;
+        		break;
+      		}
+		}
+	}
+
+	/* initialize motion_library */
 	init_motion_search ();
 
 	/* initialize stream-information */
@@ -133,19 +174,32 @@ main (int argc, char *argv[])
 	width = y4m_si_get_width (&streaminfo);
 	height = y4m_si_get_height (&streaminfo);
 
-	/* we don't care if the stream is marked as not interlaced 
-	 * because, if the user uses this tool, it is... */
+	if(Y4M_ILACE_TOP_FIRST == y4m_si_get_interlace (&streaminfo))
+	{
+		mjpeg_log(LOG_INFO,"top-field-first");
+		field_order=1;
+	}
+	else
+		if(Y4M_ILACE_BOTTOM_FIRST == y4m_si_get_interlace (&streaminfo))
+		{
+			mjpeg_log(LOG_INFO,"bottom-field-first");
+			field_order=0;
+		}
+		else
+		{
+			mjpeg_log(LOG_WARN,"stream either is marked progressive");
+			mjpeg_log(LOG_WARN,"or stream has unknown field order");
+			mjpeg_log(LOG_WARN,"using top-field-first and activating");
+			mjpeg_log(LOG_WARN,"BTTV-Chroma-Hack");
+			bttv_hack=1;
+			field_order=1;
+		}
+
+	/* the output is not interlaced 4:2:0 */
 	y4m_si_set_interlace (&streaminfo, Y4M_ILACE_NONE);
 
 	/* write the outstream header */
 	y4m_write_stream_header (fd_out, &streaminfo);
-
-	mjpeg_log (LOG_INFO,
-		   "---------------------------------------------------------");
-	mjpeg_log (LOG_INFO,
-		   "           Motion-Compensating-Deinterlacer              ");
-	mjpeg_log (LOG_INFO,
-		   "---------------------------------------------------------");
 
 	/* read every single frame until the end of the input stream */
 	while (Y4M_OK == (errno = y4m_read_frame (fd_in,
@@ -160,25 +214,31 @@ main (int argc, char *argv[])
 		memcpy (frame10[2], frame11[2], width * height / 4);
 
 		/* interpolate the other field */
+		if(fast_mode==0)
+		{
+			aa_interpolation (frame10, field_order);
+			aa_interpolation (frame11, 1-field_order);
+			
+			/* create working copy */
 
-		sinc_interpolation (frame10, 0);
-		sinc_interpolation (frame11, 1);
+			memcpy (frame4[0], frame20[0], width * height);
+			memcpy (frame4[1], frame20[1], width * height / 4);
+			memcpy (frame4[2], frame20[2], width * height / 4);
 
-		/* create working copy */
+			/* deinterlace the frame in the middle of the ringbuffer */
 
-		memcpy (frame4[0], frame20[0], width * height);
-		memcpy (frame4[1], frame20[1], width * height / 4);
-		memcpy (frame4[2], frame20[2], width * height / 4);
+			motion_compensate_field ();
+			blend_fields ();
 
-		/* deinterlace the frame in the middle of the ringbuffer */
+			/* write output-frame */
 
-		motion_compensate_field ();
-		blend_fields ();
-
-		/* write output-frame */
-
-		y4m_write_frame (fd_out, &streaminfo, &frameinfo, frame4);
-		//y4m_write_frame (fd_out, &streaminfo, &frameinfo, frame10);
+			y4m_write_frame (fd_out, &streaminfo, &frameinfo, frame6);
+		}		
+		else
+		{
+			aa_interpolation (frame10, field_order);
+			y4m_write_frame (fd_out, &streaminfo, &frameinfo, frame10);
+		}
 
 		/* rotate buffers */
 
@@ -210,31 +270,31 @@ main (int argc, char *argv[])
 void
 blend_fields (void)
 {
-	int qcnt = 0;
 	int x, y;
-	int delta1,delta2;
+	int delta,delta1,delta2,delta3,delta4,delta5;
 
 	float korr;
 	static float mean_korr;
+	float blend;
 
 	korr = 0;
 	for (y = 0; y < height; y++)
 		for (x = 0; x < width; x++)
 		{
-			delta1 =	*(frame4[0] + x + y * width) -
+			delta =	*(frame4[0] + x + y * width) -
 						*(frame5[0] + x + y * width) ;
-			delta1 *= delta1;
-			korr += delta1;
+			delta *= delta;
+			korr += delta;
 		}
 	korr /= width*height;
 	korr = 1-sqrt(korr)/256;
 
 
-	fprintf(stderr,"Matching Q: %3.1f%%(%3.1f%%) -- ",korr*100,mean_korr*100);
+	mjpeg_log(LOG_INFO,"fields match by %3.1f%% (mean %3.1f%%) -- ",korr*100,mean_korr*100);
 
-	if ( korr >= mean_korr-0.025 )
+	if ( korr >= mean_korr-0.05 )
 	{
-	fprintf(stderr,"M1\n");
+	mjpeg_log(LOG_INFO,"   using motion-compensated field\n");
 
 	mean_korr = mean_korr * 9 + korr;
 	mean_korr /= 10;
@@ -242,31 +302,27 @@ blend_fields (void)
 	for (y = 0; y < height; y++)
 		for (x = 0; x < width; x++)
 		{
-				delta1 =  
-					*(frame4[0] + (x+0) + (y+0) * width) ;
-				delta2 =  
-					*(frame5[0] + (x+0) + (y+0) * width) ;
-				delta1 = delta2-delta1;
-				delta1 = delta1<0? -delta1:delta1;
 
-				if(delta1<24)
-				{
-					*(frame4[0] + x + y * width) =
-						(*(frame4[0] + x + y * width) +
-						 *(frame5[0] + x + y * width) ) / 2;
-				}
-				else
-					if(delta1<48)
-					{
-					*(frame4[0] + x + y * width) =
-						(*(frame4[0] + x + y * width)*2 +
-						 *(frame5[0] + x + y * width) ) / 3;
-					}				
+			delta = 
+				( *(frame4[0] + x + (y+0) * width) +
+				  *(frame4[0] + x + (y+1) * width) )/2 -
+				( *(frame5[0] + x + (y+0) * width) +
+				  *(frame5[0] + x + (y+1) * width) )/2 ;
+			delta = delta<0? -delta:delta;
+
+			blend = delta/256.f;
+			blend = blend>0.5? 0.5:blend;
+			blend = blend + 0.5;
+
+			blend=0.5;
+			*(frame6[0] + x + y * width) = 
+				*(frame4[0] + x + y * width)*(  blend)+
+				*(frame5[0] + x + y * width)*(1-blend);
 		}
 	}
 	else
 	{
-		fprintf(stderr,"M2 (scene-change or fast motion?)\n");
+	mjpeg_log(LOG_INFO,"   Scene-change or fast motion. Using interpolated field");
 	}
 }
 
@@ -290,7 +346,7 @@ motion_compensate_field (void)
 
 
 	//search-radius
-	int r = 8;
+	int r = 24;
 
 	for (yy = 0; yy < h; yy += 32)
 		for (xx = 0; xx < w; xx += 32)
@@ -316,6 +372,8 @@ motion_compensate_field (void)
 						       frame20[0] + addr2+16, w,
 						       32, 0);
 
+					if(bttv_hack==0)
+					{
 					/* match chroma */
 					addr1 = (xx) / 2 + (yy) * w / 4;
 					addr2 = (xx + vx) / 2 + (yy +
@@ -326,6 +384,7 @@ motion_compensate_field (void)
 					SAD += psad_00 (frame10[2] + addr1,
 							frame20[2] + addr2,
 							w / 2, 16, 0);
+					}
 
 					if (SAD <= min)
 					{
@@ -362,6 +421,8 @@ motion_compensate_field (void)
 						       frame20[0] + addr2+16, w,
 						       32, 0);
 
+					if(bttv_hack==0)
+					{
 					/* match chroma */
 					addr1 = (xx) / 2 + (yy) * w / 4;
 					addr2 = (xx + vx) / 2 + (yy +
@@ -372,6 +433,7 @@ motion_compensate_field (void)
 					SAD += psad_00 (frame21[2] + addr1,
 							frame20[2] + addr2,
 							w / 2, 16, 0);
+					}
 
 					if (SAD <= min)
 					{
@@ -382,12 +444,7 @@ motion_compensate_field (void)
 					}
 
 			vlist[cnt].SAD += min;
-			vlist[cnt].x += x1;
-			vlist[cnt].y += y1;
-			vlist[cnt].x /= 2;
-			vlist[cnt].y /= 2;
-			}
-					
+		    }
 			if( vlist[0].SAD <= vlist[1].SAD &&
 				vlist[0].SAD <= vlist[2].SAD &&
 				vlist[0].SAD <= vlist[3].SAD )
@@ -444,28 +501,24 @@ sinc_interpolation (uint8_t * frame[3], int field)
 		for (x = 0; x < width; x++)
 		{
 			float v;
-			v = (0.114) * (float) *(frame[0] + (y - 5) * width +
-						x) +
-				(-0.188) * (float) *(frame[0] +
-						     (y - 3) * width + x) +
-				(0.574) * (float) *(frame[0] +
-						    (y - 1) * width + x) +
-				(0.574) * (float) *(frame[0] +
-						    (y + 1) * width + x) +
-				(-0.188) * (float) *(frame[0] +
-						     (y + 3) * width + x) +
-				(0.114) * (float) *(frame[0] +
-						    (y + 5) * width + x);
+			v = (0.114)  * (float) *(frame[0] + (y - 5) * width + x) +
+			    (-0.188) * (float) *(frame[0] + (y - 3) * width + x) +
+				(0.574)  * (float) *(frame[0] + (y - 1) * width + x) +
+				(0.574)  * (float) *(frame[0] + (y + 1) * width + x) +
+				(-0.188) * (float) *(frame[0] + (y + 3) * width + x) +
+				(0.114)  * (float) *(frame[0] + (y + 5) * width + x);
 
 			v = v > 235 ? 235 : v;
 			v = v < 16 ? 16 : v;
 			*(frame[0] + y * width + x) = v;
 		}
 
+	if(bttv_hack==0)
+	{
+	// Chroma 
+
 	height /= 2;
 	width /= 2;
-
-	// Chroma 
 
 	for (y = (field + 2); y < (height - 2); y += 2)
 		for (x = 0; x < width; x++)
@@ -490,186 +543,82 @@ sinc_interpolation (uint8_t * frame[3], int field)
 
 	height *= 2;
 	width *= 2;
+    }
 }
 
-void
-cubic_interpolation (uint8_t * frame[3], int field)
+void aa_interpolation( uint8_t * frame[3], int field)
 {
-	int x, y;
+	int x,y,dx,v1,v2,z,d;
+	uint32_t SSE;
+	uint32_t min;
+	int w=6;
 
-	for (y = field; y < height; y += 2)
+	for (y = (field + 2); y < (height - 2); y += 2)
 		for (x = 0; x < width; x++)
 		{
-			float a, b, c;
-			float o[4];
+			
+			v1=v2=0;
+			min=0;
+			for(z=-w; z <= w ;z++)
+			{
+				d = 	*(frame[0]+z+x     +(y-1)*width) -
+						*(frame[0]+z+x     +(y+1)*width);
+				d *= d;
+				min += d;
+			}
+
+			for(dx=-(w/2) ; dx<=(w/2) ; dx++)
+			{
+				SSE=0;
+				for(z=-w; z <= w ;z++)
+				{
+					d = 	*(frame[0]+z+x     +(y-1)*width) -
+							*(frame[0]+z+x+dx  +(y+1)*width);
+					d *= d;
+					SSE += d;
+				}
+				if (SSE<(min*0.5))
+				{
+					min=SSE;
+					v1=dx/2;
+				}
+			}
+
+			d=
+				(	*(frame[0]-v1+(x)+(y-1)*width) +
+					*(frame[0]+v1+(x)+(y+1)*width)	)/2;
+
+			*(frame[0]+(x)+(y)*width) = d;
+		}	
+
+	if(bttv_hack==0)
+	{
+	// Chroma 
+	height /= 2;
+	width /= 2;
+
+	for (y = (field + 2); y < (height - 2); y += 2)
+		for (x = 0; x < width; x++)
+		{
 			float v;
+			v = 0.5 * (float) *(frame[1] + (y - 1) * width + x) +
+				0.5 * (float) *(frame[1] + (y + 1) * width +
+						x);
 
-			o[0] = *(frame[0] + x + (y - 2) * width);
-			o[1] = *(frame[0] + x + (y + 0) * width);
-			o[2] = *(frame[0] + x + (y + 2) * width);
-			o[3] = *(frame[0] + x + (y + 4) * width);
-
-			a = (3.f * (o[1] - o[2]) - o[0] + o[3]) / 2.f;
-			b = 2.f * o[2] + o[0] - (5.f * o[1] + o[3]) / 2.f;
-			c = (o[2] - o[0]) / 2.f;
-
-			v = a * 0.125 + b * 0.25 + c * 0.5 + o[1];
 			v = v > 240 ? 240 : v;
 			v = v < 16 ? 16 : v;
+			*(frame[1] + y * width + x) = v;
 
-			*(frame[0] + x + (y + 1) * width) = v;
+			v = 0.5 * (float) *(frame[2] + (y - 1) * width + x) +
+				0.5 * (float) *(frame[2] + (y + 1) * width +
+						x);
+
+			v = v > 240 ? 240 : v;
+			v = v < 16 ? 16 : v;
+			*(frame[2] + y * width + x) = v;
 		}
-}
 
-void
-aa_interpolation (uint8_t * frame[3], int field)
-{
-	int x, y;
-
-	for (y = field; y < height; y += 2)
-		for (x = 0; x < width; x++)
-		{
-			float mean=0;
-			float d0,d1,d2,d3,d4,d5;
-
-			mean =
-				*(frame[0] + (x - 1) + (y - 2) * width) +
-				*(frame[0] + (x - 0) + (y - 2) * width) +
-				*(frame[0] + (x + 1) + (y - 2) * width) +
-				*(frame[0] + (x - 1) + (y - 1) * width) +
-				*(frame[0] + (x - 0) + (y - 1) * width) +
-				*(frame[0] + (x + 1) + (y - 1) * width) +
-				*(frame[0] + (x - 1) + (y + 1) * width) +
-				*(frame[0] + (x - 0) + (y + 1) * width) +
-				*(frame[0] + (x + 1) + (y + 1) * width) +
-				*(frame[0] + (x - 1) + (y + 2) * width) +
-				*(frame[0] + (x - 0) + (y + 2) * width) +
-				*(frame[0] + (x + 1) + (y + 2) * width) ;
-			mean /= 12;
-
-			d0 = mean - *(frame[0] + (x + 0) + (y - 1) * width) ;
-			d1 = mean - *(frame[0] + (x + 0) + (y + 1) * width) ;
-			if ( ( d0<0 && d1<0 ) || ( d0>0 && d1>0 ) )
-			{
-				d0 += d1;
-				d0 /= 2;
-			}
-			else
-			{
-				d0 = 0;
-			}
-
-			d2 = mean - *(frame[0] + (x + 1) + (y - 1) * width) ;
-			d3 = mean - *(frame[0] + (x - 1) + (y + 1) * width) ;
-			if ( ( d2<0 && d3<0 ) || ( d2>0 && d3>0 ) )
-			{
-				d2 += d3;
-				d2 /= 2;
-			}
-			else
-			{
-				d2 = 0;
-			}
-
-			d4 = mean - *(frame[0] + (x + 1) + (y - 1) * width) ;
-			d5 = mean - *(frame[0] + (x - 1) + (y + 1) * width) ;
-			if ( ( d4<0 && d5<0 ) || ( d4>0 && d5>0 ) )
-			{
-				d4 += d5;
-				d4 /= 2;
-			}
-			else
-			{
-				d4 = 0;
-			}
-
-			if ( fabs(d0) >= fabs(d2) && fabs(d0) >= fabs(d4) )
-			{
-				mean = 	*(frame[0] + (x + 0) + (y - 1) * width) +
-						*(frame[0] + (x + 0) + (y + 1) * width) ;
-				mean /= 2;
-			}
-			else
-				if ( fabs(d2) >= fabs(d0) && fabs(d2) >= fabs(d4) )
-				{
-					mean = 	*(frame[0] + (x + 1) + (y - 1) * width) +
-							*(frame[0] + (x - 1) + (y + 1) * width) ;
-					mean /= 2;
-				}
-				else
-					if ( fabs(d4) >= fabs(d0) && fabs(d4) >= fabs(d2) )
-					{
-						mean = 	*(frame[0] + (x - 1) + (y - 1) * width) +
-								*(frame[0] + (x + 1) + (y + 1) * width) ;
-						mean /= 2;
-					}
-					else
-						{
-						fprintf(stderr,"**fixme**\n");
-						}
-
-			*(frame[0] + (x + 0) + (y + 0) * width) = mean;
-		}
-}
-
-
-void
-mc_interpolation (uint8_t * frame[3], int field)
-{
-	int x, y, dx, vx = 0;
-	uint32_t SAD = 0x00ffffff;
-	uint32_t minSAD = 0x00ffffff;
-	int addr1 = 0, addr2 = 0;
-	int z;
-	int p;
-
-	for (y = field; y < height; y += 2)
-		for (x = 0; x < width; x += 2)
-		{
-
-			/* search match */
-
-			vx = 0;
-			addr1 = y * width + x - width;
-			addr2 = y * width + x + width;
-			SAD = 0;
-			for (z = -2; z < 2; z++)
-			{
-				p = *(frame[0] + addr1 + z) -
-					*(frame[0] + addr2 + z);
-				p = p<0 ? -p:p;
-				SAD += p;
-			}
-			minSAD=SAD;
-
-			for (dx = -4; dx <= 4; dx++)
-			{
-				addr1 = y * width + x - width;
-				addr2 = y * width + x + width + dx;
-
-				SAD = 0;
-				for (z = -4; z < 4; z++)
-				{
-					p = *(frame[0] + addr1 + z) -
-						*(frame[0] + addr2 + z);
-					p = p<0 ? -p:p;
-					SAD += p;
-				}
-
-				if (SAD < minSAD)
-				{
-					vx = dx;
-					minSAD = SAD;
-				}
-			}
-
-			for (dx = 0; dx < 4; dx++)
-			{
-				*(frame[0] + y * width + dx + x) =
-					( *(frame[0] + (y - 1) * width - vx / 2 + dx + x) >> 2) +
-					( *(frame[0] + (y + 1) * width + vx / 2 + dx + x) >> 2) +
-					( *(frame[0] + (y - 1) * width + dx + x) >> 2) +
-					( *(frame[0] + (y + 1) * width + dx + x) >> 2) ;
-			}
-		}
+	height *= 2;
+	width *= 2;
+	}
 }
