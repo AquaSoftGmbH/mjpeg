@@ -145,35 +145,35 @@ if [ $WITHGUI = 0 ]; then
     echo -e "Removing temporary files..."
 fi
 
-if [ -e $TMPFILENAME.tmp.m2v ]; then
-    rm $TMPFILENAME.tmp.m2v
+if [ -e "$TMPFILENAME.tmp.m2v" ]; then
+    rm "$TMPFILENAME.tmp.m2v"
 fi
 
-if [ -e $TMPFILENAME.tmp.jpg ]; then
-    rm $TMPFILENAME.tmp.jpg
+if [ -e "$TMPFILENAME.tmp.jpg" ]; then
+    rm "$TMPFILENAME.tmp.jpg"
 fi
 
-if [ -e $TMPFILENAME.tmp.pnm ]; then
-    rm $TMPFILENAME.tmp.pnm
+if [ -e "$TMPFILENAME.tmp.pnm" ]; then
+    rm "$TMPFILENAME.tmp.pnm"
 fi
-if [ $AUDIO_WAV ]; then
-    if [ -e $TMPFILENAME.tmp.mp2 ]; then
-        rm $TMPFILENAME.tmp.mp2
+if [ "$AUDIO_WAV" ]; then
+    if [ -e "$TMPFILENAME.tmp.mp2" ]; then
+        rm "$TMPFILENAME.tmp.mp2"
     fi
 fi
 
-if [ $MASK="$TMPFILENAME.black.tmp.png" ]; then
-    if [ -e $MASK ]; then
-	rm $MASK
+if [ "$MASK"="$TMPFILENAME.black.tmp.png" ]; then
+    if [ -e "$MASK" ]; then
+	rm "$MASK"
     fi
 fi
 
 if [ $TRANSITIONENABLE = 1 ]; then
-    if [ -e $TMPFILENAME.prev_trans.tmp.pnm ]; then
-        rm $TMPFILENAME.prev_trans.tmp.pnm
+    if [ -e "$TMPFILENAME.prev_trans.tmp.pnm" ]; then
+        rm "$TMPFILENAME.prev_trans.tmp.pnm"
     fi
-    if [ -e $TMPFILENAME.next_trans.tmp.pnm ]; then
-        rm $TMPFILENAME.next_trans.tmp.pnm
+    if [ -e "$TMPFILENAME.next_trans.tmp.pnm" ]; then
+        rm "$TMPFILENAME.next_trans.tmp.pnm"
     fi
 fi
 
@@ -515,7 +515,7 @@ fi
 DATE_DEBUT=`date +%s`
 
 # For the mutisessions of this script, we use the number of seconds behind 1970 for the temporary name files.
-if [ -z $TEMPORARYFOLDER ]; then
+if [ -z "$TEMPORARYFOLDER" ]; then
    TMPFILENAME="$DATE_DEBUT"
 else
    TMPFILENAME="$TEMPORARYFOLDER/$DATE_DEBUT"
@@ -616,12 +616,12 @@ esac
 # ImageMagick create this temporary background image file only if you don't give a specific backgroung
 # image name on the command line.
 
-if [ -z $MASK ]; then
+if [ -z "$MASK" ]; then
     if [ -z $BACKGROUNDCOLOR ]; then
        BACKGROUNDCOLOR="000000"
     fi
     MASK="$TMPFILENAME.black.tmp.png"
-    RET=`convert xc:#$BACKGROUNDCOLOR -resize '768x576!' $MASK`
+    RET=`convert xc:#$BACKGROUNDCOLOR -resize '768x576!' "$MASK"`
 fi
 
 # Calculating the number of frames for one image sequence duration and the images number.
@@ -684,8 +684,8 @@ CPD=0
 DISSOLVEVALUE=99
 
 if [ $TRANSITIONENABLE = 1 ]; then
-    convert -type TrueColor -quality 100 $MASK $TMPFILENAME.prev_trans.tmp.pnm
-    INPUT_IMAGE_FILES[`echo $(($CPT_IMG_FILE))`]=$MASK
+    convert -type TrueColor -quality 100 "$MASK" "$TMPFILENAME.prev_trans.tmp.pnm"
+    INPUT_IMAGE_FILES[`echo $(($CPT_IMG_FILE))`]="$MASK"
     CPT_IMG_FILE=`echo $(($CPT_IMG_FILE+1))`
 fi
 
@@ -707,8 +707,8 @@ while test $CPT -lt $NBFRAMETOTAL;\
 	    if [ $CPT = `echo $((($CPF*$NBFRAMEIMAGE)-$NBFRAMEIMAGE+1))` ]; then
 
 		# Conversion and resizing the curent image file with ImageMagick.
-    		montage -type TrueColor -quality 100 -geometry 768x576 -texture $MASK "${INPUT_IMAGE_FILES[`echo $(($CPF-1))`]}" $TMPFILENAME.tmp.jpg
-		convert -type TrueColor -quality 100 $TMPFILENAME.tmp.jpg $TMPFILENAME.tmp.pnm
+    		montage -type TrueColor -quality 100 -geometry 768x576 -texture "$MASK" "${INPUT_IMAGE_FILES[`echo $(($CPF-1))`]}" "$TMPFILENAME.tmp.jpg"
+		convert -type TrueColor -quality 100 "$TMPFILENAME.tmp.jpg" "$TMPFILENAME.tmp.pnm"
 
 		# Next input image...
     		CPF=`echo $(($CPF+1))`
@@ -719,11 +719,11 @@ while test $CPT -lt $NBFRAMETOTAL;\
 		if [ $[$CPT <= `echo $((($CPF*($NBFRAMEIMAGE+$NBFRAMETRANSITION)-$NBFRAMEIMAGE)))`] = 1 ]; then
 
 		    if [ $DISSOLVEVALUE = 99 ]; then
-    			montage -type TrueColor -quality 100 -geometry 768x576 -texture $MASK "${INPUT_IMAGE_FILES[`echo $(($CPF-1))`]}" $TMPFILENAME.tmp.jpg
-    			convert -type TrueColor -quality 100 $TMPFILENAME.tmp.jpg $TMPFILENAME.next_trans.tmp.pnm
+    			montage -type TrueColor -quality 100 -geometry 768x576 -texture "$MASK" "${INPUT_IMAGE_FILES[`echo $(($CPF-1))`]}" "$TMPFILENAME.tmp.jpg"
+    			convert -type TrueColor -quality 100 "$TMPFILENAME.tmp.jpg" "$TMPFILENAME.next_trans.tmp.pnm"
 		    fi
 		
-		    composite $TMPFILENAME.prev_trans.tmp.pnm $TMPFILENAME.next_trans.tmp.pnm -type TrueColor -quality 100 -dissolve $DISSOLVEVALUE $TMPFILENAME.tmp.pnm
+		    composite "$TMPFILENAME.prev_trans.tmp.pnm" "$TMPFILENAME.next_trans.tmp.pnm" -type TrueColor -quality 100 -dissolve $DISSOLVEVALUE "$TMPFILENAME.tmp.pnm"
 
 		    if [ $CPD = `echo $(($NBFRAMETRANSITION-1))` ]; then 
 		        
@@ -732,8 +732,8 @@ while test $CPT -lt $NBFRAMETOTAL;\
 	    		
 			DISSOLVEVALUE=99
 			CPD=0
-			cp -f $TMPFILENAME.next_trans.tmp.pnm $TMPFILENAME.prev_trans.tmp.pnm
-    			mv -f $TMPFILENAME.next_trans.tmp.pnm $TMPFILENAME.tmp.pnm
+			cp -f "$TMPFILENAME.next_trans.tmp.pnm" "$TMPFILENAME.prev_trans.tmp.pnm"
+    			mv -f "$TMPFILENAME.next_trans.tmp.pnm" "$TMPFILENAME.tmp.pnm"
 		    else 
 	    	        CPD=`echo $(($CPD+1))`
 			DISSOLVEVALUE=`echo $((100-($CPD*$DISSOLVEVALUEINC)))`
@@ -743,9 +743,9 @@ while test $CPT -lt $NBFRAMETOTAL;\
         fi
 
 	# MjpegTools MPEG encoding with the number of frames and the current image.
-        cat $TMPFILENAME.tmp.pnm
+        cat "$TMPFILENAME.tmp.pnm"
 
-     done | ppmtoy4m -v $VERBOSE -n $NBFRAMETOTAL -F $IMAGES_SEC_FORMAT | yuvscaler -v $VERBOSE -n $VIDEO_TYPE_LETTER -O $VIDEO_FORMAT | mpeg2enc -v $VERBOSE -n $VIDEO_TYPE_LETTER -b $BIT_RATE -V $BUFFER_SIZE -f $VIDEO_FORMAT_NUMBER -o $TMPFILENAME.tmp.m2v
+     done | ppmtoy4m -v $VERBOSE -n $NBFRAMETOTAL -F $IMAGES_SEC_FORMAT | yuvscaler -v $VERBOSE -n $VIDEO_TYPE_LETTER -O $VIDEO_FORMAT | mpeg2enc -v $VERBOSE -n $VIDEO_TYPE_LETTER -b $BIT_RATE -V $BUFFER_SIZE -f $VIDEO_FORMAT_NUMBER -o "$TMPFILENAME.tmp.m2v"
 
 DATE_FIN=`date +%s`
 TEMPSCALCUL=`echo $(($DATE_FIN-DATE_DEBUT))`
@@ -758,17 +758,17 @@ fi
 
 AUDIOFILENAME=""
 
-if [ $AUDIO_MPEG ]; then
-    AUDIOFILENAME=$AUDIO_MPEG
+if [ "$AUDIO_MPEG" ]; then
+    AUDIOFILENAME="$AUDIO_MPEG"
 else
-    if [ $AUDIO_WAV ]; then
+    if [ "$AUDIO_WAV" ]; then
         if [ $WITHGUI = 0 ]; then     
             echo -e "\nEncoding MPG layer 2 audio file from $AUDIO_WAV WAV file with MjpegTools."
 	else 
 	    echo -e "\nEncoding audio file...\n" >&2
 	fi
-	cat $AUDIO_WAV | mp2enc -v $VERBOSE -V -o $TMPFILENAME.tmp.mp2
-        AUDIOFILENAME=$TMPFILENAME.tmp.mp2
+	cat "$AUDIO_WAV" | mp2enc -v $VERBOSE -V -o "$TMPFILENAME.tmp.mp2"
+        AUDIOFILENAME="$TMPFILENAME.tmp.mp2"
     fi
 fi
 
@@ -781,11 +781,15 @@ else
 fi
 
 # No output MPEG file name on command line -> take a temporary file.
-if [ -z $OUTPUT_MPEG_FILE ]; then
-    OUTPUT_MPEG_FILE=$TMPFILENAME.mpg
+if [ -z "$OUTPUT_MPEG_FILE" ]; then
+    OUTPUT_MPEG_FILE="$TMPFILENAME.mpg"
 fi
 
-mplex -v $VERBOSE -f $VIDEO_FORMAT_NUMBER -b $BUFFER_SIZE $AUDIOFILENAME $TMPFILENAME.tmp.m2v -o $OUTPUT_MPEG_FILE
+if [ "$AUDIOFILENAME" ]; then 
+    mplex -v $VERBOSE -f $VIDEO_FORMAT_NUMBER -b $BUFFER_SIZE "$AUDIOFILENAME" "$TMPFILENAME.tmp.m2v" -o "$OUTPUT_MPEG_FILE"
+else
+    mplex -v $VERBOSE -f $VIDEO_FORMAT_NUMBER -b $BUFFER_SIZE "$TMPFILENAME.tmp.m2v" -o "$OUTPUT_MPEG_FILE"
+fi    
 
 if [ $WITHGUI = 0 ]; then     
     echo -e "\nThe video MPEG output file is '$OUTPUT_MPEG_FILE'."
