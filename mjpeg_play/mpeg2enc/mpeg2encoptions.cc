@@ -351,7 +351,11 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 
 	case MPEG_FORMAT_SVCD :
 		mjpeg_info("SVCD standard settings selected");
-		bitrate = 2500000;
+		if (nonvid_bitrate == 0)
+		   /* 224 kbps for audio + around 2% of 2788800 bits */
+		   nonvid_bitrate = 288; 
+		if (bitrate == 0 || bitrate > 2788800 - nonvid_bitrate * 1000)
+		   bitrate = 2788800 - nonvid_bitrate * 1000;
 		max_GOP_size = norm == 'n' ? 18 : 15;
 		video_buffer_size = 230;
 
