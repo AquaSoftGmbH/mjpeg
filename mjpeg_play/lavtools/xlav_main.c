@@ -59,7 +59,7 @@ static void calc_timecode(int pos, int do_frames)
    sprintf(timecode,"%2d:%2.2d:%2.2d:%2.2d",h,m,s,f);
 }
 
-void dispatch_input()
+void dispatch_input(void)
 {
 	char normc;
    /* A line starting with '-' should be ignored */

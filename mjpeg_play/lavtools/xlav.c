@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "xlav.h"
 
+
 FD_xlav *create_form_xlav(void)
 {
   FL_OBJECT *obj;

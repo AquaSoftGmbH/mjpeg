@@ -95,6 +95,8 @@ static struct
 static char abuff[16384];
 
 int	verbose = 2;
+void Usage(char *str);
+void system_error(char *str1, char *str2);
 
 void Usage(char *str)
 {

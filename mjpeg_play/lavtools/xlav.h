@@ -48,5 +48,11 @@ typedef struct {
 } FD_xlav;
 
 extern FD_xlav * create_form_xlav(void);
+extern	void dispatch_input(void);
+extern  void get_input(int fd, void *data);
+extern  void do_real_exit(int ID, void *data);
+extern	void signal_cb(int signum, void *data);
+extern	void create_child(char **args);
+
 
 #endif /* FD_xlav_h_ */

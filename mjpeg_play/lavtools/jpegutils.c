@@ -33,6 +33,14 @@
  *                                                                 *
  *******************************************************************/
 
+void jpeg_buffer_src (j_decompress_ptr cinfo, unsigned char *buffer, long num);
+void jpeg_skip_ff (j_decompress_ptr cinfo);
+int decode_jpeg_raw(unsigned char *jpeg_data, int len,
+                    int itype, int ctype, int width, int height,
+                    unsigned char *raw0, unsigned char *raw1,
+                    unsigned char *raw2);
+
+
 /*
  * Initialize source --- called by jpeg_read_header
  * before any data is actually read.

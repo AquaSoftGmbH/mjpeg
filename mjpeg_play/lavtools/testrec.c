@@ -80,12 +80,19 @@
 #include <linux/soundcard.h>
 
 /* These are explicit prototypes for the compiler, to prepare separation of audiolib.c */
-void audio_shutdown();
+void audio_shutdown(void);
 int audio_init(int a_read, int a_stereo, int a_size, int a_rate);
-long audio_get_buffer_size();
+long audio_get_buffer_size(void);
 int audio_read(char *buf, int size, int swap, struct timeval *tmstmp, int *status);
 
-char *audio_strerror();
+char *audio_strerror(void);
+
+void system_error(char *str1,char *str2);
+void set_mixer(int flag);
+void CleanUpAudio(void);
+void SigHandler(int sig_num);
+void Usage(char *progname);
+
 
 /* Set the default options here */
 

@@ -64,6 +64,9 @@ static int yoffset = 5;
 static int verbose = 0;
 static int debug = 0;
 
+void usage(char *prog);
+int doIt(void);
+
 void usage(char *prog)
 {
     char *h;

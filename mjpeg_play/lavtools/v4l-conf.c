@@ -69,6 +69,9 @@ struct vc_mode {
 #define VC_SETCMAP      0x766a
 #define VC_GETCMAP      0x766b
 
+
+
+
 int
 is_mklinux()
 {
@@ -110,6 +113,12 @@ displayinfo_mklinux(struct DISPLAYINFO *d)
 #ifndef major
 # define major(dev)  (((dev) >> 8) & 0xff)
 #endif
+
+void	displayinfo_x11(Display *dpy, struct DISPLAYINFO *d);
+void	displayinfo_dga(Display *dpy, struct DISPLAYINFO *d);
+void	displayinfo_fbdev(struct DISPLAYINFO *d);
+int	displayinfo_v4l(int fd, struct DISPLAYINFO *d);
+
 
 static int
 dev_open(const char *device, int major)

@@ -141,7 +141,7 @@ void lock_screen(void);
 void unlock_update_screen(void);
 void x_shutdown(int a);
 void cut_copy_frames(int nc1, int nc2, char cut_or_copy);
-void paste_frames();
+void paste_frames(void);
 
 
 int  verbose = 6;
@@ -496,7 +496,7 @@ void cut_copy_frames(int nc1, int nc2, char cut_or_copy)
 	}
 }
 
-void paste_frames()
+void paste_frames(void)
 {
 	/* We should output a warning if save_list is empty,
 	   we just insert nothing */
