@@ -83,6 +83,7 @@ common.c
 #endif
 
 #include        <stdlib.h>
+#include        <string.h>
 #include        "common.h"
 
 #ifdef  MACINTOSH
@@ -925,17 +926,21 @@ Bit_stream_struc *bs;   /* bit stream structure */
 char *bs_filenam;       /* name of the bit stream file */
 int size;               /* size of the buffer */
 {
-   if ((bs->pt = fopen(bs_filenam, "wb")) == NULL) {
-      printf("Could not create \"%s\".\n", bs_filenam);
-      exit(1);
-   }
-   alloc_buffer(bs, size);
-   bs->buf_byte_idx = size-1;
-   bs->buf_bit_idx=8;
-   bs->totbit=0;
-   bs->mode = WRITE_MODE;
-   bs->eob = FALSE;
-   bs->eobs = FALSE;
+	if ( strcmp(bs_filenam, "-" ) == 0 )
+	{
+		bs->pt = stdout;
+	}
+	else if ((bs->pt = fopen(bs_filenam, "wb")) == NULL) {
+		fprintf(stderr,"Could not create \"%s\".\n", bs_filenam);
+		exit(1);
+	}
+	alloc_buffer(bs, size);
+	bs->buf_byte_idx = size-1;
+	bs->buf_bit_idx=8;
+	bs->totbit=0;
+	bs->mode = WRITE_MODE;
+	bs->eob = FALSE;
+	bs->eobs = FALSE;
 }
 
 /* open the device to read the bit stream from it */
@@ -1022,7 +1027,8 @@ void close_bit_stream_w(bs)
 Bit_stream_struc *bs;   /* bit stream structure */
 {
    empty_buffer(bs, bs->buf_byte_idx);
-   fclose(bs->pt);
+   if( bs->pt != stdout )
+	   fclose(bs->pt);
    desalloc_buffer(bs);
 }
 
