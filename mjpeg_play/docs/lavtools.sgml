@@ -33,10 +33,30 @@
       
     </legalnotice>
   </bookinfo>
+
+  <chapter id="introduction">
+    <title>Linux Audio and Video Tools</title>
+    <para>The lavtools suite of programs are for MJPEG recording and
+    playback with simple cut and paste editing of the recorded
+    files. Also supported is MPEG compression of the recorded files to
+    various standards.</para>
+    <para>Only the "lav" programs have been written from scratch, the
+    rest of the tools are from diverse free software originals. They
+    have been modified to work with the lav tools edit lists and
+    AVI/Quicktime files. Some have had more major performance and
+    functionality enhancements.</para>
+  </chapter>
+
+  <chapter id="included">
+    <title>Whats included</title>
+    <para>...</para>
+  </chapter>
+
   <chapter id="authors">
     <title>Authors</title>
     &authors;
   </chapter>
+
 </book>
 
 <!-- Keep this comment at the end of the file
