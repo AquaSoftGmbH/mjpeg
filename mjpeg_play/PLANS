@@ -3,7 +3,7 @@ These are some of my new ideas, I don't know if I am going to realize them - eve
 
 for the movtar directory:
 
-.) movtar_avi, movtar_index, movtar_enpack
+.) movtar_avi, movtar_setinfo
 
 .) Plugins for GIMP
 
@@ -32,3 +32,4 @@ mjpeg:
 
 .) Hardware YUV-RGB-conversion ? 
 
+.) jpeg compression
