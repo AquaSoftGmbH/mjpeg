@@ -6,7 +6,6 @@ Makefile
 Makefile.in
 glav
 lav2dfilter
-lav2divx
 lav2wav
 lav2yuv
 lavaddwav
@@ -21,7 +20,6 @@ transist.flt
 v4l-conf
 xlav
 ypipe
-yuv2divx
 yuv2lav
 yuvmedianfilter
 yuvplay
@@ -30,7 +28,6 @@ jpeg2yuv
 ppmtoy4m
 y4mtoppm
 y4mcolorbars
-divxdec
 lavinfo
 y4mshift
 yuvcorrect
@@ -39,6 +36,7 @@ yuvfps
 multiblend.flt
 png2yuv
 pgmtoy4m
-y4mblack
+y4mspatialfilter
+y4mstabilizer
 yuv4mpeg
 yuvinactive
