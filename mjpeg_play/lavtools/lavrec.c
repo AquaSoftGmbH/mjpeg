@@ -184,6 +184,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <errno.h>
 #ifdef HAVE_GETOPT_H
 #include <getopt.h>
 #endif
@@ -191,6 +192,7 @@
 #include <pthread.h>
 
 static lavrec_t *info;
+static int num_frames, num_lost, num_ins, num_del, num_aerr;
 static int show_stats = 0;
 static int state;
 static int verbose = 0;
@@ -539,6 +541,7 @@ static void statechanged(int new)
   }
 }
 
+#if 0
 static void batch_stats(video_capture_stats *stats)
 {
 	MPEG_timecode_t tc;
@@ -572,10 +575,17 @@ static void batch_stats(video_capture_stats *stats)
 	fflush(stdout);
 
 }
+#endif
 
 static void output_stats(video_capture_stats *stats)
 {
-  if (show_stats > 0)
+  num_frames = stats->num_frames;
+  num_lost = stats->num_lost;
+  num_ins = stats->num_ins;
+  num_del = stats->num_del;
+  num_aerr = stats->num_aerr;
+
+  if (show_stats > 0 && !batch_mode)
   {
     MPEG_timecode_t tc;
     char infostring[1024];
@@ -1064,9 +1074,36 @@ static void lavrec_print_properties()
 		mjpeg_info("Audio disabled\n\n");
 }
 
+static void print_summary(void)
+{
+  MPEG_timecode_t tc;
+
+  mpeg_timecode(&tc, num_frames, ((info->video_norm==1)?4:3),
+    ((info->video_norm==1)?(30000/1001):25.));
+
+  printf("Recording time  : %2d.%2.2d.%2.2d:%2.2d\n"
+         "Lost frames     : %3.3d\n"
+         "A/V sync ins/del: %3.3d/%3.3d\n"
+         "Audio errors    : %3.3d\n",
+    tc.h, tc.m, tc.s, tc.f,
+    num_lost, num_ins, num_del, num_aerr);
+}
+
 int main(int argc, char **argv)
 {
   pthread_t msg_thr;
+
+  /* no root please (only during audio setup) */
+  if (getuid() != geteuid())
+  {
+    if (setfsuid(getuid()) < 0)
+    {
+      mjpeg_error("Failed to set filesystem user ID: %s\n",
+        sys_errlist[errno]);
+      return 0;
+    }
+  }
+  
   fcntl(0,F_SETFL,O_NONBLOCK);
   signal(SIGINT, SigHandler);  /* Control-C handler */
   signal(SIGTERM, SigHandler); /* Handle kill */
@@ -1078,9 +1115,9 @@ int main(int argc, char **argv)
   check_command_line_options(argc, argv);
   lavrec_print_properties();
 
-  if( batch_mode )
-	  info->output_statistics = batch_stats;
-  else
+//  if( batch_mode )
+//	  info->output_statistics = batch_stats;
+//  else
 	  info->output_statistics = output_stats;
 
   pthread_mutex_init(&state_mutex, NULL);
@@ -1098,6 +1135,7 @@ int main(int argc, char **argv)
   pthread_join(msg_thr, NULL);
 
   fprintf(stderr, "\n");
+  print_summary();
 
   return 0;
 }
