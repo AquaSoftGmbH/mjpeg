@@ -1725,7 +1725,7 @@ static int lavrec_sync_buffer(lavrec_t *info, struct mjpeg_sync *bsync)
             &(settings->software_sync_mutex));
       }
       pthread_mutex_unlock(&(settings->software_sync_mutex));
-      if (settings->software_sync_ready < 0)
+      if (settings->software_sync_ready[bsync->frame] < 0)
       {
          return 0;
       }

@@ -895,13 +895,19 @@ void do_audio(void)
 	   {
 		   FD_ZERO(&selectset);
 		   FD_SET(fd, &selectset);
-		   
+           retry:
 		   if(audio_capt)
 			   ret = select(fd+1, &selectset, NULL, NULL, NULL);
 		   else 
 			   ret = select(fd+1, NULL, &selectset, NULL, NULL);
 		   
-		   if(ret<0) system_error("waiting on audio with select",fd,1);
+		   if(ret<0)
+                   {
+                           if (errno == EINTR)
+                                goto retry;
+                           else
+                                system_error("waiting on audio with select",fd,1);
+                   }
 	   }
 	   else
 	   {
