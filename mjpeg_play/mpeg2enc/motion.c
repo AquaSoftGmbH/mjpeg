@@ -1582,7 +1582,7 @@ static int thin_vector( sortelt vec[], int threshold, int len )
 	int j = 0;
 	for( i = 0; i < len; ++i )
 	  {
-		if( vec[i].weight <= threshold )
+			if( vec[i].weight <= threshold )
 		  {
 			vec[j] = vec[i];
 			++j;
@@ -1613,8 +1613,7 @@ static int quad_heap_size;
 
   N.b. You'd think it would be worth exploiting the fact that using
   MMX/SSE you can do two adjacent 4*4 blocks of 4*4 sums in about the
-  same as one.  Wrong... this is not true.  Its faster to do each
-  block on its own.
+  same as one.  Well it does save some time but its really very little...
   
   Similarly, you might think it worth collecting first on 8*8
   boundaries and then considering neighbours of the better ones.
@@ -1632,53 +1631,43 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
   matchelt matchrec;
   int i,j,k;
   int s1,s2,s3;
-  matchelt  first_pass_v[MAX_COARSE_HEAP_SIZE/4];
-  sortelt   first_pass_h[MAX_COARSE_HEAP_SIZE/4];
-  int   num_first_pass;
-  int   searched_first_pass;
   int dist_sum;
 
-  /* N.b. we ignore the right hand block of the pair going over the
+  /* N.b. we may ignore the right hand block of the pair going over the
 	 right edge as we have carefully allocated a margin to spare us
 	 the check.  The *final* motion compensation calculations
 	 performed on the results of this pass *do* filter out
 	 out-of-range blocks though...
   */
 
-
- #if 0 /* NOTWORTH DOING (defined(SSE) || defined(MMX)) */
-
-  for( j = jlow; j <= jhigh; j += 8 )
+  quad_heap_size = 0;
+  dist_sum = 0;
+#if (defined(SSE) || defined(MMX))
+  qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
+  for( j = jlow; j <= jhigh; j += 4 )
 	{
-  	  old_qorgblk = qorgblk;
+  	old_qorgblk = qorgblk;
 	  k = 0;
-	  for( i = ilow; i <= ihigh; i+= 8  )
+	  for( i = ilow; i <= ihigh; i+= 4  )
 		{
-		  
-		  /* N.b. be we penalise out-of-range estimates to
-			 ensure they don't get selected */
 
 		  s1 = qdist1( qorgblk,qblk,qlx,qh);
 		  s2 = (s1 >> 16) & 0xffff;
 		  s1 = s1 & 0xffff;
-		  first_pass_v[num_first_pass].dx = i;
-		  first_pass_v[num_first_pass].dy = j;
-		  first_pass_h[num_first_pass].weight = s1;
-		  first_pass_h[num_first_pass].index = num_first_pass;		  
-		  ++num_first_pass;
-		  dist_sum += s1;
-		  if( i+16 <= ihigh )
-			{
-			  first_pass_v[num_first_pass].dx = i+16;
-			  first_pass_v[num_first_pass].dy = j;
-			  first_pass_h[num_first_pass].weight = s2;
-			  first_pass_h[num_first_pass].index = num_first_pass;		  
-			  ++num_first_pass;
-			  dist_sum += s2;
-			}
+		  dist_sum += s1+s2;
+		 	quad_match_heap[quad_heap_size].weight = s1;
+			quad_match_heap[quad_heap_size].index = quad_heap_size;	
+			quad_match_heap[quad_heap_size+1].weight = s2;
+		  quad_match_heap[quad_heap_size+1].index = quad_heap_size+1;	
+		  quad_matches[quad_heap_size].dx = i;
+		  quad_matches[quad_heap_size].dy = j;
+			quad_matches[quad_heap_size+1].dx = i+16;
+			quad_matches[quad_heap_size+1].dy = j;
+  		quad_heap_size += 2;
 
-		  qorgblk+=2;
-		  k = (k+2)&3;
+
+		  qorgblk+=1;
+		  k = (k+1)&3;
 		  /* Original branchy code...
 		  if( k == 0 )
 			{
@@ -1686,22 +1675,20 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 			  i += 16;
 			}
 		  */
-		  qorgblk += (k==0)<<1;
+		  qorgblk += (k==0)<<2;
 		  i += (k==0)<<4;
 		  
 		}
-	  qorgblk = old_qorgblk + (qlx<<1);
+	  qorgblk = old_qorgblk + qlx;
 	}
-#endif
+#else
 
-  	searched_first_pass = num_first_pass;
   /* 
 	 We now use the better-than-average matches on 8-pel boundaries 
 	 as starting points for matches on 4-pel boundaries...
   */
 
-  quad_heap_size = 0;
-  dist_sum = 0;
+
     /* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
   qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
   for( j = jlow; j <= jhigh; j += 4 )
@@ -1709,7 +1696,7 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
   	old_qorgblk = qorgblk;
 	  for( i = ilow; i <= ihigh; i += 4 )
 		{
-		  s1 = qdist1( qorgblk,qblk,qlx,qh);
+		  s1 = qdist1( qorgblk,qblk,qlx,qh) & 0xffff;
 	  	quad_matches[quad_heap_size].dx = i;
 	  	quad_matches[quad_heap_size].dy = j;
 	  	quad_match_heap[quad_heap_size].index = quad_heap_size;
@@ -1721,6 +1708,7 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 	  qorgblk = old_qorgblk + qlx;
 	}
 
+#endif
 	quad_heap_size = thin_vector( quad_match_heap, dist_sum/quad_heap_size,
 													      quad_heap_size);
   heapify( quad_match_heap, quad_heap_size );

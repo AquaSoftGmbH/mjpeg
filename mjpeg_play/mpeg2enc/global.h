@@ -118,7 +118,7 @@ void iquant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
   unsigned char *quant_mat, int mquant));
 void iquant_non_intra _ANSI_ARGS_((short *src, short *dst,
   unsigned char *quant_mat, int mquant));
-double quant_weight_coeff_sum _ANSI_ARGS_((short *blk, unsigned char *quant_mat ));
+double quant_weight_coeff_sum _ANSI_ARGS_((short *blk, int *i_quant_mat ));
 
 /* ratectl.c */
 void rc_init_seq _ANSI_ARGS_((void));
@@ -268,6 +268,7 @@ EXTERN unsigned char *filter_buf;
 EXTERN short (*blocks)[64];
 /* intra / non_intra quantization matrices */
 EXTERN unsigned char intra_q[64], inter_q[64];
+EXTERN int i_intra_q[64], i_inter_q[64];
 EXTERN unsigned char chrom_intra_q[64],chrom_inter_q[64];
 /* prediction values for DCT coefficient (0,0) */
 EXTERN int dc_dct_pred[3];

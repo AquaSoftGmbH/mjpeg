@@ -743,7 +743,11 @@ static void readquantmat()
     /* use default intra matrix */
     load_iquant = 0;
     for (i=0; i<64; i++)
+    {
       intra_q[i] = default_intra_quantizer_matrix[i];
+     	i_intra_q[i] = (int)(((double)(1<<(16))) / ((double)default_intra_quantizer_matrix[i]));
+
+      } 
   }
   else
   {
@@ -771,7 +775,10 @@ static void readquantmat()
     /* use default non-intra matrix */
     load_niquant = 0;
     for (i=0; i<64; i++)
-      inter_q[i] = default_nonintra_quantizer_matrix[i];;
+    	{
+      	inter_q[i] = default_nonintra_quantizer_matrix[i];
+				i_inter_q[i] = (int)(((double)(1<<(16))) / ((double)default_nonintra_quantizer_matrix[i]));
+			}
   }
   else
   {
@@ -789,7 +796,8 @@ static void readquantmat()
       if (v<1 || v>255)
         error("invalid value in quant matrix");
       inter_q[i] = v;
-    }
+      i_inter_q[i] = (int)(((double)(1<<(16))) / ((double)v)); 
+     }
 
     fclose(fd);
   }

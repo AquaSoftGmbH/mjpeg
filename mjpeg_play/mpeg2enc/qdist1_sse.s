@@ -52,7 +52,7 @@ qdist1_SSE:
 	push esi     
 
 	pxor mm0, mm0		; zero acculumator
-	;pxor mm1, mm1				
+	pxor mm1, mm1				
 	pxor mm2, mm2
 	mov eax, [ebp+8]	; get p1
 	mov ebx, [ebp+12]	; get p2
@@ -61,36 +61,35 @@ qdist1_SSE:
 	mov esi, [ebp+20]	; get rowsleft
 	jmp nextrowqd		; snap to it
 align 32
-nextrowqd:
-	mov  ecx, [eax]				; load first 4 bytes of p1
-	movd mm4, ecx
-	mov  ecx, [ebx]             ; load 4 bytes of p2
-	;movq mm6, mm4				;
-    punpcklbw mm4, mm2			; mm4 = bytes 0..3 p1 (spaced out)
+nextrowqd: 
+	movq mm4, [eax]				; load 8 bytes of p1 (two blocks!)
+	mov  ecx, [ebx]       ; load 4 bytes of p2
+	movq mm6, mm4				  ;
+  punpcklbw mm4, mm2			; mm4 = bytes 0..3 p1 (spaced out)
 	movd mm5, ecx
-	punpcklbw mm5, mm2          ; mm5 = bytes 0..3 p  (spaced out)
+	punpcklbw mm5, mm2      ; mm5 = bytes 0..3 p2  (spaced out)
 	add eax, edx		; update pointer to next row
 
 	psadbw mm4, mm5	    		; compare to left block
 	add ebx, edx		; ditto
 	sub esi, 1
 
-	;punpckhbw mm6, mm2          ; mm6 = bytes 4..7 p1 (spaced out)
+	punpckhbw mm6, mm2          ; mm6 = bytes 4..7 p1 (spaced out)
 
 	paddd mm0, mm4				; accumulate difference left block
 
-	;psadbw mm6,mm5				; compare to right block
+	psadbw mm6,mm5				; compare to right block
 	
 
-	;paddd mm1, mm6				; accumulate difference right block
+	paddd mm1, mm6				; accumulate difference right block
 
 	test esi, esi		; check rowsleft
 	jnz nextrowqd		; rinse and repeat
 
 	movd eax, mm0
-	;movd ebx, mm1				
-	;sal  ebx, 16
-	;or   eax, ebx
+	movd ebx, mm1				
+	sal  ebx, 16
+	or   eax, ebx
 	
 	pop esi
 	pop edx

@@ -214,7 +214,7 @@ unsigned char *frame;
   int i,j,k;
   unsigned char *p;
   double actj,var, sum;
-  unsigned char *q_mat;
+  int *q_mat;
 
   sum = 0.0;
   k = 0;
@@ -260,9 +260,9 @@ unsigned char *frame;
 		 variance measure.  
 	  */
 	  if( mbinfo[k].mb_type  & MB_INTRA )
-		q_mat = intra_q;
+			q_mat = i_intra_q;
 	  else
-		q_mat = inter_q;
+			q_mat = i_inter_q;
 
 	  actj  = quant_weight_coeff_sum( &mbinfo[k].dctblocks[0], q_mat );
 	  actj += quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], q_mat );

@@ -226,8 +226,8 @@ void putseq()
 			neworg[2] = prevframe[2];
 			printf( "Warning... corrupt data re-using previous frame\n" );
 	  }
-       check_fast_motion_data(oldorgframe[0], "oldorgframe[0] after reading...");  
-    if (fieldpic)
+
+        if (fieldpic)
     {
       if (!quiet)
       {
@@ -323,7 +323,6 @@ void putseq()
        * and reconstructed frames (...refframe) for half pel search
        */
 
-      check_fast_motion_data(neworgframe[0], "neworgframe[0]"); 
 
       motion_estimation(oldorgframe[0],neworgframe[0],
                         oldrefframe[0],newrefframe[0],
@@ -351,7 +350,7 @@ void putseq()
 
       itransform(predframe,newref,mbinfo,blocks);
       calcSNR(neworg,newref);
-      check_fast_motion_data(neworg[0], "oldorg after calcSNR"); 
+
       stats();
     }
 
