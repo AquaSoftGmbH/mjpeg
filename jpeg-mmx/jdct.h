@@ -34,7 +34,7 @@ typedef INT32 DCTELEM;		/* must have 32 bits */
 
 typedef JMETHOD(void, forward_DCT_method_ptr, (DCTELEM * data));
 typedef JMETHOD(void, float_DCT_method_ptr, (FAST_FLOAT * data));
-typedef JMETHOD(void, simd_quant_method_ptr, ( DCTELEM *workspace, INT16 *output_ptr,  float *divisors ));
+typedef JMETHOD(void, float32_quant_method_ptr, ( DCTELEM *workspace, INT16 *output_ptr,  float *divisors ));
 
 /*
  * An inverse DCT routine is given a pointer to the input JBLOCK and a pointer
@@ -103,6 +103,7 @@ EXTERN(void) jpeg_fdct_float JPP((FAST_FLOAT * data));
 EXTERN(void) jpeg_fdct_ifast_mmx JPP((INT16 * data));
 EXTERN(void) jcquant_3dnow( INT16 *psrc, INT16 *pdst, float *piqf );
 EXTERN(void) jcquant_sse( INT16 *psrc, INT16 *pdst, float *piqf );
+EXTERN(void) jcquant_mmx( INT16 *psrc, INT16 *pdst, INT16 *piqf, INT16 *pqf );
 
 EXTERN(void) jpeg_idct_islow
     JPP((j_decompress_ptr cinfo, jpeg_component_info * compptr,
