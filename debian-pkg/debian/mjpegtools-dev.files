@@ -1,0 +1,8 @@
+usr/bin/*-config
+usr/include/mjpegtools/*.h
+usr/include/movtar.h
+usr/share/aclocal/*.m4
+usr/lib/pkgconfig/*.pc
+usr/lib/*.a
+usr/lib/*.la
+usr/lib/*.so

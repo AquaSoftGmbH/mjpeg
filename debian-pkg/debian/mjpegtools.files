@@ -1,0 +1,17 @@
+usr/bin/lav*
+usr/bin/yuv*
+usr/bin/jpeg2yuv
+usr/bin/divxdec
+usr/bin/testrec
+usr/bin/y4m*
+usr/bin/ppm*
+usr/bin/glav
+usr/bin/ypipe
+usr/bin/mp*
+usr/bin/*.flt
+usr/bin/movtar_*
+usr/bin/pnm2rtj
+usr/bin/rtjshow
+usr/lib/*.so.*
+usr/man/man1/*
+usr/man/man5/*
