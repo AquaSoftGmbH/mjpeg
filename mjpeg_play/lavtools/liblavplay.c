@@ -517,18 +517,16 @@ static int lavplay_get_video(lavplay_t *info, uint8_t *buff, long frame_num)
  ******************************************************/
 
 static int lavplay_get_audio(lavplay_t *info, uint8_t *buff, long frame_num, int mute)
-{
+   {
+   int num_samps;
+
    if (info->get_audio_sample)
-   {
-      int num_samps;
       info->get_audio_sample(buff, &num_samps, frame_num);
-      return num_samps;
-   }
    else
-   {
-      return el_get_audio_data(buff, frame_num, info->editlist, mute);
+      num_samps =  el_get_audio_data(buff, frame_num, info->editlist, mute);
+/* fprintf(stderr, "get_audio_sample %x num_samps %x frame_num %x\n", info->get_audio_sample, num_samps, frame_num); */
+   return(num_samps);
    }
-}
 
 
 /******************************************************
