@@ -74,9 +74,10 @@ void VideoStream::InitAUbuffer()
 
 bool VideoStream::RunOutComplete()
 {
+ 
 	return (au_unsent == 0 || 
 			( muxinto.running_out &&
-			  au->type == IFRAME && au->PTS >= muxinto.runout_PTS));
+			  au->type == IFRAME && RequiredPTS() >= muxinto.runout_PTS));
 }
 
 /*********************************
@@ -156,7 +157,7 @@ void VideoStream::OutputSector ( )
 	*/
 	int nextAU = NextAUType();
 	if( (muxinto.running_out && nextAU == IFRAME && 
-		 Lookahead()->PTS >= muxinto.runout_PTS) ||
+		 NextRequiredPTS() > muxinto.runout_PTS) ||
 		(muxinto.sector_align_iframeAUs && nextAU == IFRAME )
 		) 
 	{

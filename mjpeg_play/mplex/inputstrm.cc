@@ -153,11 +153,6 @@ bool ElementaryStream::MuxCompleted()
 	return au_unsent == 0;
 }
 
-void ElementaryStream::SetTSOffset( clockticks baseTS )
-{
-	SetSyncOffset( baseTS - au->DTS );
-}
-
 void 
 ElementaryStream::SetSyncOffset( clockticks sync_offset )
 {

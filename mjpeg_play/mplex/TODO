@@ -1,7 +1,8 @@
 TODO
 
-- Fix the probing code so that mplex can work in a true single-pass mode
-	using fifo's.
+- Need to add facility for enforcing max STD buffer delay for audio
+  and for warning if constraints for particular formats are exceeded.
+
 
 - Add checking for changed sequence parameters in mid-sequence sequence headers.
 

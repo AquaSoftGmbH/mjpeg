@@ -570,10 +570,11 @@ void OutputStream::OutputPrefix( )
 	  	OutputPadding( false);		
 
 		/* Second packet carries audio-info-only sys_header */
-		psstrm->CreateSysHeader (&sys_header, mux_rate,  false, true, 
+		psstrm->CreateSysHeader (&sys_header, mux_rate,  
+                                 false, true, 
 								 true, true, amux );
-
-		
+		sys_header_ptr = &sys_header;
+		pack_header_ptr = &pack_header;
 	  	OutputPadding( true );
 		break;
 		
@@ -819,24 +820,41 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 			video_first = seg_starts_with_video & (vstreams.size() > 0);
 			OutputPrefix();
 
-			/* The starting PTS/DTS of AU's may of course be
-			   non-zero since this might not be the first segment
-			   we've built. Hence we adjust the "delay" to
-			   compensate for this as well as for any
-			   synchronisation / start-up delay needed.  
+			/* Set the offset applied to the raw PTS/DTS of AU's to
+               make the DTS of the first AU in the master (video) stream
+               precisely the video delay plus whatever time we wasted in
+               the sequence pre-amble.
+
+               The DTS of the remaining streams are set so that
+               (modulo the relevant delay offset) they maintain the
+               same relative timing to the master stream.
+               
 			*/
 
-			for( str = vstreams.begin(); str < vstreams.end(); ++str )
-            {
-				(*str)->SetTSOffset(video_delay + current_SCR );
-            }
+            clockticks ZeroSCR;
 
+            if( vstreams.size() != 0 )
+                ZeroSCR = vstreams[0]->au->DTS;
+            else
+                ZeroSCR = (*estreams)[0]->au->DTS;
+
+			for( str = vstreams.begin(); str < vstreams.end(); ++str )
+				(*str)->SetSyncOffset(video_delay + current_SCR - ZeroSCR );
 			for( str = astreams.begin(); str < astreams.end(); ++str )
-				(*str)->SetTSOffset(audio_delay + current_SCR );
+				(*str)->SetSyncOffset(audio_delay + current_SCR - ZeroSCR );
 			pstrm.nsec = 0;
 			for( str = estreams->begin(); str < estreams->end(); ++str )
 				(*str)->nsec = 0;
 			seg_state = mid_segment;
+            for( str = estreams->begin(); str < estreams->end(); ++str )
+            {
+                mjpeg_info("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld\n", 
+                           (*str)->stream_id,
+                           current_SCR /300,
+                           (*str)->MuxPossible(current_SCR),
+                           (*str)->RequiredDTS()/300
+                    );
+            }
 			break;
 
 		case mid_segment :
@@ -863,8 +881,8 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 					if( master->NextAUType() == IFRAME)
 					{
 						seg_state = runout_segment;
-						runout_PTS = master->Lookahead()->PTS;
-						mjpeg_info("Running out to %lld SCR=%lld\n", 
+						runout_PTS = master->NextRequiredPTS();
+						mjpeg_info("Running out to (raw) PTS %lld SCR=%lld\n", 
 								   runout_PTS/300, current_SCR/300 );
 						running_out = true;
 						seg_state = runout_segment;
@@ -881,7 +899,11 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 						mjpeg_error_exit1( "Sequence split detected %d but no following sequence found...\n", master->NextAUType());
 					}
 						
-					runout_PTS = master->Lookahead()->PTS;
+					runout_PTS = master->NextRequiredPTS();
+                    mjpeg_info("Running out to %lld SCR=%lld\n", 
+                               runout_PTS/300, 
+                               current_SCR/300 );
+                    MuxStatus( LOG_INFO );
 					running_out = true;
 					seg_state = runout_segment;
 				}
@@ -907,14 +929,14 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 		clockticks earliest;
 		for( str = estreams->begin(); str < estreams->end(); ++str )
 		{
-/* DEBUG
-			fprintf( stderr,"STREAM %02x: SCR=%lld mux=%d reqDTS=%lld\n", 
-					 (*str)->stream_id,
-					 current_SCR /300,
-					 (*str)->MuxPossible(),
-					 (*str)->RequiredDTS()/300
+            if( running_out )
+                mjpeg_info("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld\n", 
+                           (*str)->stream_id,
+                           current_SCR /300,
+                           (*str)->MuxPossible(current_SCR),
+                           (*str)->RequiredDTS()/300
 				);
-*/
+
 			if( (*str)->MuxPossible(current_SCR) && 
 				( !video_first || (*str)->Kind() == ElementaryStream::video )
 				 )

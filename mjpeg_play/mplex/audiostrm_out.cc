@@ -54,8 +54,9 @@ void AudioStream::InitAUbuffer()
 
 bool AudioStream::RunOutComplete()
 {
+
 	return (au_unsent == 0 || 
-			( muxinto.running_out && au->PTS >= muxinto.runout_PTS));
+			( muxinto.running_out && RequiredPTS() >= muxinto.runout_PTS));
 }
 
 
@@ -82,7 +83,7 @@ void AudioStream::OutputSector ( )
 
 	max_packet_data = 0;
 	if( muxinto.running_out && 
-		(Lookahead() != 0 && Lookahead()->PTS > muxinto.runout_PTS) )
+        NextRequiredPTS() > muxinto.runout_PTS )
 	{
 		/* We're now in the last AU of a segment.  So we don't want to
 		   go beyond it's end when writing sectors. Hence we limit

@@ -173,6 +173,23 @@ public:
     inline int BufferMax() { return buffer_max; }
     inline clockticks RequiredDTS() { return au->DTS + timestamp_delay; };
     inline clockticks RequiredPTS() { return au->PTS + timestamp_delay; };
+    inline clockticks NextRequiredDTS()
+        { 
+            Aunit *next = Lookahead();
+            if( next != 0 )
+                return next->DTS + timestamp_delay; 
+            else
+                return 0;
+        };
+    inline clockticks NextRequiredPTS()
+        { 
+            Aunit *next = Lookahead();
+            if( next != 0 )
+                return next->PTS + timestamp_delay; 
+            else
+                return 0;
+        };
+
     void UpdateBufferMinMax();
 
 	void SetSyncOffset( clockticks timestamp_delay );
