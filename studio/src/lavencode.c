@@ -596,10 +596,16 @@ void video_convert()
          yuvscaler_command[n] = "-I"; n++;
          yuvscaler_command[n] = (*pointenc).input_use; n++;
       }
-      if (strlen((*pointenc).ininterlace_type) > 0)
+      if ( (strlen((*pointenc).ininterlace_type) > 0) && 
+                        (encoding_syntax_style == 140))
       {
          yuvscaler_command[n] = "-I"; n++;
          yuvscaler_command[n] = (*pointenc).ininterlace_type; n++;
+      }
+      if ( (use_bicubic == 1) && (encoding_syntax_style == 150))
+      {
+         yuvscaler_command[n] = "-M"; n++;
+         yuvscaler_command[n] = "BICUBIC"; n++;
       }
       if (strlen((*pointenc).mode_keyword) > 0 &&
           strcmp((*pointenc).mode_keyword,"as is") )
