@@ -134,7 +134,7 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 	  
 		case 'f' :
 			opt_mux_format = atoi(optarg);
-			if( opt_mux_format < MPEG_MPEG1 || opt_mux_format > MPEG_SVCD )
+			if( opt_mux_format < MPEG_MPEG1 || opt_mux_format > MPEG_SVCD_NSR )
 				Usage(argv[0]);
 			break;
 		case 's' :

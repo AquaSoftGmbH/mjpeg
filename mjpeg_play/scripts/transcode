@@ -54,7 +54,7 @@ MPEGOPTS="-r 16 "
 decode="YUVh"
 S)
 echo Generating SVCD stream
-MPEGOPTS="-m 2 -F 3 -q 9 -v 200"
+MPEGOPTS="-m 2 -F 3 -q 9 -V 200"
 bitrate="-b 2500"
 decode="YUVs"
 ;;

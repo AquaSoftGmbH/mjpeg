@@ -4,7 +4,10 @@
 	
 2.	Get MMX routines written fast_motion_data.
 
-3	Sort out that wretched vbv verification code.
+3.  Check out using dist2 for initial MC calculations as well as final
+	selection?
+
+4.	Sort out that wretched vbv verification code.
 
 	The code for scene-change gop sizing and ending sequences can in
 	some circumstances mess up as the sizing takes no account of

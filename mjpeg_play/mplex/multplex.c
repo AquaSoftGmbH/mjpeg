@@ -162,7 +162,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 0;
 	  	always_sys_header_in_pack = 0;
-	  	trailing_pad_pack = 0;
+	  	trailing_pad_pack = 1;
 	  	sector_transport_size = 2324;
 	  	transport_prefix_sectors = 0;
 	  	sector_size = 2324;
@@ -419,31 +419,31 @@ void outputstreamsuffix(clockticks *SCR,
 						unsigned long long  *bytes_output)
 {
   unsigned char *index;
+  Pack_struc 	pack;
+
   if (trailing_pad_pack )
 	{
-	  bytepos_timecode ( *bytes_output, SCR);
-	  output_padding( *SCR, ostream,
-					  TRUE,
-					  FALSE,
-					  FALSE,
-					  0);
-	  *bytes_output += sector_transport_size;
-		
-	}
-  index = cur_sector.buf;
-    
-  /* TODO: MPEG-2 variant...??? */
+		int end_code_padding_payload;
 
+		create_pack (&pack, *SCR, mux_rate);
+		end_code_padding_payload = packet_payload( NULL, &pack, FALSE, 0, 0)-4;
+		create_sector (&cur_sector, &pack, NULL,
+					   end_code_padding_payload,
+					   NULL, PADDING_STR, 0, 0,
+					   FALSE, 0, 0,
+					   TIMESTAMPBITS_NO );
+		index = cur_sector.buf  + sector_size-4;
+	}
+  else
+	  index = cur_sector.buf;
   /* write out ISO 11172 END CODE				*/
-  index = cur_sector.buf;
+
 
   *(index++) = (unsigned char)((ISO11172_END)>>24);
   *(index++) = (unsigned char)((ISO11172_END & 0x00ff0000)>>16);
   *(index++) = (unsigned char)((ISO11172_END & 0x0000ff00)>>8);
   *(index++) = (unsigned char)(ISO11172_END & 0x000000ff);
 
-  while( index < cur_sector.buf + sector_size )
-  	*(index++) = 0;
   fwrite (cur_sector.buf, sizeof (unsigned char), sector_size, ostream);
   *bytes_output += sector_transport_size;
   bytepos_timecode ( *bytes_output, SCR);

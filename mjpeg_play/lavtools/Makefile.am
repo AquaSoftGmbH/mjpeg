@@ -52,7 +52,7 @@ lav2yuv_SOURCES = lav2yuv.c  jpegutils.c yuv4mpeg.c $(lav_headers)
 lav2yuv_LDADD = -L$(top_builddir)/lavtools -lavio $(QUICKTIME_LIBS) \
 	$(MOVTAR_LIBS) 	$(JPEG_LIBS) -L$(top_srcdir)/utils -lutils
 
-lavpipe_SOURCES = lavpipe.c yuv4mpeg.c pipelist.c $(lav_headers)
+lavpipe_SOURCES = lavpipe.c yuv4mpeg.c pipelist.c pipelist.h $(lav_headers)
 lavpipe_LDADD = -L$(top_srcdir)/utils -lutils
 
 yuvmedianfilter_SOURCES = yuvmedianfilter.c $(lav_headers)

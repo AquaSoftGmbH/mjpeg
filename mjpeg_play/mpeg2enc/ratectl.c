@@ -324,7 +324,7 @@ void rc_init_GOP(np,nb)
 		   *exact* value and use that for calculating how much we
 		   may "carry over"
 		*/
-		gop_undershoot = intmin( video_buffer_size/2, (int)R );
+		gop_undershoot = intmin( video_buffer_size/3, (int)R );
 
 		R = gop_undershoot + per_gop_bits;		
 	}

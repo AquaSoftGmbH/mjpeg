@@ -4,5 +4,6 @@ INCLUDES = -I$(top_srcdir)
 
 noinst_LIBRARIES = libutils.a
 
-libutils_a_SOURCES = mjpeg_logging.c
+libutils_a_SOURCES = mjpeg_logging.c mjpeg_logging.h mjpeg_types.h
+
 
