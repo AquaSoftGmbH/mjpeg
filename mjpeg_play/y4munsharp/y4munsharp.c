@@ -640,7 +640,7 @@ void usage(void)
 	fprintf(stderr, "%s:\tradius and amount are floating point numbers\n",
 		__progname);
 	fprintf(stderr, "%s:\tthreshold is integer.\n", __progname);
-	fprintf(stderr, "%s:\tdefaults for -L is 3.0,0.3,4\n", __progname);
+	fprintf(stderr, "%s:\tdefault for -L is 3.0,0.3,4\n", __progname);
 	fprintf(stderr, "%s:\tchroma not filtered UNLESS -C used, no default\n",
 		__progname);
 	fprintf(stderr, "%s:-v verbose 0=quiet 1=normal 2=debug (default: 1)\n", __progname);
