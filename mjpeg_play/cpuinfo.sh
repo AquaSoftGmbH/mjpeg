@@ -107,7 +107,7 @@ case "$pvendor" in
 			   if test "$pmodel" -eq 4; then
 				proc=athlon64
 			   elif test "$pmodel" -eq 5; then
-				proc=opteron
+				proc=x86-64
 			   elif test "$pmodel" -eq 7; then
 				proc=athlon64
 			   elif test "$pmodel" -eq 12 -o "$pmodel" -eq 14; then
