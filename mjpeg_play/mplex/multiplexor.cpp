@@ -2,7 +2,6 @@
 #include <config.h>
 #include <math.h>
 #include <stdlib.h>
-#include <memory>
 
 #include <mjpeg_types.h>
 #include <mjpeg_logging.h>
@@ -17,7 +16,6 @@
 #endif
 #include "multiplexor.hpp"
 
-using std::auto_ptr;
 
 /****************
  *
@@ -70,7 +68,8 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
     sector_transport_size = job.sector_size;
     sector_size = job.sector_size;
 	split_at_seq_end = !job.multifile_segment;
-    max_segment_size = job.max_segment_size;
+    max_segment_size = static_cast<off_t>(job.max_segment_size)
+                       * static_cast<off_t>(1024 * 1024);
     max_PTS = static_cast<clockticks>(job.max_PTS) * CLOCKS;
 	video_delay = static_cast<clockticks>(job.video_offset*CLOCKS/1000);
 	audio_delay = static_cast<clockticks>(job.audio_offset*CLOCKS/1000);
@@ -167,21 +166,6 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
 		sector_align_iframeAUs = true;
         timestamp_iframe_only = false;
         video_buffers_iframe_only = false;
-#ifdef JUNK
-		if( opt_buffer_size == 0 )
-			opt_buffer_size = 46;
-		else if( opt_buffer_size > 220 )
-		{
-			mjpeg_error_exit1("VCD stills has max. permissible video buffer size of 220KB");
-		}
-		else
-		{
-			/* Add a margin for sequence header overheads for HR stills */
-			/* So the user simply specifies the nominal size... */
-			opt_buffer_size += 4;
-		}		
-		video_buffer_size = opt_buffer_size*1024;
-#endif
 		break;
 
 	case MPEG_FORMAT_SVCD_STILL :
@@ -229,8 +213,6 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
         timestamp_iframe_only = true;
         video_buffers_iframe_only = true;
 		vbr = true;
-        if( max_segment_size == 0 )
-            max_segment_size = 2000*1024*1024;
         break;
 			 
 	default : /* MPEG_FORMAT_MPEG1 - auto format MPEG1 */
@@ -284,9 +266,8 @@ void Multiplexor::InitInputStreamsForStills(MultiplexJob & job )
     switch( job.mux_format )
     {
     case MPEG_FORMAT_VCD_STILL :
-        mjpeg_info( "Multiplexing VCD stills program stream!" );
+        mjpeg_info( "Multiplexing VCD stills: %d stills streams.", video_strms.size() );
         {
-            
             frame_interval = 30; // 30 Frame periods
             if( mpa_strms.size() > 0 && video_strms.size() > 2  )
                 mjpeg_error_exit1("VCD stills: no more than two streams (one normal one hi-res) possible");
@@ -315,7 +296,7 @@ void Multiplexor::InitInputStreamsForStills(MultiplexJob & job )
         }
         break;
     case MPEG_FORMAT_SVCD_STILL :
-        mjpeg_info( "Multiplexing SVCD stills program stream!" );
+        mjpeg_info( "Multiplexing SVCD stills: %d stills streams %d audio streams", video_strms.size(), mpa_strms.size() );
         frame_interval = 30;
         if( video_strms.size() > 1 )
         {
@@ -371,11 +352,9 @@ void Multiplexor::InitInputStreamsForVideo(MultiplexJob & job )
         {
             VideoStream *videoStrm;
             //
-            // The first DVD video stream is made the master stream...
+            // The first video stream is made the master stream...
             //
-            if( video_track == 0 
-                && ( job.mux_format ==  MPEG_FORMAT_DVD_NAV 
-                     || job.mux_format ==  MPEG_FORMAT_DVD ) )
+            if( video_track == 0  && job.mux_format ==  MPEG_FORMAT_DVD_NAV )
                 videoStrm = new DVDVideoStream( *(*i)->bs, 
                                                 *vidparm,
                                                 *this);
@@ -959,10 +938,6 @@ void Multiplexor::Multiplex()
     for(i = 0; i < estreams.size() ; ++i )
 		completed.push_back(false);
 
-
-
-
-    
     
 	/*  Let's try to read in unit after unit and to write it out into
 		the outputstream. The only difficulty herein lies into the

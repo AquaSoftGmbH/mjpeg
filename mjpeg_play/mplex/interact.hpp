@@ -61,7 +61,7 @@ public:
   int verbose;
   int max_timeouts;
   char *outfile_pattern;
-  off_t max_segment_size;
+  int max_segment_size;
 };
 
 /***********************************************************************

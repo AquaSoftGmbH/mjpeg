@@ -1,7 +1,7 @@
 
 /*
- *  inptstrm.c:  Members of audi stream classes related to muxing out into
- *               the output stream.
+ *  audiostrm_out.cpp: Members of audio stream classes related to
+ *  muxing out into the output stream.
  *
  *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
  *

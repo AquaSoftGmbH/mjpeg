@@ -78,7 +78,7 @@ MultiplexJob::MultiplexJob()
     max_timeouts = 10;
     max_PTS = 0;
     emul_vcdmplex = 0;
-    max_segment_size = 0;
+    max_segment_size = 2000; // MB, Safe default suitable for DVD etc...
     outfile_pattern = 0;
     packets_per_pack = 1;
 
@@ -332,7 +332,6 @@ void MultiplexJob::SetFromCmdLine(unsigned int argc, char *argv[])
 			max_segment_size = atoi(optarg);
 			if( max_segment_size < 0  )
 				Usage(argv[0]);
-			max_segment_size *= 1024*1024; 
 			break;
 		case 'M' :
 			multifile_segment = true;
@@ -489,14 +488,13 @@ unsigned int MultiplexJob::NumberOfTracks( StreamKind kind )
     
 }
 
-void MultiplexJob::GetJobStreams( vector<JobStream *> &streams,
-                                  StreamKind kind )
+void MultiplexJob::GetJobStreams( vector<JobStream *> &res, StreamKind kind )
 {
-    streams.erase( streams.begin(), streams.end() );
+    res.erase( res.begin(), res.end() );
 	std::vector<JobStream *>::iterator i;
     for( i = streams.begin(); i < streams.end(); ++i )
         if( (*i)->kind == kind )
-            streams.push_back( *i );
+            res.push_back( *i );
 }
 
 

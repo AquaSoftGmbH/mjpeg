@@ -120,6 +120,7 @@ void StillsStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
 	PTS = current_PTS + time_for_xfer + interval;
 	current_PTS = PTS;
 	current_DTS = DTS;
+    fields_presented += 2;
 }
 
 /*
