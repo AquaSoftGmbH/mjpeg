@@ -458,7 +458,7 @@ void audio_convert()
 /* video encoding */
 void video_convert()
 {
-   int n;
+   int n, scale_140, scale_150;
    char *mpeg2enc_command[256];
    char *lav2yuv_command[256];
    char *yuvscaler_command[256];
@@ -469,6 +469,10 @@ void video_convert()
    static char temp8[4], temp9[4], temp10[4],temp11[4],temp12[4],temp13[4];
    static char temp14[4],temp15[4],temp16[4],temp17[4];
    error = 0;
+   scale_140    = 0; /* this 3 variabels are used for spliting up */ 
+   scale_150    = 0; /* the detection if yuvscaler has to be used */
+                     /* for the encoding process                  */
+
    progress_encoding = 2;
    if (progress_label) gtk_label_set_text(GTK_LABEL(progress_label),
       "Encoding video");
@@ -532,8 +536,6 @@ void video_convert()
       mpeg2enc_command[n] =  temp17; n++;
      }
 
-
-
 /* And here the support fpr the different versions vo mjpeg tools */
 /* And the different mpeg versions */
    if (encoding_syntax_style == 140)
@@ -583,9 +585,20 @@ void video_convert()
    }
 
    /* Here, the command for the pipe for yuvscaler may be added */
-     if ((strcmp((*pointenc).input_use,"as is") != 0) ||
+   if ( (((strcmp((*pointenc).mode_keyword,"as is") != 0) &&
+          (strcmp((*pointenc).mode_keyword,"LINE_SWITCH") != 0)) ||
+         ( strlen((*pointenc).ininterlace_type) >= 10)             ) &&
+        (encoding_syntax_style == 140)                                  )
+      scale_140=1;
+
+   if ( ( (strcmp((*pointenc).mode_keyword,"as is") != 0) || 
+          (use_bicubic == 1)                                ) &&
+        (encoding_syntax_style == 150)                          )
+      scale_150=1;
+
+   if (  (strcmp((*pointenc).input_use,"as is") != 0)   ||
          (strcmp((*pointenc).output_size,"as is") != 0) ||
-         (strcmp((*pointenc).mode_keyword,"as is") != 0) )
+         (scale_140 == 1) || (scale_150 == 1)             )
    {
       n = 0;
       yuvscaler_command[n] = YUVSCALER_LOCATION; n++;
@@ -607,12 +620,20 @@ void video_convert()
          yuvscaler_command[n] = "-M"; n++;
          yuvscaler_command[n] = "BICUBIC"; n++;
       }
-      if (strlen((*pointenc).mode_keyword) > 0 &&
-          strcmp((*pointenc).mode_keyword,"as is") )
+      if ((strcmp((*pointenc).mode_keyword,"LINE_SWITCH") != 0) &&
+          (strcmp((*pointenc).mode_keyword,"as is") != 0) && 
+          encoding_syntax_style == 140 )
       {
          yuvscaler_command[n] = "-M"; n++;
          yuvscaler_command[n] = (*pointenc).mode_keyword; n++;
       }
+      else if ((strcmp((*pointenc).mode_keyword,"as is") != 0) && 
+                encoding_syntax_style == 150 )
+      {
+         yuvscaler_command[n] = "-M"; n++;
+         yuvscaler_command[n] = (*pointenc).mode_keyword; n++;
+      }
+
       if (strlen((*pointenc).output_size) > 0 &&
           strcmp((*pointenc).output_size,"as is") )
       {
