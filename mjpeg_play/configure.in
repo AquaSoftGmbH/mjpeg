@@ -83,7 +83,17 @@ fi
 
 dnl Misc. other libraries
 AC_CHECK_LIB(pthread, pthread_create)
-AC_CHECK_LIB(png,png_read_info)
+AC_CHECK_LIB(png,png_read_info,
+               [       
+                  AC_DEFINE(BUILD_PNG)
+                   LIBS="$LIBS -lpng -lz"
+               ], 
+
+              [  
+                  LIBS="$OLDLIBS"   
+              ],  
+              -lz 
+       ) 
 AC_CHECK_LIB(jpeg,jpeg_set_quality)
 AC_CHECK_LIB(glib,g_strsplit)
 
@@ -105,7 +115,7 @@ AC_SUBST(QUICKTIME_INCLUDE)
 AC_CHECK_LIB( quicktime, quicktime_open,
 	          [ 
 		        AC_DEFINE(BUILD_QUICKTIME)
-				LIBS="$LIBS -lquicktime -lm -lz -lpng -lpthread `glib-config --libs --cflags`"
+				LIBS="$LIBS -lquicktime"
 			    QUICKTIME_INCLUDE="-I $QUICKTIME_LIBDIR"
 			    have_quicktime="yes"
 		      ],
@@ -113,7 +123,7 @@ AC_CHECK_LIB( quicktime, quicktime_open,
 	            LIBS="$OLDLIBS"
 				have_quicktime="no"
 			  ],
-			  -lm
+			  -lm -lm -lz -lpng -lpthread `glib-config --libs --cflags`
 			 )
 dnl
 dnl Check for type of SIMD support and machine specific optimisation
