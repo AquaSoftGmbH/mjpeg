@@ -151,14 +151,14 @@ mpeg_framerate( mpeg_framerate_code_t code )
 const mpeg_framerate_code_t 
 mpeg_framerate_code( y4m_ratio_t framerate )
 {
-  mpeg_framerate_code_t i;
+	mpeg_framerate_code_t i;
   
-  y4m_ratio_reduce(&framerate);
-  for (i = 1; i < mpeg_num_framerates; ++i) {
-    if (Y4M_RATIO_EQL(framerate, mpeg_framerates[i]))
-      return i;
-  }
-  return 0;
+	y4m_ratio_reduce(&framerate);
+	for (i = 1; i < mpeg_num_framerates; ++i) {
+		if (Y4M_RATIO_EQL(framerate, mpeg_framerates[i]))
+			return i;
+	}
+	return 0;
 }
 
 
@@ -169,21 +169,22 @@ mpeg_framerate_code( y4m_ratio_t framerate )
 const y4m_ratio_t
 mpeg_conform_framerate( double fps )
 {
-  mpeg_framerate_code_t i;
-  y4m_ratio_t result;
+	mpeg_framerate_code_t i;
+	y4m_ratio_t result;
 
-  /* try to match it to a standard frame rate */
-  for (i = 1; i < mpeg_num_framerates; i++) {
-    double deviation = 1.0 - (Y4M_RATIO_DBL(mpeg_framerates[i]) / fps);
-    if ( (deviation > -MPEG_FPS_TOLERANCE) &&
-	 (deviation < +MPEG_FPS_TOLERANCE) )
-      return mpeg_framerates[i];
-  }
-  /* no luck?  just turn it into a ratio (6 decimal place accuracy) */
-  result.n = (fps * 1000000.0) + 0.5;
-  result.d = 1000000;
-  y4m_ratio_reduce(&result);
-  return result;
+	/* try to match it to a standard frame rate */
+	for (i = 1; i < mpeg_num_framerates; i++) 
+	{
+		double deviation = 1.0 - (Y4M_RATIO_DBL(mpeg_framerates[i]) / fps);
+		if ( (deviation > -MPEG_FPS_TOLERANCE) &&
+			 (deviation < +MPEG_FPS_TOLERANCE) )
+			return mpeg_framerates[i];
+	}
+	/* no luck?  just turn it into a ratio (6 decimal place accuracy) */
+	result.n = (fps * 1000000.0) + 0.5;
+	result.d = 1000000;
+	y4m_ratio_reduce(&result);
+	return result;
 }
 
   
@@ -255,49 +256,62 @@ mpeg_frame_aspect_code( int mpeg_version, y4m_ratio_t aspect_ratio )
 
 const mpeg_aspect_code_t 
 mpeg_guess_mpeg_aspect_code(int mpeg_version, y4m_ratio_t sampleaspect,
-			    int frame_width, int frame_height)
+							int frame_width, int frame_height)
 {
-  if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_UNKNOWN))
-    return 0;
-  switch (mpeg_version) {
-  case 1:
-    if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_SQUARE)) {
-      return 1;
-    } else if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_NTSC_CCIR601)) {
-      return 12;
-    } else if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_NTSC_16_9)) {
-      return 6;
-    } else if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_PAL_CCIR601)) {
-      return 8;
-    } else if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_PAL_16_9)) {
-      return 3;
-    } 
-    return 0;
-    break;
-  case 2:
-    if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_SQUARE)) {
-      return 1;  /* '1' means square *pixels* in MPEG-2; go figure. */
-    } else {
-      int i;
-      double true_far;  /* true frame aspect ratio */
-      true_far = 
-	(double)(sampleaspect.n * frame_width) /
-	(double)(sampleaspect.d * frame_height);
-      /* start at '2'... */
-      for (i = 2; i < mpeg_num_aspect_ratios[mpeg_version-1]; i++) {
-	double ratio = 
-	  true_far / Y4M_RATIO_DBL(mpeg_aspect_ratios[mpeg_version-1][i-1]);
-	if ( (ratio > (1.0 - GUESS_ASPECT_TOLERANCE)) &&
-	     (ratio < (1.0 + GUESS_ASPECT_TOLERANCE)) )
-	  return i;
-      }
-      return 0;
-    }
-    break;
-  default:
-    return 0;
-    break;
-  }
+	if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_UNKNOWN))
+		return 0;
+	switch (mpeg_version) {
+	case 1:
+		if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_SQUARE))
+		{
+			return 1;
+		} 
+		else if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_NTSC_CCIR601))
+		{
+			return 12;
+		} 
+		else if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_NTSC_16_9))
+		{
+			return 6;
+		} 
+		else if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_PAL_CCIR601))
+		{
+			return 8;
+		} 
+		else if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_PAL_16_9))
+		{
+			return 3;
+		} 
+		return 0;
+		break;
+	case 2:
+		if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_SQUARE))
+		{
+			return 1;  /* '1' means square *pixels* in MPEG-2; go figure. */
+		}
+		else
+		{
+			int i;
+			double true_far;  /* true frame aspect ratio */
+			true_far = 
+				(double)(sampleaspect.n * frame_width) /
+				(double)(sampleaspect.d * frame_height);
+			/* start at '2'... */
+			for (i = 2; i < mpeg_num_aspect_ratios[mpeg_version-1]; i++) 
+			{
+				double ratio = 
+					true_far / Y4M_RATIO_DBL(mpeg_aspect_ratios[mpeg_version-1][i-1]);
+				if ( (ratio > (1.0 - GUESS_ASPECT_TOLERANCE)) &&
+					 (ratio < (1.0 + GUESS_ASPECT_TOLERANCE)) )
+					return i;
+			}
+			return 0;
+		}
+		break;
+	default:
+		return 0;
+		break;
+	}
 }
 
 
@@ -313,62 +327,71 @@ mpeg_guess_mpeg_aspect_code(int mpeg_version, y4m_ratio_t sampleaspect,
  */
 const y4m_ratio_t 
 mpeg_guess_sample_aspect_ratio(int mpeg_version,
-			       mpeg_aspect_code_t code,
-			       int frame_width, int frame_height)
+							   mpeg_aspect_code_t code,
+							   int frame_width, int frame_height)
 {
-  switch (mpeg_version) {
-  case 1:
-    /* MPEG-1 codes turn into SAR's, just not quite the right ones.
-       For the common/known values, we provide the ratio used in practice,
-       otherwise say we don't know.*/
-    switch (code) {
-    case 1:  return y4m_sar_SQUARE;        break;
-    case 3:  return y4m_sar_PAL_16_9;      break;
-    case 6:  return y4m_sar_NTSC_16_9;     break;
-    case 8:  return y4m_sar_PAL_CCIR601;   break;
-    case 12: return y4m_sar_NTSC_CCIR601;  break;
-    default:
-      return y4m_sar_UNKNOWN;       break;
-    }
-    break;
-  case 2:
-    /* MPEG-2 codes turn into Frame Aspect Ratios, though not exactly the
-       FAR's used in practice.  For common/standard frame sizes, we provide
-       the original SAR; otherwise, we say we don't know. */
-    if (code == 1) {
-      return y4m_sar_SQUARE; /* '1' means square *pixels* in MPEG-2 */
-    } else if ((code >= 2) && (code <= 4)) {
-      int i;
-      y4m_ratio_t mpeg_far = mpeg2_aspect_ratios[code-1];
-      double mpeg_sar = 
-	(double)(mpeg_far.d * frame_width) /
-	(double)(mpeg_far.n * frame_height);
-      y4m_ratio_t sarray[9] = {
-	y4m_sar_SQUARE,
-	y4m_sar_NTSC_CCIR601,
-	y4m_sar_NTSC_16_9,
-	y4m_sar_NTSC_SVCD_4_3,
-	y4m_sar_NTSC_SVCD_16_9,
-	y4m_sar_PAL_CCIR601,
-	y4m_sar_PAL_16_9,
-	y4m_sar_PAL_SVCD_4_3,
-	y4m_sar_PAL_SVCD_16_9
-      };
-      for (i = 0; i < 9; i++) {
-	double ratio = mpeg_sar / Y4M_RATIO_DBL(sarray[i]);
-	if ( (ratio > (1.0 - GUESS_ASPECT_TOLERANCE)) &&
-	     (ratio < (1.0 + GUESS_ASPECT_TOLERANCE)) )
-	  return sarray[i];
-      }
-      return y4m_sar_UNKNOWN;
-    } else {
-      return y4m_sar_UNKNOWN;
-    }
-    break;
-  default:
-    return y4m_sar_UNKNOWN;
-    break;
-  }
+	switch (mpeg_version) 
+	{
+	case 1:
+		/* MPEG-1 codes turn into SAR's, just not quite the right ones.
+		   For the common/known values, we provide the ratio used in practice,
+		   otherwise say we don't know.*/
+		switch (code)
+		{
+		case 1:  return y4m_sar_SQUARE;        break;
+		case 3:  return y4m_sar_PAL_16_9;      break;
+		case 6:  return y4m_sar_NTSC_16_9;     break;
+		case 8:  return y4m_sar_PAL_CCIR601;   break;
+		case 12: return y4m_sar_NTSC_CCIR601;  break;
+		default:
+			return y4m_sar_UNKNOWN;       break;
+		}
+		break;
+	case 2:
+		/* MPEG-2 codes turn into Frame Aspect Ratios, though not exactly the
+		   FAR's used in practice.  For common/standard frame sizes, we provide
+		   the original SAR; otherwise, we say we don't know. */
+		if (code == 1) 
+		{
+			return y4m_sar_SQUARE; /* '1' means square *pixels* in MPEG-2 */
+		}
+		else if ((code >= 2) && (code <= 4))
+		{
+			int i;
+			y4m_ratio_t mpeg_far = mpeg2_aspect_ratios[code-1];
+			double mpeg_sar = 
+				(double)(mpeg_far.d * frame_width) /
+				(double)(mpeg_far.n * frame_height);
+			y4m_ratio_t sarray[9] =
+				{
+					y4m_sar_SQUARE,
+					y4m_sar_NTSC_CCIR601,
+					y4m_sar_NTSC_16_9,
+					y4m_sar_NTSC_SVCD_4_3,
+					y4m_sar_NTSC_SVCD_16_9,
+					y4m_sar_PAL_CCIR601,
+					y4m_sar_PAL_16_9,
+					y4m_sar_PAL_SVCD_4_3,
+					y4m_sar_PAL_SVCD_16_9
+				};
+			for (i = 0; i < 9; i++)
+			{
+				double ratio = mpeg_sar / Y4M_RATIO_DBL(sarray[i]);
+				if ( (ratio > (1.0 - GUESS_ASPECT_TOLERANCE)) &&
+					 (ratio < (1.0 + GUESS_ASPECT_TOLERANCE)) )
+					return sarray[i];
+			}
+			return y4m_sar_UNKNOWN;
+		} 
+		else
+		{
+			return y4m_sar_UNKNOWN;
+		}
+		break;
+	default:
+		return y4m_sar_UNKNOWN;
+		break;
+	}
 }
 
 
@@ -438,3 +461,12 @@ mpeg_interlace_code_definition( int yuv4m_interlace_code )
 	}
 	return def;
 }
+
+
+/* 
+ * Local variables:
+ *  c-file-style: "stroustrup"
+ *  tab-width: 4
+ *  indent-tabs-mode: nil
+ * End:
+ */
