@@ -1,0 +1,14 @@
+.deps
+aclocal.m4
+Makefile
+Makefile.in
+config.*
+configure
+configure.in
+yuvdenoise
+yuvdenoise.o
+gmon.out
+*.m1v
+*.nuv
+*.yuv
+
