@@ -1,12 +1,12 @@
 Summary: Tools for recording, editing, playing back and mpeg-encoding video under linux
 Name: mjpegtools
-Version: 1.4pre3
+Version: 1.4.0
 Release: 1
 Copyright: GPL
 Group: Applications/Multimedia
-Source0: http://prdownloads.sourceforge.net/mjpeg/mjpegtools-1.4pre3.tar.gz
+Source0: http://prdownloads.sourceforge.net/mjpeg/mjpegtools-1.4.0.tar.gz
 Source1: http://prdownloads.sourceforge.net/mjpeg/quicktime4linux-1.3-patched.tar.gz
-Source2: http://prdownloads.sourceforge.net/mjpeg/libmovtar-0.1.2.tar.gz
+Source2: http://prdownloads.sourceforge.net/mjpeg/libmovtar-0.1.2a.tar.gz
 Source3: http://prdownloads.sourceforge.net/mjpeg/jpeg-mmx-0.1.3.tar.gz
 
 %description
@@ -26,12 +26,12 @@ make libjpeg-mmx.a
 ./configure
 make
 
-%setup -b 2 -n libmovtar-0.1.2
+%setup -b 2 -n libmovtar
 ./configure
 make
 make install
 
-%setup -b 0 -n mjpegtools-1.4pre3
+%setup -b 0 -n mjpegtools-1.4.0
 ./configure --with-quicktime=`pwd`/../quicktime4linux-1.3-patch --with-jpeg-mmx=`pwd`/../jpeg-mmx --with-movtar-prefix=`pwd`/../libmovtar-0.1.2 --with-movtar-exec-prefix=/usr/local
 
 %build
@@ -72,6 +72,21 @@ make install
 /usr/local/bin/movtar_setinfo
 /usr/local/bin/movtar_yuv422
 
+/usr/local/man/man1/lav2wav.1
+/usr/local/man/man1/lav2yuv.1
+/usr/local/man/man1/lavpipe.1
+/usr/local/man/man1/lavplay.1
+/usr/local/man/man1/lavrec.1
+/usr/local/man/man1/lavtrans.1
+/usr/local/man/man1/mjpegtools.1
+/usr/local/man/man1/mp2enc.1
+/usr/local/man/man1/mpeg2enc.1
+/usr/local/man/man1/mplex.1
+/usr/local/man/man1/xlav.1
+/usr/local/man/man1/yuv2lav.1
+/usr/local/man/man1/yuvplay.1
+/usr/local/man/man1/yuvscaler.1
+
 %changelog
-* Tue Apr 24 2001 Ronald Bultje <rbultje@ronald.bitfreak.net>
-- Initial RPM release
+* Wed Jun 06 2001 Ronald Bultje <rbultje@ronald.bitfreak.net>
+- 1.4.0-final release, including precompiled binaries (deb/rpm)
