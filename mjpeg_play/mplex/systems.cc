@@ -319,7 +319,7 @@ void create_sector (Sector_struc 	 *sector,
 			   <program_packet_sequence_counter=0>
 			   <P-STD_buffer=1><reserved:3=1><{PES_extension_flag_2=0> */
 			*(index++) = static_cast<uint8_t>(0x1e);
-			*(index++) = static_cast<uint8_t> (0x40 | (buffer_scale << 4) | 
+			*(index++) = static_cast<uint8_t> (0x40 | (buffer_scale << 5) | 
 										  (buffer_size >> 8));
 			*(index++) = static_cast<uint8_t> (buffer_size & 0xff);
 		}

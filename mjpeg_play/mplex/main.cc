@@ -54,7 +54,7 @@ int main (int argc, char* argv[])
 	{
 		vector<const char *> stills;
 		check_stills(argc-optargs, argv+optargs, stills);
-		init_stream_syntax_parameters(videoStrm,audioStrm);
+		init_stream_syntax_parameters();
 		VideoStream stillStrm;
 		stillStrm.Init( stills[0], 1 );
 		mjpeg_error_exit1( "Still stream muxing not (yet) implemented\n");
@@ -63,16 +63,18 @@ int main (int argc, char* argv[])
 	else
 	{
 		check_files (argc-optargs, argv+optargs,  &audio_file, &video_file);
+		init_stream_syntax_parameters();
 
 		if (video_file) {
 			videoStrm.Init( video_file, 0);
+			videoStrm.SetMuxParams( video_buffer_size );
 		}
     
 		if (audio_file) {
 			audioStrm.Init (audio_file, 0);
+			audioStrm.SetMuxParams( audio_buffer_size );
 		}
 
-	init_stream_syntax_parameters(videoStrm,audioStrm);
     outputstream (videoStrm,  audioStrm, audio_file,  multi_file );
 	videoStrm.close();
 	}

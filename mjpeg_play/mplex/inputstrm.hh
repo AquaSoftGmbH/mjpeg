@@ -13,6 +13,33 @@
 
 #include "mjpeg_logging.h"
 
+class BufferQueue
+{
+public:
+	unsigned int size	;	/* als verkettete Liste implementiert	*/
+    clockticks DTS	;
+    BufferQueue *next	;
+};
+    
+
+class BufferModel
+{
+public:
+void init( unsigned int size);
+
+void cleaned(  clockticks timenow);
+void flushed( );
+unsigned int space();
+void queued( unsigned int bytes,
+			 clockticks removaltime);
+private:
+	unsigned int max_size;
+    BufferQueue *first;
+};
+
+
+
+
 class InputStream
 {
 public:
@@ -73,15 +100,28 @@ protected:
 template <class T, const int frame_chunk>
 class BufInputStream : public InputStream
 {
+public:
+	BufInputStream() : new_au_next_sec(true) {}
+
+	void SetMuxParams( unsigned int buffer_size )
+		{
+			bufmodel.init( buffer_size );
+		}
 protected:
 	virtual void fillAUbuffer(unsigned int frames_to_buffer) = 0;
-
 
 	AUStream<T> aunits;
     static const int FRAME_CHUNK = frame_chunk;
 
+public:  // TODO should go protected once encapsulation complete
+	BufferModel bufmodel;
+	T au;
+
+	bool new_au_next_sec;
 };
 
+// TODO get shot...
+#define OLDFRAME				0
 
 class VideoStream : public BufInputStream<VAunit, 256>
 {
@@ -96,7 +136,7 @@ public:
 				num_frames[i] = avg_frames[i] = 0;
 		}
 	void Init(const char *input_file, int stream_num);
-
+	
 	void close();
 	VAunit *next();
 	VAunit *lookahead( unsigned int lookahead );
@@ -144,6 +184,10 @@ private:
 	int AU_pict_data;
 	int AU_hdr;
 	clockticks max_PTS;
+
+	// State variables for multiplexed sub-stream...
+public:							// TODO make private once encapsulation comple
+	int next_sec_AU_type;
 }; 		
 
 class AudioStream : public BufInputStream<AAunit, 128>
@@ -180,6 +224,7 @@ public:
     unsigned int emphasis	;
 
 private:
+	void output_audio_info();
 	virtual void fillAUbuffer(unsigned int frames_to_buffer);
 
 	/* State variables for scanning source bit-stream */

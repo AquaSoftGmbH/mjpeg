@@ -56,20 +56,18 @@ static int freq_table [4][4] =
 	/* MPEG audio V1 */
 	{44100, 48000, 32000, 0}
 };
-static char mode [4][15] =
+static char stereo_mode [4][15] =
 { "stereo", "joint stereo", "dual channel", "single channel" };
-static char copyright [2][20] =
+static char copyright_status [2][20] =
 { "no copyright","copyright protected" };
-static char original [2][10] =
+static char original_bit [2][10] =
 { "copy","original" };
-static char emphasis [4][20] =
+static char emphasis_mode [4][20] =
 { "none", "50/15 microseconds", "reserved", "CCITT J.17" };
 static unsigned int slots [4] = {12, 144, 144, 0};
 static unsigned int samples [4] = {384, 1152, 1152, 0};
 
 
-
-static void output_info_audio (AudioStream *audio_info);
 
 
 /*************************************************************************
@@ -256,10 +254,6 @@ void VideoStream::Init (const char *video_file, int stream_num )
 		exit (1);
     }
 
-#ifdef REDUNDANT
-    empty_vaunit_struc (&access_unit);
-#endif
-
     if (pict_rate >0 && pict_rate<9)
     {
 		frame_rate = picture_rates[pict_rate];
@@ -279,7 +273,7 @@ void VideoStream::Init (const char *video_file, int stream_num )
 
 	fillAUbuffer(FRAME_CHUNK);
     output_seqhdr_info();
-
+	au = *next();
 }
 
 void VideoStream::fillAUbuffer(unsigned int frames_to_buffer)
@@ -642,7 +636,9 @@ void AudioStream::Init (
     }
 
 
-
+	fillAUbuffer(FRAME_CHUNK);
+	au = *next();
+	output_audio_info();
 }
 
 void AudioStream::fillAUbuffer(unsigned int frames_to_buffer )
@@ -752,13 +748,16 @@ AAunit *AudioStream::lookahead( unsigned int i )
 
 void AudioStream::close()
 {
+    stream_length = AU_start >> 3;
 
     mjpeg_info ("Audio stream length %lld.\n",AU_start);
+    mjpeg_info   ("Syncwords      : %8u\n",num_syncword);
+    mjpeg_info   ("Frames         : %8u size %6u bytes\n",
+			  num_frames[0],size_frames[0]);
+    mjpeg_info   ("Frames         : %8u size %6u bytes\n",
+			  num_frames[1],size_frames[1]);
 	
-    stream_length = AU_start >> 3;
     bs.close();
-    output_info_audio (this);
-
 }
 
 /*************************************************************************
@@ -768,51 +767,45 @@ void AudioStream::close()
 	Prints information on audio access units
 *************************************************************************/
 
-static void output_info_audio (AudioStream *audio_info)
+void AudioStream::output_audio_info ()
 {
     unsigned int layer;
     unsigned int bitrate;
 
-    layer=3-audio_info->layer;
-    bitrate = bitrate_index[audio_info->version_id][layer][audio_info->bit_rate];
+    layer=3-layer;
+    bitrate = bitrate_index[version_id][layer][bit_rate];
 
 
 	mjpeg_info("AUDIO STREAM:\n");
-	mjpeg_info ("Audio version  : %s\n", audio_version[audio_info->version_id]);
-    mjpeg_info ("Stream length  : %11llu\n",audio_info->stream_length);
-    mjpeg_info   ("Syncwords      : %8u\n",audio_info->num_syncword);
-    mjpeg_info   ("Frames         : %8u size %6u bytes\n",
-			  audio_info->num_frames[0],audio_info->size_frames[0]);
-    mjpeg_info   ("Frames         : %8u size %6u bytes\n",
-			  audio_info->num_frames[1],audio_info->size_frames[1]);
+	mjpeg_info ("Audio version  : %s\n", audio_version[version_id]);
     mjpeg_info   ("Layer          : %8u\n",1+layer);
 
-    if (audio_info->protection == 0) mjpeg_info ("CRC checksums  :      yes\n");
+    if (protection == 0) mjpeg_info ("CRC checksums  :      yes\n");
     else  mjpeg_info ("CRC checksums  :       no\n");
 
-    if (audio_info->bit_rate == 0)
+    if (bit_rate == 0)
 		mjpeg_info ("Bit rate       :     free\n");
-    else if (audio_info->bit_rate == 0xf)
+    else if (bit_rate == 0xf)
 		mjpeg_info ("Bit rate       : reserved\n");
     else
 		mjpeg_info ("Bit rate       : %8u bytes/sec (%3u kbit/sec)\n",
 				bitrate*128, bitrate);
 
-    if (audio_info->frequency == 3)
+    if (frequency == 3)
 		mjpeg_info ("Frequency      : reserved\n");
     else
 		mjpeg_info ("Frequency      :     %d Hz\n",
-				freq_table[audio_info->version_id][audio_info->frequency]);
+				freq_table[version_id][frequency]);
 
     mjpeg_info   ("Mode           : %8u %s\n",
-			  audio_info->mode,mode[audio_info->mode]);
-    mjpeg_info   ("Mode extension : %8u\n",audio_info->mode_extension);
+			  mode,stereo_mode[mode]);
+    mjpeg_info   ("Mode extension : %8u\n",mode_extension);
     mjpeg_info   ("Copyright bit  : %8u %s\n",
-			  audio_info->copyright,copyright[audio_info->copyright]);
+			  copyright,copyright_status[copyright]);
     mjpeg_info   ("Original/Copy  : %8u %s\n",
-			  audio_info->original_copy,original[audio_info->original_copy]);
+			  original_copy,original_bit[original_copy]);
     mjpeg_info   ("Emphasis       : %8u %s\n",
-			  audio_info->emphasis,emphasis[audio_info->emphasis]);
+			  emphasis,emphasis_mode[emphasis]);
 }
 
 

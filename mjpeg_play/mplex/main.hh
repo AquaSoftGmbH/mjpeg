@@ -56,7 +56,7 @@
 #define EXT_START_CODE 0x000001b5
 #define GROUP_START		0x000001b8
 #define SYNCWORD_START		0x000001
-#define OLDFRAME				0
+
 #define IFRAME                  1
 #define PFRAME                  2
 #define BFRAME                  3
@@ -162,17 +162,6 @@ typedef struct sys_header_struc	/* System Header Info			*/
 	int length;
 } Sys_header_struc;
 
-typedef struct buffer_queue	/* FIFO-Queue fuer STD Buffer		*/
-{   unsigned int size	;	/* als verkettete Liste implementiert	*/
-    clockticks DTS	;
-    struct buffer_queue *next	;
-} Buffer_queue;
-    
-
-typedef struct buffer_struc	/* Simuliert STD Decoder Buffer		*/
-{   unsigned int max_size;	/* enthaelt Anker auf verkettete Liste	*/
-    Buffer_queue *first;
-} Buffer_struc;
     
     
 /*************************************************************************
@@ -186,8 +175,7 @@ int intro_and_options( int, char **, char**);
 /* based on (checked) options 			*/
 
 void init_stills_syntax_parameters();
-void init_stream_syntax_parameters( VideoStream &vstrm,
-							    	AudioStream &astrm );	
+void init_stream_syntax_parameters();	
 
 void check_stills( const int argc, char *argv[], 
 				   vector<const char *>stills );
@@ -202,7 +190,6 @@ bool open_file(const char *name);
 // TODO Get rid of the ugly use of access unit structs with 0 length
 // fields a means of signalling "Null AU/beyond end of AU's".
 
-void init_buffer_struc (Buffer_struc *pointer, unsigned int size);
 
 void offset_timecode      (clockticks *time1,clockticks *time2,clockticks *offset);	/* Rechnet Offset zwischen zwei TimeC.	*/
 void copy_timecode        (clockticks *,clockticks *);	/* setzt 2tes TimeC. dem 1ten gleich	*/
@@ -260,12 +247,6 @@ void create_pack (
 				  unsigned int 	 mux_rate
 				);	/* erstellt einen Pack Header		*/
 
-void buffer_clean	  (Buffer_struc *buffer, clockticks timenow);
-void buffer_flush     (Buffer_struc *buffer);
-unsigned int  buffer_space     (Buffer_struc *buffer);	/* Anzahl freier Bytes in Buffer	*/
-void queue_buffer     (Buffer_struc *buffer,
-						unsigned int bytes,
-						clockticks removaltime);	/* An Bufferliste anhaengen		*/
 
 void outputstream ( VideoStream &vstrm,
 					AudioStream &astrm,
@@ -325,8 +306,10 @@ extern int opt_emul_vcdmplex;
 extern bool opt_stills;
 extern int verbose;
 
+extern unsigned int audio_buffer_size;
+extern unsigned int video_buffer_size;
+
 extern int packet_overhead;
-/* extern int pack_header_size; */
 extern int sector_size;
 extern int mux_rate;
 extern int dmux_rate;

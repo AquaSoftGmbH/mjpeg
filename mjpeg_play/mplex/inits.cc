@@ -68,8 +68,3 @@ void empty_sector_struc (Sector_struc *pointer)
 }
 #endif
 
-void init_buffer_struc (Buffer_struc *pointer, unsigned int size)
-{
-    pointer->max_size = size;
-    pointer->first = NULL;
-}

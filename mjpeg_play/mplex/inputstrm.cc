@@ -1,5 +1,6 @@
 /************************
  *
- * Abstract Class for input streams.
+ * Class member function definitions for input stream class hierarchy
  *
  ***********************/
+

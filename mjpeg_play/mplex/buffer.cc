@@ -2,11 +2,7 @@
 #include <stdlib.h>
 
 /******************************************************************
-	Buffer_Clean
-	entfern aus der verketteten Buffereintragsliste diejenigen
-	Eintraege, deren DTS kleiner der aktuellen SCR ist. Diese
-	Packetdaten sind naemlich bereits dekodiert worden und
-	damit aus dem STD elementary stream buffer entfernt.
+cleaned
 
 	Remove entries from FIFO buffer list, if their DTS is 
 	less than actual SCR. These packet data have been already
@@ -14,99 +10,99 @@
 	decoder's elementary stream buffer.
 ******************************************************************/
 
-void buffer_clean (Buffer_struc  *buffer,
-					clockticks SCR)
+void BufferModel::cleaned(clockticks SCR)
 {
-    Buffer_queue *pointer;
+    BufferQueue *pointer;
 
-    while ((buffer->first != NULL) && buffer->first->DTS < SCR)
+    while ((first != NULL) && first->DTS < SCR)
     {
-	  pointer = buffer->first;
-	  buffer->first = buffer->first->next;
-	  free (pointer);	
+	  pointer = first;
+	  first = first->next;
+	  delete pointer;	
     }
 }
 
 /******************************************************************
-	Buffer_Clean
-	entfern aus der verketteten Buffereintragsliste diejenigen
-	Eintraege, deren DTS kleiner der aktuellen SCR ist. Diese
-	Packetdaten sind naemlich bereits dekodiert worden und
-	damit aus dem STD elementary stream buffer entfernt.
+	BufferModel::flush
 
-	Remove entries from FIFO buffer list, if their DTS is 
+	Remove all entries from FIFO buffer list, if their DTS is 
 	less than actual SCR. These packet data have been already
 	decoded and have been removed from the system target
 	decoder's elementary stream buffer.
 ******************************************************************/
 
-void buffer_flush (Buffer_struc  *buffer)
+void BufferModel::flushed ()
 {
-    Buffer_queue *pointer;
+    BufferQueue *pointer;
 
-    while (buffer->first != NULL)
+    while (first != NULL)
     {
-	  pointer = buffer->first;
-	  buffer->first = buffer->first->next;
-	  free (pointer);	
+	  pointer = first;
+	  first = first->next;
+	  delete pointer;	
     }
 }
 
 /******************************************************************
-	Buffer_Space
-	liefert den im Buffer noch freien Platz zurueck.
+	BufferModel::Space
 
 	returns free space in the buffer
 ******************************************************************/
 
-unsigned int buffer_space (Buffer_struc *buffer)
+unsigned int BufferModel::space ()
 {
     unsigned int used_bytes;
-    Buffer_queue *pointer;
+    BufferQueue *pointer;
 
-    pointer=buffer->first;
+    pointer=first;
     used_bytes=0;
 
     while (pointer != NULL)
     {
-	used_bytes += pointer->size;
-	pointer = pointer->next;
+		used_bytes += pointer->size;
+		pointer = pointer->next;
     }
 
-    return (buffer->max_size - used_bytes);
+    return (max_size - used_bytes);
 
 }
 
 /******************************************************************
 	Queue_Buffer
-	fuegt einen Eintrag (bytes, DTS) in der Bufferkette ein.
 
 	adds entry into the buffer FIFO queue
 ******************************************************************/
 
-void queue_buffer (Buffer_struc *buffer,
-					unsigned int bytes,
+void BufferModel::queued (unsigned int bytes,
 					clockticks TS)
 {
-    Buffer_queue *pointer;
+    BufferQueue *pointer;
 
-    pointer=buffer->first;
+    pointer=first;
     if (pointer==NULL)
     {
-	buffer->first = (Buffer_queue*) malloc (sizeof (Buffer_queue));
-	buffer->first->size = bytes;
-	buffer->first->next=NULL;
-	buffer->first->DTS = TS;
-    } else
+		first = new BufferQueue;
+		first->size = bytes;
+		first->next=NULL;
+		first->DTS = TS;
+    } 
+	else
     {
-	while ((pointer->next)!=NULL)
-	{
-	    pointer = pointer->next;
-	}
-    
-	pointer->next = (Buffer_queue*) malloc (sizeof (Buffer_queue));
-	pointer->next->size = bytes;
-	pointer->next->next = NULL;
-	pointer->next->DTS = TS;
+		while ((pointer->next)!=NULL)
+		{
+			pointer = pointer->next;
+		}
+
+		pointer->next = (BufferQueue*) malloc (sizeof (BufferQueue));
+		pointer->next->size = bytes;
+		pointer->next->next = NULL;
+		pointer->next->DTS = TS;
     }
+}
+
+
+void BufferModel::init ( unsigned int size)
+{
+    max_size = size;
+    first = NULL;
 }
