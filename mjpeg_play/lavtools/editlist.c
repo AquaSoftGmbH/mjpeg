@@ -440,32 +440,27 @@ int el_get_video_frame(uint8_t *vbuff, long nframe, EditList *el)
 {
    int res, n;
 
-   if(nframe<0) nframe = 0;
-   if(nframe>el->video_frames) nframe = el->video_frames;
+   if (nframe<0) nframe = 0;
+   if (nframe>el->video_frames) nframe = el->video_frames;
    n = el->frame_list[nframe];
 
    res = lav_set_video_position(el->lav_fd[N_EL_FILE(n)],N_EL_FRAME(n));
-   if(res<0)
-   {
+   if (res<0)
       mjpeg_error_exit1("Error setting video position: %s",lav_strerror());
-   }
    res = lav_read_frame(el->lav_fd[N_EL_FILE(n)],vbuff);
-   if(res<0)
-   {
+   if (res<0)
       mjpeg_error_exit1("Error reading video frame: %s",lav_strerror());
-   }
-
    return res;
 }
 
 int el_get_audio_data(uint8_t *abuff, long nframe, EditList *el, int mute)
-{
+   {
    int res, n, ns0, ns1, asamps;
 
-   if(!el->has_audio) return 0;
+   if (!el->has_audio) return 0;
 
-   if(nframe<0) nframe = 0;
-   if(nframe>el->video_frames) nframe = el->video_frames;
+   if (nframe<0) nframe = 0;
+   if (nframe>el->video_frames) nframe = el->video_frames;
    n = el->frame_list[nframe];
 
    ns1 = (double)(N_EL_FRAME(n)+1)*el->audio_rate/el->video_fps;
@@ -475,30 +470,28 @@ int el_get_audio_data(uint8_t *abuff, long nframe, EditList *el, int mute)
 
    /* if mute flag is set, don't read actually, just return zero data */
 
-   if(mute)
-   {
+   if (mute)
+      {
 	   /* TODO: A.Stevens 2000 - this looks like a potential overflow
-		  bug to me... non muted we only ever return asamps/FPS samples */
+		bug to me... non muted we only ever return asamps/FPS samples */
       memset(abuff,0,asamps*el->audio_bps);
       return asamps*el->audio_bps;
-   }
+      }
 
    if(el->last_afile!=N_EL_FILE(n) || el->last_apos!=ns0)
       lav_set_audio_position(el->lav_fd[N_EL_FILE(n)],ns0);
 
    res = lav_read_audio(el->lav_fd[N_EL_FILE(n)],abuff,asamps);
-   if(res<0)
-   {
+   if (res<0)
       mjpeg_error_exit1("Error reading audio: %s",lav_strerror());
-   }
 
-   if(res<asamps) memset(abuff+res*el->audio_bps,0,(asamps-res)*el->audio_bps);
+   if (res<asamps)
+      memset(abuff+res*el->audio_bps,0,(asamps-res)*el->audio_bps);
 
    el->last_afile = N_EL_FILE(n);
    el->last_apos  = ns1;
-
    return asamps*el->audio_bps;
-}
+   }
 
 int el_video_frame_data_format(long nframe, EditList *el)
 {

@@ -666,7 +666,6 @@ int lav_video_MJPG_chroma(lav_file_t *lav_file)
 	return lav_file->MJPG_chroma;
 }
 
-
 const char *lav_video_compressor(lav_file_t *lav_file)
 {
    video_format = lav_file->format; internal_error = 0; /* for error messages */
@@ -815,7 +814,6 @@ int lav_read_frame(lav_file_t *lav_file, uint8_t *vidbuf)
    return -1;
 }
 
-
 int lav_set_audio_position(lav_file_t *lav_file, long sample)
 {
    if(!lav_file->has_audio) return 0;
@@ -827,7 +825,7 @@ int lav_set_audio_position(lav_file_t *lav_file, long sample)
          return AVI_set_audio_position(lav_file->avi_fd,sample*lav_file->bps);
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
-         return quicktime_set_audio_position(lav_file->qt_fd,sample,0);
+         quicktime_set_audio_position(lav_file->qt_fd,sample,0);
 #endif
    }
    return -1;
@@ -859,7 +857,7 @@ long lav_read_audio(lav_file_t *lav_file, uint8_t *audbuf, long samps)
          return AVI_read_audio(lav_file->avi_fd,audbuf,samps*lav_file->bps)/lav_file->bps;
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
-	start_pos = lqt_last_audio_position(lav_file->qt_fd, 0);
+	start_pos = quicktime_audio_position(lav_file->qt_fd, 0);
 	lqt_decode_audio_track(lav_file->qt_fd, qt_audion, NULL, samps, 0);
 	last_pos = lqt_last_audio_position(lav_file->qt_fd, 0);
 	res = last_pos - start_pos;
@@ -1222,8 +1220,6 @@ const char *lav_strerror(void)
    }
 }
 
-
-
 #ifdef HAVE_LIBDV
 static int check_DV2_input(lav_file_t *lav_fd)
 {
@@ -1280,8 +1276,6 @@ ERREXIT:
    return 1;
 }
 #endif
-
-
 
 static int check_YUV420_input(lav_file_t *lav_fd)
 {
