@@ -954,23 +954,6 @@ struct CHANLISTS chanlists[] = {
     { NULL, NULL, 0 } /* EOF */
 };
 
-struct STRTAB chanlist_names[] = {
-    {  0, "us-bcast" },
-    {  1, "us-cable" },
-    {  2, "us-cable-hrc" },
-    {  3, "japan-bcast" },
-    {  4, "japan-cable" },
-    {  5, "europe-west" },
-    {  6, "europe-east" },
-    {  7, "italy" },
-    {  8, "newzealand" },
-    {  9, "australia" },
-    { 10, "ireland" },
-    { 11, "france" },
-    { 12, "china-bcast" },	
-    { -1, NULL }
-};
-
 int                chantab   = 5;
 struct CHANLIST   *chanlist  = europe_west;
 int                chancount = CHAN_COUNT(europe_west);
