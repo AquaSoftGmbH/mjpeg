@@ -161,91 +161,91 @@ void draw_line (int x0, int y0, int x1, int y1);
 int contrast_block (int x, int y, uint8_t * yuv[3], uint8_t * yuv2[3]);
 
 /* SAD functions */
-uint32_t
+unsigned long
 calc_SAD_noaccel (uint8_t * frm, 
                      uint8_t * ref, 
-                     uint32_t frm_offs, 
-                     uint32_t ref_offs, 
+                     unsigned long frm_offs, 
+                     unsigned long ref_offs, 
                      int div);
-uint32_t
+unsigned long
 calc_SAD_half_noaccel (uint8_t * frm, 
 		     uint8_t * ref, 
-		     uint32_t frm_offs, 
-		     uint32_t ref_offs, 
+		     unsigned long frm_offs, 
+		     unsigned long ref_offs, 
 		     int xx, 
 		     int yy);
 #ifdef HAVE_ASM_MMX
-uint32_t
+unsigned long
 calc_SAD_mmx     (uint8_t * frm, 
                      uint8_t * ref, 
-                     uint32_t frm_offs, 
-                     uint32_t ref_offs, 
+                     unsigned long frm_offs, 
+                     unsigned long ref_offs, 
                      int div);
                      
-uint32_t
+unsigned long
 calc_SAD_mmxe     (uint8_t * frm, 
                      uint8_t * ref, 
-                     uint32_t frm_offs, 
- 		     uint32_t ref_offs,
+                     unsigned long frm_offs, 
+ 		     unsigned long ref_offs,
                      int div);
-uint32_t
+unsigned long
 calc_SAD_half_mmx (uint8_t * frm, 
 		     uint8_t * ref, 
-		     uint32_t frm_offs, 
-		     uint32_t ref_offs, 
+		     unsigned long frm_offs, 
+		     unsigned long ref_offs, 
 		     int xx, 
 		     int yy);
-uint32_t
+unsigned long
 calc_SAD_half_mmxe (uint8_t * frm, 
 		     uint8_t * ref, 
-		     uint32_t frm_offs, 
-		     uint32_t ref_offs, 
+		     unsigned long frm_offs, 
+		     unsigned long ref_offs, 
 		     int xx, 
 		     int yy);
 #endif
 
 /* pointer on them */
-uint32_t (*calc_SAD) (uint8_t * frm, 
+unsigned long (*calc_SAD) (uint8_t * frm, 
                      uint8_t * ref, 
-                     uint32_t frm_offs, 
-                     uint32_t ref_offs, 
+                     unsigned long frm_offs, 
+                     unsigned long ref_offs, 
                      int div);
-uint32_t (*calc_SAD_half) (uint8_t * frm, 
+unsigned long (*calc_SAD_half) (uint8_t * frm, 
 		     uint8_t * ref, 
-		     uint32_t frm_offs, 
-		     uint32_t ref_offs, 
+		     unsigned long frm_offs, 
+		     unsigned long ref_offs, 
 		     int xx, 
 		     int yy);
 
 /* SAD_uv functions */
-uint32_t
+unsigned long
 calc_SAD_uv_noaccel (uint8_t * frm, 
                      uint8_t * ref, 
-                     uint32_t frm_offs, 
-                     uint32_t ref_offs, 
+                     unsigned long frm_offs, 
+                     unsigned long ref_offs, 
                      int div);
 #ifdef HAVE_X86CPU                     
                      
-uint32_t
+unsigned long
 calc_SAD_uv_mmx     (uint8_t * frm, 
                      uint8_t * ref, 
-                     uint32_t frm_offs, 
-                     uint32_t ref_offs, 
+                     unsigned long frm_offs, 
+                     unsigned long ref_offs, 
                      int div);
                      
-uint32_t
+unsigned long
 calc_SAD_uv_mmxe     (uint8_t * frm, 
                      uint8_t * ref, 
-                     uint32_t frm_offs, 
-                     uint32_t ref_offs, 
+                     unsigned long frm_offs, 
+                     unsigned long ref_offs, 
                      int div);
 #endif
 
 /* pointer on them */
-uint32_t (*calc_SAD_uv) (uint8_t * frm, 
+unsigned long (*calc_SAD_uv) (uint8_t * frm, 
                      uint8_t * ref, 
-                     uint32_t frm_offs, 
-                     uint32_t ref_offs, 
+                     unsigned long frm_offs, 
+                     unsigned long ref_offs, 
                      int div);
 
 /* Deinterlacers and pointer to them */
@@ -1338,7 +1338,8 @@ average_frames (uint8_t * ref[3], uint8_t * avg[3])
 
   for (c = 0; c < (height*width); c++)
   {
-      *(av) = (*(av++) * 7 + *(rf++)) >>3;
+      *(av) = (*(av) * 7 + *(rf++)) >>3;
+      av++;
   }
 
   /* blend U and V components */
@@ -1348,8 +1349,10 @@ average_frames (uint8_t * ref[3], uint8_t * avg[3])
 
   for (c = 0; c < (uv_height*uv_width); c++)
   {
-      *(av) = (*(av++) * 7 + *(rf++)) >>3;
-      *(av2) = (*(av2++) * 7 + *(rf2++)) >>3;
+      *(av) = (*(av) * 7 + *(rf++)) >>3;
+      av++;
+      *(av2) = (*(av2) * 7 + *(rf2++)) >>3;
+      av2++;
   }
 }
 
@@ -1440,8 +1443,8 @@ subsample_frame (uint8_t * dst[3], uint8_t * src[3])
  * halfpel-SAD-function for Y without MMX/SSE                                *
  *****************************************************************************/
 
-uint32_t
-calc_SAD_half_noaccel (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int xx, int yy)
+unsigned long
+calc_SAD_half_noaccel (uint8_t * frm, uint8_t * ref, unsigned long frm_offs, unsigned long ref_offs, int xx, int yy)
 {
   int dx = 0;
   int dy = 0;
@@ -1572,8 +1575,8 @@ calc_SAD_half_mmx (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref
  * SAD-function for Y without MMX/SSE                                        *
  *****************************************************************************/
 
-uint32_t
-calc_SAD_noaccel (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int div)
+unsigned long
+calc_SAD_noaccel (uint8_t * frm, uint8_t * ref, unsigned long frm_offs, unsigned long ref_offs, int div)
 {
   int dx = 0;
   int dy = 0;
@@ -1758,11 +1761,11 @@ calc_SAD_mmxe (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_off
  * SAD-function for U+V without MMX/SSE                                      *
  *****************************************************************************/
 
-uint32_t
+unsigned long
 calc_SAD_uv_noaccel (uint8_t * frm, 
                      uint8_t * ref, 
-                     uint32_t frm_offs, 
-                     uint32_t ref_offs, 
+                     unsigned long frm_offs, 
+                     unsigned long ref_offs, 
                      int div)
 {
   int dx, dy, Y;
@@ -2381,7 +2384,7 @@ despeckle_frame_soft (uint8_t * frame[3])
   }
 }
 
-int contrast_block(int x, int y, uint8_t * yuv1[0], uint8_t * yuv2[0])
+int contrast_block(int x, int y, uint8_t * yuv1[], uint8_t * yuv2[])
 {
     /* it doesn't seem to make sense to do a motion search 
      * on some kinds of Blocks. This seems to be the case if 
