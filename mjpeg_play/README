@@ -3,7 +3,19 @@ Documentation Files
 
 INSTALL - How to install this package
 
+Prerequisites
+=============
 
+libmovtar (optional): allows the lavtools to handle a special, simple video format based on tar.
+
+jpeg-mmx (optional): 
+Acts as a local replacement (not system-wide !) for libjpeg and allows it
+to decode JPEGs with Intels MMX instructions. 
+
+Compilation is somewhat complicated, and won't work on any other
+platforms than Linux/Intel ! 
+
+Other libraries are possible, more to be documented... 
 
 lavtools: Linux Audio and Video TOOLS for Motion JPEG and MPEG
 ==============================================================
@@ -110,7 +122,7 @@ You may wish to try  using your favourite MPEG 1 layer 3 "MP3"
 encoder for better quality results.  However, make sure you 
 use constant bit-rate  and turn of any extensions to the format.  
 I have no idea how many players actually cope with layer 3.  Drop
-as@comlab.ox.ac.uk an email if you get it to work!
+andrew.stevens@nexgo.de an email if you get it to work!
 
 * The mplex directory
 
@@ -157,5 +169,5 @@ Although little bits have been done by everyone the main work was
 roughly as follows:
 
 lav* : Rainer@Johanni.de and Gernot Ziegler <gz@lysator.liu.se>
-mpeg2enc mplex : Andrew.Stevens@comlab.ox.ac.uk
+mpeg2enc mplex : Andrew.Stevens@nexgo.de
 libmjpeg: Gernot Ziegler <gz@lysator.liu.se>
