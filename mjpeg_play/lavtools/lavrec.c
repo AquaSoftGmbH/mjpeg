@@ -7,6 +7,12 @@
  *               &  Ronald Bultje   <rbultje@ronald.bitfreak.net>
  *               &  many others
  *
+ * A library for recording MJPEG video from hardware MJPEG
+ * video devices such as the Pinnacle/Miro DC10(+), Iomega
+ * Buz, the Linux Media Labs LML33, the Matrox Marvel G200,
+ * Matrox Marvel G400 and the Rainbow Runner G-series.
+ * Can also be used for video-capture from BTTV-devices
+ *
  * Usage: lavrec [options] filename [filename ...]
  * where options are as follows:
  *
@@ -168,6 +174,7 @@ static int verbose;
 static int wait_for_start = 0;
 static char input_source;
 static pthread_cond_t state_cond;
+static int cond_done = 0;
 static pthread_mutex_t state_mutex;
 
 static void Usage(char *progname)
@@ -402,26 +409,43 @@ static void *input_thread(void *arg)
 
   do
   {
-    pthread_mutex_lock(&state_mutex);
-    pthread_cond_wait(&state_cond, &state_mutex);
-    pthread_mutex_unlock(&state_mutex);
-    if (state == LAVREC_STATE_PAUSED)
+    while (!cond_done)
     {
-      if (!info->single_frame) printf("Press enter for more capturing>");
+      pthread_mutex_lock(&state_mutex);
+      pthread_cond_wait(&state_cond, &state_mutex);
+      pthread_mutex_unlock(&state_mutex);
+    }
+    cond_done = 0;
+    if (state == LAVREC_STATE_PAUSED || state == LAVREC_STATE_RECORDING)
+    {
+      if (!info->single_frame && wait_for_start)
+      {
+        if (state == LAVREC_STATE_PAUSED)
+          printf("Press enter to start recording>");
+        else
+          printf("Press enter to pause recording\n");
+      }
       fflush(stdout);
       if (!wait_for_start && !info->single_frame)
       {
-        lavrec_start(info);
-        break;
+        if (state == LAVREC_STATE_PAUSED)
+        {
+          lavrec_start(info);
+          wait_for_start = 1; /* enable pause from now on */
+        }
       }
       else
       {
-        while (show_stats == 0)
+        int bla = show_stats;
+        while (show_stats == bla)
         {
           usleep(10000);
           if (read(0, input_buffer, sizeof(input_buffer))>0)
           {
-            lavrec_start(info);
+            if (state == LAVREC_STATE_PAUSED)
+              lavrec_start(info);
+            else /* now recording - so stop */
+              lavrec_pause(info);
             break;
           }
         }
@@ -429,6 +453,7 @@ static void *input_thread(void *arg)
     }
   }
   while (state != LAVREC_STATE_STOP);
+  mjpeg_debug("Input thread finished\n");
   pthread_exit(NULL);
 }
 
@@ -439,18 +464,12 @@ static void statechanged(int new)
   switch (new)
   {
   case LAVREC_STATE_PAUSED:
-    show_stats = 0;
-    if (wait_for_start)
-    {
-      pthread_mutex_lock(&state_mutex);
-      pthread_cond_broadcast(&state_cond);
-      pthread_mutex_unlock(&state_mutex);
-    }
-    else
-      lavrec_start(info);
-    break;
   case LAVREC_STATE_RECORDING:
-    show_stats = 1;
+    show_stats = (new==LAVREC_STATE_PAUSED?0:1);
+    cond_done = 1;
+    pthread_mutex_lock(&state_mutex);
+    pthread_cond_broadcast(&state_cond);
+    pthread_mutex_unlock(&state_mutex);
     break;
   case LAVREC_STATE_STOP:
     show_stats = -1;
@@ -903,19 +922,17 @@ int main(int argc, char **argv)
   info->output_statistics = output_stats;
   check_command_line_options(argc, argv);
   lavrec_print_properties();
-  if (wait_for_start)
-  {
-    pthread_mutex_init(&state_mutex, NULL);
-    pthread_cond_init(&state_cond, NULL);
-    pthread_create(&msg_thr, NULL, input_thread, NULL);
-  }
+
+  pthread_mutex_init(&state_mutex, NULL);
+  pthread_cond_init(&state_cond, NULL);
+  pthread_create(&msg_thr, NULL, input_thread, NULL);
+
   lavrec_main(info);
   lavrec_busy(info);
   lavrec_free(info);
-  if (wait_for_start)
-  {
-    pthread_cancel(msg_thr);
-    pthread_join(msg_thr, NULL);
-  }
+
+  pthread_cancel(msg_thr);
+  pthread_join(msg_thr, NULL);
+
   return 0;
 }

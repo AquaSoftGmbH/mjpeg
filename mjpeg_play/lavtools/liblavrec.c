@@ -7,6 +7,12 @@
  *               &  Ronald Bultje   <rbultje@ronald.bitfreak.net>
  *               &  many others
  * 
+ * A library for recording MJPEG video from hardware MJPEG
+ * video devices such as the Pinnacle/Miro DC10(+), Iomega
+ * Buz, the Linux Media Labs LML33, the Matrox Marvel G200,
+ * Matrox Marvel G400 and the Rainbow Runner G-series.
+ * Can also be used for video-capture from BTTV-devices
+ * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -542,7 +548,7 @@ static int lavrec_output_video_frame(lavrec_t *info, char *buff, long size, long
    }
 
    /* Check if it is time to exit */
-   if (settings->state != LAVREC_STATE_RECORDING) 
+   if (settings->state == LAVREC_STATE_STOP) 
       lavrec_msg(LAVREC_MSG_INFO, info, "Signal caught, stopping recording");
    if (settings->stats->num_frames * settings->spvf > info->record_time && info->record_time >= 0)
    {
@@ -566,7 +572,7 @@ static int lavrec_output_video_frame(lavrec_t *info, char *buff, long size, long
    }
 
    /* If a file is open and we should open a new one or exit, close current file */
-   if (settings->output_status > 0 && (OpenNewFlag || settings->state != LAVREC_STATE_RECORDING))
+   if (settings->output_status > 0 && (OpenNewFlag || settings->state == LAVREC_STATE_STOP))
    {
       if (info->audio_size)
       {
@@ -586,7 +592,7 @@ static int lavrec_output_video_frame(lavrec_t *info, char *buff, long size, long
          settings->video_file_old = settings->video_file;
          settings->video_file = NULL;
          settings->num_frames_old = settings->stats->num_frames;
-         if (settings->state != LAVREC_STATE_RECORDING)
+         if (settings->state == LAVREC_STATE_STOP)
          {
             settings->output_status = 3;
             return 1;
@@ -605,7 +611,7 @@ static int lavrec_output_video_frame(lavrec_t *info, char *buff, long size, long
             return 0;
          }
          settings->video_file = NULL;
-         if (settings->state != LAVREC_STATE_RECORDING) return 0;
+         if (settings->state == LAVREC_STATE_STOP) return 0;
       }
    }
 
@@ -1827,6 +1833,31 @@ static void lavrec_record(lavrec_t *info)
       return;
 #endif
    }
+
+#ifndef IRIX
+   /* stop streaming capture */
+   if (info->software_encoding)
+   {
+      x = 0;
+      if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &x) < 0)
+      {
+         lavrec_msg(LAVREC_MSG_WARNING, info,
+            "Error stopping streaming capture: %s", (char *)sys_errlist[errno]);
+         //lavrec_change_state(info, LAVREC_STATE_STOP);
+      }
+   }
+   else
+   {
+      x = -1;
+      if (ioctl(settings->video_fd, MJPIOC_QBUF_CAPT, &x) < 0)
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Error resetting buffer-queue: %s", (char *)sys_errlist[errno]);
+      }
+   }
+#else
+   fprintf(stderr, "Can't stop capturing in IRIX !\n");
+#endif
 }
 
 
@@ -1858,7 +1889,6 @@ static void lavrec_recording_cycle(lavrec_t *info)
 
 static void *lavrec_capture_thread(void *arg)
 {
-   int n;
    lavrec_t *info = (lavrec_t*)arg;
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
@@ -1903,31 +1933,6 @@ static void *lavrec_capture_thread(void *arg)
    }
 #else
    fprintf(stderr, "Can't set tuner in IRIX !\n");
-#endif
-
-#ifndef IRIX
-   /* stop streaming capture */
-   if (info->software_encoding)
-   {
-      n = 0;
-      if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &n) < 0)
-      {
-         lavrec_msg(LAVREC_MSG_WARNING, info,
-            "Error stopping streaming capture: %s", (char *)sys_errlist[errno]);
-         //lavrec_change_state(info, LAVREC_STATE_STOP);
-      }
-   }
-   else
-   {
-      n = -1;
-      if (ioctl(settings->video_fd, MJPIOC_QBUF_CAPT, &n) < 0)
-      {
-         lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error resetting buffer-queue: %s", (char *)sys_errlist[errno]);
-      }
-   }
-#else
-   fprintf(stderr, "Can't stop capturing in IRIX !\n");
 #endif
 
    /* and at last, we need to get rid of the video device */
