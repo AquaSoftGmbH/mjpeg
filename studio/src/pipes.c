@@ -187,7 +187,21 @@ static int read_lav2yuv_data(gint source)
          else if (use_yuvscaler_pipe)
             n = pipe_out[YUVSCALER];
          else
-            n = pipe_out[MPEG2ENC];
+         {
+            extern int studio_enc_format;
+            switch (studio_enc_format)
+            {
+               case STUDIO_ENC_FORMAT_MPEG:
+                  n = pipe_out[MPEG2ENC];
+                  break;
+               case STUDIO_ENC_FORMAT_DIVX:
+                  n = pipe_out[YUV2DIVX];
+                  break;
+               case STUDIO_ENC_FORMAT_MJPEG:
+                  /* TODO */
+                  break;
+            }
+         }
 
          y4m12_write_header (l2y_y4m12, n);
       }
@@ -223,7 +237,21 @@ static int read_lav2yuv_data(gint source)
          else if (use_yuvscaler_pipe)
             n = pipe_out[YUVSCALER];
          else
-            n = pipe_out[MPEG2ENC];
+         {
+            extern int studio_enc_format;
+            switch (studio_enc_format)
+            {
+               case STUDIO_ENC_FORMAT_MPEG:
+                  n = pipe_out[MPEG2ENC];
+                  break;
+               case STUDIO_ENC_FORMAT_DIVX:
+                  n = pipe_out[YUV2DIVX];
+                  break;
+               case STUDIO_ENC_FORMAT_MJPEG:
+                  /* TODO */
+                  break;
+            }
+         }
 
          y4m12_write_frame (l2y_y4m12, n);
 
@@ -287,7 +315,7 @@ static void callback_pipes(gpointer data, gint source,
       /* close pipes/app */
       close(pipe_in[number]);
       if (number != MP2ENC && number != MPEG2ENC && number != YUVSCALER && number != YUVPLAY &&
-         number != YUVPLAY_E && number != YUV2LAV && number != YUVDENOISE) {
+         number != YUVPLAY_E && number != YUV2LAV && number != YUVDENOISE && number != YUV2DIVX) {
          close(pipe_out[number]);
       }
       close_pipe(number);
@@ -301,7 +329,21 @@ static void callback_pipes(gpointer data, gint source,
          else if (use_yuvscaler_pipe)
             close(pipe_out[YUVSCALER]);
          else
-            close(pipe_out[MPEG2ENC]);
+         {
+            extern int studio_enc_format;
+            switch (studio_enc_format)
+            {
+               case STUDIO_ENC_FORMAT_MPEG:
+                  close(pipe_out[MPEG2ENC]);
+                  break;
+               case STUDIO_ENC_FORMAT_DIVX:
+                  close(pipe_out[YUV2DIVX]);
+                  break;
+               case STUDIO_ENC_FORMAT_MJPEG:
+                  /* TODO */
+                  break;
+            }
+         }
 
          if (use_yuvplay_pipe)
             close(pipe_out[YUVPLAY]);
@@ -310,10 +352,36 @@ static void callback_pipes(gpointer data, gint source,
          if (use_yuvscaler_pipe)
             close(pipe_out[YUVSCALER]);
          else
-            close(pipe_out[MPEG2ENC]);
+         {
+            extern int studio_enc_format;
+            switch (studio_enc_format)
+            {
+               case STUDIO_ENC_FORMAT_MPEG:
+                  close(pipe_out[MPEG2ENC]);
+                  break;
+               case STUDIO_ENC_FORMAT_DIVX:
+                  close(pipe_out[YUV2DIVX]);
+                  break;
+               case STUDIO_ENC_FORMAT_MJPEG:
+                  /* TODO */
+                  break;
+            }
+         }
       }
       if (number == YUVSCALER) {
-         close(pipe_out[MPEG2ENC]);
+         extern int studio_enc_format;
+         switch (studio_enc_format)
+         {
+            case STUDIO_ENC_FORMAT_MPEG:
+               close(pipe_out[MPEG2ENC]);
+               break;
+            case STUDIO_ENC_FORMAT_DIVX:
+               close(pipe_out[YUV2DIVX]);
+               break;
+            case STUDIO_ENC_FORMAT_MJPEG:
+               /* TODO */
+               break;
+         }
       }
       if (number == LAVPIPE) {
          if (preview_or_render)
@@ -323,7 +391,7 @@ static void callback_pipes(gpointer data, gint source,
       }
 
       /* trigger callback function for each specific app */
-      if (number == MPEG2ENC || number == MP2ENC || number == MPLEX) {
+      if (number == MPEG2ENC || number == MP2ENC || number == MPLEX || number == YUV2DIVX) {
          continue_encoding();
       }
       else if (number == LAV2YUV_S) {
@@ -394,6 +462,7 @@ static void callback_pipes(gpointer data, gint source,
                case MPLEX:
                case YUVSCALER:
                case YUVPLAY:
+               case YUV2DIVX:
                   lavencode_callback(number, temp);
                   break;
                case LAV2YUV_S:
@@ -493,29 +562,45 @@ void start_pipe_command(char *command[], int number)
          if (number == LAV2WAV) {
             n = dup2(pipe_out[MP2ENC],1); /* writes lav2wav directly to mp2enc */
          }
-#if 0
-         else if (number == LAV2YUV) {
-            if (use_yuvdenoise_pipe)
-               n = dup2(pipe_out[YUVDENOISE],1); /* writes lav2yuv directly to yuvdenoise */
-            else if (use_yuvscaler_pipe)
-               n = dup2(pipe_out[YUVSCALER],1); /* writes lav2yuv directly to yuvscaler */
-            else
-               n = dup2(pipe_out[MPEG2ENC],1); /* writes lav2yuv directly to mpeg2enc */
-         }
-#endif
          else if (number == LAV2YUV) {
             close(spipe[0]);
             n = dup2(spipe[1],1);
             close(spipe[1]);
          }
          else if (number == YUVSCALER) {
-            n = dup2(pipe_out[MPEG2ENC],1); /* writes yuvscaler directly to mpeg2enc */
+            extern int studio_enc_format;
+            switch (studio_enc_format)
+            {
+               case STUDIO_ENC_FORMAT_MPEG:
+                  n = dup2(pipe_out[MPEG2ENC],1); /* writes yuvscaler directly to mpeg2enc */
+                  break;
+               case STUDIO_ENC_FORMAT_DIVX:
+                  n = dup2(pipe_out[YUV2DIVX],1); /* writes yuvscaler directly to yuv2divx */
+                  break;
+               case STUDIO_ENC_FORMAT_MJPEG:
+                  /* TODO */
+                  break;
+            }
          }
          else if (number == YUVDENOISE) {
            if (use_yuvscaler_pipe)
               n = dup2(pipe_out[YUVSCALER],1); /* writes yuvdenoise directly to yuvscaler */
            else
-              n = dup2(pipe_out[MPEG2ENC],1); /* writes yuvdenoise directly to mpeg2enc */
+           {
+              extern int studio_enc_format;
+              switch (studio_enc_format)
+              {
+                 case STUDIO_ENC_FORMAT_MPEG:
+                    n = dup2(pipe_out[MPEG2ENC],1); /* writes yuvdenoise directly to mpeg2enc */
+                    break;
+                 case STUDIO_ENC_FORMAT_DIVX:
+                    n = dup2(pipe_out[YUV2DIVX],1); /* writes yuvdenoise directly to yuv2divx */
+                    break;
+                 case STUDIO_ENC_FORMAT_MJPEG:
+                    /* TODO */
+                    break;
+              }
+           }
          }
          else if (number == LAVPIPE) {
             if (preview_or_render)
