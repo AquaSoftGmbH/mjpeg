@@ -4,8 +4,8 @@ AC_PREREQ(2.57)
 AC_CONFIG_SRCDIR([lavtools/lav_io.c])
 
 MJPEG_MAJOR_VERSION=1
-MJPEG_MINOR_VERSION=6
-MJPEG_MICRO_VERSION=3
+MJPEG_MINOR_VERSION=7
+MJPEG_MICRO_VERSION=0
 MJPEG_VERSION=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION.$MJPEG_MICRO_VERSION
 
 AC_CONFIG_HEADERS([config.h])
@@ -42,13 +42,17 @@ AC_ARG_ENABLE(zalpha,
                              [include MPEG Z/Alpha support in mplex (see
                               http://www.geofront.se/products_software_mza.php)]))
 AC_ARG_WITH(quicktime,
-            AC_HELP_STRING([--without-quicktime],
-                           [Do not use libquicktime.]),
+            AC_HELP_STRING([--without-quicktime], [Do not use libquicktime.]),
             [], [with_quicktime=yes])
 AC_ARG_WITH(dv,
-            AC_HELP_STRING([--without-dv],
-                           [Do not use libdv.]),
+            AC_HELP_STRING([--without-dv], [Do not use libdv.]),
             [], [with_dv=yes])
+AC_ARG_WITH(png,
+            AC_HELP_STRING([--without-png], [Do not use libpng.]),
+            [], [with_png=yes])
+AC_ARG_WITH(jpeg-mmx,
+            AC_HELP_STRING([--with-jpeg-mmx=PFX],
+                           [Prefix where jpeg-mmx is installed (optional).]))
 
 
 AC_GNU_SOURCE
@@ -107,10 +111,11 @@ AC_CHECK_FUNCS([posix_memalign memalign fmax lround])
 
 #maddog:  FIX UP?????????????
 AC_CHECK_FUNC(getopt_long,
-              [AC_DEFINE(HAVE_GETOPT_LONG,1,long getopt support)],
+              [AC_DEFINE(HAVE_GETOPT_LONG, 1, [long getopt support])],
               [ # FreeBSD and BSD/OS have a gnugetopt library for this:
-               AC_CHECK_LIB([gnugetopt],[getopt_long],
-                            [AC_DEFINE(HAVE_GETOPT_LONG,1,getopt support)
+               AC_CHECK_LIB([gnugetopt], [getopt_long],
+                            [AC_DEFINE(HAVE_GETOPT_LONG, 1,
+                                       [long getopt support])
                              LIBGETOPT_LIB="-lgnugetopt"])
               ])
 AC_SUBST(LIBGETOPT_LIB)
@@ -139,18 +144,6 @@ case $host in
 esac
 
 dnl *********************************************************************
-dnl FreeBSD and OpenBSD have neither -lpthread nor integrated pthreads in libc.
-dnl Instead -pthread is used to the compiler/linker to get pthreads working right.
-dnl *********************************************************************
-case $host in
-	*-*-*freebsd* | *-*-openbsd*)
-	   CFLAGS="$CFLAGS -pthread"
-	   CXXFLAGS="$CXXFLAGS -pthread"
-	   ;;
-esac
-
-
-dnl *********************************************************************
 dnl Some host-specific tweaks:
 dnl  o OS-X/Darwin needs "-no-cpp-precomp" to avoid compile errors.
 dnl *********************************************************************
@@ -169,7 +162,7 @@ case $host in
   *-*-linux*)
   AC_CHECK_HEADER(linux/videodev.h,
                   [have_video4linux=true
-                   AC_DEFINE(HAVE_V4L,1,
+                   AC_DEFINE(HAVE_V4L, 1,
 		             [Building for Linux - using the video4linux API])],
                   [AC_MSG_ERROR([videodev.h not found - please install the linux kernel headers])])
    ;;
@@ -177,16 +170,26 @@ case $host in
   AC_MSG_WARN([Did not find linux platform - video4linux functionality will be disabled])
    ;;
 esac
+AM_CONDITIONAL(HAVE_V4L, test x$have_video4linux = xtrue)
+
 
 dnl *********************************************************************
-dnl Check for the pthread lib
-dnl
-AC_SUBST(PTHREAD_LIBS)
-AC_CHECK_LIB(pthread, pthread_create,
-             [PTHREAD_LIBS="-lpthread" 
-              AC_DEFINE(HAVE_LIBPTHREAD, 1, [Posix pthreads lib present])
-              have_pthread=true],
-             [have_pthread=false])
+dnl Figure out how to build with POSIX threads.
+dnl (Creates PTHREAD_LIBS, PTHREAD_CFLAGS, PTHREAD_CC,
+dnl  and defines HAVE_PTHREAD.)
+dnl *********************************************************************
+dnl ACX_PTHREAD([have_pthread=true
+dnl              AC_DEFINE(HAVE_LIBPTHREAD, 1, [Posix threads are available])],
+dnl             [have_pthread=false])
+ACX_PTHREAD
+dnl maddog: The following matches the original pthread-checking behavior
+dnl         in this script, i.e. "If a CFLAG is necessary, use it for 
+dnl         *everything*."  Hopefully, any CFLAGs will eventually go away.
+dnl         The other option is to stick PTHREAD_CFLAGS/CC in Makefile.am....
+CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+CXXFLAGS="$CXXFLAGS $PTHREAD_CFLAGS"
+CC="$PTHREAD_CC"
+
 
 oldLIBS="$LIBS"
 LIBS="$LIBS $PTHREAD_LIBS"
@@ -250,21 +253,27 @@ dnl Check for the libquicktime library
 dnl *********************************************************************
 AC_SUBST(QUICKTIME_LIBS)
 AC_SUBST(QUICKTIME_CFLAGS)
+dnl have_quicktime=false
+dnl if test x$with_quicktime != xno ; then
+dnl   AC_PATH_PROG(LQT_CONFIG, lqt-config, no)
+dnl   AC_MSG_CHECKING([for libquicktime])
+dnl   if test x"$LQT_CONFIG" = x"no" ; then
+dnl     AC_MSG_RESULT(no)
+dnl   else
+dnl     have_quicktime=true
+dnl     QUICKTIME_LIBS=`$LQT_CONFIG --libs`
+dnl     QUICKTIME_CFLAGS=`$LQT_CONFIG --cflags`
+dnl     AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime is present])
+dnl     AC_MSG_RESULT(yes)
+dnl   fi
+dnl fi
 have_quicktime=false
 if test x$with_quicktime != xno ; then
-  AC_PATH_PROG(LQT_CONFIG, lqt-config, no)
-  AC_MSG_CHECKING([for libquicktime])
-  if test x"$LQT_CONFIG" = x"no" ; then
-    AC_MSG_RESULT(no)
-  else
-    have_quicktime=true
-    QUICKTIME_LIBS=`$LQT_CONFIG --libs`
-    QUICKTIME_CFLAGS=`$LQT_CONFIG --cflags`
-    AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime is present])
-    AC_MSG_RESULT(yes)
-  fi
+  AC_PATH_LIB_LIBCONFIG
+  AC_PATH_LIB(quicktime, [], [], [lqt-config], [],
+              [have_quicktime=true
+               AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime is present])])
 fi
-
 
 
 dnl *********************************************************************
@@ -272,8 +281,11 @@ dnl Check for PNG library
 dnl *********************************************************************
 AC_SUBST(PNG_LIBS)
 AC_SUBST(PNG_CFLAGS)
-PKG_CHECK_MODULES(PNG, [libpng], [have_png=true], [have_png=false])
-
+have_png=false
+if test x$with_png != xno ; then
+  PKG_CHECK_MODULES(PNG, [libpng], [have_png=true], [have_png=false])
+fi
+AM_CONDITIONAL(HAVE_PNG, test x$have_png = xtrue)
 
 
 dnl *********************************************************************
@@ -294,23 +306,37 @@ fi
 
 
 dnl *********************************************************************
-dnl  Lets find where xwindows lives on this machine. Punt if not found.
+dnl  Look for X Window System.
+dnl *********************************************************************
 AC_PATH_XTRA
 
-have_x=false
-if test x"-DX_DISPLAY_MISSING" = x"$X_CFLAGS"; then
-  AC_MSG_WARN(can not find X11)
-else
-  have_x=true
-  AC_DEFINE(HAVE_X, 1, [Whether XFree86 is available])
-fi
-AM_CONDITIONAL(HAVE_X, test x$have_x = xtrue)
+dnl maddog: the old way...
+dnl have_x=false
+dnl if test x"-DX_DISPLAY_MISSING" = x"$X_CFLAGS"; then
+dnl   AC_MSG_WARN(can not find X11)
+dnl else
+dnl   have_x=true
+dnl   AC_DEFINE(HAVE_X, 1, [Whether XFree86 is available])
+dnl fi
+dnl AM_CONDITIONAL(HAVE_X, test x$have_x = xtrue)
+
+dnl maddog: a better way...
+dnl if test x"$no_x" = xyes ; then
+dnl if test x"$have_x" != xyes ; then
+dnl   AC_MSG_WARN([can not find X11])
+dnl else
+dnl   AC_DEFINE(HAVE_X, 1, [Whether XFree86 is available])
+dnl fi
+dnl AM_CONDITIONAL(HAVE_X, test x$no_x != xyes)
+
+dnl maddog:  even better -- all that other stuff was unnecessary.
+AM_CONDITIONAL(HAVE_X, test x$have_x = xyes)
 
 AC_SUBST(X_CFLAGS)
 AC_SUBST(X_PRE_LIBS)
 AC_SUBST(X_EXTRA_LIBS)
 AC_SUBST(X_LIBS)
-AC_SUBST(x_libraries)
+dnl AC_SUBST(x_libraries)
 
 dnl ********************************************************************
 dnl Check to see if __progname is provided by the system
@@ -343,6 +369,7 @@ AM_PATH_GTK(1.2.0,
             [have_gtk=true
              AC_DEFINE(HAVE_GTK, 1, [Gtk library present]) ],
             [have_gtk=false])
+AM_CONDITIONAL(HAVE_GTK, test x$have_gtk = xtrue)
 
 dnl ********************************************************************
 dnl Check for the SDL library (for software playback)
@@ -352,6 +379,7 @@ AM_PATH_SDL(1.1.3,
             [have_sdl=true
              AC_DEFINE(HAVE_SDL, 1, [SDL library present]) ],
             [have_sdl=false])
+AM_CONDITIONAL(HAVE_SDL, test x$have_sdl = xtrue)
 
 dnl ********************************************************************
 dnl Test for MMX support if an IA32 platform.  If on a PPC then look for
@@ -504,6 +532,7 @@ use_zalpha=false
 if test "x$enable_zalpha" = "xyes" ; then
   use_zalpha=true
 fi
+AM_CONDITIONAL(HAVE_ZALPHA, test x$use_zalpha = xtrue)
 
 dnl **********************************************************************
 dnl All the conditional stuff for the Makefiles
@@ -513,10 +542,6 @@ AM_CONDITIONAL(HAVE_ASM_NASM, test x$have_asm_nasm = xtrue)
 AM_CONDITIONAL(HAVE_X86CPU, test x$have_x86cpu = xtrue)
 AM_CONDITIONAL(HAVE_PPCCPU, test x$have_ppccpu = xtrue)
 AM_CONDITIONAL(HAVE_ALTIVEC, test x$have_altivec = xtrue)
-AM_CONDITIONAL(HAVE_GTK, test x$have_gtk = xtrue)
-AM_CONDITIONAL(HAVE_SDL, test x$have_sdl = xtrue)
-AM_CONDITIONAL(HAVE_V4L, test x$have_video4linux = xtrue)
-AM_CONDITIONAL(HAVE_PNG, test x$have_png = xtrue)
 have_v4l_or_sdl=false
 if test x$have_video4linux = xtrue; then
   have_v4l_or_sdl=true
@@ -526,13 +551,14 @@ else
   fi
 fi
 AM_CONDITIONAL(HAVE_V4L_OR_SDL, test x$have_v4l_or_sdl = xtrue)
-AM_CONDITIONAL(HAVE_ZALPHA, test x$use_zalpha = xtrue)
 
 dnl *********************************************************************
 dnl Check for what warnings we want gcc to use and adjust the CFLAGS
 dnl as needed. This only works for GCC.
 dnl We do this last as it can screw up library detection etc...
 dnl 
+
+dnl maddog:  check out AC-COMPILE-WARNINGS ???????
 
 CFLAGS="$ARCHFLAGS $CFLAGS"
 CXXFLAGS="$ARCHFLAGS $CXXFLAGS"

@@ -209,7 +209,7 @@ yuvcorrect_tune_SOURCES = yuvcorrect_tune.c yuvcorrect_functions.c
 yuvcorrect_tune_LDADD = $(LIBMJPEGUTILS) $(LIBM_LIBS)
 
 yuvplay_SOURCES = yuvplay.c
-yuvplay_LDADD = $(SDL_LIBS) $(PTHREAD_LIBS) $(LIBMJPEGUTILS)
+yuvplay_LDADD = $(SDL_LIBS) $(LIBMJPEGUTILS)
 
 ppmtoy4m_SOURCES = ppmtoy4m.c colorspace.c subsample.c
 ppmtoy4m_LDADD = $(LIBMJPEGUTILS)
