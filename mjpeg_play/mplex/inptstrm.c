@@ -312,8 +312,7 @@ void get_info_video (char *video_file,
 				AU_pict_data = 0;
 				break;
 			case SEQUENCE_END:
-				stream_length = bitcount (&video_bs);
-				access_unit.length = ((stream_length - AU_start)>>3);
+				access_unit.length = ((stream_length - AU_start)>>3)+4;
 				access_unit.end_seq = 1;
 				VectorAppend( vaunits, &access_unit );
 				video_info->avg_frames[access_unit.type-1]+=access_unit.length;
@@ -322,7 +321,7 @@ void get_info_video (char *video_file,
 				if( !end_bs(&video_bs) && 
 					getbits (&video_bs, 32) ==SEQUENCE_HEADER )
 				{
-					stream_length = bitcount (&video_bs);
+					stream_length = bitcount (&video_bs)-32LL;
 					AU_start = stream_length;
 					AU_hdr = SEQUENCE_HEADER;
 					AU_pict_data = 0;
