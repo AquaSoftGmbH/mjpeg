@@ -379,7 +379,7 @@ void SeqEncoder::Init()
     next_split_point = BITCOUNT_OFFSET + seq_split_length;
 	ratecontroller.InitSeq(false);
 	
-    ss.Init( );
+    ss.Init( reader.NumberOfFrames()-1 );
 	mjpeg_debug( "Split len = %lld", seq_split_length );
 }
 

@@ -35,7 +35,7 @@ StreamState::StreamState( EncoderParams &_encparams ) :
 {
 }
 
-void StreamState::Init(  )
+void StreamState::Init( int num_last_frame )
 {
     frame_num = 0;
     s_idx = 0;
@@ -44,8 +44,9 @@ void StreamState::Init(  )
     gop_length = 0;             // Forces new GOP start 1st sequence.
     seq_start_frame = 0;
     gop_start_frame = 0;
-    frame_num = 0;
+    end_seq = false;
     GopStart(  );
+    end_seq = frame_num == num_last_frame; // Catch single frame mpegs
 }
 
 

@@ -36,7 +36,7 @@ class StreamState
 {
 public:
     StreamState( EncoderParams &encparams );
-    void Init(  );
+    void Init( int num_last_frame );
 
     void Next( int num_last_frame,   bool seq_split );
     
