@@ -647,7 +647,7 @@ void Multiplexor::Init()
 	 formats. */
 	   
 	 
-	dmux_rate = static_cast<int>(1.015 * nominal_rate_sum);
+	dmux_rate = static_cast<int>(1.025 * nominal_rate_sum);
 	dmux_rate = (dmux_rate/50 + 25)*50/8;
 	
 	mjpeg_info ("rough-guess multiplexed stream data rate    : %07d", dmux_rate*8 );
