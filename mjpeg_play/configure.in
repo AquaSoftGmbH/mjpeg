@@ -59,6 +59,9 @@ AC_C_BIGENDIAN
 AC_C_CONST
 AC_C_INLINE
 
+dnl configure AS and ASFLAGS
+AM_PROG_AS
+
 dnl Initialize libtool
 AM_PROG_LIBTOOL
 
