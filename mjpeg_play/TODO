@@ -14,6 +14,10 @@ a look at the source code for vcdimager!
 	stuff like "unsigned char" replaced with appropriate types from
 	stdint.h via utils/mjpeg_types.h.
 
+- Need to tidy the mplex code.
+
+- Need to test and build scripts for in-line multiplexing.
+
 - The filtering / decimation code in the lav* utilities is now redundant
   with yuvscale in place... it should be removed once we're happy with
   yuvscale.

@@ -54,5 +54,24 @@
 #define Y4M_SAR_PAL_SVCD_4_3   {  59, 36 }
 #define Y4M_SAR_PAL_SVCD_16_9  {  59, 27 }
 
+#define Y4M_SAR_MPEG1_1 Y4M_SAR_SQUARE
+#define Y4M_SAR_MPEG1_2  { 10000, 6735 }
+#define Y4M_SAR_MPEG1_3  { 10000, 7031 } /* Anamorphic 16:9 PAL */
+#define Y4M_SAR_MPEG1_4  { 10000, 7615 }
+#define Y4M_SAR_MPEG1_5  { 10000, 8055 }
+#define Y4M_SAR_MPEG1_6  { 10000, 8437 } /* Anamorphic 16:9 NTSC */
+#define Y4M_SAR_MPEG1_7  { 10000, 8935 } 
+#define Y4M_SAR_MPEG1_8  { 10000, 9375 } /* PAL/SECAM 4:3 */
+#define Y4M_SAR_MPEG1_9  { 10000, 9815 }
+#define Y4M_SAR_MPEG1_10 { 10000, 10255 }
+#define Y4M_SAR_MPEG1_11 { 10000, 10695 }
+#define Y4M_SAR_MPEG1_12 { 10000, 11250 } /* NTSC 4:3 */
+#define Y4M_SAR_MPEG1_13 { 10000, 11575 }
+#define Y4M_SAR_MPEG1_14 { 10000, 12015 }
+
+#define Y4M_DAR_MPEG2_1 { 1, 1}
+#define Y4M_DAR_MPEG2_2 { 4, 3 }
+#define Y4M_DAR_MPEG2_3 { 16, 9 }
+#define Y4M_DAR_MPEG2_4 { 221, 100 }
 
 #endif __YUV4MPEG_INTERN_H__

@@ -73,7 +73,7 @@ extern const y4m_ratio_t y4m_fps_60;         /* 60fps                      */
 /************************************************************************
  *  useful standard sample (pixel) aspect ratios
  ************************************************************************/
-extern const y4m_ratio_t y4m_sar_UNKNOWN;
+extern const y4m_ratio_t y4m_sar_UNKNOWN; 
 extern const y4m_ratio_t y4m_sar_SQUARE;        /* square pixels */
 extern const y4m_ratio_t y4m_sar_NTSC_CCIR601;  /* 525-line (NTSC) Rec.601 */
 extern const y4m_ratio_t y4m_sar_NTSC_16_9;     /* 16:9 NTSC/Rec.601       */

@@ -49,7 +49,7 @@ const mpeg_framerate_code_t mpeg_num_framerates = MPEG_NUM_RATES;
 static const char *
 framerate_definitions[MPEG_NUM_RATES] =
 {
-  "illegal", 
+   "illegal", 
   "24000.0/1001.0 (NTSC 3:2 pulldown converted FILM)",
   "24.0 (NATIVE FILM)",
   "25.0 (PAL/SECAM VIDEO / converted FILM)",
@@ -74,29 +74,28 @@ static const char *mpeg1_aspect_ratio_definitions[] =
 	"1:0.9815",
 	"1:1.0255",
 	"1:1:0695",
-	"1:1.125  (4:3 NTSC for 720x480/352x240 images)",
-	"1:1575",
+	"1:1.1250 (4:3 NTSC for 720x480/352x240 images)",
+	"1:1.1575",
 	"1:1.2015"
 };
 
-static const double mpeg1_aspect_ratios[] =
+static const y4m_ratio_t mpeg1_aspect_ratios[] =
 {
-	1.0,
-	0.6735,
-	0.7031,
-	0.7615,
-	0.8055,
-	0.8437,
-	0.8935,
-	0.9375,
-	0.9815,
-	1.0255,
-	1.0695,
-	1.125,
-	1.1575,
-	1.2015
+	Y4M_SAR_MPEG1_1,
+	Y4M_SAR_MPEG1_2,
+	Y4M_SAR_MPEG1_3, /* Anamorphic 16:9 PAL */
+	Y4M_SAR_MPEG1_4,
+	Y4M_SAR_MPEG1_5,
+	Y4M_SAR_MPEG1_6, /* Anamorphic 16:9 NTSC */
+	Y4M_SAR_MPEG1_7,
+	Y4M_SAR_MPEG1_8, /* PAL/SECAM 4:3 */
+	Y4M_SAR_MPEG1_9,
+	Y4M_SAR_MPEG1_10,
+	Y4M_SAR_MPEG1_11,
+	Y4M_SAR_MPEG1_12, /* NTSC 4:3 */
+	Y4M_SAR_MPEG1_13,
+	Y4M_SAR_MPEG1_14,
 };
-
 
 static const char *mpeg2_aspect_ratio_definitions[] = 
 {
@@ -107,12 +106,12 @@ static const char *mpeg2_aspect_ratio_definitions[] =
 };
 
 
-static const double mpeg2_aspect_ratios[] =
+static const y4m_ratio_t mpeg2_aspect_ratios[] =
 {
-	1.0,
-	4.0/3.0,
-	16.0/9.0,
-	2.21/1.0
+	Y4M_DAR_MPEG2_1,
+	Y4M_DAR_MPEG2_2,
+	Y4M_DAR_MPEG2_3,
+	Y4M_DAR_MPEG2_4
 };
 
 static const char **aspect_ratio_definitions[2] = 
@@ -121,7 +120,7 @@ static const char **aspect_ratio_definitions[2] =
 	mpeg2_aspect_ratio_definitions
 };
 
-static const double *mpeg_aspect_ratios[2] = 
+static const y4m_ratio_t *mpeg_aspect_ratios[2] = 
 {
 	mpeg1_aspect_ratios,
 	mpeg2_aspect_ratios
@@ -195,15 +194,20 @@ mpeg_conform_framerate( double fps )
  * Convert MPEG aspect-ratio code to corresponding aspect-ratio
  */
 
-const double 
+const y4m_ratio_t 
 mpeg_aspect_ratio( int mpeg_version,  mpeg_aspect_code_t code )
 {
+	y4m_ratio_t ratio;
 	if( mpeg_version < 1 || mpeg_version > 2 )
-		return 0.0;
+		return y4m_sar_UNKNOWN;
 	if( code <= 0 || code > mpeg_num_aspect_ratios[mpeg_version-1] )
-		return 0.0;
+		return y4m_sar_UNKNOWN;
 	else
-		return mpeg_aspect_ratios[mpeg_version-1][code-1];
+	{
+		ratio = mpeg_aspect_ratios[mpeg_version-1][code-1];
+		y4m_ratio_reduce(&ratio);
+		return ratio;
+	}
 }
 
 /*
@@ -218,16 +222,18 @@ mpeg_aspect_ratio( int mpeg_version,  mpeg_aspect_code_t code )
  */
 
 const mpeg_aspect_code_t 
-mpeg_frame_aspect_code( int mpeg_version, double aspect_ratio )
+mpeg_frame_aspect_code( int mpeg_version, y4m_ratio_t aspect_ratio )
 {
 	mpeg_aspect_code_t i;
+	y4m_ratio_t red_ratio = aspect_ratio;
+	y4m_ratio_reduce( &red_ratio );
 	if( mpeg_version < 1 || mpeg_version > 2 )
 		return 0;
-
 	for( i = 1; i < mpeg_num_aspect_ratios[mpeg_version-1]; ++i )
 	{
-		if( (int)(mpeg_aspect_ratios[mpeg_version-1][i-1]*Y4M_ASPECT_MULT) ==
-			(int)(aspect_ratio*Y4M_ASPECT_MULT) )
+		y4m_ratio_t red_entry =  mpeg_aspect_ratios[mpeg_version-1][i-1];
+		y4m_ratio_reduce( &red_entry );
+		if(  Y4M_RATIO_EQL( red_entry, red_ratio) )
 			return i;
 	}
 

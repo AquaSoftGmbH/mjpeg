@@ -113,6 +113,11 @@ static int param_vbv_buffer_still_size = 0;
 static int param_force_interlacing = Y4M_UNKNOWN;
 static int param_input_interlacing;
 
+/* Input Stream parameter values that have to be further processed to
+   set encoding options */
+
+static mpeg_aspect_code_t strm_aspect_ratio;
+
 /* reserved: for later use */
 int param_422 = 0;
 
@@ -131,12 +136,7 @@ static void DisplayFrameRates()
 static void DisplayAspectRatios()
 {
  	int i;
-	printf("MPEG1 pixel aspect ratio codes:\n");
-	for( i = 1; i <= mpeg_num_aspect_ratios[0]; ++i )
-	{
-		printf( "%2d - %s\n", i, mpeg_aspect_code_definition(1,i));
-	}
-	printf("\nMPEG2 display aspect ratio codes:\n");
+	printf("\nDisplay aspect ratio codes:\n");
 	for( i = 1; i <= mpeg_num_aspect_ratios[1]; ++i )
 	{
 		printf( "%2d - %s\n", i, mpeg_aspect_code_definition(2,i));
@@ -154,8 +154,8 @@ static void Usage(char *str)
 	fprintf( stderr, "         [0 = Generic MPEG1, 1 = standard VCD, 2 = VCD,\n");
 	fprintf( stderr, "          3 = Generic MPEG2, 4 = standard SVCD, 5 = user SVCD,\n"
 			         "          6 = VCD Stills sequences, 7 = SVCD Stills sequences, 8 = DVD]\n");	
-	fprintf(stderr,"   -a num     Aspect ratio displayed image [1..14] (default: code for 4:3 in specified norm)\n" );
-	fprintf(stderr,"              0 - Display MPEG1 and MPEG2 aspect ratio code tables\n");
+	fprintf(stderr,"   -a num     Aspect ratio displayed image [1..4] (default:  4:3)\n" );
+	fprintf(stderr,"              0 - Display aspect ratio code tables\n");
 	fprintf(stderr,"   -F num     Playback frame rate of encoded video\n"
 			       "      (default: frame rate of input stream)\n");
 	fprintf(stderr,"              0 - Display frame rate code table\n");
@@ -248,10 +248,6 @@ static void set_format_presets()
 			param_quant = 12;
 		param_svcd_scan_data = 1;
 		param_seq_hdr_every_gop = 1;
-		if( param_aspect_ratio == 0 )
-			param_aspect_ratio = 2;
-		else if( param_aspect_ratio != 2 && param_aspect_ratio != 3 )
-			mjpeg_error_exit1("SVCD only supports 4:3 and 16:9 aspect ratios\n");
 		break;
 
 	case MPEG_FORMAT_VCD_STILL :
@@ -341,10 +337,6 @@ static void set_format_presets()
 			mjpeg_error_exit1( "SVCD resolution stills must be >= 30KB and <= 200KB each\n");
 		}
 
-		if( param_aspect_ratio == 0 )
-			param_aspect_ratio = 2;
-		else if( param_aspect_ratio != 2 && param_aspect_ratio != 3 )
-			mjpeg_error_exit1("SVCD only supports 4:3 and 16:9 aspect ratios\n");
 
 		param_seq_hdr_every_gop = 1;
 		param_seq_end_every_gop = 1;
@@ -354,6 +346,30 @@ static void set_format_presets()
 	}
 }
 
+static int infer_mpeg1_aspect_code( char norm, mpeg_aspect_code_t mpeg2_code )
+{
+	switch( mpeg2_code )
+	{
+	case 1 :					/* 1:1 */
+		return 1;
+	case 2 :					/* 4:3 */
+		if( param_norm == 'p' || param_norm == 's' )
+			return 8;
+	    else if( param_norm == 'n' )
+			return 12;
+		else 
+			return 0;
+	case 3 :					/* 16:9 */
+		if( param_norm == 'p' || param_norm == 's' )
+			return 3;
+	    else if( param_norm == 'n' )
+			return 6;
+		else
+			return 0;
+	default :
+		return 0;				/* Unknown */
+	}
+}
 
 static int infer_default_params()
 {
@@ -386,21 +402,23 @@ static int infer_default_params()
 		}
 		opt_frame_rate_code = param_frame_rate;
 	}
+
 	if( param_aspect_ratio == 0 )
 	{
-		if( param_norm == 'p' || param_norm == 's' )
-		{
-			param_aspect_ratio = param_mpeg == 1 ? 8 : 1;
-		}
-	    else if( param_norm == 'n' )
-		{
-			param_aspect_ratio = param_mpeg == 1 ? 12 : 1;
-		}
-		else
-		{
-			mjpeg_error( "No default aspect ratio if norm unspecified!\n");
-			++nerr;
-		}
+		param_aspect_ratio = strm_aspect_ratio;
+	}
+
+	if( param_aspect_ratio == 0 )
+	{
+		mjpeg_warn( "Aspect ratio specifed and no guess possible: assuming 4:3 display aspect!\n");
+		param_aspect_ratio = 2;
+	}
+
+	/* Convert to MPEG1 coding if we're generating MPEG1 */
+	if( param_mpeg == 1 )
+	{
+		param_aspect_ratio = infer_mpeg1_aspect_code( param_norm, 
+													  param_aspect_ratio );
 	}
 
 	return nerr;
@@ -464,6 +482,16 @@ static int check_param_constraints()
 		++nerr;
 	}
 
+
+	switch( param_format )
+	{
+	case MPEG_FORMAT_SVCD_STILL :
+	case MPEG_FORMAT_SVCD_NSR :
+	case MPEG_FORMAT_SVCD : 
+		if( param_aspect_ratio != 2 && param_aspect_ratio != 3 )
+			mjpeg_error_exit1("SVCD only supports 4:3 and 16:9 aspect ratios\n");
+		break;
+	}
 	return nerr;
 }
 
@@ -475,7 +503,7 @@ int main(argc,argv)
 	char *outfilename=0;
 	int nerr = 0;
 	int n;
-
+	
 	/* Set up error logging.  The initial handling level is LOG_INFO
 	 */
 	
@@ -709,8 +737,10 @@ int main(argc,argv)
 
 	/* Read parameters inferred from input stream */
 	read_stream_params( &opt_horizontal_size, &opt_vertical_size, 
-						&opt_frame_rate_code, &param_input_interlacing );
-
+						&opt_frame_rate_code, &param_input_interlacing,
+						&strm_aspect_ratio
+						);
+	
 	if(opt_horizontal_size<=0)
 	{
 		mjpeg_error("Horizontal size from input stream illegal\n");

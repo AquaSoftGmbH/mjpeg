@@ -138,10 +138,10 @@ static double Kp;	    /* calculations.  We only need 2 but have all
 static int min_d,max_d;
 static int min_q, max_q;
 
-static double avg_KI = 5.0;	/* TODO: These values empirically determined 		*/
-static double avg_KB = 10.0*2.0;	/* for MPEG-1, may need tuning for MPEG-2	*/
+static double avg_KI = 5.0;	      /* TODO: These values guesstimates        */
+static double avg_KB = 10.0*2.0;  /* for MPEG-1, may need tuning for MPEG-2	*/
 static double avg_KP = 10.0*2.0;
-#define K_AVG_WINDOW_I 10.0
+#define K_AVG_WINDOW_I 4.0
 #define K_AVG_WINDOW_P   10.0
 #define K_AVG_WINDOW_B   20.0
 static double bits_per_mb;
@@ -468,9 +468,9 @@ void rc_init_pict(pict_data_s *picture)
 	{
 	case I_TYPE:
 		
-		/* There is little reason to rely on the *last* I-frame
-		   as they're not closely related.  The slow correction of
-		   K should be enough to fine-tune...
+		/* There is little reason to rely on the *last* I-frame as
+		   they're not closely related.  The slow correction of K
+		   should be enough to fine-tune.  
 		*/
 
 		d = d0i;
@@ -829,7 +829,17 @@ void rc_update_pict(pict_data_s *picture)
 		else
 		{
 			avg_KI = (K + avg_KI * K_AVG_WINDOW_I) / (K_AVG_WINDOW_I+1.0) ;
-			Xi = (X + 2.0*Xi)/3.0;
+			Xi = (X + K_AVG_WINDOW_I*Xi)/(K_AVG_WINDOW_I+1.0);
+
+			/* To handle longer sequences with little picture content
+		   where I, B and P frames are of unusually similar size we
+		   insist I frames assumed to be at least of the same
+		   complexity as two B and a P frame.  This ensures that
+		   *after* a low picture content sequence there won't be a
+		   grossly under-estimated I-frame size that hasn't been
+		   allowed for in the buffer management.
+			*/
+			Xi = Xi < Xp+2.0*Xb ? Xp+2.0*Xb  : Xi;
 		}
 		break;
 	case P_TYPE:

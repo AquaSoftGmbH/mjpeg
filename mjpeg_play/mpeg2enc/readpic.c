@@ -405,12 +405,15 @@ int frame_lum_mean( int num_frame )
 
 void read_stream_params( int *hsize, int *vsize, 
 						 int *frame_rate_code,
-						 int *interlacing_code)
+						 int *interlacing_code,
+						 unsigned int *aspect_ratio_code)
 {
-   int n;
+   int i,n;
+   int num_xtags, ar_code;
+
    y4m_stream_info_t si;
 
-   y4m_init_stream_info (&si);   
+   y4m_init_stream_info (&si);  
    if ((n = y4m_read_stream_header (istrm_fd, &si)) != Y4M_OK) {
       mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!\n", y4m_strerr (n));
       exit (1);
@@ -420,4 +423,21 @@ void read_stream_params( int *hsize, int *vsize,
    *vsize = y4m_si_get_height(&si);
    *frame_rate_code = mpeg_framerate_code(y4m_si_get_framerate(&si));
    *interlacing_code = y4m_si_get_interlace(&si);
+   
+   /* If an MPEG aspect ratio is known it is encoded as a xtag */
+   /* "M1AR" for MPEG1 aspect ratio (unused), "M2AR" for MPEG2          */
+   ar_code = 0;
+   num_xtags =  y4m_xtag_count(y4m_si_xtags(&si));
+   for( i = 0; i < num_xtags; ++i )
+   {
+	   const char *tag = y4m_xtag_get(y4m_si_xtags(&si),i);
+	   if( strncmp(tag+1, "M2AR",4) == 0 )
+	   {
+		   ar_code = atoi(tag+5);
+		   break;
+	   }
+   }
+
+   *aspect_ratio_code = ar_code;
+
 }

@@ -143,7 +143,7 @@ void calc_vbv_delay (pict_data_s *picture);
 int readframe (int frame_num, uint8_t *frame[]);
 int frame_lum_mean(int frame_num);
 void read_stream_params( int *hsize, int *vsize, int *frame_rate_code,
-			 int *topfirst );
+						 int *topfirst, unsigned int *aspect_code );
 
 /* stats.c */
 void calcSNR (pict_data_s *picture);

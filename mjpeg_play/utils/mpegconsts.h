@@ -75,7 +75,7 @@ mpeg_conform_framerate( double fps );
  *
  */
 
-const double 
+const y4m_ratio_t
 mpeg_aspect_ratio( int mpeg_version,  mpeg_aspect_code_t code );
 
 /*
@@ -90,7 +90,7 @@ mpeg_aspect_ratio( int mpeg_version,  mpeg_aspect_code_t code );
  */
 
 const mpeg_aspect_code_t 
-mpeg_frame_aspect_code( int mpeg_version, double aspect_ratio );
+mpeg_frame_aspect_code( int mpeg_version, y4m_ratio_t aspect_ratio );
 
 /*
  * Look-up MPEG explanatory definition string aspect ratio code for an
