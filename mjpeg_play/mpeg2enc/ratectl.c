@@ -437,11 +437,6 @@ void rc_init_pict(pict_data_s *picture)
 	/* Undershot bits have been "returned" via R */
 	if( d < 0 )
 		d = 0;
-	if( picture->decode && picture->pict_type == I_TYPE)
-		printf( "%d: RATE = %lld d=%d\n", 
-				picture->decode, 
-				bitcount() / picture->decode * (long long int) frame_rate,
-				d);
 
 	/* We don't let the target volume get absurdly low as it makes some
 	   of the prediction maths ill-condtioned.  At these levels quantisation

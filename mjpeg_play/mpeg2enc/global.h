@@ -448,6 +448,13 @@ EXTERN int opt_prog_frame;
 EXTERN int opt_repeatfirst;
 EXTERN int opt_topfirst;
 
+EXTERN int mc_refine_from_rec;	/* Is final refinement of motion
+								   compensation computed from
+								   reconstructed reference frame image
+								   (slightly higher quality, bad for
+								   multi-threading) or original
+								   reference frame (opposite) */
+
 /* use only frame prediction and frame DCT (I,P,B) */
 EXTERN int frame_pred_dct_tab[3];
 EXTERN int qscale_tab[3]; 	/* linear/non-linear quantizaton table */

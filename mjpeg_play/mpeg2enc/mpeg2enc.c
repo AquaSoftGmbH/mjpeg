@@ -666,17 +666,19 @@ static void init()
 	{
 	case 1 :
 		max_encoding_frames = 1;
+		mc_refine_from_rec = 1;
 		break;
 	case 2:
 		max_encoding_frames = 2;
+		mc_refine_from_rec = 1;
 		break;
 	default :
-		/* Note: if this is ever made variable it must be kept less
-		   on MAX_WORKER_THREADS */
-		max_encoding_frames = 3;
+		max_encoding_frames = param_num_cpus > MAX_WORKER_THREADS-1 ?
+			                  MAX_WORKER_THREADS-1 :
+			                  param_num_cpus;
+		mc_refine_from_rec = 0;
 		break;
 	}
-
 
 	/* round picture dimensions to nearest multiple of 16 or 32 */
 	mb_width = (horizontal_size+15)/16;

@@ -46,6 +46,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include "global.h"
 
 
@@ -764,8 +765,16 @@ static void *parencodeworker(void *start_arg)
 		   a special case.  We have to wait for completion of the I field
 		   before starting the P field
 		*/
-		sync_guard_test( picture->ref_frame_completion );
-		motion_estimation(picture);
+		if( mc_refine_from_rec )
+		{
+			sync_guard_test( picture->ref_frame_completion );
+			motion_estimation(picture);
+		}
+		else
+		{
+			motion_estimation(picture);
+			sync_guard_test( picture->ref_frame_completion );
+		}
 		predict(picture);
 
 		/* No dependency */
@@ -776,7 +785,6 @@ static void *parencodeworker(void *start_arg)
 		putpict(picture);
 
 		reconstruct(picture);
-
 		/* Handle second field of a frame that is being field encoded */
 		if( fieldpic )
 		{
