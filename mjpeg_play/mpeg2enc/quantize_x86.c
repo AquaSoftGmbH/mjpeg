@@ -37,7 +37,9 @@
 #include "cpu_accel.h"
 #include "simd.h"
 #include "mmx.h"
+#if 0
 #include "xmmintrin.h"
+#endif
 #include "tables.h"
 #include "quantize_precomp.h"
 #include "quantize_ref.h"
