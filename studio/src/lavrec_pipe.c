@@ -31,6 +31,7 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <signal.h>
+#define _LINUX_TIME_H 1
 #include <linux/videodev.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>

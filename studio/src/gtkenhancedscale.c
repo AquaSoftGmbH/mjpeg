@@ -35,8 +35,6 @@
 #include <malloc.h>
 #include <math.h>
 
-#define ENHANCED_SCALE_CLASS(w)  GTK_ENHANCED_SCALE_GET_CLASS (G_OBJECT (w)->klass)
-//#define ENHANCED_SCALE_CLASS(w)  GTK_ENHANCED_SCALE_CLASS (G_OBJECT (w)->klass)
 //#define DEBUG
 
 static void gtk_enhanced_scale_class_init (GtkEnhancedScaleClass *klass);
@@ -250,10 +248,10 @@ static void gtk_enhanced_scale_realize (GtkWidget *widget)
 	enhanced_scale->trough = gdk_window_new (widget->window, &attributes, attributes_mask);
 
 	if (enhanced_scale->all_the_same)
-		ENHANCED_SCALE_CLASS (enhanced_scale)->slider_length =
-			ENHANCED_SCALE_CLASS (enhanced_scale)->arrow_width;
+		GTK_ENHANCED_SCALE_GET_CLASS (enhanced_scale)->slider_length =
+			GTK_ENHANCED_SCALE_GET_CLASS (enhanced_scale)->arrow_width;
 
-	attributes.width = ENHANCED_SCALE_CLASS (enhanced_scale)->slider_length;
+	attributes.width = GTK_ENHANCED_SCALE_GET_CLASS (enhanced_scale)->slider_length;
 	attributes.height = slider_width;
 	attributes.event_mask |= (GDK_BUTTON_MOTION_MASK |
 	GDK_POINTER_MOTION_HINT_MASK);
@@ -263,8 +261,8 @@ static void gtk_enhanced_scale_realize (GtkWidget *widget)
 	enhanced_scale->slider = malloc(enhanced_scale->num_adjustments);
 	enhanced_scale->slider[0] = gdk_window_new (enhanced_scale->trough,
 		&attributes, attributes_mask);
-	attributes.width = ENHANCED_SCALE_CLASS (enhanced_scale)->arrow_width;
-	attributes.height = ENHANCED_SCALE_CLASS (enhanced_scale)->arrow_height;
+	attributes.width = GTK_ENHANCED_SCALE_GET_CLASS (enhanced_scale)->arrow_width;
+	attributes.height = GTK_ENHANCED_SCALE_GET_CLASS (enhanced_scale)->arrow_height;
 	for(i=1;i<enhanced_scale->num_adjustments;i++)
 		enhanced_scale->slider[i] = gdk_window_new (enhanced_scale->trough,
 			&attributes, attributes_mask);
@@ -334,7 +332,7 @@ static void gtk_enhanced_scale_size_request (GtkWidget *widget,
 	trough_border = gtk_enhanced_scale_get_trough_border(GTK_WIDGET(enhanced_scale));
 	slider_width = gtk_enhanced_scale_get_slider_width(GTK_WIDGET(enhanced_scale));
 
-	requisition->width = (ENHANCED_SCALE_CLASS(enhanced_scale)->slider_length + trough_border) * 4;
+	requisition->width = (GTK_ENHANCED_SCALE_GET_CLASS(enhanced_scale)->slider_length + trough_border) * 4;
 	requisition->height = (slider_width + trough_border * 2);
 }
 
@@ -441,8 +439,8 @@ static void gtk_enhanced_scale_draw_trough (GtkEnhancedScale *enhanced_scale)
 			GTK_SHADOW_IN, NULL, GTK_WIDGET(enhanced_scale),
 			"trough", 0, 0, -1, -1);
 		if (GTK_WIDGET_HAS_FOCUS (enhanced_scale))
-			gtk_paint_focus (GTK_WIDGET (enhanced_scale)->style,
-				enhanced_scale->trough, NULL,
+			gtk_paint_focus(GTK_WIDGET (enhanced_scale)->style,
+				enhanced_scale->trough, GTK_STATE_NORMAL, NULL,
 				GTK_WIDGET(enhanced_scale), "trough",
 				0, 0, -1, -1);
 	}
@@ -462,8 +460,8 @@ static void gtk_enhanced_scale_draw_slider (GtkEnhancedScale *enhanced_scale, gi
 #ifdef DEBUG
 		printf("Drawing slider %d\n", i);
 #endif
-		if ((enhanced_scale->in_child == ENHANCED_SCALE_CLASS (enhanced_scale)->slider) ||
-			(enhanced_scale->click_child == ENHANCED_SCALE_CLASS (enhanced_scale)->slider))
+		if ((enhanced_scale->in_child == GTK_ENHANCED_SCALE_GET_CLASS (enhanced_scale)->slider) ||
+			(enhanced_scale->click_child == GTK_ENHANCED_SCALE_GET_CLASS (enhanced_scale)->slider))
 			state_type = GTK_STATE_PRELIGHT;
 		else
 			state_type = GTK_STATE_NORMAL;
@@ -476,8 +474,8 @@ static void gtk_enhanced_scale_draw_slider (GtkEnhancedScale *enhanced_scale, gi
 			gtk_paint_handle (GTK_WIDGET (enhanced_scale)->style, enhanced_scale->slider[i],
 				state_type, GTK_SHADOW_OUT, NULL, GTK_WIDGET(enhanced_scale), "paned",
 				0,0,
-				ENHANCED_SCALE_CLASS (enhanced_scale)->arrow_width,
-				ENHANCED_SCALE_CLASS (enhanced_scale)->arrow_height,
+				GTK_ENHANCED_SCALE_GET_CLASS (enhanced_scale)->arrow_width,
+				GTK_ENHANCED_SCALE_GET_CLASS (enhanced_scale)->arrow_height,
 				GTK_ORIENTATION_VERTICAL);
 	}
 }
@@ -593,9 +591,9 @@ static void gtk_enhanced_scale_trough_hdims (GtkEnhancedScale *enhanced_scale, g
 	else
 	{
 		tleft = slider_length/2 + trough_border -
-			ENHANCED_SCALE_CLASS(enhanced_scale)->arrow_width/2;
+			GTK_ENHANCED_SCALE_GET_CLASS(enhanced_scale)->arrow_width/2;
 		tright = trough_width - (slider_length/2 + trough_border) -
-			ENHANCED_SCALE_CLASS(enhanced_scale)->arrow_width/2;
+			GTK_ENHANCED_SCALE_GET_CLASS(enhanced_scale)->arrow_width/2;
 	}
 
 	if (left)
@@ -618,8 +616,8 @@ static gint gtk_enhanced_scale_get_stepper_spacing(GtkWidget *widget)
 {
 	/*return gtk_style_get_prop_experimental (widget->style,
 		"GtkEnhancedScale::stepper_spacing",
-		ENHANCED_SCALE_CLASS (widget)->stepper_slider_spacing);*/
-	return ENHANCED_SCALE_CLASS (widget)->stepper_slider_spacing;
+		GTK_ENHANCED_SCALE_GET_CLASS (widget)->stepper_slider_spacing);*/
+	return GTK_ENHANCED_SCALE_GET_CLASS (widget)->stepper_slider_spacing;
 }
 
 static gint gtk_enhanced_scale_get_trough_border(GtkWidget *widget)
@@ -627,22 +625,22 @@ static gint gtk_enhanced_scale_get_trough_border(GtkWidget *widget)
 	/*return gtk_style_get_prop_experimental (widget->style,
 		"GtkEnhancedScale::trough_border",
 		widget->style->klass->xthickness);*/
-	return widget->style->klass->ythickness;
+	return widget->style->ythickness;
 }
 
 /*static gint gtk_enhanced_scale_get_stepper_size(GtkWidget *widget)
 {
 	return gtk_style_get_prop_experimental (widget->style,
 		"GtkEnhancedScale::stepper_size",
-		ENHANCED_SCALE_CLASS (widget)->stepper_size);
+		GTK_ENHANCED_SCALE_GET_CLASS (widget)->stepper_size);
 }*/
 
 static gint gtk_enhanced_scale_get_slider_width(GtkWidget *widget)
 {
 	/*return gtk_style_get_prop_experimental (widget->style,
 		"GtkEnhancedScale::slider_width",
-		ENHANCED_SCALE_CLASS (widget)->slider_width);*/
-	return ENHANCED_SCALE_CLASS (widget)->slider_width;
+		GTK_ENHANCED_SCALE_GET_CLASS (widget)->slider_width);*/
+	return GTK_ENHANCED_SCALE_GET_CLASS (widget)->slider_width;
 }
 
 /* =========================================================================
@@ -801,7 +799,7 @@ static void gtk_enhanced_scale_motion_x(GtkEnhancedScale *enhanced_scale, gint d
 			{
 				gtk_enhanced_scale_remove_timer (range);
 				enhanced_scale->timer = gtk_timeout_add (SCROLL_DELAY_LENGTH,
-					(GtkFunction) ENHANCED_SCALE_CLASS (enhanced_scale)->timer,
+					(GtkFunction) GTK_ENHANCED_SCALE_GET_CLASS (enhanced_scale)->timer,
 					(gpointer) enhanced_scale);
 			}
 		}*/
@@ -900,14 +898,14 @@ static gint gtk_enhanced_scale_enter_notify(GtkWidget *widget, GdkEventCrossing 
 
 	if (event->window == enhanced_scale->trough)
 	{
-		enhanced_scale->in_child = ENHANCED_SCALE_CLASS (enhanced_scale)->trough;
+		enhanced_scale->in_child = GTK_ENHANCED_SCALE_GET_CLASS (enhanced_scale)->trough;
 	}
 	else for (i=0;i<enhanced_scale->num_adjustments;i++)
 		if (event->window == enhanced_scale->slider[i])
 		{
-			enhanced_scale->in_child = ENHANCED_SCALE_CLASS (enhanced_scale)->slider;
+			enhanced_scale->in_child = GTK_ENHANCED_SCALE_GET_CLASS (enhanced_scale)->slider;
 			if ((enhanced_scale->click_child == 0) ||
-				(enhanced_scale->click_child == ENHANCED_SCALE_CLASS (enhanced_scale)->trough))
+				(enhanced_scale->click_child == GTK_ENHANCED_SCALE_GET_CLASS (enhanced_scale)->trough))
 				gtk_enhanced_scale_draw_slider (enhanced_scale,i);
 		}
 
@@ -934,7 +932,7 @@ static gint gtk_enhanced_scale_leave_notify(GtkWidget *widget, GdkEventCrossing 
 		if (event->window == enhanced_scale->slider[i])
 		{
 			if ((enhanced_scale->click_child == 0) ||
-				(enhanced_scale->click_child == ENHANCED_SCALE_CLASS (enhanced_scale)->trough))
+				(enhanced_scale->click_child == GTK_ENHANCED_SCALE_GET_CLASS (enhanced_scale)->trough))
 				gtk_enhanced_scale_draw_slider (enhanced_scale, i);
 		}
 
@@ -948,7 +946,7 @@ static gint gtk_enhanced_scale_focus_in(GtkWidget *widget, GdkEventFocus *event)
 	g_return_val_if_fail (event != NULL, FALSE);
 
 	GTK_WIDGET_SET_FLAGS (widget, GTK_HAS_FOCUS);
-	gtk_widget_draw_focus (widget);
+	//gtk_widget_draw_focus (widget);
 	gtk_widget_queue_draw (widget);
 #ifdef DEBUG
 	printf("focus_in\n");
@@ -963,7 +961,7 @@ static gint gtk_enhanced_scale_focus_out(GtkWidget *widget, GdkEventFocus *event
 	g_return_val_if_fail (event != NULL, FALSE);
 
 	GTK_WIDGET_UNSET_FLAGS (widget, GTK_HAS_FOCUS);
-	gtk_widget_draw_focus (widget);
+	//gtk_widget_draw_focus (widget);
 	gtk_widget_queue_draw (widget);
 #ifdef DEBUG
 	printf("focus_out\n");

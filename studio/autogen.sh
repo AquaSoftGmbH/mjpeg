@@ -3,8 +3,6 @@ touch config.sub
 chmod a+x config.sub
 touch config.guess
 chmod a+x config.guess
-echo "Running libtoolize..."
-libtoolize --force --copy
 if test ! -r aclocal.m4; then
   echo "Running aclocal ..."
   aclocal 
@@ -13,6 +11,8 @@ else
 fi
 echo "Running autoheader..."
 autoheader
+echo "Running libtoolize..."
+libtoolize --force --copy
 echo "Running autoconf..."
 autoconf
 echo "Running automake..."
