@@ -38,12 +38,15 @@
 #include "mjpeg_types.h"
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
+#include "cpu_accel.h"
 #include "motionsearch.h"
 #include "sinc_interpolation.h"
 #include "interleave.h"
 #include "copy_frame.h"
 #include "blend_fields.h"
+#include "transform_block.h"
 
+int search_radius=8;
 int verbose = 0;
 int fast_mode = 0;
 int field_order = 1;
@@ -113,7 +116,8 @@ struct
  * helper-functions                                        *
  ***********************************************************/
 
-void motion_compensate_field (void);
+void motion_compensate_field 	(void);
+void (*blend_fields)			(void);
 
 /***********************************************************
  * Main Loop                                               *
@@ -122,11 +126,14 @@ void motion_compensate_field (void);
 int
 main (int argc, char *argv[])
 {
+	int cpucap = cpu_accel();
 	int framenr = 0;
 	char c;
 	int fd_in = 0;
 	int fd_out = 1;
 	int errno = 0;
+
+	blend_fields = &blend_fields_non_accel;
 
 	y4m_frame_info_t frameinfo;
 	y4m_stream_info_t streaminfo;
@@ -138,7 +145,7 @@ main (int argc, char *argv[])
 	mjpeg_log (LOG_INFO,
 		   "-------------------------------------------------");
 
-	while ((c = getopt (argc, argv, "hbfiv")) != -1)
+	while ((c = getopt (argc, argv, "hbfivr:")) != -1)
 	{
 		switch (c)
 		{
@@ -154,7 +161,15 @@ main (int argc, char *argv[])
 				   " -i non-interleaved-fields ");
 			mjpeg_log (LOG_INFO,
 				   "    this leads to a better quality when using mencoder to record");
+			mjpeg_log (LOG_INFO,
+				   " -r sets the serach-radius (default is 8)");
 			exit (0);
+			break;
+		}
+		case 'r':
+		{
+			search_radius = atoi(optarg);
+			mjpeg_log (LOG_INFO,"serach-radius set to %i",search_radius);
 			break;
 		}
 		case 'b':
@@ -182,6 +197,13 @@ main (int argc, char *argv[])
 
 	/* initialize motion_library */
 	init_motion_search ();
+
+	/* initialize MMX transforms (fixme) */
+	if( (cpucap & ACCEL_X86_MMXEXT)!=0 ||
+		(cpucap & ACCEL_X86_SSE   )!=0 )
+	{
+		mjpeg_log (LOG_INFO,"could use MMX/SSE Block/Frame-Copy/Blend if I had one ;-)");
+	}
 
 	/* initialize stream-information */
 	y4m_init_stream_info (&streaminfo);
@@ -258,9 +280,10 @@ main (int argc, char *argv[])
 			{
 				y4m_write_frame (fd_out, &streaminfo,
 						 &frameinfo, frame6);
+				if(verbose == 1)
+				mjpeg_log (LOG_INFO,"frame %i       ",framenr);
 			}
-			else
-				framenr++;
+			framenr++;
 		}
 		else
 		{
@@ -292,34 +315,26 @@ void
 motion_compensate_field (void)
 {
 	int vx, vy;
-	int x, y, xx, yy;
+	int xx, yy;
 	int x1, y1;
 	uint32_t SAD;
 	uint32_t min;
-	static uint32_t SADmean;
-	uint32_t SADdev;
 	int addr1 = 0;
 	int addr2 = 0;
 	int w = width, h = height;
 
 	//search-radius
-	int r = 8;
+	int r = search_radius;
 
-	for (yy = 0; yy < h; yy += 16)  
-		for (xx = 0; xx < w; xx += 16)
+	for (yy = 0; yy < h; yy += 32)  
+		for (xx = 0; xx < w; xx += 32)
 		{
 			/* center ... */
 
 			addr1 = (xx) + (yy) * w;
-			min  = psad_00 (frame20[0] + addr1, frame21[0] + addr1, w, 16, 0);
-
-			if (bttv_hack == 0)
-			{
-				/* match chroma */
-				addr1 = (xx) / 2 + (yy) * w / 4;
-				min += psad_sub22 (frame20[1] + addr1, frame11[1] + addr1, w / 2, 8 );
-				min += psad_sub22 (frame20[2] + addr1, frame11[2] + addr1, w / 2, 8 );
-			}
+			min  = psad_00 (frame20[0] + addr1, frame21[0] + addr1, w, 32, 0);
+			min += psad_00 (frame20[0] + addr1+16, frame21[0] + addr1+16, w, 32, 0);
+			min >>= 4;
 
 			mv_table[xx][yy].x = 0;
 			mv_table[xx][yy].y = 0;
@@ -334,17 +349,9 @@ motion_compensate_field (void)
 					addr2 = (xx + vx) + (yy +
 								 vy) * w;
 
-					SAD  = psad_00 (frame20[0] + addr1, frame21[0] + addr2, w, 16, 0);
-
-					if (bttv_hack == 0)
-					{
-						/* match chroma */
-						addr1 = (xx) / 2 + (yy) * w / 4;
-						addr2 = (xx + vx) / 2 + (yy + vy) * w / 4;
-
-						SAD += psad_sub22 (frame20[1] + addr1, frame21[1] + addr2, w / 2, 8 );
-						SAD += psad_sub22 (frame20[2] + addr1, frame21[2] + addr2, w / 2, 8 );
-					}
+					SAD  = psad_00 (frame20[0] + addr1, frame21[0] + addr2, w, 32, 0);
+					SAD += psad_00 (frame20[0] + addr1+16, frame21[0] + addr2+16, w, 32, 0);
+					SAD >>= 4;
 
 					if (SAD < min )
 					{
@@ -356,54 +363,26 @@ motion_compensate_field (void)
 			mv_table[xx][yy].SAD = min;
 	}
 
-	/* calculate the mean SAD and radius */
-	SADmean=0;
-	for (yy = 0; yy < h; yy += 16)
-		for (xx = 0; xx < w; xx += 16)
-		{
-			SADmean += mv_table[xx][yy].SAD;
-		}
-	SADmean /= (width*height)/16/16;
-
 	/* transform the sourceblocks by the found vectors */
-	for (yy = 0; yy < h; yy += 16)
-		for (xx = 0; xx < w; xx += 16)
+	for (yy = 0; yy < h; yy += 32)
+		for (xx = 0; xx < w; xx += 32)
 		{
 			x1=mv_table[xx][yy].x;
 			y1=mv_table[xx][yy].y;
 
-			if(mv_table[xx][yy].SAD <= (SADmean*4) )
 			{
-				for (y = 0; y < 16; y++)
-				for (x = 0; x < 16; x++)
-				{
-					*(frame5[0] + (xx + x) + (yy + y) * w) =
-				 		*(frame21[0] + (xx + x + x1) + (yy + y + y1) * w);
-
-					*(frame5[1] + (xx + x) / 2 + (yy + y) / 2 * w / 2) =
-			     		*(frame21[1] + (xx + x + x1) / 2 + (yy + y + y1) / 2 * w / 2);
-
-					*(frame5[2] + (xx + x) / 2 + (yy + y) / 2 * w / 2) =
-			     		*(frame21[2] + (xx + x + x1) / 2 + (yy + y + y1) / 2 * w / 2);
-				}
+			transform_block_Y  ( frame5[0]+xx+yy*width, frame21[0]+(xx+x1)+(yy+y1)*width, width);
+			xx /= 2;
+			yy /= 2;
+			x1 /= 2;
+			y1 /= 2;
+			width /= 2;
+			transform_block_UV ( frame5[1]+xx+yy*width, frame21[1]+(xx+x1)+(yy+y1)*width, width);
+			transform_block_UV ( frame5[2]+xx+yy*width, frame21[2]+(xx+x1)+(yy+y1)*width, width);
+			xx *= 2;
+			yy *= 2;
+			width *= 2;
 			}
-#if 1
-			else
-			{
-				for (y = 0; y < 16; y++)
-				for (x = 0; x < 16; x++)
-				{
-					*(frame5[0] + (xx + x) + (yy + y) * w) =
-				 		*(frame20[0] + (xx + x) + (yy + y) * w);
-
-					*(frame5[1] + (xx + x) / 2 + (yy + y) / 2 * w / 2) =
-			     		*(frame20[1] + (xx + x) / 2 + (yy + y) / 2 * w / 2);
-
-					*(frame5[2] + (xx + x) / 2 + (yy + y) / 2 * w / 2) =
-			     		*(frame20[2] + (xx + x) / 2 + (yy + y) / 2 * w / 2);
-				}
-			}
-#endif
 		}
 }
 

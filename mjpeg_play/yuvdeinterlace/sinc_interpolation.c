@@ -24,7 +24,14 @@ sinc_interpolation (uint8_t * frame[3], int field)
 	uint8_t * fv=frame[2];
 
 	// Luma 
-	for (y = field; y < height; y += 2)
+	if(field==1)
+	{
+		frame[0] += width;
+		frame[1] += width/2;
+		frame[2] += width/2;
+	}
+
+	for (y = 0; y < height; y += 2)
 	{
 //		if( (y-7)>=0 && (y+7)<=height )
 		for (x = 0; x < width; x++)
