@@ -104,8 +104,8 @@ void create_file_selection() {
    gtk_widget_show (file_selector);
 }
 
-gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data ) {
-
+gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data )
+{
    int need_pause=FALSE;
    hscale_down=1;
    switch (event->keyval) {
@@ -207,6 +207,7 @@ gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data ) {
       }
    }
    hscale_down=0;
+   return 0;
 }
 
 void quick_message(char *message) {

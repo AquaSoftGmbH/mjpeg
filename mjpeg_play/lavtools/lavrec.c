@@ -182,6 +182,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/fsuid.h>
 #include <signal.h>
 #include <fcntl.h>
 #include <errno.h>

@@ -923,7 +923,7 @@ lav_file_t *lav_open_input_file(char *filename)
 #ifdef	HAVE_LIBQUICKTIME
    char *audio_comp;
 #endif
-   unsigned char *frame;
+   unsigned char *frame = NULL; /* Make sure un-init segfaults! */
    long len;
    int jpg_height, jpg_width, ncomps, hf[3], vf[3];
    int ierr;
@@ -1126,7 +1126,7 @@ lav_file_t *lav_open_input_file(char *filename)
    /* Make some checks on the video source, we read the first frame for that */
 
    ierr  = 0;
-   frame = 0;
+   frame = NULL;
    if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
    if ( (len = lav_frame_size(lav_fd,0)) <=0 ) goto ERREXIT;
    if ( (frame = (char*) malloc(len)) == 0 ) { ierr=ERROR_MALLOC; goto ERREXIT; }
@@ -1268,7 +1268,7 @@ int lav_get_field_size(unsigned char * jpegdata, long jpeglen)
 
 static char error_string[4096];
 
-char *lav_strerror(void)
+const char *lav_strerror(void)
 {
 
    switch(internal_error)

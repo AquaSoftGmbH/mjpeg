@@ -82,7 +82,8 @@ static void Usage(char *str)
 
 static const char short_options[] = "o:b:r:O:v:m:f:l:s:S:q:p:VXMeh";
 
- static struct option long_options[]={
+#if defined(HAVE_GETOPT_LONG)
+static struct option long_options[]={
      { "verbose",           1, 0, 'v' },
      { "format",            1, 0, 'f' },
      { "mux-bitrate",       1, 0, 'r' },
@@ -99,13 +100,17 @@ static const char short_options[] = "o:b:r:O:v:m:f:l:s:S:q:p:VXMeh";
      { "help",              0, 0, '?' },
      { 0,                   0, 0, 0 }
  };
-
+#endif
 
 int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 {
     int n;
 	char *outfile = NULL;
+#if defined(HAVE_GETOPT_LONG)
 	while( (n=getopt_long(argc,argv,short_options,long_options, NULL)) != -1 )
+#else
+    while( (n=getopt(argc,argv,short_options)) != -1 )
+#endif
 	{
 		switch(n)
 		{

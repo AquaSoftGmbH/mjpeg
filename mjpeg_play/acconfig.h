@@ -12,14 +12,26 @@
 /* Define pthread lib stack size */
 #undef HAVE_PTHREADSTACKSIZE
 
-/* Define if the installed GCC tool chain can generate MMX instructions */
+/* Define for an Intel based CPU */
+#undef HAVE_X86CPU 	
+
+/* For HAVEX86CPU: Define for availability of CMOV instruction (P6, P7
+ * and Athlon cores).*/
+#undef HAVE_CMOV
+
+/* For HAVEX86CPU: Define if the installed GCC tool chain can generate
+ * MMX instructions */
 #undef HAVE_ASM_MMX
 
-/* Define if the installed GCC tool-chain can generate 3DNow instructions */
+/* For HAVEX86CPU: Define if the installed GCC tool-chain can generate
+ * 3DNow instructions */
 #undef HAVE_ASM_3DNOW
 
-/* Define if the nasm assembler is available */
+/* For HAVEX86CPU: Define if the nasm assembler is available */
 #undef HAVE_ASM_NASM
+
+/* Define for a PowerPPC CPU */
+#undef HAVE_PPCCPU
 
 /* whether we're in linux or not (video4linux?) */
 #undef HAVE_V4L
@@ -37,11 +49,7 @@
 /* Define if the libmovtar library is available */
 #undef HAVE_LIBMOVTAR
 
-/* Define for availability of CMOV instruction (P6, P7 and  Athlon cores).*/
-#undef HAVE_CMOV
 
-/* Define for an Intel based CPU */
-#undef HAVE_X86CPU 	
 
 /* Define for software MJPEG playback */
 #undef BUILD_MJPEG

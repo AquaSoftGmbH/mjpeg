@@ -81,7 +81,7 @@ static void iquant_non_intra_m1(int16_t *src, int16_t *dst, uint16_t *quant_mat)
 void init_quantizer()
 {
   int flags;
-  char *opt_type1, *opt_type2;
+  const char *opt_type1, *opt_type2;
   flags = cpu_accel();
 #ifdef HAVE_X86CPU 
   if( (flags & ACCEL_X86_MMX) != 0 ) /* MMX CPU */

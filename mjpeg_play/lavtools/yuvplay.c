@@ -68,7 +68,6 @@ static char *print_status(int frame, double framerate) {
 
 int main(int argc, char *argv[])
 {
-	char dummy[10];
    double time_between_frames = 0.0;
    double frame_rate = 0.0;
    struct timeval time_now;
