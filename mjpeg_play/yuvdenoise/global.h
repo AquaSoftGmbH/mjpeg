@@ -19,7 +19,7 @@
 #define Y_LO_LIMIT 16
 #define Y_HI_LIMIT 235
 #define C_LO_LIMIT 16
-#define C_HI_LIMIT 235
+#define C_HI_LIMIT 240
 
 #define W  (denoiser.frame.w)
 #define H  (denoiser.frame.h)
