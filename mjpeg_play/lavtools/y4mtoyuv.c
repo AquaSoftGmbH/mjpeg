@@ -6,8 +6,8 @@
  * by the mpeg4ip project and other programs. 
  *
  * 2001/10/19 - Rewritten to use the y4m_* routines from mjpegtools.
- *
  * 2004/1/1 - Added XYSCSS tag handling to deal with 411, 422, 444 data 
+ * 2004/4/5 - Rewritten to use the new YUV4MPEG2 API.
 */
 
 #ifdef	HAVE_CONFIG_H
@@ -29,13 +29,10 @@ static	void	usage(void);
 
 int main(int argc, char **argv)
 	{
-	int	c, n, width, height, frames, err, uvlen;
+	int	c, err;
 	int	fd_in = fileno(stdin), fd_out = fileno(stdout);
-	int	ss_v = 0, ss_h = 0;
-	const	char *tag;
 	u_char	*yuv[3];
-	y4m_ratio_t rate;
-	y4m_xtag_list_t *xtags;
+	int	plane_length[3];
 	y4m_stream_info_t istream;
 	y4m_frame_info_t iframe;
 
@@ -58,81 +55,30 @@ int main(int argc, char **argv)
 	if	(err != Y4M_OK)
 		mjpeg_error_exit1("Input stream error: %s\n", y4m_strerr(err));
 
-	width = y4m_si_get_width(&istream);
-	height = y4m_si_get_height(&istream);
+	if	(y4m_si_get_plane_count(&istream) != 3)
+		mjpeg_error_exit1("only 3 plane formats supported");
 
-	xtags = y4m_si_xtags(&istream);
-	tag = NULL;
-	for	(n = y4m_xtag_count(xtags) - 1; n >= 0; n++)
+	plane_length[0] = y4m_si_get_plane_length(&istream, 0);
+	plane_length[1] = y4m_si_get_plane_length(&istream, 1);
+	plane_length[2] = y4m_si_get_plane_length(&istream, 2);
+
+	yuv[0] = malloc(plane_length[0]);
+	yuv[1] = malloc(plane_length[1]);
+	yuv[2] = malloc(plane_length[2]);
+
+	y4m_log_stream_info(LOG_INFO, "", &istream);
+
+	while	(y4m_read_frame(fd_in, &istream, &iframe, yuv) == Y4M_OK)
 		{
-		tag = y4m_xtag_get(xtags, n);
-		if	(strncmp(tag, "XYSCSS=", 7) == 0)
+		if	(y4m_write(fd_out, yuv[0], plane_length[0]) != Y4M_OK)
 			break;
-		}
-	if	(tag && (n >= 0))
-		{
-		tag += 7;
-		if	(!strcmp(tag, "411"))
-			{
-			ss_h = 4;
-			ss_v = 1;
-			}
-		else if	(!strcmp(tag, "420") || !strcmp(tag, "420MPEG2") ||
-			 !strcmp(tag, "420PALDV") || !strcmp(tag,"420JPEG"))
-			{
-			ss_h = 2;
-			ss_v = 2;
-			}
-		else if	(!strcmp(tag, "422"))
-			{
-			ss_h = 2;
-			ss_v = 1;
-			}
-		else if	(!strcmp(tag, "444"))
-			{
-			ss_h = 1;
-			ss_v = 1;
-			}
-		else
-			{
-			mjpeg_error_exit1("Unknown XYSCSS tag: '%s'", tag);
-			/* NOTREACHED */
-			}
-		}
-
-	uvlen = (width / ss_h) * (height / ss_v);
-
-	yuv[0] = malloc(height * width);
-	yuv[1] = malloc(uvlen);
-	yuv[2] = malloc(uvlen);
-
-	rate = y4m_si_get_framerate(&istream);
-
-	mjpeg_log(LOG_INFO,"Width: %d Height: %d Rate: %d/%d Framesize: %d\n",
-		width, height, rate.n, rate.d,
-		y4m_si_get_framelength(&istream));
-
-	frames = 0;
-	while	(y4m_read_frame_header(fd_in, &istream, &iframe) == Y4M_OK)
-		{
-		if	(y4m_read(fd_in, yuv[0], height * width) != Y4M_OK)
+		if	(y4m_write(fd_out, yuv[1], plane_length[1]) != Y4M_OK)
 			break;
-		if	(y4m_read(fd_in, yuv[1], uvlen) != Y4M_OK)
-			break;
-		if	(y4m_read(fd_in, yuv[2], uvlen) != Y4M_OK)
-			break;
-		frames++;
-		if	(y4m_write(fd_out, yuv[0], height * width) != Y4M_OK)
-			break;
-		if	(y4m_write(fd_out, yuv[1], uvlen) != Y4M_OK)
-			break;
-		if	(y4m_write(fd_out, yuv[2], uvlen) != Y4M_OK)
+		if	(y4m_write(fd_out, yuv[2], plane_length[2]) != Y4M_OK)
 			break;
 		}
 	y4m_fini_frame_info(&iframe);
 	y4m_fini_stream_info(&istream);
-
-	mjpeg_log(LOG_INFO, "Frames processed: %d\n", frames);
 	exit(0);
 	}
 
