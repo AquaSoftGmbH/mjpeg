@@ -50,6 +50,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <cassert>
 #include "global.h"
 #include "math.h"
 #include "cpu_accel.h"
