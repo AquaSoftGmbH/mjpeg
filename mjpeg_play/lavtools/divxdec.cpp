@@ -211,7 +211,7 @@ readyDestination ( 	IAviReadStream *instream
 		fmt = RIFFINFO_IYUV;
 	}
 // only in avifile-0.6
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 6
 	else if ( caps & IVideoDecoder::CAP_I420 )
 	{
 		fmt = RIFFINFO_I420;
@@ -595,7 +595,7 @@ readInputFrame ()
 			// end of data, yes?
 			return 0;
 		}
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 6
 		currentFrame.inputBuffer = imsrc->Data ();
 #else
 		currentFrame.inputBuffer = imsrc->data ();
@@ -634,7 +634,7 @@ readInputFrame ()
 			break;
 		}
 		// done with image.  ( was delete imsrc; )
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 6
 		imsrc->Release() ;
 #else
 		imsrc->release() ;
@@ -944,7 +944,7 @@ nextFile ()
 		mjpeg_debug ( "VIDEO: Using decoder %s", sFourCC );
 		fourCCToString ( input.files[input.currentFile].outputCodec, sFourCC );
 		mjpeg_debug ( "VIDEO: Using interim YUV format %s", sFourCC );
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 6
 		input.files[input.currentFile].frames = input.invstream->GetLength ();
 #else
 		input.files[input.currentFile].frames = input.invstream->GetEndPos ();
@@ -957,7 +957,7 @@ nextFile ()
 		input.inastream->StartStreaming ();
 		if ( input.files[input.currentFile].frames == 0)
 		{
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 6
 			input.files[input.currentFile].frames = input.inastream->GetLength ();
 #else
 			input.files[input.currentFile].frames = input.inastream->GetEndPos ();
@@ -973,14 +973,14 @@ nextFile ()
 		// key frame.
 		if ( input.processVideo )
 		{
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 6
 			framepos_t fp = input.invstream->SeekToKeyFrame ( firstFrame );
 #else
 			framepos_t fp = input.invstream->SeekToKeyframe ( firstFrame );
 #endif
 			if ( input.processAudio )
 			{
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 6
 				double pos = input.invstream->GetTime ( max( 0, fp - 1 ) );
 				input.inastream->SeekTime ( pos );
 #else
@@ -1316,9 +1316,13 @@ main (int argc, char **argv)
 
 	if ( GetAvifileVersion (  ) != AVIFILE_VERSION )
 	{
-		mjpeg_error_exit1 ( "This binary was compiled for Avifile version %.2f but the library is %.2f"
-				, AVIFILE_VERSION
-				, GetAvifileVersion () );
+		mjpeg_error_exit1 ( "This binary was compiled for Avifile version %d.%d.%d but the library is  %d.%d.%d"
+			, AVIFILE_VERSION >> 16
+			, (AVIFILE_VERSION >> 8) & 0xff
+			, AVIFILE_VERSION & 0xff
+			, GetAvifileVersion (  ) >> 16
+			, (GetAvifileVersion (  ) >> 8) & 0xff
+			, GetAvifileVersion (  ) & 0xff );
 	}
 
 	( void ) mjpeg_default_handler_verbosity ( 3 );
@@ -1583,7 +1587,7 @@ main (int argc, char **argv)
 				inastream = file->GetStream ( 0, AviStream::Audio );
 				mjpeg_debug ( "AUDIO stream queried" );
 			}
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 6
 			input.files[i].frames = invstream->GetLength();
 #else
 			input.files[i].frames = invstream->GetEndPos ();

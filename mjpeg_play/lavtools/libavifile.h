@@ -31,19 +31,22 @@
 #include <avifile/version.h>
 #include <videoencoder.h>
 
+
+// this caused error messages like this:
+// **ERROR: [lav2divx] This binary was compiled for Avifile version 0.70.34 but the library is 0.7.34
 // Correct the version numbers
-#if AVIFILE_MAJOR_VERSION == 0
-#if AVIFILE_MINOR_VERSION == 6
-#undef AVIFILE_MINOR_VERSION
-#define AVIFILE_MINOR_VERSION 60
-#elif AVIFILE_MINOR_VERSION == 7
-#undef AVIFILE_MINOR_VERSION
-#define AVIFILE_MINOR_VERSION 70
-#endif /* AVIFILE_MINOR_VERSION == 6/7 */
-#endif /* AVIFILE_MAJOR_VERSION == 0 */
+//#if AVIFILE_MAJOR_VERSION == 0
+//#if AVIFILE_MINOR_VERSION == 6
+//#undef AVIFILE_MINOR_VERSION
+//#define AVIFILE_MINOR_VERSION 60
+//#elif AVIFILE_MINOR_VERSION == 7
+//#undef AVIFILE_MINOR_VERSION
+//#define AVIFILE_MINOR_VERSION 70
+//#endif /* AVIFILE_MINOR_VERSION == 6/7 */
+//#endif /* AVIFILE_MAJOR_VERSION == 0 */
 
 // Import version-dependent headers
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 60
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 6
 #include <aviutil.h>
 typedef unsigned int framepos_t;
 #else

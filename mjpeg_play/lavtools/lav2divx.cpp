@@ -218,7 +218,7 @@ print_help ( void )
 	printf ( "  -s --forcedaudiorate\taudio sample rate of input file (Hz);\n\t\t\tuse only if avifile gets it wrong\n" );
 	printf ( "  -n --noise\t\tnoise filter (0..2, default 0)\n" );
 	printf ( "  -g --guess\t\tguess values for -c and -z options\n" );
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 6
 	printf ( "  -L --listcodecs\tdisplay available avifile codecs (LONG)\n" );
 	printf ( "  -k --keyframes\tset keyframes attribute (default 15)\n" );
 	printf ( "  -C --crispness\tset crispness attribute (default 20)\n" );
@@ -256,7 +256,7 @@ displayGreeting (  )
 	mjpeg_info ( "-----------------------------" );
 }
 
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 6
 static void
 listCodecs ( )
 {
@@ -289,9 +289,13 @@ main ( int argc, char **argv )
 
 	if ( GetAvifileVersion (  ) != AVIFILE_VERSION )
 	{
-		mjpeg_error_exit1 ( "This binary was compiled for Avifile version %s but the library is %s"
-			, AVIFILE_VERSION
-			, GetAvifileVersion (  ) );
+		mjpeg_error_exit1 ( "This binary was compiled for Avifile version %d.%d.%d but the library is %d.%d.%d"
+			, AVIFILE_VERSION >> 16
+			, (AVIFILE_VERSION >> 8) & 0xff
+			, AVIFILE_VERSION & 0xff
+			, GetAvifileVersion (  ) >> 16
+			, (GetAvifileVersion (  ) >> 8) & 0xff
+			, GetAvifileVersion (  ) & 0xff );
 	}
 
 	( void ) mjpeg_default_handler_verbosity ( 1 );
@@ -315,7 +319,7 @@ main ( int argc, char **argv )
 	int opt_h = 0;
 
 	int opt_mono = 0;
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 6
 	int opt_keyframes = 15;
 	int opt_crispness = 20;
 #endif
@@ -379,7 +383,7 @@ main ( int argc, char **argv )
 			{"video_stream", required_argument, NULL, 'V'},
 			{"number_cpus", required_argument, NULL, 'U'},
 			{"outputfile", required_argument, NULL, 'o'},
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 6
 			{"keyframes", required_argument, NULL, 'k'},
 			{"crispness", required_argument, NULL, 'C'},
 			{"listcodecs", no_argument, NULL, 'L'},
@@ -391,7 +395,7 @@ main ( int argc, char **argv )
 		};
 
 		copt =
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 6
 			getopt_long ( argc, argv, "LE:fa:e:c:b:o:s:gmvk:C:", long_options, &option_index );
 #else
 			getopt_long ( argc, argv, "E:fa:e:c:b:o:s:gmv", long_options, &option_index );
@@ -449,7 +453,7 @@ main ( int argc, char **argv )
 			outputfile = optarg;
 			break;
 
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 6
 		case 'k':
 			opt_keyframes = atoi ( optarg );
 			break;
@@ -681,7 +685,7 @@ main ( int argc, char **argv )
 
 	avifile = CreateIAviWriteFile ( outputfile );
 
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 6
 	const CodecInfo *codecInfo = CodecInfo::match ( fccHandler );
 	if (codecInfo == NULL)
 	{
