@@ -34,6 +34,7 @@ class Recorder:
 		self.running = {}
 		self.device = None
 
+
 	def config_string(self, section, name):
 		try:
 			return self.config_data.get(section, name)
@@ -65,7 +66,9 @@ class Recorder:
 				continue
 
 			if item == "%file-name":
-				file_name = "/video/" + \
+				dirs = self.config_list("global", "videodir");
+				dir = dirs[0]
+				file_name = dir + "/" + \
 					time.strftime("%y%m%d.%H%M.", \
 					time.localtime(event_data["start_time"])) + \
 					event_data["station_name"] + "." + \
@@ -161,7 +164,7 @@ class Recorder:
 				dbm.delete_event_data(event_data)
 				continue		
 
-			if event_data["start_time"] <= current_time:
+			if event_data["start_time"] - 30 <= current_time:
 				recording_device = self.find_device(event_data)
 
 				if recording_device == None:

@@ -147,10 +147,10 @@ class Guide:
 #		
 	def append(self, new_entry):
 		start_time = new_entry[0] + self.zone_offset;
-		end_time = start_time + (new_entry[3] * 60)
-		length = new_entry[3];
-		station_id = new_entry[2]
-		title = re.escape(new_entry[4]);
+		end_time = start_time + (new_entry[2] * 60)
+		length = new_entry[2];
+		station_id = new_entry[1]
+		title = re.escape(new_entry[3]);
 		#
 		# check to see if entry already exists 
 		#
@@ -207,14 +207,17 @@ class Guide:
 		self.events.display_events(key)
 
 	def new_time(self, key):
-		print "executing new time\n"
-		print "new time select: ", self.time_index.get()
-
 		new_time = self.day_index.get() + " " + self.time_index.get()
-		print "new_time: ", new_time
 		current = time.strptime(new_time, "%a %m/%d/%Y %I:%M %p")
-		print "current", current
 		starting = time.mktime(current)
+		time_data = time.localtime(starting)
+
+		if current[8] != new_time[8]:
+			if current[8]:
+				starting = starting + 3600
+			else:
+				starting = starting - 3600
+
 		self.display_guide(0, 0, 640, 480, starting)
 
 
@@ -393,14 +396,12 @@ class Guide:
 
 
 	def display_guide(self, x, y, width, height, seconds):
+		time_data = time.localtime(seconds)
 		station_list = self.config_list("display", "stations")
-		starting = int(((seconds-self.zone_offset)/(24 * 60 * 60))) * (24 * 60 * 60) 
 
-		date_string = time.strftime("%m/%d/%Y", 
-			time.localtime(seconds))
+		date_string = time.strftime("%m/%d/%Y", time_data)
 
-		time_index = int((seconds - starting - self.zone_offset)/3600) + 1
-
+		time_index = time_data[3]
 		self.time_index.set(self.times[time_index])
 
 		self.root.title("Program Listings for " + date_string)

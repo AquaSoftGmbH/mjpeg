@@ -79,7 +79,7 @@ class TvGuide(Guide):
 	#	parseing view=chan&i=svcid&S=??&ST=start_time&N=station>name</a>
 	#
 	def parse_station(self, line):
-		empty = None, None, None
+		empty = None, None
 
 		start = find(line,"view=chan")
 		if start < 0:
@@ -96,27 +96,15 @@ class TvGuide(Guide):
 		time_start = line[start_time:end_time]
 
 		chan_start = end_time + 3
-		chan_end = find(line[end_time:], ">")
+		chan_end = find(line[chan_start:], "&")
 		if chan_end < 0:
 			return empty
-
-		chan_end = chan_end + end_time
+		chan_end = chan_end + chan_start
 		channel = line[chan_start:chan_end]
-		name_start = chan_end + 1
-		name_end = find(line[name_start:], "</a>")
-		if name_end < 0:
-			return empty
-
-		name_end = name_end + name_start
-		name = line[name_start: name_end]
-		start = find(name, '&nbsp;')
-
-		if start > 0:
-			name = name[start+6:]
 
 		st = self.tvguide_seconds(atof(time_start))
 
-		return st, channel, name
+		return st, channel
 	#
 	#
 	#
@@ -166,15 +154,13 @@ class TvGuide(Guide):
 			lines = split(line, "</TD>")
 
 			for data in lines:
-				new_time, new_channel, new_name = \
-					self.parse_station(data)
+				new_time,new_channel = self.parse_station(data)
 				run_time, svcid, titleid, show_name = \
 					self.parse_show(data)
 
 				if new_time != None:
 					curr_time = new_time
 					channel = new_channel
-					name = new_name
 
 					if translate.has_key(channel):
 						channel = translate[channel]
@@ -187,7 +173,7 @@ class TvGuide(Guide):
 				if run_time == None:
 					continue
 
-				self.append([curr_time, name, channel, 
+				self.append([curr_time, channel,
 					run_time, show_name,
 					svcid +','+titleid])
 				curr_time = curr_time + run_time * 60
