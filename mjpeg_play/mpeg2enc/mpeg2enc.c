@@ -766,7 +766,7 @@ static struct option long_options[]={
 			param_fieldenc = atoi(optarg);
 			if( param_fieldenc < 0 || param_fieldenc > 2 )
 			{
-				mjpeg_error("-I option requires 0 or 1\n");
+				mjpeg_error("-I option requires 0,1 or 2\n");
 				++nerr;
 			}
 			break;

@@ -112,7 +112,7 @@ void VideoStream::SetMaxStdBufferDelay( unsigned int dmux_rate )
 {
     double max_delay = CLOCKS;
     if( static_cast<double>(BufferSize()) / dmux_rate > 1.0 )
-        max_delay = static_cast<double>(BufferSize()) / dmux_rate;
+        max_delay *= static_cast<double>(BufferSize()) / dmux_rate;
 
     //
     // To enforce a maximum STD buffer residency the
