@@ -26,6 +26,7 @@ libaltivec_a_SOURCES = \
   bsumsq_sub22.c \
   build_sub44_mests.c \
   build_sub22_mests.c \
+  field_dct_best.c \
   find_best_one_pel.c \
   fdct_idct.c \
   fdct.c \

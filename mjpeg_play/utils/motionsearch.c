@@ -29,6 +29,13 @@
 #include "motionsearch.h"
 #include "mjpeg_logging.h"
 
+/*
+ * Define prototypes so as to avoid warning errors at compile time
+*/
+
+void sub_mean_reduction(me_result_set *, int, int *);
+void subsample_image(uint8_t *,int ,uint8_t *,uint8_t *);
+void variance(uint8_t *,int ,int, unsigned int *,unsigned int *);
 
 /* The AltiVec code needs access to symbols during benchmarking
  * and verification.

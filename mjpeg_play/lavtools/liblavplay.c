@@ -96,6 +96,11 @@
 dv_decoder_t *decoder;
 int pitches[3];
 uint8_t *dv_frame[3] = {NULL,NULL,NULL};
+
+/* Prototypes to avoid compile time warning errors */
+
+void frame_YUV422_to_YUV420P(uint8_t **, uint8_t *, int , int );
+
 /*
  * As far as I (maddog) can tell, this is what is going on with libdv-0.9
  *  and the unpacking routine... 
@@ -1061,7 +1066,9 @@ static int lavplay_mjpeg_get_params(lavplay_t *info, struct mjpeg_params *bp)
 #ifdef HAVE_SDL
    int i;
 #endif
+#ifdef HAVE_V4L
    video_playback_setup *settings = (video_playback_setup *)info->settings;
+#endif
    /*EditList *editlist = info->editlist; */
 
    switch (info->playback_mode)
@@ -1408,7 +1415,9 @@ static int lavplay_mjpeg_sync_buf(lavplay_t *info, struct mjpeg_sync *bs)
 
 static int lavplay_mjpeg_close(lavplay_t *info)
 {
+#ifdef	HAVE_V4L
    int n;
+#endif
    video_playback_setup *settings = (video_playback_setup *)info->settings;
    /*EditList *editlist = info->editlist; */
 

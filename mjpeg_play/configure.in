@@ -160,7 +160,12 @@ dnl and defines WORD_BIGENDIAN to flag a big iron system ;-)
 case "$HOSTTYPE" in
   mips*) 
    echo NEW: Activating IRIX architecture flags:IRIX and WORD_BIGENDIAN !
-   CFLAGS="$CFLAGS -DIRIX -DWORD_BIGENDIAN";;
+   CFLAGS="$CFLAGS -DIRIX -DWORD_BIGENDIAN"
+   ;;
+  Darwin)
+   echo Adding -no-cpp-precomp to CFLAGS for Darwin to avoid compile errors
+   CFLAGS="$CFLAGS -no-cpp-precomp"
+   ;;
 esac
 
 dnl *********************************************************************
