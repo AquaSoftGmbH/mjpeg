@@ -81,9 +81,7 @@ AC_C_CONST
 AC_C_INLINE
 AC_SYS_LARGEFILE
 
-dnl configure AS and ASFLAGS... a pity nasm doesn't take  flags similar to cc
-dnl CCAS=nasm
-dnl CCASFLAGS=
+dnl configure AS and ASFLAGS...
 AM_PROG_AS
 
 if test x"$with_extra_cflags" != "x"; then
@@ -319,8 +317,7 @@ AM_CONDITIONAL(HAVE_SDL, test x$have_sdl = xtrue)
 dnl ********************************************************************
 dnl Test for MMX support if an IA32 platform.  If on a PPC then look for
 dnl Altivec support.  For the IA32 platform see if gcc understands inline 
-dnl MMX instructions and also make sure nasm is present for the files that 
-dnl need that. Both are checked for for the maximum flexiblity.
+dnl MMX instructions.
 dnl
 dnl TODO: host = non intel, target = intel <blah> do the checks also?
 dnl       Remember we are checking that the toolchain can generate the
@@ -328,7 +325,6 @@ dnl       code, not whether the host can execute the code, thats done
 dnl       at run time with the exception of the SSE code.
 
 have_asm_mmx=false
-have_asm_nasm=false
 have_x86cpu=false
 have_altivec=false
 AC_MSG_CHECKING([Architecture])
@@ -387,21 +383,8 @@ then
 	 AC_MSG_RESULT(no)
       fi
 
-      AC_PATH_PROGS(AS, nasm nasmw)
-      if test x$have_x86_64cpu = xtrue; then
- 	 AC_MSG_WARN(*** nasm can not be used for 64 bit code ***)     
-      elif test x$AS = x; then
-	 AC_MSG_WARN(*** nasm not found PERFORMANCE WILL BE CRAP ***)
-      else
-	 have_asm_nasm=true
-      fi
       if test $have_asm_mmx = true; then
 	 AC_DEFINE(HAVE_ASM_MMX,1,[Inline MMX assembly accepted by C compiler])
-      fi
-      if test $have_asm_nasm = true; then
-	 ASFLAGS="-f elf -O5"
-	 AC_DEFINE(HAVE_ASM_NASM,1,[nasm assembler found])
-	 AC_SUBST(ASFLAGS)
       fi
   fi
 
@@ -494,7 +477,6 @@ dnl **********************************************************************
 dnl All the conditional stuff for the Makefiles
 
 AM_CONDITIONAL(HAVE_ASM_MMX, test x$have_asm_mmx = xtrue)
-AM_CONDITIONAL(HAVE_ASM_NASM, test x$have_asm_nasm = xtrue)
 AM_CONDITIONAL(HAVE_X86CPU, test x$have_x86cpu = xtrue)
 AM_CONDITIONAL(HAVE_PPCCPU, test x$have_ppccpu = xtrue)
 AM_CONDITIONAL(HAVE_ALTIVEC, test x$have_altivec = xtrue)
