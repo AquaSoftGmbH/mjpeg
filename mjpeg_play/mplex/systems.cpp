@@ -430,8 +430,6 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
     int i;
     uint8_t *index;
     uint8_t *size_offset;
-	uint8_t *fixed_packet_header_end;
-	uint8_t *_pes_header_len_offset = 0;
 	unsigned int target_packet_data_size;
 	unsigned int actual_packet_data_size;
 	int packet_data_to_read;
@@ -447,7 +445,6 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 		sector_pack_area -= 4;
 
     BufferSectorHeader( index, pack, sys_header, index );
-
     BufferPacketHeader( index, type, mpeg_version,
                         buffers, buffer_size, buffer_scale,
                         PTS, DTS, timestamps,
@@ -519,6 +516,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
         if (mpeg_version == 1 )
         {
             /* MPEG-1 stuffing happens *before* header data fields. */
+            uint8_t *fixed_packet_header_end = size_offset + 2;
             memmove( fixed_packet_header_end+bytes_short, 
                      fixed_packet_header_end, 
                      actual_packet_data_size+(index-fixed_packet_header_end)
