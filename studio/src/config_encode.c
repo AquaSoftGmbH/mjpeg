@@ -1,5 +1,6 @@
 /* Linux Video Studio - a program to capture video using MJPEG-codec boards
  * Copyright (C) 2000-2001 Ronald Bultje
+ * config_encode done by Bernhard
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -91,7 +92,6 @@ int  have_config, i;
       encoding.forcestereo[i]    ='\0';
       encoding.forcemono[i]      ='\0';
       encoding.forcevcd[i]       ='\0';
-      encoding.sequenceheader[i] ='\0';
     }
 
   encoding.addoutputnorm = 0;
@@ -119,15 +119,23 @@ int  have_config, i;
 
   if (NULL != (val = cfg_get_str("Studio","Encode_Notblack_size")))
         sprintf(encoding.notblacksize, val);
+  else 
+      sprintf(encoding.notblacksize,"as is");
 
   if (NULL != (val = cfg_get_str("Studio","Encode_Input_use")))
       sprintf(encoding.input_use, val);
+  else 
+      sprintf(encoding.input_use,"as is");
 
   if (NULL != (val = cfg_get_str("Studio","Encode_Output_size")))
       sprintf(encoding.output_size, val);
+  else 
+      sprintf(encoding.output_size,"as is");
 
   if (NULL != (val = cfg_get_str("Studio","Encode_Mode_keyword")))
       sprintf(encoding.mode_keyword, val);
+  else 
+      sprintf(encoding.mode_keyword,"as is");
 
   if (-1 != (i = cfg_get_int("Studio","Encode_Outputformat")))
         encoding.outputformat = i;
@@ -181,10 +189,6 @@ int  have_config, i;
   else 
         encoding.searchradius = 16;
 
-  if (NULL != (val = cfg_get_str("Studio","Encode_Sequenceheader")))
-    if ( 0 != strcmp(val,"as is"))
-      sprintf(encoding.sequenceheader, val);
-
   if (-1 != (i = cfg_get_int("Studio","Encode_Muxformat")))
         encoding.muxformat = i;
   else 
@@ -221,7 +225,6 @@ int  have_config, i;
       printf("Encoding Mpeg level: \'%i\' \n",encoding.mpeglevel);
       printf("Encoding Video Bitrate: \'%i\' \n",encoding.bitrate);
       printf("Encoding Searchradius : \'%i\' \n",encoding.searchradius);
-      printf("Encoding Sequenceheader : \'%s\' \n",encoding.sequenceheader);
       printf("Encoding Mplex Format : \'%i\' \n",encoding.muxformat);
       printf("Encoding Preview with yuvplay : \'%i\' \n",use_yuvplay_pipe);
       printf("Encoding Syntax Style :\'%i\' \n",encoding_syntax_style);
@@ -302,12 +305,6 @@ FILE *fp;
   fprintf(fp,"Encode_Mpeglevel = %i\n", encoding.mpeglevel);
   fprintf(fp,"Encode_Video_Bitrate = %i\n", encoding.bitrate);
   fprintf(fp,"Encode_Searchradius = %i\n", encoding.searchradius);
-
-  if (encoding.sequenceheader[0] == '-')
-    fprintf(fp,"Encode_Sequenceheader = %s\n", encoding.sequenceheader);
-  else
-    fprintf(fp,"Encode_Sequenceheader = %s\n", "as is");
-
 
   fprintf(fp,"Encode_Muxformat = %i\n", encoding.muxformat);
  
