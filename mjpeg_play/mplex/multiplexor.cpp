@@ -91,9 +91,9 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
 	{
 	case MPEG_FORMAT_VCD :
 		data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
- 
 	case MPEG_FORMAT_VCD_NSR : /* VCD format, non-standard rate */
 		mjpeg_info( "Selecting VCD output profile");
+		video_buffers_iframe_only = false;
 		mpeg = 1;
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 0;
