@@ -109,6 +109,7 @@ ssize_t y4m_write(int fd, const void *buf, size_t len)
 
 
 
+
 /*************************************************************************
  *
  * "Extra tags" handling
@@ -1005,6 +1006,9 @@ int y4m_read_fields_data(int fd, const y4m_stream_info_t *si,
 {
   int p;
   int planes = y4m_si_get_plane_count(si);
+  const int maxrbuf=32*1024;
+  uint8_t *rbuf=_y4m_alloc(maxrbuf);
+  int rbufpos=0,rbuflen=0;
   
   /* Read each plane */
   for (p = 0; p < planes; p++) {
@@ -1015,13 +1019,32 @@ int y4m_read_fields_data(int fd, const y4m_stream_info_t *si,
     int y;
     /* alternately read one line into each field */
     for (y = 0; y < height; y += 2) {
-      if (y4m_read(fd, dsttop, width)) return Y4M_ERR_SYSTEM;
-      dsttop += width;
-      if (y4m_read(fd, dstbot, width)) return Y4M_ERR_SYSTEM;
-      dstbot += width;
+      if( width*2 >= maxrbuf ) {
+        if (y4m_read(fd, dsttop, width)) goto y4merr;
+        if (y4m_read(fd, dstbot, width)) goto y4merr;
+      } else {
+        if( rbufpos==rbuflen ) {
+          rbuflen=(height-y)*width;
+          if( rbuflen>maxrbuf )
+            rbuflen=maxrbuf-maxrbuf%(2*width);
+          if( y4m_read(fd,rbuf,rbuflen) )
+            goto y4merr;
+          rbufpos=0;
+        }
+            
+        memcpy(dsttop,rbuf+rbufpos,width); rbufpos+=width;
+        memcpy(dstbot,rbuf+rbufpos,width); rbufpos+=width;
+      }
+      dsttop+=width;
+      dstbot+=width;
     }
   }
+  _y4m_free(rbuf);
   return Y4M_OK;
+
+ y4merr:
+  _y4m_free(rbuf);
+  return Y4M_ERR_SYSTEM;
 }
 
 
@@ -1037,6 +1060,7 @@ int y4m_read_fields(int fd, const y4m_stream_info_t *si, y4m_frame_info_t *fi,
 }
 
 
+
 int y4m_write_fields(int fd, const y4m_stream_info_t *si,
 		     const y4m_frame_info_t *fi,
 		     uint8_t * const *upper_field, 
@@ -1044,10 +1068,14 @@ int y4m_write_fields(int fd, const y4m_stream_info_t *si,
 {
   int p, err;
   int planes = y4m_si_get_plane_count(si);
+  int numwbuf=0;
+  const int maxwbuf=32*1024;
+  uint8_t *wbuf;
   
   /* Write frame header */
   if ((err = y4m_write_frame_header(fd, si, fi)) != Y4M_OK) return err;
   /* Write each plane */
+  wbuf=_y4m_alloc(maxwbuf);
   for (p = 0; p < planes; p++) {
     uint8_t *srctop = upper_field[p];
     uint8_t *srcbot = lower_field[p];
@@ -1056,13 +1084,31 @@ int y4m_write_fields(int fd, const y4m_stream_info_t *si,
     int y;
     /* alternately write one line from each field */
     for (y = 0; y < height; y += 2) {
-      if (y4m_write(fd, srctop, width)) return Y4M_ERR_SYSTEM;
-      srctop += width;
-      if (y4m_write(fd, srcbot, width)) return Y4M_ERR_SYSTEM;
-      srcbot += width;
+      if( width*2 >= maxwbuf ) {
+        if (y4m_write(fd, srctop, width)) goto y4merr;
+        if (y4m_write(fd, srcbot, width)) goto y4merr;
+      } else {
+        if (numwbuf + 2 * width > maxwbuf) {
+          if(y4m_write(fd, wbuf, numwbuf)) goto y4merr;
+          numwbuf=0;
+        }
+
+        memcpy(wbuf+numwbuf,srctop,width); numwbuf += width;
+        memcpy(wbuf+numwbuf,srcbot,width); numwbuf += width;
+      }
+      srctop  += width;
+      srcbot  += width;
     }
   }
+  if( numwbuf )
+    if( y4m_write(fd, wbuf, numwbuf) )
+      goto y4merr;
+  _y4m_free(wbuf);
   return Y4M_OK;
+
+ y4merr:
+  _y4m_free(wbuf);
+  return Y4M_ERR_SYSTEM;
 }
 
 
