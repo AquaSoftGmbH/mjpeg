@@ -4366,7 +4366,11 @@ static int zr36057_init(int i)
 	 */
 	memcpy(&zr->video_dev, &zoran_template, sizeof(zoran_template));
 	strcpy(zr->video_dev.name, zr->name);
+#if LINUX_VERSION_CODE < 0x20405
 	if (video_register_device(&zr->video_dev, VFL_TYPE_GRABBER) < 0) {
+#else
+	if (video_register_device(&zr->video_dev, VFL_TYPE_GRABBER, -1) < 0) {
+#endif
 		zoran_unregister_i2c(zr);
 		kfree((void *) zr->stat_com);
 		return -1;
