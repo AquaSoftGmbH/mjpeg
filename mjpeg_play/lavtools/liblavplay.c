@@ -97,7 +97,10 @@
 /* Prototypes to avoid compile time warning errors */
 
 void frame_YUV422_to_YUV420P(uint8_t **, uint8_t *, int , int );
+
+#ifdef HAVE_SDL
 int frame_planar_to_packed(uint8_t *, uint8_t **, int, int, int, int, int);
+#endif
 
 /*
  * As far as I (maddog) can tell, this is what is going on with libdv-0.9
@@ -225,6 +228,7 @@ void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input,
 #define FOURCC_I420 0x30323449
 #define FOURCC_I422 0x32323449
 
+#ifdef HAVE_SDL
 int frame_planar_to_packed(uint8_t *output, uint8_t **input,
 			   int width, int height, int ofmt, int ifmt, int interlaced)
 {
@@ -295,6 +299,7 @@ int frame_planar_to_packed(uint8_t *output, uint8_t **input,
 
   return 0;
 }
+#endif
 
 
 /* On some systems MAP_FAILED seems to be missing */
