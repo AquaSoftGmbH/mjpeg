@@ -82,7 +82,7 @@ int	d0i = 0, d0pb = 0, d0p = 0, d0b = 0;
 
 */
 static int32_t R;
-static int32_t per_frame_bits;
+static int32_t per_pict_bits;
 static int     fields_in_gop;
 static double  field_rate;
 static int     fields_per_pict;
@@ -92,11 +92,11 @@ static int32_t T;
 static int64_t bits_transported = 0LL;
 static int64_t bits_used = 0LL;
 static int32_t gop_buffer_correction;
-static int32_t frame_base_bits;
+static int32_t pict_base_bits;
 
-static int32_t I_frame_base_bits;
-static int32_t B_frame_base_bits;
-static int32_t P_frame_base_bits;
+static int32_t I_pict_base_bits;
+static int32_t B_pict_base_bits;
+static int32_t P_pict_base_bits;
 
 /* bitcnt_EOP - Position in generated bit-stream for latest
 				end-of-picture Comparing these values with the
@@ -250,20 +250,22 @@ void rc_init_seq(int reinit)
 	   guesstimates of for initial quantisation pessimistic...
 	*/
 	bits_transported = bits_used = 0;
+	field_rate = 2*ctl_decode_frame_rate;
+	fields_per_pict = opt_fieldpic ? 1 : 2;
 	if( opt_still_size > 0 )
 	{
 		avg_KI *= 1.5;
-		per_frame_bits = opt_still_size * 8;
+		per_pict_bits = opt_still_size * 8;
 		R = opt_still_size * 8;
 	}
 	else
 	{
-		per_frame_bits = opt_bit_rate / ctl_decode_frame_rate;
+		per_pict_bits = opt_fieldpic
+			? opt_bit_rate / field_rate
+			: opt_bit_rate / ctl_decode_frame_rate;
 		R = opt_bit_rate;
 	}
 
-	field_rate = 2*ctl_decode_frame_rate;
-	fields_per_pict = opt_fieldpic ? 1 : 2;
 	/* Everything else already set or adaptive */
 	if( reinit )
 		return;
@@ -289,7 +291,7 @@ void rc_init_seq(int reinit)
 	}
 	else
 	{
-		int buffer_safe = 4 * per_frame_bits ;
+		int buffer_safe = 4 * per_pict_bits ;
 		undershoot_carry = (ctl_video_buffer_size - buffer_safe)/6;
 		if( undershoot_carry < 0 )
 			mjpeg_error_exit1("Rate control can't cope with a video buffer smaller 4 frame intervals\n");
@@ -364,12 +366,13 @@ void rc_init_GOP( int np, int nb)
 
 	if( first_gop || opt_still_size > 0)
 	{
+		mjpeg_debug( "FIRST GOP INIT\n");
 		fast_tune = true;
 		first_I = first_B = first_P = true;
 		first_gop = false;
-		I_frame_base_bits = per_frame_bits;
-		B_frame_base_bits = per_frame_bits;
-		P_frame_base_bits = per_frame_bits;
+		I_pict_base_bits = per_pict_bits;
+		B_pict_base_bits = per_pict_bits;
+		P_pict_base_bits = per_pict_bits;
 	}
 	else
 	{
@@ -379,9 +382,10 @@ void rc_init_GOP( int np, int nb)
 		int available_bits = 
 			( opt_bit_rate+buffer_variation*recovery_gain)*fields_in_gop/field_rate;
 		double Xsum = Ni*Xi+Np*Xp+Nb*Xb;
-		I_frame_base_bits = (int32_t)(fields_per_pict*available_bits*Xi/Xsum);
-		P_frame_base_bits = (int32_t)(fields_per_pict*available_bits*Xp/Xsum);
-		B_frame_base_bits = (int32_t)(fields_per_pict*available_bits*Xb/Xsum);
+		mjpeg_debug( "REST GOP INIT\n" );
+		I_pict_base_bits = (int32_t)(fields_per_pict*available_bits*Xi/Xsum);
+		P_pict_base_bits = (int32_t)(fields_per_pict*available_bits*Xp/Xsum);
+		B_pict_base_bits = (int32_t)(fields_per_pict*available_bits*Xb/Xsum);
 		fast_tune = 0;
 
 	}
@@ -454,7 +458,7 @@ void rc_init_pict(pict_data_s *picture)
 
 	
 	if( opt_still_size > 0 )
-		available_bits = per_frame_bits;
+		available_bits = per_pict_bits;
 	else
 	{
 		int feedback_correction = 
@@ -488,7 +492,7 @@ void rc_init_pict(pict_data_s *picture)
 		{
 			T = (int32_t)(fields_per_pict*available_bits*Si/Xsum);
 		}
-		frame_base_bits = I_frame_base_bits;
+		pict_base_bits = I_pict_base_bits;
 		break;
 	case P_TYPE:
 		d = d0p;
@@ -505,7 +509,7 @@ void rc_init_pict(pict_data_s *picture)
 		{
 			T = (int32_t)(fields_per_pict*available_bits*Sp/Xsum);
 		}
-		frame_base_bits = P_frame_base_bits;
+		pict_base_bits = P_pict_base_bits;
 		break;
 	case B_TYPE:
 		d = d0b;
@@ -521,7 +525,7 @@ void rc_init_pict(pict_data_s *picture)
 		{
 			T =  (int32_t)(fields_per_pict*available_bits*Sb/Xsum);
 		}
-		frame_base_bits = B_frame_base_bits;
+		pict_base_bits = B_pict_base_bits;
 
 		break;
 	}
@@ -535,9 +539,9 @@ void rc_init_pict(pict_data_s *picture)
 
 	T = intmin( T, ctl_video_buffer_size*3/4 );
 
-	/* Really only useful for author messing with rate control
+	mjpeg_debug( "I=%d P=%d B=%d\n", I_pict_base_bits, P_pict_base_bits, B_pict_base_bits );
 	mjpeg_debug( "T=%05d A=%06d D=%06d (%06d) \n", (int)T/8, (int)available_bits/8, (int)buffer_variation/8, (int)(buffer_variation + gop_buffer_correction)/8 );
-	*/
+
 
 	/* 
 	   To account for the wildly different sizes of frames
@@ -546,14 +550,15 @@ void rc_init_pict(pict_data_s *picture)
 	   thing being equal buffer to go down a lot after the I-frame
 	   decode but fill up again through the B and P frames.
 
-	   For this we use the base bit allocations of the frame
-	   "frame_base_bits" which will pretty accurately add up to a
+	   For this we use the base bit allocations of the picture's
+	   "pict_base_bits" which will pretty accurately add up to a
 	   GOP-length's of bits not the more dynamic predictive T target
 	   bit-allocation (which *won't* add up very well).
 	*/
 
-	gop_buffer_correction += (frame_base_bits-per_frame_bits);
-		
+	mjpeg_debug( "PBB=%d PPB=%d\n", pict_base_bits, per_pict_bits );
+	gop_buffer_correction += (pict_base_bits-per_pict_bits);
+
 
 	/* Undershot bits have been "returned" via R */
 	if( d < 0 )
@@ -758,7 +763,8 @@ void rc_update_pict(pict_data_s *picture)
 	
 	bits_used += (bitcount()-prev_bitcount);
 	prev_bitcount = bitcount();
-	bits_transported += per_frame_bits;
+	bits_transported += per_pict_bits;
+	mjpeg_debug( "TR=%lld USD=%lld\n", bits_transported/8, bits_used/8);
 	buffer_variation  = (int32_t)(bits_transported - bits_used);
 
 	if( buffer_variation > 0 )
@@ -806,12 +812,10 @@ void rc_update_pict(pict_data_s *picture)
 	picture->AQ = AQ;
 	picture->SQ = SQ;
 
-	/* Really only useful for authors messing with rate control
 	mjpeg_debug( "D=%d R=%d GC=%d\n", 
 				 buffer_variation/8,
 				 (int)R/8,
 				 gop_buffer_correction/8  );
-	*/
 
 	/* Xi are used as a guesstimate of *typical* frame activities
 	   based on the past.  Thus we don't want anomalous outliers due

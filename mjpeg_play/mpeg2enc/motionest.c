@@ -958,9 +958,8 @@ static void field_ME(
 		ssmb.qmb += (width >> 2);
 	}
 
-	var = (*pvariance)(ssmb.mb,16,w2) + 
-		( (*pvariance)(ssmb.umb,8,(width>>1)) + (*pvariance)(ssmb.vmb,8,(width>>1)))*2;
-
+	var = (*pvariance)(ssmb.mb,16,w2) + chrom_var_sum(&ssmb,16,w2);
+        
 	if (picture->pict_type==I_TYPE)
 		mbi->mb_type = MB_INTRA;
 	else if (picture->pict_type==P_TYPE)
@@ -997,7 +996,6 @@ static void field_ME(
 					   &fieldsp_mc);
 		dmcfield = fieldf_mc.sad;
 		dmc8f = field8uf_mc.sad + field8lf_mc.sad;
-
 		dctl_dp = 100000000;		/* Suppress compiler warning */
 		if (ctl_M==1 && !ipflag)  /* generic condition which permits Dual Prime */
 		{
@@ -1033,9 +1031,11 @@ static void field_ME(
 		}
 
 		/* select between intra and non-intra coding */
-
+        
 		if ( vmc>var && vmc>=9*256)
+        {
 			mbi->mb_type = MB_INTRA;
+        }
 		else
 		{
 			/* zero MV field prediction from same parity ref. field

@@ -153,7 +153,25 @@ sound card.
 
 4.	  Questions about encoding with mjpegtools
 
-4.1	  Why does lav2yuv *always* give me a warning
+4.1	  Damn!  When I burn an SVCD my player plays trash.
+
+	  Unfortunately, the quality of the firmware for SVCD in many DVD
+	  players for markets outside Asia is rather poor.  Various nasty
+	  little bugs can cause SVCD to fail to play back.  To help
+	  the unfortunates with such players there some special bug fix flags.
+
+	  --correct-svcd-hds
+
+	  May help 16:9 streams to play back correctly on correct players.
+	  This is not on by default because it breaks all SVCD playback on many
+	  players
+
+	  --no-altscan-mpeg2
+
+	  Some players seem not be able to cope with the "alternative"
+	  pattern for scanning pixel blocks that MPEG2 supports.  This
+	  flag forces mpeg2enc to use only the less efficient "normal" pattern.
+
 
 
 5.	  Question about Digital Video in General

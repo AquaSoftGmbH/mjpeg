@@ -91,8 +91,11 @@ static int param_mpeg       = 1;
 static int param_aspect_ratio = 0;
 static int param_frame_rate  = 0;
 static int param_fieldenc   = -1; /* 0: progressive, 
-                                     1 = progressive seq, 
-                                     interlace frames with field MC and DCT in picture */
+                                     1 = frame pictures, 
+                                     interlace frames with field
+                                     MC and DCT in picture 
+                                     2 = field pictures
+                                  */
 static int param_norm       = 0;  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
 static int param_44_red	= 2;
 static int param_22_red	= 3;	
@@ -761,7 +764,7 @@ static struct option long_options[]={
 
 		case 'I':
 			param_fieldenc = atoi(optarg);
-			if( param_fieldenc < 0 || param_fieldenc > 1 )
+			if( param_fieldenc < 0 || param_fieldenc > 2 )
 			{
 				mjpeg_error("-I option requires 0 or 1\n");
 				++nerr;
@@ -1185,7 +1188,7 @@ static void init_mpeg_parms(void)
 	if( ctl_M >= ctl_N_min )
 		ctl_M = ctl_N_min-1;
 	opt_mpeg1           = (param_mpeg == 1);
-	opt_fieldpic        = 0;
+	opt_fieldpic        = (param_fieldenc == 2);
 
     // SVCD and probably DVD? mandate progressive_sequence = 0 
     switch( param_format )

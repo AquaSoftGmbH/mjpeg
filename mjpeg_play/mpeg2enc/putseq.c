@@ -185,6 +185,7 @@ static void set_pic_params( int decode,
 static void set_2nd_field_params(pict_data_s *picture)
 {
 	picture->secondfield = 1;
+    picture->gop_start = 0;
 	if( picture->pict_struct == TOP_FIELD )
 		picture->pict_struct =  BOTTOM_FIELD;
 	else
@@ -765,7 +766,7 @@ static void stencodeworker(pict_data_s *picture)
 	}
 
 
-	mjpeg_debug("Frame end %d %s %3.2f %.2f %2.1f %.2f\n",
+	mjpeg_info("Frame end %d %s %3.2f %.2f %2.1f %.2f\n",
 				picture->decode, 
 				picture->pad ? "PAD" : "   ",
 				picture->avg_act, picture->sum_avg_act,
