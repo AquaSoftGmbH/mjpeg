@@ -1,5 +1,5 @@
 /*
- *  yuv4mpeg.h:  Functions for reading and writing "new" YUV4MPEG streams.
+ *  yuv4mpeg.h:  Functions for reading and writing "new" YUV4MPEG2 streams.
  *
  *               Stream format is described at the end of this file.
  *
@@ -381,7 +381,7 @@ int y4m_allow_unknown_tags(int yn);
 /************************************************************************
  ************************************************************************
 
-  Description of the (new!, forever?) YUV4MPEG stream format:
+  Description of the (new!, forever?) YUV4MPEG2 stream format:
 
   STREAM consists of
     o one '\n' terminated STREAM-HEADER
@@ -394,12 +394,12 @@ int y4m_allow_unknown_tags(int yn);
 
 
   STREAM-HEADER consists of
-     o string "YUV4MPEG "
+     o string "YUV4MPEG2 "  (note the space after the '2')
      o unlimited number of ' ' separated TAGGED-FIELDs
      o '\n' line terminator
 
   FRAME-HEADER consists of
-     o string "FRAME "
+     o string "FRAME "  (note the space after the 'E')
      o unlimited number of ' ' separated TAGGED-FIELDs
      o '\n' line terminator
 
