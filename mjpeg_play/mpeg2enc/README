@@ -49,6 +49,13 @@ Andrew Stevens replaced the use of SAD with variance for selecting
  better results.  Similarly added initial support for checking the
  quality of the chrominance match achieved.
 
+Andrew Stevens added limited SMP support and basic chrominance match
+checking in motion compensation.
+
+Andrew Stevens added support for variable-sized GOP's and sequence
+splitting at file-size boundaries.
+
+
 In case you're wondering: the upshot of this disclaimer is that the
 functionality is exactly as per the original but the software now runs
 around 12 times as fast with sensible (search radius 15) motion compensation
@@ -58,34 +65,44 @@ typical broadcast quality sources.
 USAGE:
 
 Output file name (-o option) is required!
-
-Usage: ./mpeg2enc [params]
+Usage: mpeg2enc [params]
    where possible params are:
+ -v num  Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug
    -m num     MPEG level (1 or 2) default: 1
-   -b num     Bitrate in KBit/sec (default: 1152 KBit/s)
-   -q num     Quality ceiling [1..16] (1 is best, no default)
-			  This activates *variable bitrate encoding*. See below!
+   -a num     Aspect ratio displayed image [1..14] (default: code for 4:3 in specified norm)
+              0 - Display MPEG1 and MPEG2 aspect ratio code tables
+   -f num     Frame rate for encoded video (default: frame rate of input stream)   -b num     Bitrate in KBit/sec (default: 1152 KBit/s for VCD)
+   -B num     Non-video data bitrate to use for sequence splitting
+              calculations (see -S).
+   -q num     Quality factor [1..31] (1 is best, no default)
+              Bitrate and Quality are mutually exclusive!
    -o name    Outputfile name (REQUIRED!!!)
    -F num     only for MPEG 2 output:
                0 = progressive output (no field pictures)
                1 = field pictures, bottom field first
                2 = field pictures, top field first
-		       3 = progressive output, field-wise encoding
-   -r num     Motionc compensation search radius [0..32] (default 16)
+               3 = progressive output, field MC and MDCT
+   -r num     Search radius for motion compensation [0..32] (default 16)
    -4 num     (default: 2)
-			  Threshold  to divide 4*4 sub-sampled motion search by.
-				1 will guarantee practically no match likely to lead to
-			 an optimum solution will be discarded but is slow.  4 is fast but
-			 will cause the odd optimum to be missed.
-   -2 num     (default: 2)
-				Same as -4 but for the 2*2 sub-sampled stage of motion
-			 compensation search.
-   -Q num     Amount quantisation of highly active blocks is 
-			  reduced by [0.1 .. 10.0] [2.0] (default: 2.5)   
-   -v num     Target video buffer size in KB (default 46)
+                          Population halving passes 4*4-pel subsampled motion compensation
+   -2 num     (default: 3)
+                          Population halving passes 2*2-pel subsampled motion compensation
+   -g num     Minimum GOP size (default 12)
+   -G num     Maximum GOP size (default 12)
+   -M num     Optimise threading for num CPU's (default: 1)
+   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 ..
+10] (default: 2.5)
+   -V num     Target video buffer size in KB (default 46)
+   -n n|p|s   Force video norm (NTSC, PAL, SECAM) (default: PAL).
+   -S num     Start a new sequence every num Mbytes in the final mux-ed
+              stream.  -B specifies the bitrate of non-video data
+   -s         Generate a sequence header for every GOP rather than just for the
+first GOP
+   -p         Generate header flags for 32 pull down of 24fps movie.
+   -t         Activate dynamic thresholding of motion compensation window size
    -N         Noise filter via quantisation adjustment (experimental)
-   -h         Maximise high-frequency resolution (useful for high 
-			  quality sources at VCD resolutions)
+   -h         Maximise high-frequency resolution (useful for high quality sources at high bit-rates)
+   -?         Print this lot out!
 
 FAST MOTION COMPENSATION:
 
@@ -121,15 +138,18 @@ Between the settings
 
 Quality is impacted by about 10% quantisation (thats around 0.2 of a
 bit of precision in texture coefficients).  Speed is impacted by a
-factor of 2.  For most purposes the default settings will be fine.
+factor of 2.  One older Pentium-II and P-III Katmai machines the speed factor
+is more like 3.     For most purposes the default settings will be fine.
+However on P-III Katmai etc -4 2 -2 1 gives a good near-optimum quality
+setting with reasonably speed.
 For MPEG-2 encoding it is better to have the search radius set higher
 than the default of 16. There's very little point going below a radius
 of 16 as the speed gains are pretty limited.
 
 Obviously, your mileage may vary so you may want to fiddle with the
 setting if you're getting rotten results.  Contact
-Andrew.Stevens@comlab.ox.ac.uk if you think you have found a case
-where the fast compensation fails!
+andrew.stevens@comlab.ox.ac.uk@planet-interkom.de
+if you think you have found a case where the fast compensation fails!
 
 In case you're wondering: the performance gain over brute force search
 is something like a factor of 5.
@@ -143,18 +163,24 @@ source this assumption isn't really true.  The noise introduces lots
 of spurious differences betwen actually very similar pictures.  The
 end result is ugly "artifacted" results where MPEG has dropped real
 information in favour of spurious noise.  The solution is to try to
-filter the noise out of the source.  kav2yuv allows this.  Currently,
-nothing terribly clever is done: just simple smoothing. -n 1 smooths
-gently and is almost imperceptible, -n 2 is rather stronger and is
-noticeable if you compare source video.  -n3 is really brutal and
-probably only sensible for material captured at high
-resolution. However, if you really have noisy sources then -n 2 or -n
-3 is infinitely preferable to the swimming sea of artefacts MPEG
-otherwise generates.
+filter the noise out of the source. 
+
+For mildy noisy stuff mpeg2enc's -N option (which slightly suppresses
+high-frequency information during compression) works well.
+Try this for stuff like captures from a good quality broadcast
+source.  However, if that isn't enough lav2yuv has a simple low-pass
+filtering options -n. -n 1 smooths gently and is mostly imperceptible,
+-n 2 is rather stronger and is noticeable if you compare source video.
+However, if you really have noisy sources then -n 1 or -n 2 is
+infinitely preferable to the swimming sea of artefacts MPEG otherwise
+generates.  If you need -n 2 and aren't in a hurry then the more
+sophisticated filtering in the yuv2dfilter program does a better job!
+What's really needed is dynamic noise-reduction in the MPEG
+encoder... but that's a job for another release!
 
 SMARTER BIT ALLOCATION (A.Stevens Aug and Nov 2000)
 
-The original source code makes heavy use of the variance of
+The original source code made heavy use of the variance of
 blocks as a measure of their information content.  This is actually
 pretty poor as what really counts is how many bits it will take
 to encoded the quantised DCT of the block without excessive losses.
@@ -178,8 +204,12 @@ ensuring no significant bit-rate overshoots.
 
 The encoder now also tries to predict the likely bit-demand for each
 frame so it can set quantisation roughly right so that there isn't a
-"ramping" of quality down a frame with the top (too) good and the bottom
-(excessively) poor.
+"ramping" of quality down a frame with the top (too) good and the
+bottom (excessively) poor.  There is also the -Q option for boosting
+the bits allocated to very active blocks (ones where motion
+compensation wasn't possible).  The advantage is nice sharp logos and
+suchlike.  The drawback is that noisy material can become "swimmy".
+If you're getting swimminess try using -Q 1.0.
 
 
 VARIABLE BIT RATE ENCODING
@@ -217,7 +247,6 @@ extra-special bonus for AMD owners some of the quantisation
 calculations are done (much faster) with the 3D-Now! instructions.
 Similar stuff for P-III/P-IV SSE instructions is being written.
 
-
 There have also been some gross-me-out hacky optimisations made
 to the non-MMX code to make it run better on modern pipelined CPU's.
 However, if you're trying to compress long MPEG sequences on a pre-MMX
@@ -239,17 +268,27 @@ It is interesting to note the how much less efficient the Intel CPU's are at
 the motion compensation searches controlled by the -4 and -2 flags.  I can 
 only assume an Athlon would absolutely *fly* at this workload.
 
+
+VARIABLE SIZE GOOP's
+
+The encoder can be told to dynamically vary the size of groups of
+pictures to try to avoid scene changes in the middle of groups of
+pictures.  This can help produce better results in sudden cuts and
+action scenes (especially in conjunction with VBR coding).  However,
+the effect on "normal" video is marginal and for MPEG-1 at least many
+hardware decoders react allergically to variable-size GOP's.
+
 STILL MORE PERFORMANCE?
 
-Not easy to see how big improvements can be made without radical
+Buy a multi-processor P-III Coppermine!   The SMP support gives
+a speed up of around 1.8 on dual CPU machines!  Apart from this
+see how big improvements can be made without radical
 rebuilding of the code.  The program now spends around 50% of its
 time in routines that are already aggressively implement in MMX (etc).
 
 BETTER QUALITY?
 
 - There is still a lot of room for improvements to bit-allocation.
-The most interesting issue would be to detect scene changes and adjust
-GOP's accordingly.   I-frames are *big*...
 
 - It should also be possible to intelligently use switching of
 quantisation matrices to suppress mosaicing in very active scenes. I.e.
@@ -262,11 +301,6 @@ software decoders or suitable hardware) by gettting veriable-bit-rate
 encoding working once again.  This is one of the next things on the
 list and should be pretty easy.
 
-INPUT FORMAT
-
-YUV4MPEG\n
-<horizonal size> <vertical size> <frame_rate_code>\n
-[FRAME\n<Y-data><U-data><V-data> ...]
 
 
 

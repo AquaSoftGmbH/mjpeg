@@ -51,7 +51,7 @@ compression tools.
 
 - "lav2yuv" decodes AVI and Quicktime MJPEG and edit lists video and
   outputs it to standard out the simple raw YUV video format expected
-  by the MPEG compressor "mpeg2enc" (see below).
+  by the MPEG compressor "mpeg2enc" (see Appendix below).
 
 - "lav2wav" decodes AVI and Quicktime MJPEG and edit lists video and
   outputs it to standard out the WAV format expected by the MPEG layer
@@ -61,7 +61,7 @@ compression tools.
   actual end.
 
 There are also some handy image processing and automated processing
-filter utilities.
+filter utilities for raw video.
 
 - "yuvmedianfilter".  A median filter for noise reduction.  Used between
 	lav2yuv and mpeg2enc
@@ -117,7 +117,7 @@ You may wish to try  using your favourite MPEG 1 layer 3 "MP3"
 encoder for better quality results.  However, make sure you 
 use constant bit-rate  and turn of any extensions to the format.  
 I have no idea how many players actually cope with layer 3.  Drop
-as@comlab.ox.ac.uk an email if you get it to work!
+andrew.stevens@planet-interkom.de an email if you get it to work!
 
 * The mplex directory
 
@@ -153,6 +153,21 @@ lavplay!!!  (see http://dix.euro.ru for such codecs) The reason is
 that lavplay only handles AVI that use an MJPG codec, all other files
 don't use that codec and can therefore not be played back by the BUZ.
 
+* Appendix: The "YUV4MPEG" format
+
+The files for raw video information have to following layout:
+
+YUV4MPEG\n
+<horizonal size> <vertical size> <frame_rate_code>\n
+[FRAME\n<Y-data><U-data><V-data> ...]
+
+The sizes and frame rate code are in string form.  The Y section
+for each frame are exactly <veritical size>*<vertical size> bytes.
+The U and V sections are 1/4 the size.  I.e.  YUV420 video is assumed.
+Interlaced video is held with field lines interlaced as they would be
+during display.
+
+
 * Contact
 
 You reach us by email.
@@ -164,6 +179,11 @@ the developers, the main mailing list for the MJPEG-tools is:
 Although little bits have been done by everyone the main work was
 roughly as follows:
 
-lav* : Rainer@Johanni.de and Gernot Ziegler <gz@lysator.liu.se>
-mpeg2enc mplex : Andrew.Stevens@comlab.ox.ac.uk
-libmjpeg: Gernot Ziegler <gz@lysator.liu.se>
+lav* : Ronald Bultje <rbultje@ronald.bitfreak.net>, 
+	Gernot Ziegler <gz@lysator.liu.se> and of course the original
+mpeg2enc mplex misc : andrew.stevens@planet-interkom.de
+libmjpeg, libmovtar: Gernot Ziegler <gz@lysator.liu.se>
+
+
+Many thanks and Kudos to Rainer Johanni the original author who
+started this all and did most of the hard work in the lavtools.

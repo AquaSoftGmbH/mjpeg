@@ -2,13 +2,13 @@
 
 function usage ()
 {
-echo "Usage: transcode [-S][-V] [-T] [-s mins] [-b bitrate]  [-o dstfile] srcfile ..."
+echo "Usage: transcode -S|-V [-T] [-s mins] [-b bitrate]  [-o dstfile] srcfile ..."
 echo "o - output file root name"
 echo "b - bitrate for video in kbps"
 echo "s - sleep for specified number of minutes before starting work"
 echo "T - Use test encoder"
+echo "S - Transcode for SVCD or"
 echo "V - Transcode for VCD"
-echo "S - Transcode for SVCD"
 exit 0
 }
 
@@ -26,7 +26,7 @@ bitrate=""
 sleep=0
 sync="-s"
 decode="YUVh"
-while getopts ":o:b:s:VSTXh" opt
+while getopts ":o:b:s:SVTXh" opt
 do
 case $opt in
 s) sleep=$OPTARG
@@ -36,7 +36,7 @@ b) bitrate="-b $OPTARG"
 o) outfile=$OPTARG
 ;;
 T)
-echo Using test encoder and multiplexer
+echo Using test encoder
 MPEG2ENC="mpeg2enc.test"
 MPLEX=mplex.test
 ;;
@@ -50,9 +50,8 @@ MPEG2OPTS="$MPEG2OPTS -4 1 -2 1"
 ;;
 V)
 echo Generating VCD stream
-MPEGOPTS="-s"
-bitrate=""
-;;
+MPEGOPTS="-r 16 "
+decode="YUVh"
 S)
 echo Generating SVCD stream
 MPEGOPTS="-m 2 -F 3 -q 9 -v 200"
@@ -66,17 +65,18 @@ lavargs=$OPTARG
 ;;
 esac
 done
-
+if [ x"$MPEGOPTS" = "x" ]
+then
+echo "Must specify -V or -S!"
+useage
+fi
 shift $[$OPTIND-1]
 sleep $[$sleep*60]
-#cat $* |  mpeg2dec -s -o $decode |  buffer -b 4M | ${MPEG2ENC} ${MPEGOPTS} $bitrate -r 24 -o $outfile.m1v
-cat $* |  mpeg2dec -s -o $decode |  ${MPEG2ENC} ${MPEGOPTS} $bitrate -r 24 -o $outfile.m1v
+cat $* |  mpeg2dec -s -o $decode |  buffer -b 4M | ${MPEG2ENC} ${MPEGOPTS} $bitrate -o $outfile.m1v
 fifo=/tmp/tcfifo$$
-sync=/tmp/sync$$
 mkfifo $fifo
-cat $* |  extract_ac3 -  -s 2> $sync |  ac3dec -o wav -p $fifo &
+cat $* |  extract_ac3 -  $sync |  ac3dec -o wav -p $fifo &
 sox -t wav - -r 44100 -t wav - < $fifo | toolame -p 2 -b 224 - $outfile.mp2
-echo "Multiplex with video delay (-v) of " `grep SYNC $sync | cut -d ' ' -f 2` " mSec"
-rm -f $fifo $sync
+rm -f $fifo
 # Eventually mux-ing goes here!
 

@@ -39,45 +39,61 @@ conc="0"
 mplexflags=""
 mpv="m1v"
 
-while getopts ":s:q:n:d:o:MQSVTLRNtc" opt
+while getopts ":a:s:q:n:d:o:MIQSVTLRNXtc" opt
 do
 case $opt in
+a) geometry="-a $OPTARG"
+  echo Geometry = $geometry
+;;
 s) scale=$OPTARG
   echo Setting scaling option to $OPTARG
 ;;
 q) quality=$OPTARG
   echo Setting quality factor to $quality
 ;;
-M) quality="-b 1450"
+M) quality="-b 1550 -B 240 -g 9 -G 15 -4 1 -2 1  -Q 1.0 -S 660"
   mplexflags="-b 70"
   echo "Setting medium-quality MPEG1 (1550Kbps) mode"
 ;;
-Q) quality="-b 1700"
-  mplexflags="-b 80"
+Q) quality="-b 1800 -B 240 -V 75 -g 9 -G 15 -4 1 -2 3 -S 660"
+  mplexflags="-b 90"
   echo "Setting high-quality MPEG1 (1800Kbps) mode"
 ;;
 V) 
   echo VCD mode: generate VCD2.0 compliant output.
-  quality=" -s"
+  quality="-4 1 -2 1 -B 242 -s -g 9 -G 15"
   mplexflags="-f 1"
+;;
+I) 
+  echo VCD mode: generate VCD2.0 compliant output.
+  quality="-4 1 -2 1 -B 242 -s -g 9 -G 15"
+  mplexflags="-f 1"
+  scale="1"
 ;;
 S)
   echo SVCD mode: generate SVCD compliant output.
-  quality="-m 2 -F 3 -q 10 -b 2550 -v 230 -s"
-  mplexflags="-f 3"
+  quality="-m 2 -F 3 -q 12 -b 2500 -B 246 -V 230 -s -g 6 -G 15"
+  mplexflags="-f 4"
   mpv="m2v"
   scale="2"
 ;;
-
+X)
+ echo "Xtreme software mode: optimise for sware playback"
+ quality="-q 8 -b 2000 -v 400 -s"
+ mplexflags=""
+;;
 L) echo "Using local encoder"
 MPEGENC="./mpeg2enc"
 MPLEX="mplex.test"
 ;;
-
-T) echo "Using test encoder and multiplexer"
-MPEGENC="mpeg2enc.test"
-MPLEX="mplex.test"
-test=""
+N) echo "DCT filtering"
+hires="-N"
+;;
+T) echo "Using test encoder and multiplexer parameters"
+MPEGENC="mpeg2enc"
+MPLEX="mplex"
+# -g 6 Produces heavy rate bursts in CBR
+testmpeg="-g 9 -G 15 -4 1 -2 1 -S 560 "
 ;;
 R) echo "Using reference encoder"
 MPEGENC="mpeg2enc.ref"
@@ -103,7 +119,6 @@ conc=1
 esac
 done
 
-
 if [ $stereo = 1 ]
 then
    aencbpr=224
@@ -120,6 +135,27 @@ fi
 
 trap tidy_exit SIGINT
 trap tidy_exit SIGHUP
+
+# Get the number of available CPU's
+cpus=`grep processor /proc/cpuinfo | wc --lines`
+
+if [ "x$cpus" = "x" ]
+then
+cpus=1
+fi
+
+if [ $cpus = "0" ]
+then
+cpus=1
+fi
+cpus=$[$cpus]
+echo CPUS = "$cpus"
+
+# An optimisation for wall-clock time not efficiency
+if [ $cpus = 2 ]
+then
+cpus=3
+fi
 
 echo -n "Encoding commences "
 date
@@ -144,8 +180,8 @@ do
       tidyfile=${r}.${mpv}
     fi
 # If you have "buffer" and an SMP machine use the commented out version...
-#    lav2yuv -s ${scale} ${noise} $f | buffer -b 4M | ${MPEGENC}  ${quality}    ${hires} -r ${search}  -o ${r}.${mpv}
-    lav2yuv -s ${scale} ${noise} $f |  ${MPEGENC}  ${quality}   ${hires} -r ${search}  -o ${r}.${mpv}
+    lav2yuv -v 1 ${geometry} -s ${scale} ${noise} $f | buffer -b 4M | ${MPEGENC} -v 1 -M $cpus ${quality} -S 670  ${hires} -r ${search}  ${testmpeg} -o ${r}.${mpv}
+#   lav2yuv -s ${scale} ${noise} $f |  ${MPEGENC} -S 670 ${quality}   ${hires} -r ${search} ${testmpeg} -o ${r}.${mpv}
     if [ ! $? = 0 ]
     then
        exit $?
@@ -166,7 +202,7 @@ do
 		# See "transcode" for suitable flags
 	  if [ $test = 0 ]
 	  then
-      lav2wav $f | nice -n 15 mp2enc -v -o ${r}.mp2
+      		lav2wav $f | nice -n 15 mp2enc -V -o ${r}.mp2
 	  fi
     fi
 	# Don't mux / aenc two at once - screws up NFS...
@@ -175,7 +211,7 @@ do
 	sleep 30
     done
 	echo  > ${r%%.*}.mux
-     nice -n 15 ${MPLEX} -q ${mplexflags} ${r}.${mpv} ${r}.mp2 ${mpgfile} 
+     nice -n 15 ${MPLEX} -v 1 -S 0 -q ${mplexflags} ${testmplex} -o ${mpgfile} ${r}.${mpv} ${r}.mp2 
      rm -f ${r%%.*}.mux
 # Uncomment this if you want the raw files deleted
 #	 rm -f  ${r}.${mpv} ${r}.mp2

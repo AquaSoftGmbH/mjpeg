@@ -124,8 +124,18 @@ before building quicktime4linux with
 make
 
 
+2) The "xawtv" Package for Linux TV
 
-2) The "toolame" MP2 encoder and the "sox" audio processing tool.
+- Using the v4l-conf utility that comes with xawtv you can set-up the
+Zoran hardware's frame-grabbing / displaying facilities to allow
+Hardware accelerated playback under X-windows.   
+
+- You can also watch TV using your Card using "xawtv".
+
+- You can do software capture of raw (and compressed!) video if your
+machine is fast enough.
+
+3) The "toolame" MP2 encoder and the "sox" audio processing tool.
 
 A remark regarding RPM packages: If you want to install RPM packages
 instead, always keep in mind that you need to install the developer
@@ -134,7 +144,7 @@ versions.
 (www.freshmeat.net is also a good source for all kind of Linux soft !)
 
 
-3) If you want to transcode MPEG-2 video from DTV or DVD formats
+4) If you want to transcode MPEG-2 video from DTV or DVD formats
 you'll want to get the ac3dec and mpeg2dec decoder tools with the
 appropriate output plugin's for producing streamed wav and lavtools
 "yuv" format.  At the time of writing rapid change in both programs
@@ -196,4 +206,5 @@ the internals history and source-code layout
 
 /Andrew <as@comlab.ox.ac.uk>
 /Gernot <gz@lysator.liu.se>
+/Ronald <rbultje@ronald.bitfreak.net>
 

@@ -16,7 +16,7 @@ libavio_a_SOURCES = editlist.c lav_io.c avilib.c
 
 bin_PROGRAMS = \
 	lavplay   lavrec   lav2wav  lav2yuv yuvmedianfilter lavaddwav \
-	lavvideo  lavtrans xlav  ypipe yuv2lav testrec v4l-conf \
+	lavvideo  lavtrans xlav  ypipe yuv2lav testrec  \
 	transist.flt matteblend.flt lavpipe yuvscaler yuvplay
 
 lav_headers = lav_io.h editlist.h xlav.h avilib.h yuv4mpeg.h jpegutils.h yuvscaler.h
@@ -75,9 +75,6 @@ xlav_SOURCES = xlav.c xlav_main.c  $(lav_headers)
 xlav_LDADD = $(X_LIBS) -lX11 $(FORMS_LIBS) $(X_EXTRA_LIBS) -L$(top_srcdir)/utils -lutils
 
 lavvideo_SOURCES = lavvideo.c
-
-v4l_conf_SOURCES = v4l-conf.c
-v4l_conf_LDADD = $(X_LIBS) -lX11 $(V4LCONF_LIBS) $(X_EXTRA_LIBS)
 
 yuvscaler_SOURCES = yuvscaler.c editlist.c lav_io.c $(lav_headers)
 yuvscaler_LDADD = -L$(top_builddir)/lavtools -lavio $(MOVTAR_LIBS) \
