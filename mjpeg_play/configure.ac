@@ -460,9 +460,11 @@ dnl file).
 
 if test x$have_x86cpu = xtrue -o x$have_ppccpu = xtrue; then
   if test x$host_alias != x; then
+    dnl This is to allow cross compiling
     AC_MSG_CHECKING(sub-architecture settings)
     if test x$have_x86cpu = xtrue; then
-       ARCHFLAGS="-march=$host_cpu -mcpu=$host_cpu"
+       host_mod_cpu=`echo $host_cpu | tr _ -`
+       ARCHFLAGS="-march=$host_mod_cpu -mcpu=$host_mod_cpu"
     fi
   else
     if test ! -r $srcdir/cpuinfo.sh; then
