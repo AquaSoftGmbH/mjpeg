@@ -47,7 +47,6 @@
 vector<LpcmParams *> opt_lpcm_param;
 vector<VideoParams *> opt_video_param;
 
-
 static const char *KindNames[] =
 {
     "MPEG audio",
@@ -95,7 +94,7 @@ MultiplexJob::MultiplexJob()
 
 MultiplexJob::~MultiplexJob()
 {
-    vector<JobStream *>::iterator i;
+	std::vector<JobStream *>::iterator i;
     for( i = streams.begin(); i < streams.end(); ++i )
         delete *i;
 }
@@ -482,7 +481,7 @@ void MultiplexJob::InputStreamsFromCmdLine (unsigned int argc, char* argv[] )
 unsigned int MultiplexJob::NumberOfTracks( StreamKind kind )
 {
     unsigned int count = 0;
-    vector<JobStream *>::iterator i;
+	std::vector<JobStream *>::iterator i;
     for( i = streams.begin(); i < streams.end(); ++i )
         if( (*i)->kind == kind )
             ++count;
@@ -494,7 +493,7 @@ void MultiplexJob::GetJobStreams( vector<JobStream *> &streams,
                                   StreamKind kind )
 {
     streams.erase( streams.begin(), streams.end() );
-    vector<JobStream *>::iterator i;
+	std::vector<JobStream *>::iterator i;
     for( i = streams.begin(); i < streams.end(); ++i )
         if( (*i)->kind == kind )
             streams.push_back( *i );
