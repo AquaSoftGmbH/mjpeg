@@ -19,10 +19,6 @@
 #undef LAVADDWAV_LOCATION
 #undef YUV2DIVX_LOCATION
 
-/* whether we have some specific applications */
-#undef HAVE_YUV2DIVX
-#undef HAVE_YUVDENOISE
-
 /* mixer, video and audio devices */
 #undef DEFAULT_MIXER
 #undef DEFAULT_VIDEO

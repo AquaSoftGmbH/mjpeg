@@ -34,6 +34,7 @@
 
 #include "parseconfig.h"
 #include "studio.h"
+#include "pipes.h"
 #include "gtkfunctions.h"
 
 /* Variables */
@@ -633,11 +634,14 @@ void load_config()
 		sprintf(temp, "%s/%s", getenv("HOME"), "video%03d.avi");
 		record_dir = temp;
 	}
+
+	load_app_locations();
 }
 
 void save_config()
 {
 	char filename[100], directory[100];
+	int i;
 	FILE *fp;
 
 	sprintf(filename,"%s/%s/%s",getenv("HOME"),".studio", studioconfigfile);
@@ -694,6 +698,8 @@ void save_config()
 	fprintf(fp,"default_record_dir = %s\n", record_dir);
 	fprintf(fp,"default_scene_detection_treshold = %d\n", scene_detection_treshold);
 	fprintf(fp,"default_scene_detection_decimation = %d\n", scene_detection_width_decimation);
+
+	save_app_locations(fp);
 
 	if (verbose) printf("Configuration saved\n");
 

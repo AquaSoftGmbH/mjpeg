@@ -146,7 +146,7 @@ char *check_editlist(char *editlist)
 		sprintf(file, "%s/.studio/%s.eli", getenv("HOME"),
 			editlist+i+1);
 		sprintf(command, "%s -S %s -T -1 %s%s",
-			LAV2YUV_LOCATION, file, editlist,
+			app_location(LAV2YUV), file, editlist,
 			verbose?"":" >> /dev/null 2>&1");
 		system(command);
 
@@ -422,7 +422,7 @@ void create_lavplay_edit_child()
 	setenv("SDL_WINDOWID", SDL_windowhack, 1);
 
 	n=0;
-	lavplay_command[n] = LAVPLAY_LOCATION; n++;
+	lavplay_command[n] = app_name(LAVPLAY_E); n++;
 	lavplay_command[n] = "-q"; n++;
 	lavplay_command[n] = "-g"; n++;
 	lavplay_command[n] = "-v"; n++;
@@ -469,7 +469,7 @@ void file_ok_sel_screeny( GtkWidget *w, GtkFileSelection *fs )
 
 	sprintf(temp, "%s/.studio/%s", getenv("HOME"), editlist_filename);
 	sprintf(command, "%s -o %s -f i %s -i %d%s",
-		LAVTRANS_LOCATION, file, temp, current_position,
+		app_location(LAVTRANS), file, temp, current_position,
 			verbose?"":" >> /dev/null 2>&1");
 	system(command);
 
@@ -663,7 +663,7 @@ int open_add_movie_scene_editlist()
 			y = sscanf(temp_entry, "%d %d %d (%d %d)\n", &a, &b, &c, &d, &e);
 			sprintf(file, "%s/.studio/.temp.jpg", getenv("HOME"));
 			sprintf(command, "%s -f i -o %s -i %d %s%s",
-				LAVTRANS_LOCATION, file, total, file_selected,
+				app_location(LAVTRANS), file, total, file_selected,
 				verbose?"":" >> /dev/null 2>&1");
 			system(command);
 

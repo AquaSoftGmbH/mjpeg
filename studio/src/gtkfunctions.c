@@ -18,6 +18,10 @@
 
 /* Only goal of this file is for some easy access to functions */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>

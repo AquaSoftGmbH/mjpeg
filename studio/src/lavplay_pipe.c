@@ -245,7 +245,7 @@ void create_lavplay_child()
 	int n;
 
 	n=0;
-	lavplay_command[n] = LAVPLAY_LOCATION; n++;
+	lavplay_command[n] = app_name(LAVPLAY); n++;
 	lavplay_command[n] = "-q"; n++;
 	lavplay_command[n] = "-g"; n++;
 	lavplay_command[n] = "-v"; n++; lavplay_command[n] = "2"; n++;

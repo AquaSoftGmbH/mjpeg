@@ -297,7 +297,7 @@ void create_lavplay_trimming_child()
 	setenv("SDL_WINDOWID", SDL_windowhack, 1);
 
 	n=0;
-	lavplay_command[n] = LAVPLAY_LOCATION; n++;
+	lavplay_command[n] = app_name(LAVPLAY_T); n++;
 	lavplay_command[n] = "-q"; n++;
 	lavplay_command[n] = "-g"; n++;
 	lavplay_command[n] = "-v"; n++;

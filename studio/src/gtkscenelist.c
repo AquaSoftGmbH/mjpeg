@@ -32,6 +32,7 @@
 #include <string.h>
 
 #include "gtkscenelist.h"
+#include "pipes.h"
 #include "film.xpm"
 
 #define SCENE_IMAGE_WIDTH 100
@@ -163,7 +164,7 @@ static GtkScene *gtk_scene_new(gint view_start, gint view_end,
 
 	sprintf(filename, "%s/.studio/temp.jpg", getenv("HOME"));
 	sprintf(command, "%s -o %s -f i -i %d %s%s",
-		LAVTRANS_LOCATION, filename, view_start, movie,
+		app_location(LAVTRANS), filename, view_start, movie,
 		verbose?"":" >> /dev/null 2>&1");
 	system(command);
 	temp = gdk_pixbuf_new_from_file (filename);

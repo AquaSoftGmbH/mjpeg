@@ -236,7 +236,7 @@ void do_scene_detection(GtkWidget *w, GtkFileSelection *fs)
 	char temp1[256], temp2[256];
 	int n=0,i;
 
-	lav2yuv_command[n] = LAV2YUV_LOCATION; n++;
+	lav2yuv_command[n] = app_name(LAV2YUV_S); n++;
 	lav2yuv_command[n] = "-v2"; n++;
 	lav2yuv_command[n] = "-D"; n++;
 	sprintf(temp1, "%d", scene_detection_width_decimation);
@@ -413,7 +413,7 @@ void create_child()
 
 	/* create command in lavrec_command */
 	n=0;
-	lavrec_command[n] = LAVREC_LOCATION; n++;
+	lavrec_command[n] = app_name(LAVREC); n++;
 	lavrec_command[n] = "-i"; n++; sprintf(lavrec_i, "%c", input_source); lavrec_command[n] = lavrec_i; n++;
 	lavrec_command[n] = single_frame ? "-S" : "-w"; n++;
 	lavrec_command[n] = "-f"; n++; sprintf(lavrec_f, "%c", video_format); lavrec_command[n] = lavrec_f; n++;

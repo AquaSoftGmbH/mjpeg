@@ -30,10 +30,36 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <pthread.h>
+#include <errno.h>
 
+#include "parseconfig.h"
 #include "pipes.h"
 #include "y4m12.h"
 #include "gtkfunctions.h"
+
+/* ugh */
+#define LAV2WAV_APP    0
+#define MP2ENC_APP     1
+#define LAV2YUV_APP    2
+#define YUVSCALER_APP  3
+#define MPEG2ENC_APP   4
+#define MPLEX_APP      5
+#define LAVPLAY_APP    6
+#define LAVREC_APP     7
+#define YUVPLAY_APP    8
+#define LAVPIPE_APP    9
+#define YUV2LAV_APP    10
+#define YUVDENOISE_APP 11
+#define YUV2DIVX_APP   12
+#define LAVADDWAV_APP  13
+#define LAVTRANS_APP   14
+#define NUM_APPS       15
+
+static char *app_locations[NUM_APPS];
+static char *app_names[NUM_APPS] = {
+  "lav2wav", "mp2enc",     "lav2yuv",  "yuvscaler", "mpeg2enc",
+  "mplex",   "lavplay",    "lavrec",   "yuvplay",   "lavpipe",
+  "yuv2lav", "yuvdenoise", "yuv2divx", "lavaddwav", "lavtrans" };
 
 extern int verbose;
 
@@ -89,59 +115,60 @@ void close_pipe(int number) {
    }
 }
 
-char *app_name(int number) {
-   char *app;
-
-   switch (number) {
+static int num_to_name(int number)
+{
+   switch (number)
+   {
       case LAV2YUV:
       case LAV2YUV_S:
-        app = "lav2yuv";
-        break;
+        return LAV2YUV_APP;
       case LAVPLAY:
       case LAVPLAY_E:
       case LAVPLAY_T:
-        app = "lavplay";
-        break;
+        return LAVPLAY_APP;
       case LAVREC:
-        app = "lavrec";
-        break;
+        return LAVREC_APP;
       case MPLEX:
-        app = "mplex";
-        break;
+        return MPLEX_APP;
       case MPEG2ENC:
-        app = "mpeg2enc";
-        break;
+        return MPEG2ENC_APP;
       case MP2ENC:
-        app = "mp2enc";
-        break;
+        return MP2ENC_APP;
       case LAV2WAV:
-        app = "lav2wav";
-        break;
+        return LAV2WAV_APP;
       case YUVSCALER:
-        app = "yuvscaler";
-        break;
+        return YUVSCALER_APP;
       case YUVPLAY:
       case YUVPLAY_E:
-        app = "yuvplay";
-        break;
+        return YUVPLAY_APP;
       case LAVPIPE:
-        app = "lavpipe";
-        break;
+        return LAVPIPE_APP;
       case YUV2LAV:
-        app = "yuv2lav";
-        break;
+        return YUV2LAV_APP;
       case YUVDENOISE:
-        app = "yuvdenoise";
-        break;
+        return YUVDENOISE_APP;
       case YUV2DIVX:
-        app = "yuv2divx";
-        break;
-      default:
-        app = "unknown";
-        break;
+        return YUV2DIVX_APP;
+      case LAVADDWAV:
+        return LAVADDWAV_APP;
+      case LAVTRANS:
+        return LAVTRANS_APP;
    }
 
-   return app;
+   return -1;
+}
+
+char *app_name(int number) {
+  if (num_to_name(number) >= 0)
+    return app_names[num_to_name(number)];
+  return NULL;
+}
+
+char *app_location(int number)
+{
+  if (num_to_name(number) >= 0)
+    return app_locations[num_to_name(number)];
+  return NULL;
 }
 
 static int read_lav2yuv_data(gint source)
@@ -495,6 +522,16 @@ static void callback_pipes(gpointer data, gint source,
 
 void start_pipe_command(char *command[], int number)
 {
+   if (!app_location(number) || app_location(number)[0]!='/')
+   {
+      gtk_show_text_window(STUDIO_ERROR,
+         "No valid application location found for %s. "
+         "Please install and specify the correct path "
+         "in the options screen in order to use it",
+         app_name(number));
+      return;
+   }
+
    if (!active[number])
    {
       int ipipe[2], opipe[2], spipe[2];
@@ -617,8 +654,13 @@ void start_pipe_command(char *command[], int number)
          if(n!=2) exit(1);
          close(opipe[1]);
 
-         execvp(command[0], command);
-         exit(1);
+         execvp(app_location(number), command);
+
+         /* uh oh, app does not exist */
+         fprintf(stderr, "**ERROR: %s (\'%s\') could not be started: %s\n",
+            app_name(number), app_location(number), sys_errlist[errno]);
+
+         _exit(1);
       }
    }
    else
@@ -635,5 +677,62 @@ void init_pipes()
       active[i] = 0;
    }
 
+   /* default app locations */
+   app_locations[LAV2WAV_APP] = LAV2WAV_LOCATION;
+   app_locations[MP2ENC_APP] = MP2ENC_LOCATION;
+   app_locations[LAV2YUV_APP] = LAV2YUV_LOCATION;
+   app_locations[YUVSCALER_APP] = YUVSCALER_LOCATION;
+   app_locations[MPEG2ENC_APP] = MPEG2ENC_LOCATION;
+   app_locations[MPLEX_APP] = MPLEX_LOCATION;
+   app_locations[LAVPLAY_APP] = LAVPLAY_LOCATION;
+   app_locations[LAVREC_APP] = LAVREC_LOCATION;
+   app_locations[YUVPLAY_APP] = YUVPLAY_LOCATION;
+   app_locations[LAVPIPE_APP] = LAVPIPE_LOCATION;
+   app_locations[YUV2LAV_APP] = YUV2LAV_LOCATION;
+   app_locations[YUVDENOISE_APP] = YUVDENOISE_LOCATION;
+   app_locations[YUV2DIVX_APP] = YUV2DIVX_LOCATION;
+   app_locations[LAVADDWAV_APP] = LAVADDWAV_LOCATION;
+   app_locations[LAVTRANS_APP] = LAVTRANS_LOCATION;
+
    l2y_y4m12 = y4m12_malloc();
+}
+
+void save_app_locations(FILE *fp)
+{
+  int i;
+
+  fprintf(fp, "\n[ApplicationLocations]\n");
+  for (i=0;i<NUM_APPS;i++)
+  {
+    fprintf(fp, "default_application_location_%s = %s\n",
+      app_names[i], app_locations[i]);
+  }
+}
+
+void load_app_locations()
+{
+  char buff[256];
+  char *val;
+  int i;
+  
+  for (i=0;i<NUM_APPS;i++)
+  {
+    sprintf(buff, "default_application_location_%s", app_names[i]);
+    if (NULL != (val = cfg_get_str("ApplicationLocations",buff)))
+    {
+      if (val[0] == '/' || !strcmp(val, "not available"))
+      {
+        app_locations[i] = val;
+        if (verbose)
+           printf("%s - \'%s\' loaded\n", buff, val);
+      }
+      else
+      {
+        printf("Config file Error: %s == \'%s\' not allowed\n", buff, val);
+      }
+    }
+    else
+      if (verbose)
+        printf("%s - default \'%s\' loaded\n", buff, app_locations[i]);
+  }
 }

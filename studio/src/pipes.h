@@ -20,6 +20,8 @@
 #define YUV2DIVX 16     /* for divx encoding, lavencode.c */
 #define NUM 17          /* total number of pipes */
 #define LAV2YUV_DATA 18 /* a special case for lav2yuv-data-processing */
+#define LAVADDWAV 19    /* non-pipe command but needed for app_name/location() */
+#define LAVTRANS 20     /* non-pipe command but needed for app_name/location() */
 
 /* Here we define some nice names for the encoding */ 
 #define STUDIO_ENC_FORMAT_MPEG 1 /* use mpeg2enc */
@@ -32,6 +34,10 @@ void close_pipe(int number);
 void write_pipe(int number, char *message);
 int pipe_is_active(int number);
 char *app_name(int number);
+char *app_location(int number);
 void init_pipes(void);
+
+void save_app_locations(FILE *fp);
+void load_app_locations(void);
 
 #endif /* __STUDIO_PIPES_H__ */

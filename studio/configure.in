@@ -102,83 +102,92 @@ AC_SUBST(MJPEGTOOLS_PREFIX)
 dnl Let's search for the lavtools and their versions
 AC_PATH_PROG(LAVPLAY_LOCATION, lavplay, no)
 if test x$LAVPLAY_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find lavplay - please reinstall the MJPEG-tools)
+  AC_MSG_WARN(Could not find lavplay)
+  LAVPLAY_LOCATION="not available"
 fi
 
 AC_PATH_PROG(LAVREC_LOCATION, lavrec, no)
 if test x$LAVREC_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find lavrec - please reinstall the MJPEG-tools)
+  AC_MSG_WARN(Could not find lavrec)
+  LAVREC_LOCATION="not available"
 fi
 
 AC_PATH_PROG(LAV2YUV_LOCATION, lav2yuv, no)
 if test x$LAV2YUV_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find lav2yuv - please reinstall the MJPEG-tools)
+  AC_MSG_WARN(Could not find lav2yuv)
+  LAV2YUV_LOCATION="not available"
 fi
 
 AC_PATH_PROG(LAV2WAV_LOCATION, lav2wav, no)
 if test x$LAV2WAV_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find lav2wav - please reinstall the MJPEG-tools)
+  AC_MSG_WARN(Could not find lav2wav)
+  LAV2WAV_LOCATION="not available"
 fi
 
 AC_PATH_PROG(MPEG2ENC_LOCATION, mpeg2enc, no)
 if test x$MPEG2ENC_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find mpeg2enc - please reinstall the MJPEG-tools)
+  AC_MSG_WARN(Could not find mpeg2enc)
+  MPEG2ENC_LOCATION="not available"
 fi
 
 AC_PATH_PROG(MP2ENC_LOCATION, mp2enc, no)
 if test x$MP2ENC_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find mp2enc - please reinstall the MJPEG-tools)
+  AC_MSG_WARN(Could not find mp2enc)
+  MP2ENC_LOCATION="not available"
 fi
 
 AC_PATH_PROG(YUVDENOISE_LOCATION, yuvdenoise, no)
 if test x$YUVDENOISE_LOCATION = xno; then
-  AC_MSG_WARN(Could not find yuvdenoise - Denoising functionality disabled)
-  HAVE_YUVDENOISE=0
-else
-  HAVE_YUVDENOISE=1
+  AC_MSG_WARN(Could not find yuvdenoise)
+  YUVDENOISE_LOCATION="not available"
 fi
 
 AC_PATH_PROG(YUVSCALER_LOCATION, yuvscaler, no)
 if test x$YUVSCALER_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find yuvscaler - please reinstall the MJPEG-tools)
+  AC_MSG_WARN(Could not find yuvscaler)
+  YUVSCALER_LOCATION="not available"
 fi
 
 AC_PATH_PROG(MPLEX_LOCATION, mplex, no)
 if test x$MPLEX_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find mplex - please reinstall the MJPEG-tools)
+  AC_MSG_WARN(Could not find mplex)
+  MPLEX_LOCATION="not available"
 fi
 
 AC_PATH_PROG(LAVTRANS_LOCATION, lavtrans, no)
 if test x$LAVTRANS_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find lavtrans - please reinstall the MJPEG-tools)
+  AC_MSG_WARN(Could not find lavtrans)
+  LAVTRANS_LOCATION="not available"
 fi
 
 AC_PATH_PROG(LAVPIPE_LOCATION, lavpipe, no)
 if test x$LAVPIPE_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find lavpipe - please reinstall the MJPEG-tools)
+  AC_MSG_WARN(Could not find lavpipe)
+  LAVPIPE_LOCATION="not available"
 fi
 
 AC_PATH_PROG(YUVPLAY_LOCATION, yuvplay, no)
 if test x$YUVPLAY_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find yuvplay - please reinstall the MJPEG-tools)
+  AC_MSG_WARN(Could not find yuvplay)
+  YUVPLAY_LOCATION="not available"
 fi
 
 AC_PATH_PROG(YUV2LAV_LOCATION, yuv2lav, no)
 if test x$YUV2LAV_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find yuv2lav - please reinstall the MJPEG-tools)
+  AC_MSG_WARN(Could not find yuv2lav)
+  YUV2LAV_LOCATION="not available"
 fi
 
 AC_PATH_PROG(LAVADDWAV_LOCATION, lavaddwav, no)
 if test x$LAVADDWAV_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find lavaddwav - please reinstall the MJPEG-tools)
+  AC_MSG_WARN(Could not find lavaddwav)
+  LAVADDWAV_LOCATION="not available"
 fi
 
 AC_PATH_PROG(YUV2DIVX_LOCATION, yuv2divx, no)
 if test x$YUV2DIVX_LOCATION = xno; then
-  AC_MSG_WARN(Could not find yuv2divx - Divx encoding functionality disabled)
-  HAVE_YUV2DIVX=0
-else
-  HAVE_YUV2DIVX=1
+  AC_MSG_WARN(Could not find yuv2divx)
+  YUV2DIVX_LOCATION="not available"
 fi
 
 dnl **********************************************************************
@@ -204,9 +213,6 @@ dnl Configure the things
 dnl
 AC_DEFINE_UNQUOTED(YUVDENOISE_LOCATION, "${YUVDENOISE_LOCATION}")
 AC_SUBST(YUVDENOISE_LOCATION)
-AC_DEFINE_UNQUOTED(HAVE_YUVDENOISE, ${HAVE_YUVDENOISE})
-AM_CONDITIONAL(HAVE_YUVDENOISE, test ${HAVE_YUVDENOISE} = 1)
-AC_SUBST(HAVE_YUVDENOISE)
 AC_DEFINE_UNQUOTED(YUVSCALER_LOCATION, "${YUVSCALER_LOCATION}")
 AC_SUBST(YUVSCALER_LOCATION)
 AC_DEFINE_UNQUOTED(LAV2WAV_LOCATION, "${LAV2WAV_LOCATION}")
@@ -235,9 +241,6 @@ AC_DEFINE_UNQUOTED(LAVADDWAV_LOCATION, "${LAVADDWAV_LOCATION}")
 AC_SUBST(LAVADDWAV_LOCATION)
 AC_DEFINE_UNQUOTED(YUV2DIVX_LOCATION, "${YUV2DIVX_LOCATION}")
 AC_SUBST(YUV2DIVX_LOCATION)
-AC_DEFINE_UNQUOTED(HAVE_YUV2DIVX, ${HAVE_YUV2DIVX})
-AM_CONDITIONAL(HAVE_YUV2DIVX, test ${HAVE_YUV2DIVX} = 1)
-AC_SUBST(HAVE_YUV2DIVX)
 AC_DEFINE_UNQUOTED(DEFAULT_MIXER, "/dev/mixer")
 AC_SUBST(DEFAULT_MIXER)
 AC_DEFINE_UNQUOTED(DEFAULT_VIDEO, "/dev/video")

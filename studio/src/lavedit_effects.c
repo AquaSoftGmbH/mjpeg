@@ -166,7 +166,7 @@ void effects_finished()
 
 			sprintf(file, "/tmp/.sound.wav");
 			sprintf(command, "%s %s > %s%s",
-				LAV2WAV_LOCATION, soundfile, file,
+				app_location(LAV2WAV), soundfile, file,
 				verbose?"":" 2>/dev/null");
 			system(command);
 
@@ -178,7 +178,7 @@ void effects_finished()
 			strcpy(new_renderfile, renderfile);
 			new_renderfile[strlen(new_renderfile)-1] = '\0';
 			sprintf(command, "%s %s %s %s%s",
-				LAVADDWAV_LOCATION, renderfile, file, new_renderfile,
+				app_location(LAVADDWAV), renderfile, file, new_renderfile,
 				verbose?"":" >> /dev/null 2>&1");
 			system(command);
 
@@ -373,7 +373,7 @@ void start_lavpipe_render(char *lavpipe_file, char *result_file)
 	extern char video_format;
 
 	n = 0;
-	yuv2lav_command[n] = YUV2LAV_LOCATION; n++;
+	yuv2lav_command[n] = app_name(YUV2LAV); n++;
 	sprintf(temp1, "%c", video_format);
 	yuv2lav_command[n] = "-f"; n++;
 	yuv2lav_command[n] = temp1; n++;
@@ -391,7 +391,7 @@ void start_lavpipe_render(char *lavpipe_file, char *result_file)
 	start_pipe_command(yuv2lav_command, YUV2LAV); /* yuv2lav */
 
 	n = 0;
-	lavpipe_command[n] = LAVPIPE_LOCATION; n++;
+	lavpipe_command[n] = app_name(LAVPIPE); n++;
 	lavpipe_command[n] = lavpipe_file; n++;
 	lavpipe_command[n] = NULL;
 	start_pipe_command(lavpipe_command, LAVPIPE); /* lavpipe */
@@ -412,7 +412,7 @@ void start_lavpipe_preview(char *file)
 	if (verbose) printf("Playing %s in lavpipe | yuvplay\n", file);
 
 	n = 0;
-	yuvplay_command[n] = YUVPLAY_LOCATION; n++;
+	yuvplay_command[n] = app_name(YUVPLAY_E); n++;
 	yuvplay_command[n] = "-s"; n++;
 	sprintf(temp, "%dx%d", lavedit_effects_preview_width, lavedit_effects_preview_height);
 	yuvplay_command[n] = temp; n++;
@@ -420,7 +420,7 @@ void start_lavpipe_preview(char *file)
 	start_pipe_command(yuvplay_command, YUVPLAY_E); /* yuvplay */
 
 	n = 0;
-	lavpipe_command[n] = LAVPIPE_LOCATION; n++;
+	lavpipe_command[n] = app_name(LAVPIPE); n++;
 	lavpipe_command[n] = file; n++;
 	lavpipe_command[n] = NULL;
 	start_pipe_command(lavpipe_command, LAVPIPE); /* lavpipe */
@@ -1333,7 +1333,7 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 		char syscall[256];
 		sprintf(tempfile, "%s/.studio/tempfile.lav2yuv.data", getenv("HOME"));
 		sprintf(syscall, "%s -f 1 %s > %s 2>/dev/null",
-			LAV2YUV_LOCATION, options->scene_file, tempfile);
+			app_location(LAV2YUV), options->scene_file, tempfile);
 		system(syscall);
 		fdd = fopen(tempfile, "r");
 		syscall[0] = '\0';
@@ -1929,7 +1929,7 @@ void lavedit_effects_create_overlay(GtkWidget *widget, char *data)
 	/* now a bit tricky, get the movie settings by obtaining one frame */
 	sprintf(file, "%s/.studio/temp.jpg", getenv("HOME"));
 	sprintf(command, "%s -o %s -f i -i %d %s%s",
-		LAVTRANS_LOCATION, file, options->scene_start, options->scene_file,
+		app_location(LAVTRANS), file, options->scene_start, options->scene_file,
 		verbose?"":" >> /dev/null 2>&1");
 	system(command);
 	options->video_image = gdk_pixbuf_new_from_file (file);

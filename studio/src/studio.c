@@ -69,6 +69,7 @@ void notebook_page_switched( GtkWidget *widget, gpointer data )
 gint delete_event( GtkWidget *widget, GdkEvent *event, gpointer data )
 {
 	g_print ("Thanks for using Linux Video Studio.\n");
+	save_config();
 	return(FALSE);
 }
 
@@ -413,6 +414,8 @@ int main( int argc, char *argv[] )
 	GdkBitmap *mask;
 	GtkStyle *style;*/
 
+	init_pipes(); /* set all pipe data to 0 */
+
 	command_line_options(argc, argv);
 
 	g_thread_init(NULL);
@@ -522,8 +525,6 @@ int main( int argc, char *argv[] )
 
 	gtk_widget_show(window);
 	if (verbose) g_print("Linux Video Studio initialized correctly\n");
-
-	init_pipes(); /* set all data to 0 */
 
 	gdk_threads_enter();
 	gtk_main();

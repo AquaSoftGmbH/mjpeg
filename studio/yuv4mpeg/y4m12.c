@@ -1,7 +1,9 @@
 /* toplevel library to support both yuv4mpeg1 (mjpegtools-1.4)
    as well as yuv4mpeg2 (mjpegtools-1.5) */
 
-
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
@@ -115,7 +117,7 @@ y4m12_read_header (y4m12_t *y4m12, int fd)
       {
         close(fake_fd[1]);
         close(fake_fd[0]);
-        fprintf(stderr, "Unknown header\n");
+        fprintf(stderr, "Unknown header: %s", fake_buff);
         return -1;
       }
     }

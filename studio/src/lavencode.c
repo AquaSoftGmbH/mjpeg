@@ -141,7 +141,7 @@ int number_of_frames(char *editlist)
          /* this is for certainty to prevent circles */
          if (strcmp(editlist, file_temp)==0) return -1;
          sprintf(command_temp, "%s -S %s -T -1 %s%s",
-            LAV2YUV_LOCATION, file_temp, editlist,
+            app_location(LAV2YUV), file_temp, editlist,
             verbose?"":" >> /dev/null 2>&1");
          system(command_temp);
          num = number_of_frames(file_temp);
@@ -424,7 +424,7 @@ void audio_convert()
    if (progress_label) gtk_label_set_text(GTK_LABEL(progress_label),
       "Encoding audio: lav2wav | mp2enc");
 
-   mp2enc_command[n] = MP2ENC_LOCATION; n++;
+   mp2enc_command[n] = app_name(MP2ENC); n++;
    mp2enc_command[n] = "-v 2"; n++;
    if ((*pointenc).forcevcd[0] == '-')
      {
@@ -457,7 +457,7 @@ void audio_convert()
    start_pipe_command(mp2enc_command, MP2ENC); /* mp2enc */
 
    n = 0;
-   lav2wav_command[n] = LAV2WAV_LOCATION; n++;
+   lav2wav_command[n] = app_name(LAV2WAV); n++;
    lav2wav_command[n] = enc_inputfile; n++;
    lav2wav_command[n] = NULL;
  
@@ -479,7 +479,7 @@ int n;
 static char temp1[4], temp2[4];
 n=0;
 
-yuv2divx_command[n] = YUV2DIVX_LOCATION; n++;
+yuv2divx_command[n] = app_name(YUV2DIVX); n++;
 
 if ((*pointenc).audiobitrate != 0) {
    yuv2divx_command[n] = "-a"; n++; 
@@ -514,7 +514,7 @@ static char temp7[4], temp8[4], temp9[4], temp10[4], temp11[4];
 
 n=0;
 
-mpeg2enc_command[n] = MPEG2ENC_LOCATION; n++;
+mpeg2enc_command[n] = app_name(MPEG2ENC); n++;
 mpeg2enc_command[n] = "-v1"; n++;
 
 if((*pointenc).bitrate != 0) {
@@ -678,7 +678,7 @@ void video_convert()
          (scale_140 == 1) || (scale_150 == 1)             )
    {
       n = 0;
-      yuvscaler_command[n] = YUVSCALER_LOCATION; n++;
+      yuvscaler_command[n] = app_name(YUVSCALER); n++;
       yuvscaler_command[n] = "-v 0"; n++;
       if (strlen((*pointenc).input_use) > 0 &&
           strcmp((*pointenc).input_use,"as is") )
@@ -736,7 +736,7 @@ void video_convert()
      }
 
    n = 0;
-   lav2yuv_command[n] = LAV2YUV_LOCATION; n++;
+   lav2yuv_command[n] = app_name(LAV2YUV); n++;
    if (strlen((*pointenc).notblacksize) > 0 && 
        strcmp((*pointenc).notblacksize,"as is") != 0) 
      {
@@ -839,7 +839,7 @@ progress_encoding = 3;
       "Multiplexing: mplex");
 
    n = 0;
-   mplex_command[n] = MPLEX_LOCATION; n++;
+   mplex_command[n] = app_name(MPLEX); n++;
    if ((*pointenc).muxformat != 0) 
    {
       sprintf(temp1, "%i", (*pointenc).muxformat);
@@ -1479,7 +1479,6 @@ ency=5;
   create_option_button(task_group, table, "SVCD", encx+1, ency);
   ency++;
 
-#ifdef HAVE_YUV2DIVX
   button_divx = gtk_radio_button_new_with_label(task_group, "DIVx ");
   gtk_signal_connect (GTK_OBJECT (button_divx), "toggled",
                       GTK_SIGNAL_FUNC (set_task), (gpointer) "DIVx");
@@ -1489,7 +1488,6 @@ ency=5;
   gtk_widget_show (button_divx);
   create_option_button(task_group, table, "DIVx", encx+1, ency);
   ency++;
-#endif
 }
 
 /* Here all the work is distributed, and some basic parts of the layout done */
