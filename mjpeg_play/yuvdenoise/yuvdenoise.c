@@ -44,7 +44,7 @@
 
 #define BLOCKSIZE     8
 #define BLOCKOFFSET   2
-#define RADIUS        16
+#define RADIUS        8
 
 
 
@@ -468,7 +468,8 @@ main (int argc, char *argv[])
 
 /* if needed, deinterlace frame */
 
-  if (y4m_si_get_interlace(&streaminfo) != Y4M_ILACE_NONE)
+  if (y4m_si_get_interlace(&streaminfo) != Y4M_ILACE_NONE && 
+      y4m_si_get_interlace(&streaminfo) != Y4M_UNKNOWN)
     {
       mjpeg_log (LOG_INFO, "stream read is interlaced: using deinterlacer.\n");
       mjpeg_log (LOG_INFO, "stream written is frame-based.\n");
@@ -479,6 +480,8 @@ main (int argc, char *argv[])
       /* turning on deinterlacer */
       deinterlace = 1;
     }
+  else if (y4m_si_get_interlace(&streaminfo) == Y4M_UNKNOWN)
+      y4m_si_set_interlace(&streaminfo, Y4M_ILACE_NONE);
 
 /* write the outstream header */
 
@@ -1972,7 +1975,6 @@ mb_search_44 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
       }
     offs+=width;
   }
-  nr_of_44_matches=(nr_of_44_matches<save_population)? nr_of_44_matches:save_population;
 }
 
 void
@@ -2036,7 +2038,6 @@ mb_search_22 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 		}
 	    }
     }
-  nr_of_22_matches=(nr_of_22_matches<save_population)? nr_of_22_matches:save_population;
 }
 
 void
@@ -2055,7 +2056,7 @@ mb_search (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
     dr=dx + dy* width;
     dr_uv=dr>>2;
 
-    i=save_population/2;
+    i=save_population>>1;
     while(i--)
     {
 	// Use the best matches from 2x2 search
@@ -2437,8 +2438,8 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
   avrg_SAD = sum_of_SADs / nr_of_blocks;
 
   last_mean_SAD = mean_SAD;
-  mean_SAD = mean_SAD * 1000 + avrg_SAD * 100;
-  mean_SAD /= 1100;
+  mean_SAD = mean_SAD * 5000 + avrg_SAD * 100;
+  mean_SAD /= 5100;
 
   if (mean_SAD < 50)            /* don't go too low !!! */
       mean_SAD = 50;            /* a SAD of 100 is nearly noisefree source material */
