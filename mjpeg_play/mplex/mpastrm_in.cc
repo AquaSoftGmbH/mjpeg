@@ -110,8 +110,6 @@ void MPAStream::Init ( const int stream_num )
 {
     unsigned int i;
 	int padding_bit;
-	mjpeg_debug( "SETTING zero stuff to %d", muxinto.vcd_zero_stuffing );
-	mjpeg_debug( "SETTING audio buffer to %d", muxinto.audio_buffer_size );
 
 	MuxStream::Init( AUDIO_STR_0 + stream_num, 
 					 0,  // Buffer scale

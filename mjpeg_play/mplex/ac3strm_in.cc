@@ -84,9 +84,6 @@ void AC3Stream::Init ( const int stream_num)
     unsigned int i;
     unsigned int framesize_code;
 
-	mjpeg_debug( "SETTING zero stuff to %d", muxinto.vcd_zero_stuffing );
-	mjpeg_debug( "SETTING audio buffer to %d", default_buffer_size );
-
 	MuxStream::Init( PRIVATE_STR_1, 
 					 1,  // Buffer scale
 					 default_buffer_size,
@@ -119,11 +116,6 @@ void AC3Stream::Init ( const int stream_num)
 		num_frames[0]++;
         access_unit.start = AU_start;
 		access_unit.length = framesize;
-        if( framesize != 1792 )
-        {
-            fprintf( stderr," Frame %d %d\n", decoding_order, framesize );
-            exit(1);
-        }
         bit_rate = ac3_bitrate_index[framesize_code>>1];
 		samples_per_second = ac3_frequency[frequency];
         
