@@ -1,8 +1,11 @@
 1.	mpeg2enc has only been tested cursorarily on MPEG-2 streams.
 	It was hard enough to make sure the MPEG-1 stuff worked really
-	reliably ;-).  Last test seemed to suggest recent improvements in the
-	motion compensation code have *broken* MPEG2 encoding. Don't worry
-	its next on the list for work!
+	reliably ;-). Recent resting shows that there is some unfortunate
+	interaction between the new rate control code and MPEG-2 with
+	wildly inappropriate allocations of bits between I/B and P frames.
+	Should be fixed very soon.  It is also likely that there are hidden
+	only occasionally triggering bugs in the motion compensation search for
+	mpeg-2.
 
 2.  The bit-rate control algorithm in mpeg2enc is relatively new and must
 	therefore be regarded with some suspicion.  It *looks* to have corrected
