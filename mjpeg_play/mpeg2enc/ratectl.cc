@@ -54,10 +54,13 @@
 #include "simd.h"
 #include "fastintfns.h"
 
+#include "ratectl.hh"
+
 /* private prototypes */
 
-static void calc_actj ( Picture *picture, double *act_sum, double *var_sum);
+static void calc_actj ( Picture &picture, double *act_sum, double *var_sum);
 
+#ifdef JUNK
 /*Constant bit-rate rate control variables */
 /* X's global complexity (Chi! not X!) measures.
    Actually: average quantisation * bits allocated in *previous* frame
@@ -125,6 +128,7 @@ static double sum_avg_act = 0.0;
 static double avg_act;
 static double avg_var;
 static double sum_avg_var = 0.0;
+static double sum_avg_quant = 0.0;
 
 static int Ni, Np, Nb;
 static int64_t S;
@@ -147,7 +151,6 @@ static double avg_KP = 10.0*2.0;
 #define K_AVG_WINDOW_B   20.0
 static double bits_per_mb;
 
-static double SQ = 0.0;
 static double sum_vbuf_Q = 0.0;
 static bool fast_tune = false;
 static bool first_gop = true;
@@ -160,7 +163,7 @@ static bool first_I = false;
    The second integerises the results of the first for use in the
    actual stream...
 */
-
+#endif
 
 static double scale_quantf( int q_scale_type, double quant )
 {
@@ -252,15 +255,47 @@ double inv_scale_quant( int q_scale_type, int raw_code )
 		return ((double)raw_code);
 }
 
+/*****************************
+ *
+ * On-the-fly rate controller.  The constructor sets up the initial
+ * control and estimator parameter values to values that experience
+ * suggest make sense.  All the important ones are dynamically 
+ * tuned anyway so these values are not too critical.
+ *
+ ****************************/
+OnTheFlyRateCtl::OnTheFlyRateCtl()
+{
+	buffer_variation = 0;
+	bits_transported = 0;
+	bits_used = 0;
+	prev_bitcount = 0;
+	bitcnt_EOP = 0;
+	frame_overshoot_margin = 0;
+	sum_avg_act = 0.0;
+	sum_avg_var = 0.0;
+	
+	/* TODO: These values should are really MPEG-1/2 and material type
+	   dependent.  The encoder should probably run over the first 100
+	   frames or so look-ahead to tune theses dynamically before doing
+	   real encoding... alternative a config file should  be written!
+	*/
+
+	avg_KI = 5.0; 
+	avg_KB = 10.0*2.0;
+	avg_KP = 10.0*2.0;
+	sum_avg_quant = 0.0;
+
+
+}
 
 /*********************
-
- Initialise rate control parameters
- params:  reinit - Rate control is being re-initialised during the middle
-                   of a run.  Don't reset adaptive parameters.
+ *
+ * Initialise rate control parameters
+ * params:  reinit - Rate control is being re-initialised during the middle
+ *                   of a run.  Don't reset adaptive parameters.
  ********************/
 
-void rc_init_seq(int reinit)
+void OnTheFlyRateCtl::InitSeq(bool reinit)
 {
 	double init_quant;
 	/* If its stills with a size we have to hit then make the
@@ -289,7 +324,7 @@ void rc_init_seq(int reinit)
 	if( reinit )
 		return;
 
-	first_gop = 1;
+	first_gop = true;
 
 	/* Calculate reasonable margins for variation in the decoder
 	   buffer.  We assume that having less than 5 frame intervals
@@ -332,10 +367,6 @@ void rc_init_seq(int reinit)
 	else
 		r = (int)floor(4.0*opt_bit_rate/ctl_decode_frame_rate);
 
-	Ki = 1.2;
-	Kb = 1.3;
-	Kp = 1.2;
-
 
 	/* Set the virtual buffers for per-frame rate control feedback to
 	   values corresponding to the quantisation floor (if specified)
@@ -344,6 +375,10 @@ void rc_init_seq(int reinit)
 
 	init_quant = (ctl_quant_floor > 0.0 ? ctl_quant_floor : 6.0);
 	d0p = d0b = d0pb = d0i = static_cast<int>(init_quant * r / 62.0);
+
+	next_ip_delay = 0.0;
+	decoding_time = 0.0;
+
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: sequence initialization\n");
@@ -359,9 +394,8 @@ void rc_init_seq(int reinit)
 
 }
 
-static double T_sum;
 
-void rc_init_GOP( int np, int nb)
+void OnTheFlyRateCtl::InitGOP( int np, int nb)
 {
 	Np = opt_fieldpic ? 2*np+1 : 2*np;
 	Nb = opt_fieldpic ? 2*nb : 2*nb;
@@ -376,7 +410,6 @@ void rc_init_GOP( int np, int nb)
 	*/
 
 	gop_buffer_correction = 0;
-	T_sum = 0.0;
 
 	/* Each still is encoded independently so we reset rate control
 	   for each one.  They're all I-frames so each stills is a GOP too.
@@ -419,7 +452,7 @@ void rc_init_GOP( int np, int nb)
 
 
 /* Step 1: compute target bits for current picture being coded */
-void rc_init_pict(Picture *picture)
+void OnTheFlyRateCtl::InitPict(Picture &picture)
 {
 	double avg_K = 0.0;
 	double target_Q;
@@ -497,7 +530,7 @@ void rc_init_pict(Picture *picture)
 	min_q = min_d = INT_MAX;
 	max_q = max_d = INT_MIN;
     Xsum = Ni*Xi+Np*Xp+Nb*Xb;
-	switch (picture->pict_type)
+	switch (picture.pict_type)
 	{
 	case I_TYPE:
 		
@@ -607,16 +640,15 @@ void rc_init_pict(Picture *picture)
 	}
 
 
-	T_sum += T;
-	current_Q = scale_quant(picture->q_scale_type,62.0*d / r);
+	current_Q = scale_quant(picture.q_scale_type,62.0*d / r);
 	if( no_avg_K )
 		target_Q = current_Q;
 	else
-		target_Q = scale_quantf(picture->q_scale_type, 
+		target_Q = scale_quantf(picture.q_scale_type, 
 								avg_K * avg_act *(mb_per_pict) / T);
 
-	picture->avg_act = avg_act;
-	picture->sum_avg_act = sum_avg_act;
+	picture.avg_act = avg_act;
+	picture.sum_avg_act = sum_avg_act;
 
 	/*  If guesstimated target quantisation requirement is much different
 		than that suggested by the virtual buffer we reset the virtual
@@ -648,7 +680,7 @@ void rc_init_pict(Picture *picture)
 
 
 
-static void calc_actj(Picture *picture, double *act_sum, double *var_sum)
+static void calc_actj(Picture &picture, double *act_sum, double *var_sum)
 {
 	int i,j,k,l;
 	double actj,sum;
@@ -672,8 +704,8 @@ static void calc_actj(Picture *picture, double *act_sum, double *var_sum)
 			   original we use the absolute sum of DCT coefficients as
 			   our block activity measure.  */
 
-			varsum += (double)picture->mbinfo[k].var;
-			if( picture->mbinfo[k].mb_type  & MB_INTRA )
+			varsum += (double)picture.mbinfo[k].final_me.var;
+			if( picture.mbinfo[k].final_me.mb_type  & MB_INTRA )
 			{
 				i_q_mat = i_intra_q;
 				/* Compensate for the wholly disproprotionate weight
@@ -698,12 +730,12 @@ static void calc_actj(Picture *picture, double *act_sum, double *var_sum)
 			for( l = 0; l < 6; ++l )
 				blksum += 
 					(*pquant_weight_coeff_sum)
-					( picture->mbinfo[k].RawDCTblocks()[l], i_q_mat ) ;
+					( picture.mbinfo[k].RawDCTblocks()[l], i_q_mat ) ;
 			actj = (double)blksum / (double)COEFFSUM_SCALE;
 			if( actj < 12.0 )
 				actj = 12.0;
 
-			picture->mbinfo[k].act = (double)actj;
+			picture.mbinfo[k].act = (double)actj;
 			sum += (double)actj;
 			++k;
 		}
@@ -715,7 +747,7 @@ static void calc_actj(Picture *picture, double *act_sum, double *var_sum)
  * Update rate-controls statistics after pictures has ended..
  *
  */
-void rc_update_pict(Picture *picture)
+void OnTheFlyRateCtl::UpdatePict(Picture &picture)
 {
 	double X;
 	double K;
@@ -724,7 +756,6 @@ void rc_update_pict(Picture *picture)
 	int    i;
 	int    Qsum;
 	int frame_overshoot;
-	static int64_t prev_bitcount = 0LL;
 
 	AP = bitcount() - S;
 	frame_overshoot = (int)AP-(int)T;
@@ -740,7 +771,7 @@ void rc_update_pict(Picture *picture)
 	   margin if we're padding to suit stills whose size has to be
 	   specified in advance in vbv_buffer_size.
 	*/
-	picture->pad = 0;
+	picture.pad = 0;
 
 	if( opt_still_size > 0 && opt_vbv_buffer_still_size)
 	{
@@ -764,7 +795,7 @@ void rc_update_pict(Picture *picture)
 		if( padding_bytes > 0 )
 		{
 			mjpeg_debug( "Padding still to size: %d extra bytes", padding_bytes );
-			picture->pad = 1;
+			picture.pad = 1;
 			alignbits();
 			for( i = 0; i < padding_bytes/2; ++i )
 			{
@@ -814,7 +845,7 @@ void rc_update_pict(Picture *picture)
 	Qsum = 0;
 	for( i = 0; i < mb_per_pict; ++i )
 	{
-		Qsum += picture->mbinfo[i].mquant;
+		Qsum += picture.mbinfo[i].mquant;
 	}
 
 	
@@ -823,7 +854,7 @@ void rc_update_pict(Picture *picture)
 	   of the quantisation value makes it rather coarse for use in
 	   estimating bit-demand */
 	AQ = (double)Qsum/(double)mb_per_pict;
-	SQ += AQ;
+	sum_avg_quant += AQ;
 	
 	/* X (Chi - Complexity!) is an estimate of "bit-demand" for the
 	frame.  I.e. how many bits it would need to be encoded without
@@ -838,8 +869,8 @@ void rc_update_pict(Picture *picture)
 
 	X = AP  * AQ; //sum_vbuf_Q /  mb_per_pict;
 	K = X / actsum;
-	picture->AQ = AQ;
-	picture->SQ = SQ;
+	picture.AQ = AQ;
+	picture.SQ = sum_avg_quant;
 
 	mjpeg_debug( "D=%d R=%d GC=%d", 
 				 buffer_variation/8,
@@ -855,7 +886,7 @@ void rc_update_pict(Picture *picture)
 	   20-30Hz frame rates.
 	*/
 
-	switch (picture->pict_type)
+	switch (picture.pict_type)
 	{
 	case I_TYPE:
 		d0i = d;
@@ -919,6 +950,8 @@ void rc_update_pict(Picture *picture)
 		break;
 	}
 
+	VbvEndOfPict(picture);
+
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: end of picture\n");
 	fprintf(statfile," actual number of bits: S=%lld\n",S);
@@ -945,10 +978,10 @@ void rc_update_pict(Picture *picture)
  */
 static int init_quant;
 
-int rc_start_mb(Picture *picture)
+int OnTheFlyRateCtl::InitialMacroBlockQuant(Picture &picture)
 {
 	
-	int mquant = scale_quant( picture->q_scale_type, d*62.0/r );
+	int mquant = scale_quant( picture.q_scale_type, d*62.0/r );
 	init_quant = mquant = intmax(mquant, static_cast<int>(ctl_quant_floor));
 
 /*
@@ -966,8 +999,12 @@ int rc_start_mb(Picture *picture)
  *
  ************/
 
-void MacroBlock::SelectQuantization( )
+int OnTheFlyRateCtl::MacroBlockQuant( const MacroBlock &mb )
 {
+	int mquant;
+	int lum_variance = mb.BaseLumVariance();
+	double act  = mb.Activity();
+	const Picture &picture = mb.ParentPicture();
 	/* A.Stevens 2000 : we measure how much *information* (total activity)
 	   has been covered and aim to release bits in proportion.
 
@@ -1005,7 +1042,7 @@ void MacroBlock::SelectQuantization( )
 
 	double act_boost;
 #ifdef OLD_QUANTISATION_STEARING
-	double N_act =  ( act < avg_act || picture->pict_type == B_TYPE ) ? 
+	double N_act =  ( act < avg_act || picture.pict_type == B_TYPE ) ? 
 		1.0 : 
 		(ctl_act_boost*act +  avg_act)/(act + ctl_act_boost*avg_act);
 	act_boost = 1.0/N_act;
@@ -1027,20 +1064,21 @@ void MacroBlock::SelectQuantization( )
 		act_boost = 1.0;
 
 #endif	
-	sum_vbuf_Q += scale_quantf(picture->q_scale_type,Qj/act_boost);
-	mquant = scale_quant(picture->q_scale_type,Qj/act_boost);
-
+	sum_vbuf_Q += scale_quantf(picture.q_scale_type,Qj/act_boost);
+	mquant = scale_quant(picture.q_scale_type,Qj/act_boost) ;
+	
 	/* Update activity covered */
 
 	actcovered += act;
 	 
+	return mquant;
 #ifdef OUTPUT_STAT
 /*
   fprintf(statfile,"MQ(%d): ",j);
   fprintf(statfile,"dj=%.0f, Qj=%1.1f, actj=3.1%f, N_actj=1.1%f, mquant=%03d\n",
   dj,Qj,actj,N_actj,mquant);
 */
-	//picture->mbinfo[j].N_act = N_actj;
+	//picture.mbinfo[j].N_act = N_actj;
 #endif
 }
 
@@ -1059,13 +1097,10 @@ void MacroBlock::SelectQuantization( )
  * bit-stream.
  */
 
-void vbv_end_of_picture(Picture *picture)
+void OnTheFlyRateCtl::VbvEndOfPict(Picture &picture)
 {
 	bitcnt_EOP = (bitcount()) - BITCOUNT_OFFSET;
 
-	/* A.Stevens why bother... accuracy to 7 bits... ha ha!
-	vbitcnt_EOP = (vbitcnt_EOP + 7) & ~7; 
-	*/
 }
 
 /* calc_vbv_delay
@@ -1079,23 +1114,19 @@ void vbv_end_of_picture(Picture *picture)
  * themselves.
  */
 
-void calc_vbv_delay(Picture *picture)
+void OnTheFlyRateCtl::CalcVbvDelay(Picture &picture)
 {
-	static double picture_delay;
-	static double next_ip_delay = 0.0; /* due to frame reordering delay */
-	static double decoding_time = 0.0;
-
 	
 	/* number of 1/90000 s ticks until next picture is to be decoded */
-	if (picture->pict_type == B_TYPE)
+	if (picture.pict_type == B_TYPE)
 	{
 		if (opt_prog_seq)
 		{
-			if (!picture->repeatfirst)
+			if (!picture.repeatfirst)
 				picture_delay = 90000.0/opt_frame_rate; /* 1 frame */
 			else
 			{
-				if (!picture->topfirst)
+				if (!picture.topfirst)
 					picture_delay = 90000.0*2.0/opt_frame_rate; /* 2 frames */
 				else
 					picture_delay = 90000.0*3.0/opt_frame_rate; /* 3 frames */
@@ -1108,7 +1139,7 @@ void calc_vbv_delay(Picture *picture)
 				picture_delay = 90000.0/(2.0*opt_frame_rate); /* 1 field */
 			else
 			{
-				if (!picture->repeatfirst)
+				if (!picture.repeatfirst)
 					picture_delay = 90000.0*2.0/(2.0*opt_frame_rate); /* 2 flds */
 				else
 					picture_delay = 90000.0*3.0/(2.0*opt_frame_rate); /* 3 flds */
@@ -1120,7 +1151,7 @@ void calc_vbv_delay(Picture *picture)
 		/* I or P picture */
 		if (opt_fieldpic)
 		{
-			if(picture->topfirst && (picture->pict_struct==TOP_FIELD))
+			if(picture.topfirst && (picture.pict_struct==TOP_FIELD))
 			{
 				/* first field */
 				picture_delay = 90000.0/(2.0*opt_frame_rate);
@@ -1140,16 +1171,16 @@ void calc_vbv_delay(Picture *picture)
 		}
 
 		if (!opt_fieldpic || 
-			picture->topfirst!=(picture->pict_struct==TOP_FIELD))
+			picture.topfirst!=(picture.pict_struct==TOP_FIELD))
 		{
 			/* frame picture or second field */
 			if (opt_prog_seq)
 			{
-				if (!picture->repeatfirst)
+				if (!picture.repeatfirst)
 					next_ip_delay = 90000.0/opt_frame_rate;
 				else
 				{
-					if (!picture->topfirst)
+					if (!picture.topfirst)
 						next_ip_delay = 90000.0*2.0/opt_frame_rate;
 					else
 						next_ip_delay = 90000.0*3.0/opt_frame_rate;
@@ -1161,7 +1192,7 @@ void calc_vbv_delay(Picture *picture)
 					next_ip_delay = 90000.0/(2.0*opt_frame_rate);
 				else
 				{
-					if (!picture->repeatfirst)
+					if (!picture.repeatfirst)
 						next_ip_delay = 90000.0*2.0/(2.0*opt_frame_rate);
 					else
 						next_ip_delay = 90000.0*3.0/(2.0*opt_frame_rate);
@@ -1210,7 +1241,7 @@ void calc_vbv_delay(Picture *picture)
 	   frame (rather than undersize predecessor).
 	   	*/
 
-	picture->vbv_delay = (int)(decoding_time - ((double)bitcnt_EOP)*90000.0/bit_rate);
+	picture.vbv_delay = (int)(decoding_time - ((double)bitcnt_EOP)*90000.0/bit_rate);
 
 	if ( decoding_time * ((double)bit_rate  / 90000.0) - ((double)bitcnt_EOP)
 		> vbv_buffer_size )
@@ -1228,28 +1259,28 @@ void calc_vbv_delay(Picture *picture)
 #ifdef OUTPUT_STAT
 	fprintf(statfile,
 			"\nvbv_delay=%d (bitcount=%lld, decoding_time=%.2f, bitcnt_EOP=%lld)\n",
-			picture->vbv_delay,bitcount(),decoding_time,bitcnt_EOP);
+			picture.vbv_delay,bitcount(),decoding_time,bitcnt_EOP);
 #endif
 
-	if (picture->vbv_delay<0)
+	if (picture.vbv_delay<0)
 	{
-		mjpeg_warn("vbv_delay underflow: %d",picture->vbv_delay);
-		picture->vbv_delay = 0;
+		mjpeg_warn("vbv_delay underflow: %d",picture.vbv_delay);
+		picture.vbv_delay = 0;
 	}
 
 
 
-	if (picture->vbv_delay>65535)
+	if (picture.vbv_delay>65535)
 	{
 		mjpeg_warn("vbv_delay frame %d exceeds permissible range: %d",
-				   frame_num, picture->vbv_delay);
-		picture->vbv_delay = 65535;
+				   frame_num, picture.vbv_delay);
+		picture.vbv_delay = 65535;
 	}
 #else
 	if( !opt_mpeg1 || ctl_quant_floor != 0 || opt_still_size > 0)
-		picture->vbv_delay =  0xffff;
+		picture.vbv_delay =  0xffff;
 	else if( opt_still_size > 0 )
-		picture->vbv_delay =  static_cast<int>(90000.0/opt_frame_rate/4);
+		picture.vbv_delay =  static_cast<int>(90000.0/opt_frame_rate/4);
 #endif
 
 }
