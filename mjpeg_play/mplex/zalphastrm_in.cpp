@@ -344,6 +344,9 @@ void ZAlphaStream::FillAUbuffer(unsigned int frames_to_buffer)
 
 void ZAlphaStream::Close()
 {
+    unsigned int comp_bit_rate	;
+    unsigned int peak_bit_rate  ;
+
     stream_length = (unsigned int)(bs.bitcount() / 8);
     for (int i=0; i<4; i++)
 	{

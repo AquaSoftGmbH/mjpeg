@@ -95,8 +95,6 @@ public:
      unsigned int aspect_ratio	;
     unsigned int picture_rate	;
     unsigned int bit_rate 	;
-    unsigned int comp_bit_rate	;
-    unsigned int peak_bit_rate  ;
     unsigned int vbv_buffer_size;
     unsigned int CSPF 		;
     double secs_per_frame;
@@ -120,7 +118,7 @@ protected:
 	int repeat_first_field;
 	int prev_temp_ref;
     double frame_rate;
-	unsigned int max_bits_persec;
+	double max_bits_persec;
 	int AU_pict_data;
 	int AU_hdr;
     clockticks max_STD_buffer_delay;

@@ -280,11 +280,11 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				
 			if( access_unit.type == IFRAME )
 			{
-				unsigned int bits_persec = 
-                    static_cast<unsigned int>( static_cast<int64_t>(stream_length - prev_offset) 
-                                               * 2 * frame_rate  
-                                               / (2+fields_presented - group_start_field));
-                    
+                double bits_persec = 
+                    static_cast<double>( stream_length - prev_offset) 
+                    * 2.0 * frame_rate  
+                    / static_cast<double>(fields_presented - group_start_field);
+                
 				if( bits_persec > max_bits_persec )
 				{
 					max_bits_persec = bits_persec;
@@ -326,6 +326,8 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 
 void VideoStream::Close()
 {
+    unsigned int comp_bit_rate	;
+    unsigned int peak_bit_rate  ;
 
     stream_length = bs.bitcount() / 8;
     for( int i=0; i<4; i++)
@@ -338,7 +340,7 @@ void VideoStream::Close()
         static_cast<unsigned int>( static_cast<unsigned int>( stream_length / fields_presented * 2 ) 
                                    * frame_rate  + 25) / 50;
 
-	peak_bit_rate = ((max_bits_persec / 8) / 50);
+	peak_bit_rate = static_cast<unsigned int>((max_bits_persec / 8 + 25) / 50);
 	mjpeg_info ("VIDEO_STATISTICS: %02x", stream_id); 
     mjpeg_info ("Video Stream length: %11llu bytes", stream_length);
     mjpeg_info ("Sequence headers: %8u",num_sequence);
