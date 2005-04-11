@@ -45,7 +45,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
-#include <math.h>
 #include <yuv4mpeg.h>
 
 #define MAX(a,b) ((a) >= (b) ? (a) : (b))
