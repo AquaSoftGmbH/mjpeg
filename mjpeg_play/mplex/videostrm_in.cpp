@@ -341,11 +341,11 @@ void VideoStream::Close()
     mjpeg_info ("No. Pictures    : %8u",num_pictures);
     mjpeg_info ("No. Groups      : %8u",num_groups);
     mjpeg_info ("No. I Frames    : %8u avg. size%6u bytes",
-			  num_frames[0],avg_frames[0]);
+			  num_frames[0], (uint32_t)avg_frames[0]);
     mjpeg_info ("No. P Frames    : %8u avg. size%6u bytes",
-			  num_frames[1],avg_frames[1]);
+			  num_frames[1], (uint32_t)avg_frames[1]);
     mjpeg_info ("No. B Frames    : %8u avg. size%6u bytes",
-			  num_frames[2],avg_frames[2]);
+			  num_frames[2], (uint32_t)avg_frames[2]);
     mjpeg_info("Average bit-rate : %8u bits/sec",comp_bit_rate*400);
     mjpeg_info("Peak bit-rate    : %8u  bits/sec",peak_bit_rate*400);
 	

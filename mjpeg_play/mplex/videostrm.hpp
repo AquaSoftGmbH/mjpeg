@@ -86,7 +86,7 @@ public:
     unsigned int num_pictures 	;
     unsigned int num_groups 	;
     unsigned int num_frames[4] 	;
-    unsigned int avg_frames[4]  ;
+         int64_t avg_frames[4]  ;
     
     unsigned int horizontal_size;
     unsigned int vertical_size 	;
