@@ -296,7 +296,7 @@ fi
 if test "$_cc_major" -ge "3" && test "$_cc_minor" -ge "3"; then
 	case "$proc" in
 	     970*) if test $IsDarwin = yes; then
-		      _march='-mcpu=G5 -force_cpusubtype_ALL' _mcpu='-mtune=G5'
+		      _march='-mcpu=G5 -mpowerpc64 -mpowerpc-gpopt -falign-loops=16' _mcpu='-mtune=G5'
 		   else
 		      _march='-mcpu=970' _mcpu='-mtune=970'
 		   fi
