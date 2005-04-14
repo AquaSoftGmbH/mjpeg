@@ -244,7 +244,7 @@ char            **encoded_file_name;
 
     *encoded_file_name = strdup(outfilename);
     if (*encoded_file_name == NULL)
-       mjpeg_error_exit1("can not malloc %ld bytes", strlen(outfilename));
+       mjpeg_error_exit1("can not malloc %d bytes", strlen(outfilename));
 
     /* Read the WAV file header, make sanity checks */
 
@@ -322,11 +322,12 @@ char            **encoded_file_name;
     *num_samples = audio_bytes/(audio_bits/8);
 
     if (brt==0)
+	{
         if (info->lay==2)
             brt = (info->mode == MPG_MD_MONO) ? 112 : 224;
         else
             brt = (info->mode == MPG_MD_MONO) ? 192 : 384;
-
+	}
 
     for(j=0;j<15;j++) if (bitrate[info->lay-1][j] == brt) break;
 
