@@ -12,7 +12,6 @@ mp2enc_SOURCES = \
 	fft.c \
 	musicin.c \
 	psy.c \
-	subs.c \
 	tables.c \
 	tonal.c \
 	wav_io.c

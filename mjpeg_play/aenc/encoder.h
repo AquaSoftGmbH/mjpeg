@@ -237,13 +237,7 @@ extern void        I_Psycho_One(short[2][1152], double[2][SBLIMIT],
 extern void        psycho_anal(short int*, short int[1056], int, int,
                            FLOAT[32], double);
 
-/* The following functions are in the file "subs.c" */
-
 void fft(FLOAT *x_real, FLOAT *x_imag, FLOAT *energy, FLOAT *phi, int N);
-#ifdef ORIGINAL_CODE
-extern void        fft(FLOAT[BLKSIZE], FLOAT[BLKSIZE], FLOAT[BLKSIZE],
-                           FLOAT[BLKSIZE], int );
-#endif
 
 /* The following functions are in the file "wav_io.c" */
 
