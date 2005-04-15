@@ -1188,7 +1188,7 @@ main (int argc, char *argv[])
    // Attention ! optimisation vitesse yuvscaler_bicubic.c suppose que zero_width_neighbors=0 ou 1 seulement
   uint8_t zero_width_neighbors=1,zero_height_neighbors=1;
   float width_scale,height_scale;
-  int16_t cspline_value = NULL;
+  int16_t cspline_value = 0;
   int16_t *pointer;
      
 
