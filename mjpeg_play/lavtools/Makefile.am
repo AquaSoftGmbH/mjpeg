@@ -88,6 +88,7 @@ bin_PROGRAMS = \
 	y4mtoyuv \
 	y4minterlace \
 	yuv4mpeg \
+	yuyvtoy4m \
 	yuvinactive
 
 if HAVE_GTK
@@ -236,6 +237,9 @@ y4mtoyuv_LDADD = $(LIBMJPEGUTILS)
 
 yuv4mpeg_SOURCES = yuv4mpeg.c
 yuv4mpeg_LDADD = $(LIBMJPEGUTILS)
+
+yuyvtoy4m_SOURCES = yuyvtoy4m.c
+yuyvtoy4m_LDADD = $(LIBMJPEGUTILS)
 
 yuvfps_SOURCES = yuvfps.c
 yuvfps_LDADD = $(LIBMJPEGUTILS)
