@@ -469,24 +469,14 @@ main (int argc, char *argv[])
 	{
 	case 'h':
 	  {
-	    mjpeg_log (LOG_INFO,
-		       "                                                            ");
-	    mjpeg_log (LOG_INFO,
-		       " Usage of the denoiser  (very brief this time... :)         ");
-	    mjpeg_log (LOG_INFO,
-		       " will be fixed ASAP...                                      ");
-	    mjpeg_log (LOG_INFO,
-		       " -Y [n]          spatial Y-filter-threshold                 ");
-	    mjpeg_log (LOG_INFO,
-		       " -U [n]          spatial U-filter-threshold                 ");
-	    mjpeg_log (LOG_INFO,
-		       " -V [n]          spatial V-filter-threshold                 ");
-	    mjpeg_log (LOG_INFO,
-		       " -y [n]          temporal Y-filter-threshold                ");
-	    mjpeg_log (LOG_INFO,
-		       " -u [n]          temporal U-filter-threshold                ");
-	    mjpeg_log (LOG_INFO,
-		       " -v [n]          temporal V-filter-threshold                ");
+	    mjpeg_log (LOG_INFO, " Usage of the denoiser (very brief this time... :)");
+	    mjpeg_log (LOG_INFO, " will be fixed ASAP...");
+	    mjpeg_log (LOG_INFO, " -Y [n]   spatial Y-filter-threshold");
+	    mjpeg_log (LOG_INFO, " -U [n]   spatial U-filter-threshold");
+	    mjpeg_log (LOG_INFO, " -V [n]   spatial V-filter-threshold");
+	    mjpeg_log (LOG_INFO, " -y [n]   temporal Y-filter-threshold");
+	    mjpeg_log (LOG_INFO, " -u [n]   temporal U-filter-threshold");
+	    mjpeg_log (LOG_INFO, " -v [n]   temporal V-filter-threshold");
 	    exit (0);
 	    break;
 	  }
