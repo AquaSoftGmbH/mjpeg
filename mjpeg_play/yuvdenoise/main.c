@@ -515,6 +515,9 @@ main (int argc, char *argv[])
         temp_V_thres = atoi(optarg);
 	    break;
 	  }
+	case '?':
+        default:
+          exit(1);
 	}
     }
 
