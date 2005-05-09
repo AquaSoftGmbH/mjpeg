@@ -78,7 +78,7 @@ static void motion0(u_char*, u_char*, int, int, int, vec*);
 static uint32_t calc_SAD_noaccel(uint8_t*, uint8_t*, int, int);
 static uint32_t calc_SAD_half_noaccel(uint8_t*, uint8_t*, uint8_t*, int, int);
 static void calcshift(vec*, vec*);
-static int round(float, int);
+static int xround(float, int);
 static void doshift(u_char**, u_char**, int, int, int, vec*);
 static void hshift(u_char*, u_char*, int, int, int, int, int);
 static void vertical_shift(u_char*, int, int, int, int, int);
@@ -547,8 +547,8 @@ int ss_v = Stab.nosuper ? SS_V : 1;
 Stab.gsX = (Stab.gsX * Stab.alpha) + gp->x/2.0;
 Stab.gsY = (Stab.gsY * Stab.alpha) + gp->y/2.0;
 /* Now that we know the movement, shift to counteract it */
-shftp->x = -round(Stab.gsX, ss_h);
-shftp->y = -round(Stab.gsY, ss_v);
+shftp->x = -xround(Stab.gsX, ss_h);
+shftp->y = -xround(Stab.gsY, ss_v);
 if (Stab.verbose > 1)
 mjpeg_log(LOG_INFO, "global motion xy*2=<%d,%d>"
 " Accumulated xy=<%g,%g> shift xy=%d,%d>\n",
@@ -557,10 +557,10 @@ gp->x, gp->y, Stab.gsX, Stab.gsY, shftp->x, shftp->y);
 
 /* Round the given float value to the nearest multiple of <r>. */
 static int
-round (float v, int r)
+xround (float v, int r)
 {
 if (v < 0)
-return (-round(-v, r));
+return (-xround(-v, r));
 return (((int)((v + r/2.0) / r)) * r);
 }
 
