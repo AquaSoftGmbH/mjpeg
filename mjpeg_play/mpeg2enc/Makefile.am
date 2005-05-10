@@ -104,17 +104,9 @@ libmpeg2encpp_la_LDFLAGS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
 	-release $(LT_RELEASE)
 
-libmpeg2encpp_la_DEPENDENCIES = \
-	$(LIBMJPEGUTILS) \
-	$(top_builddir)/utils/libcpuaccel.la \
-	$(top_builddir)/utils/libmotion.la \
-	$(LIBSIMDASM_LIB)
+libmpeg2encpp_la_DEPENDENCIES = $(LIBMJPEGUTILS)
 
-libmpeg2encpp_la_LIBADD = \
-	$(LIBMJPEGUTILS) \
-	$(top_builddir)/utils/libcpuaccel.la \
-	$(top_builddir)/utils/libmotion.la \
-	$(LIBSIMDASM_LIB)
+libmpeg2encpp_la_LIBADD = $(LIBMJPEGUTILS)
 
 mpeg2enc_DEPENDENCIES = \
 	$(LIBMJPEGUTILS) \

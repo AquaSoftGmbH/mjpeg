@@ -15,9 +15,16 @@ INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/utils
 
 bin_PROGRAMS = mjpeg_simd_helper
 
-noinst_LTLIBRARIES = libmotion.la libcpuaccel.la
-
 lib_LTLIBRARIES = libmjpegutils.la
+
+if HAVE_ALTIVEC
+altivec_lib = $(top_builddir)/utils/altivec/libaltivec.la
+endif
+if HAVE_ASM_MMX
+mmxsse_lib = $(top_builddir)/utils/mmxsse/libmmxsse.la
+endif
+
+libmjpegutils_la_LIBADD = $(mmxsse_lib) $(altivec_lib)
 
 libmjpegutils_la_LDFLAGS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
@@ -28,7 +35,9 @@ libmjpegutils_la_SOURCES = \
 	mpegconsts.c \
 	mpegtimecode.c \
 	yuv4mpeg.c \
-	yuv4mpeg_ratio.c
+	yuv4mpeg_ratio.c \
+	motionsearch.c \
+	cpu_accel.c
 
 noinst_HEADERS = \
 	attributes.h \
@@ -39,13 +48,6 @@ noinst_HEADERS = \
 	videodev_mjpeg.h \
 	yuv4mpeg_intern.h
 
-if HAVE_ALTIVEC
-altivec_lib = $(top_builddir)/utils/altivec/libaltivec.la
-endif
-if HAVE_ASM_MMX
-mmxsse_lib = $(top_builddir)/utils/mmxsse/libmmxsse.la
-endif
-
 pkginclude_HEADERS = \
 	format_codes.h \
 	mjpeg_logging.h \
@@ -54,15 +56,7 @@ pkginclude_HEADERS = \
 	mpegtimecode.h \
 	yuv4mpeg.h
 
-libmotion_la_SOURCES = \
-	motionsearch.c
-
-libcpuaccel_la_SOURCES = \
-	cpu_accel.c
-
-libcpuaccel_la_LIBADD = $(mmxsse_lib) $(altivec_lib)
-
 mjpeg_simd_helper_SOURCES = mjpeg_simd_helper.c
-mjpeg_simd_helper_LDADD = libcpuaccel.la libmjpegutils.la
+mjpeg_simd_helper_LDADD = libmjpegutils.la
 
 MAINTAINERCLEANFILES = Makefile.in

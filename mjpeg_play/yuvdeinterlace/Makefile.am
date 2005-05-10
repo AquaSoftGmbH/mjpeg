@@ -21,7 +21,4 @@ yuvdeinterlace_SOURCES = blend_fields.c \
 	transform_block.c \
     motionsearch_deint.c
 
-yuvdeinterlace_LDADD = \
-	$(top_builddir)/utils/libmotion.la \
-	$(top_builddir)/utils/libcpuaccel.la \
-	$(LIBMJPEGUTILS)
+yuvdeinterlace_LDADD = $(LIBMJPEGUTILS)

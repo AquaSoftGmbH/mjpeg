@@ -10,15 +10,6 @@ AM_CFLAGS = -O3 -funroll-all-loops -ffast-math
 
 bin_PROGRAMS = yuvdenoise
 
-#noinst_HEADERS = \
-#    main_filter.h \
-#    post_filter.h \
-#    vector.h
-    
-yuvdenoise_SOURCES = \
-    main.c 
+yuvdenoise_SOURCES = main.c 
 
-yuvdenoise_LDADD = \
-	$(top_builddir)/utils/libmotion.la \
-	$(top_builddir)/utils/libcpuaccel.la \
-	$(LIBMJPEGUTILS)
+yuvdenoise_LDADD = $(LIBMJPEGUTILS)
