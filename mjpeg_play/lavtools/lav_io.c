@@ -36,8 +36,8 @@
 #endif
 
 #ifdef HAVE_LIBQUICKTIME
-#include <quicktime/quicktime.h>
-#include <quicktime/lqt.h>
+#include <quicktime.h>
+#include <lqt.h>
 #endif
 
 extern int AVI_errno;
