@@ -85,11 +85,16 @@ be set separately.
 .BI \-p " num"
 Controls the level of parallelism.  Since intensity and color are
 denoised separately by design, it's very easy to do each concurrently
-on a multiple-processor machine.  The default value is 1; that reads and
+on a multiple-processor machine.  A value of 1 reads and
 writes video frames in separate threads.  A value of 2 causes intensity
 and color to be denoised in separate threads.  A value of 0 turns off
 all concurrency, i.e. the program reads a frame, denoises it, then
-writes a frame, and loops until there are no more frames.
+writes a frame, and loops until there are no more frames.  Due to a bug in
+end of stream handling (threading issue on some OSs) the default is 0.  OS/X
+seems to not have a problem with a value of 1 but on Linux systems the
+process will go to sleep at the end of stream condition and killing the process
+causes the last batch of buffered frames to be lost (resulting in a short
+or truncated output stream).
 
 .TP 4
 .BI \-r " [4..] search radius"

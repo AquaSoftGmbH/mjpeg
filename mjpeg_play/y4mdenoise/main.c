@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
   denoiser.thresholdCbCr      = -1;
   denoiser.matchCountThrottle = 15;
   denoiser.matchSizeThrottle  = 3;
-  denoiser.threads            = 1;
+  denoiser.threads            = 0;
   
   /* process commandline */
   process_commandline(argc, argv);
@@ -415,7 +415,7 @@ display_help (void)
 	"y4mdenoise options\n"
 	"------------------\n"
 	"-p    parallelism: 0=no threads, 1=r/w thread only, 2=do color in\n"
-	"      separate thread (default: 1)\n"
+	"      separate thread (default: 0)\n"
 	"-r    Radius for motion-search (default: 16)\n"
 	"-R    Radius for color motion-search (default: -r setting)\n"
 	"-t    Error tolerance (default: 3)\n"
