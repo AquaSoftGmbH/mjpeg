@@ -100,11 +100,11 @@ EXTERN(void) jpeg_fdct_float JPP((FAST_FLOAT * data));
 
 /* TODO: This should be conditional on compilation on an x86 platform */
 
-EXTERN(void) jpeg_fdct_ifast_mmx JPP((INT16 * data));
+EXTERN(void) jpeg_fdct_ifast_mmx JPP((INT16 * data))  __asm__ ("jpeg_fdct_ifast_mmx") ;
 EXTERN(void) jcquant_3dnow( INT16 *psrc, INT16 *pdst, float *piqf );
 EXTERN(void) jcquant_sse( INT16 *psrc, INT16 *pdst, float *piqf );
-EXTERN(void) jcquant_mmx( INT16 *psrc, INT16 *pdst, INT16 *piqf, INT16 *pqf,
-						  unsigned int shift);
+EXTERN(void) jcquant_mmx ( INT16 *psrc, INT16 *pdst, INT16 *piqf, INT16 *pqf,
+						  unsigned int shift)  __asm__ ("jcquant_mmx") ;
 
 EXTERN(void) jpeg_idct_islow
     JPP((j_decompress_ptr cinfo, jpeg_component_info * compptr,

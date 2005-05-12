@@ -305,12 +305,12 @@ h2v2_upsample (j_decompress_ptr cinfo, jpeg_component_info * compptr,
 
 /* I have no clue why it is written in that strange way, but ok, it works */
 union u1 { __int64 q; double align; }
-mul3w={0x0003000300030003LL}, mul9w={0x0009000900090009LL},
-    mul9ws={0x000900090009000cLL},    mul3ws={0x0003000300030004LL},
-      bias7w={0x0007000700070007LL},    bias8w={0x0008000800080008LL},
-	bias1w={0x0001000100010001LL},    bias2w={0x0002000200020002LL},
-	  mask1={0xFF00000000000000LL},     mask2={0x00000000000000FFLL},
-	    noval = {0}, input0 = {0}, input1 = {0};
+mul3w __asm__ ("mul3w") ={0x0003000300030003LL}, mul9w __asm__ ("mul9w") ={0x0009000900090009LL},
+    mul9ws __asm__ ("mul9ws") ={0x000900090009000cLL},    mul3ws __asm__ ("mul3ws") ={0x0003000300030004LL},
+      bias7w __asm__ ("bias7w") ={0x0007000700070007LL},    bias8w __asm__ ("bias8w") ={0x0008000800080008LL},
+	bias1w __asm__ ("bias1w") ={0x0001000100010001LL},    bias2w __asm__ ("bias2w") ={0x0002000200020002LL},
+	  mask1 __asm__ ("mask1") ={0xFF00000000000000LL},     mask2 __asm__ ("mask2") ={0x00000000000000FFLL},
+	    noval __asm__ ("noval") = {0}, input0 __asm__ ("input0") = {0}, input1 __asm__ ("input1") = {0};
 
 /* Silly forward definitions */
 METHODDEF(void)

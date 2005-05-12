@@ -40,23 +40,22 @@
 
 #if defined(HAVE_MMX_INTEL_MNEMONICS) || defined(HAVE_MMX_ATT_MNEMONICS)
 #define __int64 unsigned long long
-  __int64 const1 = 0x59BA0000D24B59BAULL;       // Cr_r Cr_b Cr_g Cr_r
-  __int64 const2 = 0x00007168E9FA0000ULL;	// Cb-r Cb_b Cb_g Cb_r
-  __int64 const5 = 0x0000D24B59BA0000ULL;	// Cr_b Cr_g Cr_r Cr_b
-  __int64 const6 = 0x7168E9FA00007168ULL;	// Cb_b Cb_g Cb_r Cb_b
-
+  __int64 const1 __asm__ ("const1") = 0x59BA0000D24B59BALL; // Cr_r Cr_b Cr_g Cr_r
+  __int64 const2 __asm__ ("const2") = 0x00007168E9FA0000LL; // Cb-r Cb_b Cb_g Cb_r
+  __int64 const5 __asm__ ("const5") = 0x0000D24B59BA0000LL; // Cr_b Cr_g Cr_r Cr_b
+  __int64 const6 __asm__ ("const6") = 0x7168E9FA00007168LL; // Cb_b Cb_g Cb_r Cb_b
+  
   // constants for factors (One_Half/fix(x)) << 2
 
-  __int64 const05 = 0x0001000000000001ULL;	// Cr_r Cr_b Cr_g Cr_r
-  __int64 const15 = 0x00000001FFFA0000ULL;	// Cb-r Cb_b Cb_g Cb_r
-  __int64 const45 = 0x0000000000010000ULL;	// Cr_b Cr_g Cr_r Cr_b
-  __int64 const55 = 0x0001FFFA00000001ULL;	// Cb_b Cb_g Cb_r Cb_b
-
+  __int64 const05 __asm__ ("const05") = 0x0001000000000001LL; // Cr_r Cr_b Cr_g Cr_r
+  __int64 const15 __asm__ ("const15") = 0x00000001FFFA0000LL; // Cb-r Cb_b Cb_g Cb_r
+  __int64 const45 __asm__ ("const45") = 0x0000000000010000LL; // Cr_b Cr_g Cr_r Cr_b
+  __int64 const55 __asm__ ("const55") = 0x0001FFFA00000001LL; // Cb_b Cb_g Cb_r Cb_b
+  
   // added for MMX
-  __int64 const128 = 0x0080008000800080ULL;
-  __int64 empty = 0x0000000000000000ULL;
-  __int64 davemask = 0x0000FFFFFFFF0000ULL;
-  ////////////////////////////////
+  __int64 const128 __asm__ ("const128") = 0x0080008000800080LL;
+  __int64 empty    __asm__ ("empty") = 0x0000000000000000LL;
+  __int64 davemask __asm__ ("davemask") = 0x0000FFFFFFFF0000LL;
 #endif
 
 /* Private subobject */
