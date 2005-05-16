@@ -39,7 +39,6 @@
 
 #ifdef DCT_IFAST_SUPPORTED
 
-
 /*
  * This module is specialized to the case DCTSIZE = 8.
  */

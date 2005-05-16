@@ -12,7 +12,6 @@
  * machine-dependent tuning (e.g., assembly coding).
  */
 
-
 /*
  * A forward DCT routine is given a pointer to a work area of type DCTELEM[];
  * the DCT is to be performed in-place in that buffer.  Type DCTELEM is int

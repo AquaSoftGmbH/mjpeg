@@ -16,7 +16,7 @@
  * An excellent reference for image resampling is
  *   Digital Image Warping, George Wolberg, 1990.
  *   Pub. by IEEE Computer Society Press, Los Alamitos, CA. ISBN 0-8186-8944-7.
- */
+*/
 
 #define JPEG_INTERNALS
 #include "jinclude.h"

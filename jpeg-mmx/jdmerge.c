@@ -30,7 +30,7 @@
  * Other special cases could be added, but in most applications these are
  * the only common cases.  (For uncommon cases we fall back on the more
  * general code in jdsample.c and jdcolor.c.)
- */
+*/
 
 #define JPEG_INTERNALS
 #include "jinclude.h"
