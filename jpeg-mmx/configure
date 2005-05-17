@@ -1690,6 +1690,20 @@ fi
 
 trap '' 1 2 15
 
+if test "x$host" = xNONE ; then
+    host=`./config.guess`
+    echo "checking host system = $host"
+fi
+
+case $host in
+   *-*-cygwin* | *-*-mingw32*)
+   asmflags="-f win32"
+   ;;
+   *)
+   asmflags="-f elf"
+   ;;
+esac
+
 trap 'rm -fr conftest* confdefs* core core.* *.core $ac_clean_files; exit 1' 1 2 15
 
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
@@ -1792,6 +1806,7 @@ s%@ANSI2KNRFLAGS@%$ANSI2KNRFLAGS%g
 s%@COM_LT@%$COM_LT%g
 s%@FORCE_INSTALL_LIB@%$FORCE_INSTALL_LIB%g
 s%@INCLUDEFLAGS@%$INCLUDEFLAGS%g
+s%@asmflags@%$asmflags%g
 
 CEOF
 EOF
