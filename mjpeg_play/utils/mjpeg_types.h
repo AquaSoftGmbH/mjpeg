@@ -32,8 +32,6 @@
 # include <stdint.h>
 #elif defined(HAVE_INTTYPES_H)
 # include <inttypes.h>
-#elif  defined(_WIN32)
-#include <win32defs.h>
 #else
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;

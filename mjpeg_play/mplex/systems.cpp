@@ -26,14 +26,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef _WIN32
-#include <win32defs.h>
-#else
 #include <sys/param.h>
-#endif
 #include "systems.hpp"
 #include "mplexconsts.hpp"
-
 
 PS_Stream:: PS_Stream( unsigned _mpeg,
                        unsigned int _sector_size,

@@ -23,17 +23,12 @@
 # include <config.h>
 #endif
 
-#ifdef _WIN32
-#include <win32defs.h>
-#endif
-
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
 
-extern int fred;
 #include "mjpeg_logging.h"
 
 #define MAX_DEFAULT_ID_SIZE 16

@@ -23,11 +23,7 @@
 #include <config.h>
 #include <stdlib.h>
 #include <ctype.h>
-#ifdef _WIN32
-#include <win32defs.h>
-#else
 #include <unistd.h>
-#endif
 #include <sys/stat.h>
 #include <mjpeg_logging.h>
 #include <format_codes.h>
