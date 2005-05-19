@@ -421,6 +421,15 @@ machine.  In practice there is little point setting -M greater than 4
 even if the CPU's are available due to the fairly coarse-grained
 parallelism used.  Indeed there is a hardcoded limit of 4 worker threads.
 .PP
+The default has been changed to be 0 instead of 1 to avoid the crash at
+end of encoding:
+.nf
+
+INFO: [mpeg2enc] Signaling last frame = 499
+mpeg2enc: seqencoder.cc:433: void SeqEncoder::EncodeStream(): Assertion `pass1coded.size() == 0' failed.
+Abort
+.fi
+.PP
 .BR -q|--quantization \ 1 .. 31
 .PP
 Minimum quantization of the output stream.  Quantisation controls the

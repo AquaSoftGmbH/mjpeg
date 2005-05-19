@@ -530,7 +530,7 @@ void MPEG2EncCmdLineOptions::Usage()
 "    Force setting of playback field order to bottom or top first\n"
 "--multi-thread|-M num\n"
 "    Activate multi-threading to optimise throughput on a system with num CPU's\n"
-"    [0..32], 0=no multithreading, (default: 1)\n"
+"    [0..32], 0=no multithreading, (default: 0)\n"
 "--correct-svcd-hds|-C\n"
 "    Force SVCD horizontal_display_size to be 480 - standards say 540 or 720\n"
 "    But many DVD/SVCD players screw up with these values.\n"

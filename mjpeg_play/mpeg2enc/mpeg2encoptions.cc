@@ -55,7 +55,14 @@ MPEG2EncOptions::MPEG2EncOptions()
     closed_GOPs = 0;
     preserve_B = 0;
     Bgrp_size = 1;
-    num_cpus = 1;
+/*
+ * Set the default to 0 until this error:
+     INFO: [mpeg2enc] Signaling last frame = 499
+     mpeg2enc: seqencoder.cc:433: void SeqEncoder::EncodeStream(): Assertion `pass1coded.size() == 0' failed.
+     Abort
+ * Is fixed.
+*/
+    num_cpus = 0;
     vid32_pulldown = 0;
     svcd_scan_data = -1;
     seq_hdr_every_gop = 0;
