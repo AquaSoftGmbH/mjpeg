@@ -209,18 +209,8 @@ main (int argc, char *argv[])
   width = y4m_si_get_width (&istreaminfo);
   height = y4m_si_get_height (&istreaminfo);
   input_chroma_subsampling = y4m_si_get_chroma (&istreaminfo);
-  mjpeg_log (LOG_INFO, "Y4M-Stream is %ix%i(%s)",
-	     width,
-	     height,
-	     input_chroma_subsampling == Y4M_CHROMA_420JPEG ? "4:2:0 MPEG1" :
-	     input_chroma_subsampling == Y4M_CHROMA_420MPEG2 ? "4:2:0 MPEG2" :
-	     input_chroma_subsampling ==
-	     Y4M_CHROMA_420PALDV ? "4:2:0 PAL-DV" : input_chroma_subsampling
-	     == Y4M_CHROMA_444 ? "4:4:4" : input_chroma_subsampling ==
-	     Y4M_CHROMA_422 ? "4:2:2" : input_chroma_subsampling ==
-	     Y4M_CHROMA_411 ? "4:1:1 NTSC-DV" : input_chroma_subsampling ==
-	     Y4M_CHROMA_MONO ? "MONOCHROME" : input_chroma_subsampling ==
-	     Y4M_CHROMA_444ALPHA ? "4:4:4:4 ALPHA" : "unknown");
+  mjpeg_log (LOG_INFO, "Y4M-Stream is %ix%i(%s)", width, height,
+	     y4m_chroma_keyword(input_chroma_subsampling));
 
   /* if chroma-subsampling isn't supported bail out ... */
   if (input_chroma_subsampling != Y4M_CHROMA_420JPEG)
