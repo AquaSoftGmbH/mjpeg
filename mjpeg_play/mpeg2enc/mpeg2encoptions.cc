@@ -72,8 +72,8 @@ MPEG2EncOptions::MPEG2EncOptions()
     verbose = 1;
     hack_svcd_hds_bug = 1;
     hack_altscan_bug = 0;
-    /* dual prime Disabled by default. --dualprime-mpeg2 to enable (set to 0) */
-    hack_nodualprime = 1;
+    /* dual prime Disabled by default. --dualprime-mpeg2 to enable (set to 1) */
+    hack_dualprime = 0;
     force_cbr = 0;
 };
 

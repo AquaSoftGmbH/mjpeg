@@ -65,7 +65,6 @@ mpeg2enc \- MPEG-1/2 encoder
 .RB [ -R | --b-per-refframe
 .IR 0..2 ]
 .RB [ --no-altscan-mpeg2 ]
-.RB [ --no-dualprime-mpeg2 ]
 .RB [ --dualprime-mpeg2 ]
 .RB [ -u | --cbr ]
 .RB [ -? | --help ]
@@ -313,21 +312,16 @@ This flag deactivates the use of the 'alternate' macroblock scan pattern for
 MPEG2 encoding.  Normally this pattern is used but a few elderly software 
 decoders had bugs relating to this feature.  You should never need to use this flag.
 .PP
-.BR --no-dualprime-mpeg2
-This is the default setting.  See the next following option for more info.
-This option is present for compatibility with scripts that may currently
-be disabling DPME.
-.PP
 .BR --dualprime-mpeg2
 .PP
 MPEG-2 supports a special motion estimation mode (DPME, Dual Prime Motion
 Estimation) for I/P-frame only streams that can somewhat improve compression.  
-A number of players (both hardware 
-and software) do not support this mode.   Those players  may or may not be
+A number of players (both hardware and software) do not support this mode.   
+Those players  may or may not be
 MPEG-2 compliant depending if DPME is an option or not in the MPEG-2 specs.  
 If you need to generate content for  such players (e.g. Ogle or Apple's 
 DVD player application) you should NOT turn on dualprime-mpeg2!  Surprisingly 
-at least one hardware/set-top player  is known to be allergic to DPME being 
+at least one hardware/set-top player is known to be allergic to DPME being 
 used.
 .PP
 .BR -z|--playback-field-order \ b|t

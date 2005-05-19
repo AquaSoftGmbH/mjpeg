@@ -540,11 +540,8 @@ void MPEG2EncCmdLineOptions::Usage()
 "--no-altscan-mpeg2\n"
 "    Deactivate the use of the alternate block pattern for MPEG-2.  This is\n"
 "    A work-around for a Bug in an obscure hardware decoder.\n"
-"--no-dualprime-mpeg2\n"
-"    Turn off the use of dual-prime motion compensation.  This is a\n"
-"    work-around for a Bug in some software players.  This is the default.\n"
 "--dualprime-mpeg2\n"
-"    Turn ON the use of dual-prime motion compensation.\n"
+"    Turn ON use of dual-prime motion compensation. Default is OFF unless this option is used\n"
 "--custom-quant-matrices|-K kvcd|tmpgenc|default|hi-res|file=inputfile|help\n"
 "    Request custom or userspecified (from a file) quantization matrices\n"
 "--unit-coeff-elim|-E num\n"
@@ -597,9 +594,11 @@ void MPEG2EncCmdLineOptions::StartupBanner()
 		mjpeg_info( "Sequence unlimited length" );
 
 	mjpeg_info("Search radius: %d",searchrad);
+	if (mpeg == 2)
+           {
+           mjpeg_info("DualPrime: %s", hack_dualprime == 1 ? "yes" : "no");
+           }
 }
-
-
 
 
 int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
@@ -643,8 +642,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
         { "correct-svcd-hds", 0, &hack_svcd_hds_bug, 0},
         { "no-constraints", 0, &ignore_constraints, 1},
         { "no-altscan-mpeg2", 0, &hack_altscan_bug, 1},
-        { "no-dualprime-mpeg2", 0, &hack_nodualprime, 1},
-        { "dualprime-mpeg2", 0, &hack_nodualprime, 0},
+        { "dualprime-mpeg2", 0, &hack_dualprime, 1},
         { "playback-field-order", 1, 0, 'z'},
         { "multi-thread",      1, 0, 'M' },
         { "custom-quant-matrices", 1, 0, 'K'},

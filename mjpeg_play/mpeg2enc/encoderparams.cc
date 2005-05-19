@@ -209,7 +209,7 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 		M = N_max;
 	mpeg1           = (options.mpeg == 1);
 	fieldpic        = (options.fieldenc == 2);
-    dualprime       = !options.hack_nodualprime && M == 1;
+    dualprime       = options.hack_dualprime == 1 && M == 1;
 
     // SVCD and probably DVD? mandate progressive_sequence = 0 
     switch( options.format )
