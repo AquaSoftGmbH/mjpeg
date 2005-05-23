@@ -21,6 +21,12 @@ cc_version=`$CC -dumpversion`
 _cc_major=`echo $cc_version | cut -d'.' -f1`
 _cc_minor=`echo $cc_version | cut -d'.' -f2`
 
+if test $_cc_major -ge 4; then
+  _opt_mcpu="-mtune"
+else
+  _opt_mcpu="-mcpu"
+fi
+
 do_cc()
 {
 	$CC -o conftest conftest.c $@ >/dev/null 2>&1
@@ -185,21 +191,21 @@ cat > conftest.c << EOF
 int main(void) { return 0; }
 EOF
 if  test "$proc" = "athlon64" ; then
-	do_cc -march=$proc -mcpu=$proc || proc=athlon-xp
+	do_cc -march=$proc $_opt_mcpu=$proc || proc=athlon-xp
 fi
 
 if test "$proc" = "athlon-xp" || test "$proc" = "athlon-4" || test "$proc" = "athlon-tbird"; then
-	do_cc -march=$proc -mcpu=$proc || proc=athlon
+	do_cc -march=$proc $_opt_mcpu=$proc || proc=athlon
 fi
 
 if test "$proc" = "k6-3" || test "$proc" = "k6-2"; then
-	do_cc -march=$proc -mcpu=$proc || proc=k6
+	do_cc -march=$proc $_opt_mcpu=$proc || proc=k6
 fi
 
 if test "$proc" = "k6"; then
-    do_cc -march=$proc -mcpu=$proc
+    do_cc -march=$proc $_opt_mcpu=$proc
     if test $? -ne 0; then
-        if do_cc -march=i586 -mcpu=i686; then
+        if do_cc -march=i586 $_opt_mcpu=i686; then
           proc=i586-i686
         else 
           proc=i586
@@ -208,30 +214,30 @@ if test "$proc" = "k6"; then
 fi
 
 if test "$proc" = "pentium4" || test "$proc" = "pentium3" || test "$proc" = "pentium2" || test "$proc" = "athlon"; then
-	do_cc -march=$proc -mcpu=$proc || proc=i686
+	do_cc -march=$proc $_opt_mcpu=$proc || proc=i686
 fi
 if test "$proc" = "i686" || test "$proc" = "pentium-mmx"; then
-	do_cc -march=$proc -mcpu=$proc || proc=i586
+	do_cc -march=$proc $_opt_mcpu=$proc || proc=i586
 fi
 if test "$proc" = "i586" ; then
-	do_cc -march=$proc -mcpu=$proc || proc=i486
+	do_cc -march=$proc $_opt_mcpu=$proc || proc=i486
 fi
 if test "$proc" = "i486" ; then
-	do_cc -march=$proc -mcpu=$proc || proc=i386
+	do_cc -march=$proc $_opt_mcpu=$proc || proc=i386
 fi
 if test "$proc" = "i386" ; then
-	do_cc -march=$proc -mcpu=$proc || proc=error
+	do_cc -march=$proc $_opt_mcpu=$proc || proc=error
 fi
 if test "$proc" = "error" ; then
-	echo "Your $_cc does not even support \"i386\" for '-march' and '-mcpu'."
+	echo "Your $_cc does not even support \"i386\" for '-march' and '$_opt_mcpu'."
 	_mcpu=""
 	_march=""
 elif test "$proc" = "i586-i686"; then
 	_march="-march=i586"
-	_mcpu="-mcpu=i686"
+	_mcpu="$_opt_mcpu=i686"
 else
       _march="-march=$proc"
-      _mcpu="-mcpu=$proc"
+      _mcpu="$_opt_mcpu=$proc"
 fi
 
 if test $_cc_major -ge 3; then
@@ -268,17 +274,17 @@ else
 fi
 
 case "$proc" in
-	601) _march='-mcpu=601' _mcpu='-mtune=601'
+	601) _march='$_opt_mcpu=601' _mcpu='-mtune=601'
 	     ;;
-	603) _march='-mcpu=603' _mcpu='-mtune=603'
+	603) _march='$_opt_mcpu=603' _mcpu='-mtune=603'
 	     ;;
-	603e|603ev) _march='-mcpu=603e' _mcpu='-mtune=603e'
+	603e|603ev) _march='$_opt_mcpu=603e' _mcpu='-mtune=603e'
 	     ;;
-	604|604e|604r|604ev) _march='-mcpu=604' _mcpu='-mtune=604'
+	604|604e|604r|604ev) _march='$_opt_mcpu=604' _mcpu='-mtune=604'
 	     ;;
-	740|740/750|745/755) _march='-mcpu=740' _mcpu='-mtune=740'
+	740|740/750|745/755) _march='$_opt_mcpu=740' _mcpu='-mtune=740'
 	     ;;
-	750|750CX) _march='-mcpu=750' _mcpu='-mtune=750'
+	750|750CX) _march='$_opt_mcpu=750' _mcpu='-mtune=750'
 	     ;;
 	*) ;;
 esac
@@ -286,8 +292,8 @@ esac
 # gcc 3.1(.1) and up supports 7400 and 7450
 if test "$_cc_major" -ge "3" && test "$_cc_minor" -ge "1"; then
 	case "$proc" in
-		7400*|7410*) _march='-mcpu=7400' _mcpu='-mtune=7400' ;;
-		7450*|7455*) _march='-mcpu=7450' _mcpu='-mtune=7450' ;;
+		7400*|7410*) _march='$_opt_mcpu=7400' _mcpu='-mtune=7400' ;;
+		7450*|7455*) _march='$_opt_mcpu=7450' _mcpu='-mtune=7450' ;;
 		*) ;;
 	esac
 fi
@@ -296,9 +302,9 @@ fi
 if test "$_cc_major" -ge "3" && test "$_cc_minor" -ge "3"; then
 	case "$proc" in
 	     970*) if test $IsDarwin = yes; then
-		      _march='-mcpu=G5 -mpowerpc64 -mpowerpc-gpopt -falign-loops=16' _mcpu='-mtune=G5'
+		      _march='$_opt_mcpu=G5 -mpowerpc64 -mpowerpc-gpopt -falign-loops=16' _mcpu='-mtune=G5'
 		   else
-		      _march='-mcpu=970' _mcpu='-mtune=970'
+		      _march='$_opt_mcpu=970' _mcpu='-mtune=970'
 		   fi
 		   ;;
 		*) ;;
