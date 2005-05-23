@@ -290,7 +290,7 @@ case "$proc" in
 esac
 
 # gcc 3.1(.1) and up supports 7400 and 7450
-if test "$_cc_major" -ge "3" && test "$_cc_minor" -ge "1"; then
+if test "$_cc_major" -ge "3" && test "$_cc_minor" -ge "1" || test "$_cc_major" -ge "4"; then
 	case "$proc" in
 		7400*|7410*) _march='$_opt_mcpu=7400' _mcpu='-mtune=7400' ;;
 		7450*|7455*) _march='$_opt_mcpu=7450' _mcpu='-mtune=7450' ;;
@@ -299,7 +299,7 @@ if test "$_cc_major" -ge "3" && test "$_cc_minor" -ge "1"; then
 fi
 
 # gcc 3.2 and up supports 970
-if test "$_cc_major" -ge "3" && test "$_cc_minor" -ge "3"; then
+if test "$_cc_major" -ge "3" && test "$_cc_minor" -ge "3" || test "$_cc_major" -ge "4"; then
 	case "$proc" in
 	     970*) if test $IsDarwin = yes; then
 		      _march='$_opt_mcpu=G5 -mpowerpc64 -mpowerpc-gpopt -falign-loops=16' _mcpu='-mtune=G5'
