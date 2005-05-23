@@ -33,25 +33,34 @@ int cheight = 0;
 int input_chroma_subsampling = 0;
 int input_interlaced = 0;
 
-int spat_Y_thres = 5;
-int spat_U_thres = 10;
-int spat_V_thres = 10;
+int Y_radius = 5;
+int U_radius = 5;
+int V_radius = 5;
 
-int temp_Y_thres = 10;
-int temp_U_thres = 20;
-int temp_V_thres = 20;
+int spat_Y_thres = 4;
+int spat_U_thres = 16;	// chroma-planes usually are a lot noisier than luma!
+int spat_V_thres = 16;
 
-uint8_t *inframe[3];
+int temp_Y_thres = 16;
+int temp_U_thres = 32;
+int temp_V_thres = 32;
+
 uint8_t *frame1[3];
 uint8_t *frame2[3];
 uint8_t *frame3[3];
 uint8_t *frame4[3];
 uint8_t *frame5[3];
-uint8_t *frame6[3];
-uint8_t *frame7[3];
-uint8_t *pixellocked1[3];
-uint8_t *pixellocked2[3];
-uint8_t *reconstructed[3];
+uint8_t *mc1[3];
+uint8_t *mc2[3];
+uint8_t *mc3[3];
+uint8_t *mc4[3];
+uint8_t *mc5[3];
+
+uint8_t *pixlock[3];
+uint8_t *pixlock2[3];
+uint8_t *pixlock3[3];
+uint8_t *lockcnt[3];
+uint8_t *output[3];
 
 int buff_offset;
 int buff_size;
@@ -59,393 +68,6 @@ int buff_size;
 /***********************************************************
  * helper-functions                                        *
  ***********************************************************/
-void
-transform_block (uint8_t * a1, uint8_t * a2, int rowstride)
-{
-  int x, y;
-
-  for (y = 0; y < 8; y++)
-    {
-      for (x = 0; x < 8; x++)
-	{
-	  *(a1) = *(a2);
-	  a1++;
-	  a2++;
-	}
-      a1 += rowstride - 8;
-      a2 += rowstride - 8;
-    }
-}
-
-void spatial_filter_frame ( uint8_t * dst, uint8_t * src, int w, int h, int t )
-{
-    int j;
-    int r;
-    int m;
-    int d, da;
-    uint8_t * s0 = src;
-    uint8_t * s1 = src-2-2*w;
-    uint8_t * s2 = src-1-w;
-
-    for(j=0;j<(w*h);j++)
-        {
-        // calculate our (lowpass-filtered) reference pixel
-        s2 = s0-1-w;
-        r  = *(s2);
-        s2++;
-        r += *(s2);
-        s2++;
-        r += *(s2);
-        s2+=w-2;
-        
-        r += *(s2);
-        s2++;
-        r += *(s2)*8;
-        s2++;
-        r += *(s2);
-        s2+=w-2;
-        
-        r += *(s2);
-        s2++;
-        r += *(s2);
-        s2++;
-        r += *(s2);      
-        r >>= 4;
-        
-        // first pixel row
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m   = *(s1) * d;
-        da  = d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        // second pixel row
-        s1 += w-5; // set s1 to the first pixel of the second row
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-       
-        // third pixel row
-        s1 += w-5; // set s1 to the first pixel of the third row
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        #if 0
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        #else
-        m  += *(s1) * t;
-        da += t;
-        #endif
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-       
-        // fourth pixel row
-        s1 += w-5; // set s1 to the first pixel of the fourth row
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-       
-        // fifth pixel row
-        s1 += w-5; // set s1 to the first pixel of the fifth row
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-        
-        d   = r - *(s1);
-        d   = abs(d);
-        d   = (d<t)? (t-d):(0);
-        m  += *(s1) * d;
-        da += d;
-        s1++;
-       
-        // finally divide sum of wightened pixels by sum of wights
-        // fprintf(stderr,"da:%i\n",da);
-        m /= da;
-        // and write the destination pixel
-        *(dst) = m;
-
-        // go one pixel further
-        dst++;
-        s0 ++;
-        s1 = s0-2-2*w;
-        }
-}
-
-void temporal_filter_frame 
-(
-uint8_t * dst,
-uint8_t * s1,
-uint8_t * s2,
-uint8_t * s3,
-uint8_t * s4,
-uint8_t * s5,
-uint8_t * s6,
-uint8_t * s7,
-int w,
-int h,
-int t
-)
-{
-int j;
-int r;
-int m;
-int l1,l2,l3;
-int d,da;
-
-    for(j=0;j<(w*h);j++)
-        {
-        r  = s4[j-w-1]; 
-        r += s4[j-w]; 
-        r += s4[j-w+1]; 
-        r += s4[j-1]; 
-        r += 8*s4[j]; 
-        r += s4[j+1]; 
-        r += s4[j+w-1]; 
-        r += s4[j+w]; 
-        r += s4[j+w+1]; 
-        r >>= 4;
-        
-        m  = t * *(s4+j);
-        da = t;
-        
-        // linear interpolations for blends
-        l1  = ( *(s1+j)+*(s2+j)+*(s3+j)+*(s4+j)+*(s5+j)+*(s6+j)+*(s7+j) )/7;
-        d   = abs(l1-r);
-        d   = d<t? t-d:0;
-        m  += d*l1;
-        da += d;
-        
-        l2 = ( *(s2+j)+*(s3+j)+*(s4+j)+*(s5+j)+*(s6+j) )/5;
-        d   = abs(l2-r);
-        d   = d<t? t-d:0;
-        m  += d*l2;
-        da += d;
-        
-        l3 = ( *(s3+j)+*(s4+j)+*(s5+j) )/3;
-        d   = abs(l3-r);
-        d   = d<t? t-d:0;
-        m  += d*l3;
-        da += d;
-        
-        // single pixel checks
-        d   = abs(s1[j]-r);
-        d   = d<t? t-d:0;
-        m  += d*s1[j];
-        da += d;
-
-        d   = abs(s2[j]-r);
-        d   = d<t? t-d:0;
-        m  += d*s2[j];
-        da += d;
-
-        d   = abs(s3[j]-r);
-        d   = d<t? t-d:0;
-        m  += d*s3[j];
-        da += d;
-
-        d   = abs(s5[j]-r);
-        d   = d<t? t-d:0;
-        m  += d*s5[j];
-        da += d;
-
-        d   = abs(s6[j]-r);
-        d   = d<t? t-d:0;
-        m  += d*s6[j];
-        da += d;
-
-        d   = abs(s7[j]-r);
-        d   = d<t? t-d:0;
-        m  += d*s7[j];
-        da += d;
-        
-        m /= da;
-        dst[j]=m;
-        }
-}
-
-void pixellock_frame 
-(
-uint8_t * dst,
-uint8_t * ref1,
-uint8_t * ref2,
-int w,
-int h,
-int t
-)
-{
-int j;
-int d1,d2;
-static int cnt=0;
-
-cnt++;
-
-for(j=0;j<(w*h);j++)
-    {
-    d1  = *(dst+j)-*(ref1+j);
-    d1 += *(dst+j+w)-*(ref1+j+w);
-    d1 += *(dst+j-w)-*(ref1+j-w);
-    d1 = d1<0? -d1:d1;
-    
-    d2  = *(dst+j)-*(ref2+j);
-    d2 += *(dst+j+w)-*(ref2+j+w);
-    d2 += *(dst+j-w)-*(ref2+j-w);
-    d2 = d2<0? -d2:d2;
-    
-    
-    if(d1>t || d2>t || (cnt&31)==0 )
-        *(dst+j)=*(ref1+j);
-    else
-        if(d1>(t/2) || d2>(t/2) || (cnt&7)==0 )
-            *(dst+j)=(*(dst+j)+*(ref1+j))/2;
-    }
-}
 
 /***********************************************************
  * Main Loop                                               *
@@ -649,14 +271,6 @@ main (int argc, char *argv[])
     buff_offset = width * 8;
     buff_size = buff_offset * 2 + width * height;
 
-    inframe[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    inframe[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    inframe[2] = buff_offset + (uint8_t *) malloc (buff_size);
-
-    reconstructed[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    reconstructed[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    reconstructed[2] = buff_offset + (uint8_t *) malloc (buff_size);
-
     frame1[0] = buff_offset + (uint8_t *) malloc (buff_size);
     frame1[1] = buff_offset + (uint8_t *) malloc (buff_size);
     frame1[2] = buff_offset + (uint8_t *) malloc (buff_size);
@@ -677,144 +291,615 @@ main (int argc, char *argv[])
     frame5[1] = buff_offset + (uint8_t *) malloc (buff_size);
     frame5[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    frame6[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame6[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame6[2] = buff_offset + (uint8_t *) malloc (buff_size);
-    
-    frame7[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame7[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame7[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    mc1[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    mc1[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    mc1[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    pixellocked1[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixellocked1[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixellocked1[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    mc2[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    mc2[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    mc2[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    pixellocked2[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixellocked2[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixellocked2[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    mc3[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    mc3[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    mc3[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    
+    mc4[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    mc4[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    mc4[2] = buff_offset + (uint8_t *) malloc (buff_size);
+
+    mc5[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    mc5[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    mc5[2] = buff_offset + (uint8_t *) malloc (buff_size);
+
+    pixlock[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    pixlock[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    pixlock[2] = buff_offset + (uint8_t *) malloc (buff_size);
+
+    pixlock2[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    pixlock2[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    pixlock2[2] = buff_offset + (uint8_t *) malloc (buff_size);
+
+    pixlock3[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    pixlock3[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    pixlock3[2] = buff_offset + (uint8_t *) malloc (buff_size);
+
+    lockcnt[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    lockcnt[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    lockcnt[2] = buff_offset + (uint8_t *) malloc (buff_size);
+
+    output[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    output[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    output[2] = buff_offset + (uint8_t *) malloc (buff_size);
+
   mjpeg_log (LOG_INFO, "Buffers allocated.");
   }
+
+  /* initialize motion_library */
+  init_motion_search ();
 
   /* read every frame until the end of the input stream and process it */
   while (Y4M_OK == (errno = y4m_read_frame (fd_in,
 					    &istreaminfo,
-					    &iframeinfo, inframe)))
+					    &iframeinfo, frame1 )))
     {
-    static uint32_t fcount=0;
-    uint8_t * tmpptr[3];
-    
-    // fill the first chroma lines above and below the image to get rid of
-    // green artifacts...
-    memset( inframe[1]-cwidth*2,128,cwidth*2 );
-    memset( inframe[2]-cwidth*2,128,cwidth*2 );
-    memset( inframe[1]+cwidth*cheight,128,cwidth*2 );
-    memset( inframe[2]+cwidth*cheight,128,cwidth*2 );
+	static uint32_t frame_nr=0;
+	uint8_t * temp[3];
 
-    // pointer rotation to rotate buffers
-    tmpptr[0]        = pixellocked1[0];
-    pixellocked1[0]  = reconstructed[0];
-    reconstructed[0] = tmpptr[0];
-    tmpptr[1]        = pixellocked1[1];
-    pixellocked1[1]  = reconstructed[1];
-    reconstructed[1] = tmpptr[1];
-    tmpptr[2]        = pixellocked1[2];
-    pixellocked1[2]  = reconstructed[2];
-    reconstructed[2] = tmpptr[2];
+	// motion-compensate frames to the reference frame
+	{
+		int x,y,vx,vy,sx,sy;
+		int bx,by;
+		uint32_t sad;
+		uint32_t min;
 
-    tmpptr[0] = frame7[0];
-    frame7[0] = frame6[0];
-    frame6[0] = frame5[0];
-    frame5[0] = frame4[0];
-    frame4[0] = frame3[0];
-    frame3[0] = frame2[0];
-    frame2[0] = frame1[0];
-    frame1[0] = tmpptr[0];
+		int r=8;
 
-    tmpptr[1] = frame7[1];
-    frame7[1] = frame6[1];
-    frame6[1] = frame5[1];
-    frame5[1] = frame4[1];
-    frame4[1] = frame3[1];
-    frame3[1] = frame2[1];
-    frame2[1] = frame1[1];
-    frame1[1] = tmpptr[1];
+		// blocksize may not(!) be to small for this type of denoiser
+		for(y=0;y<lheight;y+=32)
+			for(x=0;x<lwidth;x+=32)
+			{
 
-    tmpptr[2] = frame7[2];
-    frame7[2] = frame6[2];
-    frame6[2] = frame5[2];
-    frame5[2] = frame4[2];
-    frame4[2] = frame3[2];
-    frame3[2] = frame2[2];
-    frame2[2] = frame1[2];
-    frame1[2] = tmpptr[2];
+			// search the best vector for frame2
+			min = psad_00 (	frame3[0]+(x)+(y)*lwidth,
+					frame2[0]+(x)+(y)*lwidth,
+					lwidth,32,0x00ffffff );
+			min += psad_00 (frame3[0]+(x+16)+(y)*lwidth,
+					frame2[0]+(x+16)+(y)*lwidth,
+					lwidth,32,0x00ffffff );
+			vx=vy=bx=by=0;
+			for(sy=-r;sy<=r;sy++)
+				for(sx=-r;sx<=r;sx++)
+				{
+				sad  = psad_00 (	frame3[0]+(x   )+(y   )*lwidth,
+							frame2[0]+(x+sx)+(y+sy)*lwidth,
+							lwidth,32,0x00ffffff );
+				sad += psad_00 (	frame3[0]+(x   +16)+(y   )*lwidth,
+							frame2[0]+(x+sx+16)+(y+sy)*lwidth,
+							lwidth,32,0x00ffffff );
+				if(sad<min)
+					{
+					min = sad;
+					vx=bx=sx;
+					vy=by=sy;
+					}
+				}			
 
-    spatial_filter_frame ( frame1[0],inframe[0],lwidth,lheight,spat_Y_thres);
-    spatial_filter_frame ( frame1[1],inframe[1],cwidth,cheight,spat_U_thres);
-    spatial_filter_frame ( frame1[2],inframe[2],cwidth,cheight,spat_V_thres);
-    
-    temporal_filter_frame ( reconstructed[0],
-                            frame1[0],
-                            frame2[0],
-                            frame3[0],
-                            frame4[0],
-                            frame5[0],
-                            frame6[0],
-                            frame7[0],
-                            lwidth,
-                            lheight,
-                            temp_Y_thres);
-    temporal_filter_frame ( reconstructed[1],
-                            frame1[1],
-                            frame2[1],
-                            frame3[1],
-                            frame4[1],
-                            frame5[1],
-                            frame6[1],
-                            frame7[1],
-                            cwidth,
-                            cheight,
-                            temp_U_thres);
-    temporal_filter_frame ( reconstructed[2],
-                            frame1[2],
-                            frame2[2],
-                            frame3[2],
-                            frame4[2],
-                            frame5[2],
-                            frame6[2],
-                            frame7[2],
-                            cwidth,
-                            cheight,
-                            temp_V_thres);
-                            
-    pixellock_frame ( pixellocked2[0],pixellocked1[0],reconstructed[0],lwidth,lheight,4 );
-    pixellock_frame ( pixellocked2[1],pixellocked1[1],reconstructed[1],cwidth,cheight,4 );
-    pixellock_frame ( pixellocked2[2],pixellocked1[2],reconstructed[2],cwidth,cheight,4 );
+			// compensate block for frame2
+			{
+			uint8_t *p0 = mc2[0]+(x)+(y)*lwidth;
+			uint8_t *p1 = frame2[0]+(x+vx)+(y+vy)*lwidth;
+			for(sy=0;sy<32;sy++)
+				{
+					for(sx=0;sx<32;sx++)
+					{
+					*(p0) = *(p1);
+					p0++;
+					p1++;
+					}
+				p0 += lwidth-32;
+				p1 += lwidth-32;
+				}
+			}
 
-    if(fcount>=4)
-        {
-            y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, pixellocked2 );
-            mjpeg_log (LOG_INFO,"Frame : %08d",fcount-4);
-        }
-    fcount++;
+			// search the best vector for frame1 (arround the match of frame2)
+			min = psad_00 (	frame3[0]+(x)+(y)*lwidth,
+					frame1[0]+(x+bx)+(y+by)*lwidth,
+					lwidth,32,0x00ffffff );
+			min += psad_00 (frame3[0]+(x+16)+(y)*lwidth,
+					frame1[0]+(x+bx+16)+(y+by)*lwidth,
+					lwidth,32,0x00ffffff );
+			vx=vy=0;
+			for(sy=(by-r);sy<=(by+r);sy++)
+				for(sx=(bx-r);sx<=(bx+r);sx++)
+				{
+				sad  = psad_00 (	frame3[0]+(x   )+(y   )*lwidth,
+							frame1[0]+(x+sx)+(y+sy)*lwidth,
+							lwidth,32,0x00ffffff );
+				sad += psad_00 (	frame3[0]+(x   )+(y   )*lwidth,
+							frame1[0]+(x+sx)+(y+sy)*lwidth,
+							lwidth,32,0x00ffffff );
+				if(sad<min)
+					{
+					min = sad;
+					vx=sx;
+					vy=sy;
+					}
+				}			
+
+			// compensate block for frame1
+			{
+			uint8_t *p0 = mc1[0]+(x)+(y)*lwidth;
+			uint8_t *p1 = frame1[0]+(x+vx)+(y+vy)*lwidth;
+			for(sy=0;sy<32;sy++)
+				{
+					for(sx=0;sx<32;sx++)
+					{
+					*(p0) = *(p1);
+					p0++;
+					p1++;
+					}
+				p0 += lwidth-32;
+				p1 += lwidth-32;
+				}
+			}
+
+			// search the best vector for frame4
+			min = psad_00 (	frame3[0]+(x)+(y)*lwidth,
+					frame4[0]+(x)+(y)*lwidth,
+					lwidth,32,0x00ffffff );
+			min += psad_00 (frame3[0]+(x+16)+(y)*lwidth,
+					frame4[0]+(x+16)+(y)*lwidth,
+					lwidth,32,0x00ffffff );
+			vx=vy=bx=by=0;
+			for(sy=-r;sy<=r;sy++)
+				for(sx=-r;sx<=r;sx++)
+				{
+				sad  = psad_00 (	frame3[0]+(x   )+(y   )*lwidth,
+							frame4[0]+(x+sx)+(y+sy)*lwidth,
+							lwidth,32,0x00ffffff );
+				sad += psad_00 (	frame3[0]+(x   +16)+(y   )*lwidth,
+							frame4[0]+(x+sx+16)+(y+sy)*lwidth,
+							lwidth,32,0x00ffffff );
+				if(sad<min)
+					{
+					min = sad;
+					vx=bx=sx;
+					vy=by=sy;
+					}
+				}			
+
+			// compensate block for frame4
+			{
+			uint8_t *p0 = mc4[0]+(x)+(y)*lwidth;
+			uint8_t *p1 = frame4[0]+(x+vx)+(y+vy)*lwidth;
+			for(sy=0;sy<32;sy++)
+				{
+					for(sx=0;sx<32;sx++)
+					{
+					*(p0) = *(p1);
+					p0++;
+					p1++;
+					}
+				p0 += lwidth-32;
+				p1 += lwidth-32;
+				}
+			}
+
+			// search the best vector for frame5 (arround the match of frame4)
+			min = psad_00 (	frame3[0]+(x)+(y)*lwidth,
+					frame5[0]+(x+bx)+(y+by)*lwidth,
+					lwidth,32,0x00ffffff );
+			min += psad_00 (frame3[0]+(x+16)+(y)*lwidth,
+					frame5[0]+(x+bx+16)+(y+by)*lwidth,
+					lwidth,32,0x00ffffff );
+			vx=vy=0;
+			for(sy=(by-r);sy<=(by+r);sy++)
+				for(sx=(bx-r);sx<=(bx+r);sx++)
+				{
+				sad  = psad_00 (	frame3[0]+(x   )+(y   )*lwidth,
+							frame5[0]+(x+sx)+(y+sy)*lwidth,
+							lwidth,32,0x00ffffff );
+				sad += psad_00 (	frame3[0]+(x   )+(y   )*lwidth,
+							frame5[0]+(x+sx)+(y+sy)*lwidth,
+							lwidth,32,0x00ffffff );
+				if(sad<min)
+					{
+					min = sad;
+					vx=sx;
+					vy=sy;
+					}
+				}			
+
+			// compensate block for frame5
+			{
+			uint8_t *p0 = mc5[0]+(x)+(y)*lwidth;
+			uint8_t *p1 = frame5[0]+(x+vx)+(y+vy)*lwidth;
+			for(sy=0;sy<32;sy++)
+				{
+					for(sx=0;sx<32;sx++)
+					{
+					*(p0) = *(p1);
+					p0++;
+					p1++;
+					}
+				p0 += lwidth-32;
+				p1 += lwidth-32;
+				}
+			}
+	}
+	}
+
+#if 1
+	// mix frames
+	{
+	int x,y;
+	int mean;
+	int delta;
+	int delta_sum;
+	uint32_t interpolated_pixel;
+	int t=20;
+	int ref;
+
+	uint8_t *p1 = mc1[0];
+	uint8_t *p2 = mc2[0];
+	uint8_t *p3 = frame3[0];
+	uint8_t *p4 = mc4[0];
+	uint8_t *p5 = mc5[0];
+	uint8_t *dst = mc3[0];
+
+	// denoise the luma-plane
+	for(y=0;y<lheight;y++)
+		for(x=0;x<lwidth;x++)
+		{
+
+		ref  = *(p3-lwidth);
+		ref += *(p3);
+		ref += *(p3+lwidth);
+		ref /= 3;
+
+		interpolated_pixel = *(p3)*t;
+		delta_sum = t;
+
+		delta = abs( *(p1)-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += *(p1)*delta;
+
+		delta = abs( *(p2)-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += *(p2)*delta;
+
+		delta = abs( *(p4)-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += *(p4)*delta;
+
+		delta = abs( *(p5)-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += *(p5)*delta;
+
+		mean  = *(p1);
+		mean += *(p2);
+		mean += *(p4);
+		mean += *(p5);
+		mean /= 4;
+		delta = abs( mean-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += mean*delta;
+
+		mean  = *(p1);
+		mean += *(p2);
+		mean /= 2;
+		delta = abs( mean-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += mean*delta;
+
+		mean  = *(p4);
+		mean += *(p5);
+		mean /= 2;
+		delta = abs( mean-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += mean*delta;
+
+		interpolated_pixel /= delta_sum;
+		*(dst)=interpolated_pixel;
+
+		p1++;
+		p2++;
+		p3++;
+		p4++;
+		p5++;
+		dst++;
+		}
+
+	// denoise chroma1-plane
+	p1 = frame1[1];
+	p2 = frame2[1];
+	p3 = frame3[1];
+	p4 = frame4[1];
+	p5 = frame5[1];
+	dst = mc3[1];
+	for(y=0;y<cheight;y++)
+		for(x=0;x<cwidth;x++)
+		{
+
+		ref  = *(p3-cwidth);
+		ref += *(p3);
+		ref += *(p3+cwidth);
+		ref /= 3;
+
+		interpolated_pixel = *(p3)*t;
+		delta_sum = t;
+
+		delta = abs( *(p1)-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += *(p1)*delta;
+
+		delta = abs( *(p2)-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += *(p2)*delta;
+
+		delta = abs( *(p4)-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += *(p4)*delta;
+
+		delta = abs( *(p5)-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += *(p5)*delta;
+
+		mean  = *(p1);
+		mean += *(p2);
+		mean += *(p4);
+		mean += *(p5);
+		mean /= 4;
+		delta = abs( mean-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += mean*delta;
+
+		mean  = *(p1);
+		mean += *(p2);
+		mean /= 2;
+		delta = abs( mean-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += mean*delta;
+
+		mean  = *(p4);
+		mean += *(p5);
+		mean /= 2;
+		delta = abs( mean-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += mean*delta;
+
+		interpolated_pixel /= delta_sum;
+		*(dst)=interpolated_pixel;
+
+		p1++;
+		p2++;
+		p3++;
+		p4++;
+		p5++;
+		dst++;
+		}
+	// denoise chroma2-plane
+	p1 = frame1[2];
+	p2 = frame2[2];
+	p3 = frame3[2];
+	p4 = frame4[2];
+	p5 = frame5[2];
+	dst = mc3[2];
+	for(y=0;y<cheight;y++)
+		for(x=0;x<cwidth;x++)
+		{
+
+		ref  = *(p3-cwidth);
+		ref += *(p3);
+		ref += *(p3+cwidth);
+		ref /= 3;
+
+		interpolated_pixel = *(p3)*t;
+		delta_sum = t;
+
+		delta = abs( *(p1)-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += *(p1)*delta;
+
+		delta = abs( *(p2)-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += *(p2)*delta;
+
+		delta = abs( *(p4)-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += *(p4)*delta;
+
+		delta = abs( *(p5)-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += *(p5)*delta;
+
+		mean  = *(p1);
+		mean += *(p2);
+		mean += *(p4);
+		mean += *(p5);
+		mean /= 4;
+		delta = abs( mean-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += mean*delta;
+
+		mean  = *(p1);
+		mean += *(p2);
+		mean /= 2;
+		delta = abs( mean-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += mean*delta;
+
+		mean  = *(p4);
+		mean += *(p5);
+		mean /= 2;
+		delta = abs( mean-ref );
+		delta = (delta<t)? t-delta:0;
+		delta_sum += delta;
+		interpolated_pixel += mean*delta;
+
+		interpolated_pixel /= delta_sum;
+		*(dst)=interpolated_pixel;
+
+		p1++;
+		p2++;
+		p3++;
+		p4++;
+		p5++;
+		dst++;
+		}
+	}
+#endif
+#if 1
+	// smooth pixels a little further ...
+	{
+	int x,y;
+	int delta;
+	int t=7;
+
+	for(y=0;y<lheight;y++)
+		for(x=0;x<lwidth;x++)
+		{
+			delta = abs( *(pixlock[0]+x+y*lwidth) -  *(mc3[0]+x+y*lwidth) );
+			if(delta>t)
+				{
+				*(lockcnt[0]+x+y*lwidth)=2;
+				}
+			delta = abs( *(pixlock[0]+x+y*lwidth) -  *(pixlock3[0]+x+y*lwidth) );
+			if(delta>t)
+				{
+				*(lockcnt[0]+x+y*lwidth)=2;
+				}
+			delta = abs( *(pixlock[0]+x+y*lwidth) -  *(pixlock2[0]+x+y*lwidth) );
+			if(delta>t)
+				{
+				*(lockcnt[0]+x+y*lwidth)=2;
+				}
+
+			if(*(lockcnt[0]+x+y*lwidth)>0)
+				{
+				*(lockcnt[0]+x+y*lwidth)=*(lockcnt[0]+x+y*lwidth)-1;
+				*(pixlock[0]+x+y*lwidth) = *(pixlock3[0]+x+y*lwidth);
+				}
+			else
+				*(pixlock[0]+x+y*lwidth) = ( *(pixlock[0]+x+y*lwidth)+
+							     *(pixlock2[0]+x+y*lwidth)+
+							     *(pixlock3[0]+x+y*lwidth) )/3;
+
+			delta = abs( *(pixlock[1]+x+y*lwidth) -  *(mc3[1]+x+y*lwidth) );
+			if(delta>t)
+				{
+				*(lockcnt[1]+x+y*lwidth)=2;
+				}
+			delta = abs( *(pixlock[1]+x+y*lwidth) -  *(pixlock3[1]+x+y*lwidth) );
+			if(delta>t)
+				{
+				*(lockcnt[1]+x+y*lwidth)=2;
+				}
+			delta = abs( *(pixlock[1]+x+y*lwidth) -  *(pixlock2[1]+x+y*lwidth) );
+			if(delta>t)
+				{
+				*(lockcnt[1]+x+y*lwidth)=2;
+				}
+
+			if(*(lockcnt[1]+x+y*lwidth)>0)
+				{
+				*(lockcnt[1]+x+y*lwidth)=*(lockcnt[1]+x+y*lwidth)-1;
+				*(pixlock[1]+x+y*lwidth)=*(pixlock3[1]+x+y*lwidth);
+				}
+			else
+				*(pixlock[1]+x+y*lwidth) = ( *(pixlock[1]+x+y*lwidth)+
+							     *(pixlock2[1]+x+y*lwidth)+
+							     *(pixlock3[1]+x+y*lwidth) )/3;
+
+
+			delta = abs( *(pixlock[2]+x+y*lwidth) -  *(mc3[2]+x+y*lwidth) );
+			if(delta>t)
+				{
+				*(lockcnt[2]+x+y*lwidth)=2;
+				}
+			delta = abs( *(pixlock[2]+x+y*lwidth) -  *(pixlock3[2]+x+y*lwidth) );
+			if(delta>t)
+				{
+				*(lockcnt[2]+x+y*lwidth)=2;
+				}
+			delta = abs( *(pixlock[2]+x+y*lwidth) -  *(pixlock2[2]+x+y*lwidth) );
+			if(delta>t)
+				{
+				*(lockcnt[2]+x+y*lwidth)=2;
+				}
+
+			if(*(lockcnt[2]+x+y*lwidth)>0)
+				{
+				*(lockcnt[2]+x+y*lwidth)=*(lockcnt[2]+x+y*lwidth)-1;
+				*(pixlock[2]+x+y*lwidth)=*(pixlock3[2]+x+y*lwidth);
+				}
+			else
+				*(pixlock[2]+x+y*lwidth) = ( *(pixlock[2]+x+y*lwidth)+
+							     *(pixlock2[2]+x+y*lwidth)+
+							     *(pixlock3[2]+x+y*lwidth) )/3;
+
+		}
+	memcpy (pixlock3[0],pixlock2[0],lwidth*lheight);
+	memcpy (pixlock3[1],pixlock2[1],cwidth*cheight);
+	memcpy (pixlock3[2],pixlock2[2],cwidth*cheight);
+	memcpy (pixlock2[0],mc3[0],lwidth*lheight);
+	memcpy (pixlock2[1],mc3[1],cwidth*cheight);
+	memcpy (pixlock2[2],mc3[2],cwidth*cheight);
+	}
+#endif
+	// increase frame-counter
+    frame_nr++;
+    if(frame_nr>4)
+	    y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, pixlock);
+
+	// rotate buffer pointers to rotate input-buffers
+	temp[0] = frame5[0];
+	temp[1] = frame5[1];
+	temp[2] = frame5[2];
+
+	frame5[0] = frame4[0];
+	frame5[1] = frame4[1];
+	frame5[2] = frame4[2];
+
+	frame4[0] = frame3[0];
+	frame4[1] = frame3[1];
+	frame4[2] = frame3[2];
+
+	frame3[0] = frame2[0];
+	frame3[1] = frame2[1];
+	frame3[2] = frame2[2];
+
+	frame2[0] = frame1[0];
+	frame2[1] = frame1[1];
+	frame2[2] = frame1[2];
+
+	frame1[0] = temp[0];
+	frame1[1] = temp[1];
+	frame1[2] = temp[2];
     }
-  // write the missing frames
-  y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, reconstructed );
-  y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame3 );
-  y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame2 );
-  y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1 );
 
   /* free allocated buffers */
   {
-    free (inframe[0] - buff_offset);
-    free (inframe[1] - buff_offset);
-    free (inframe[2] - buff_offset);
-
-    free (reconstructed[0] - buff_offset);
-    free (reconstructed[1] - buff_offset);
-    free (reconstructed[2] - buff_offset);
-
     free (frame1[0] - buff_offset);
     free (frame1[1] - buff_offset);
     free (frame1[2] - buff_offset);
@@ -827,14 +912,6 @@ main (int argc, char *argv[])
     free (frame3[1] - buff_offset);
     free (frame3[2] - buff_offset);
 
-    free (pixellocked1[0] - buff_offset);
-    free (pixellocked1[1] - buff_offset);
-    free (pixellocked1[2] - buff_offset);
-
-    free (pixellocked2[0] - buff_offset);
-    free (pixellocked2[1] - buff_offset);
-    free (pixellocked2[2] - buff_offset);
-
     free (frame4[0] - buff_offset);
     free (frame4[1] - buff_offset);
     free (frame4[2] - buff_offset);
@@ -843,14 +920,42 @@ main (int argc, char *argv[])
     free (frame5[1] - buff_offset);
     free (frame5[2] - buff_offset);
 
-    free (frame6[0] - buff_offset);
-    free (frame6[1] - buff_offset);
-    free (frame6[2] - buff_offset);
+    free (mc1[0] - buff_offset);
+    free (mc1[1] - buff_offset);
+    free (mc1[2] - buff_offset);
 
-    free (frame7[0] - buff_offset);
-    free (frame7[1] - buff_offset);
-    free (frame7[2] - buff_offset);
-    
+    free (mc2[0] - buff_offset);
+    free (mc2[1] - buff_offset);
+    free (mc2[2] - buff_offset);
+
+    free (mc3[0] - buff_offset);
+    free (mc3[1] - buff_offset);
+    free (mc3[2] - buff_offset);
+
+    free (mc4[0] - buff_offset);
+    free (mc4[1] - buff_offset);
+    free (mc4[2] - buff_offset);
+
+    free (mc5[0] - buff_offset);
+    free (mc5[1] - buff_offset);
+    free (mc5[2] - buff_offset);
+
+    free (pixlock[0] - buff_offset);
+    free (pixlock[1] - buff_offset);
+    free (pixlock[2] - buff_offset);
+
+    free (pixlock2[0] - buff_offset);
+    free (pixlock2[1] - buff_offset);
+    free (pixlock2[2] - buff_offset);
+
+    free (lockcnt[0] - buff_offset);
+    free (lockcnt[1] - buff_offset);
+    free (lockcnt[2] - buff_offset);
+
+    free (output[0] - buff_offset);
+    free (output[1] - buff_offset);
+    free (output[2] - buff_offset);
+
     mjpeg_log (LOG_INFO, "Buffers freed.");
   }
 
