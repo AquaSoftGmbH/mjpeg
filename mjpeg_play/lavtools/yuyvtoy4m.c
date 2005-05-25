@@ -64,7 +64,7 @@ main(int argc, char **argv)
 	if	(argc == 1)
 		usage();
 
-	while	((c = getopt(argc, argv, "w:h:r:i:a:")) != EOF)
+	while	((c = getopt(argc, argv, "w:h:r:i:a:k")) != EOF)
 		{
 		switch	(c)
 			{
