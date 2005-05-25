@@ -198,7 +198,7 @@ main(int argc, char **argv)
 static void usage()
 	{
 
-	fprintf(stderr, "%s usage: [-k] -w width -h height [-x] [-a pixel aspect] [-i p|t|b] -r rate\n", __progname);
+	fprintf(stderr, "%s usage: [-k] -w width -h height [-x chroma] [-a pixel aspect] [-i p|t|b] -r rate\n", __progname);
 	fprintf(stderr, "  Swap U and V: -k\n");
 	fprintf(stderr, "  Interlace codes [-i X]: p (none) t (top first) b (bottom first)\n");
 	fprintf(stderr, "  Rate (as ratio) [-r N:M] (30000:1001):\n");
