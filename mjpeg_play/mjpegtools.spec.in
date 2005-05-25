@@ -92,7 +92,7 @@ make prefix=${RPM_BUILD_ROOT}%{prefix} INSTALL_INFO= install
 
 %files
 %defattr(-,root,root)
-%doc AUTHORS BUGS CHANGES COPYING HINTS PLANS README TODO
+%doc AUTHORS BUGS CHANGES COPYING HINTS PLANS README TODO README.*
 %{_bindir}/lav*
 %{_bindir}/yuv*
 %{_bindir}/jpeg2yuv
@@ -102,8 +102,10 @@ make prefix=${RPM_BUILD_ROOT}%{prefix} INSTALL_INFO= install
 %{_bindir}/glav
 %{_bindir}/ypipe
 %{_bindir}/mp*
-%{_bindir}/pgmtoy4m
+%{_bindir}/*toy4m
 %{_bindir}/png2yuv
+%{_bindir}/anytovcd.sh
+%{_bindir}/mjpeg_simd_helper
 %{_bindir}/*.flt
 %{_libdir}/*.so.*
 %{_prefix}/man/man1/*
@@ -120,14 +122,13 @@ needed to compile applications that use part of the libraries
 of the mjpegtools package.
 
 %files devel
-%{_bindir}/*-config
 %{_includedir}/mjpegtools/*.h
 %{_includedir}/mjpegtools/mpeg2enc/*.hh
 %{_includedir}/mjpegtools/mpeg2enc/*.h
 %{_includedir}/mjpegtools/mplex/*.hpp
 %{_libdir}/pkgconfig/*.pc
 %{_libdir}/*.a
-%{_libdir}/*.la
+%exclude %{_libdir}/*.la
 %{_libdir}/*.so
 
 %changelog
