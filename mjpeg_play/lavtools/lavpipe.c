@@ -185,11 +185,20 @@ static pid_t fork_child(const char *command,
   return fork_child_sub(current, fd_in, fd_out);
 }
 
-static void alloc_yuv_buffers(unsigned char *yuv[3], int w, int h)
+static void alloc_yuv_buffers(unsigned char *yuv[3], y4m_stream_info_t *si)
 {
+int chroma_ss, ss_v, ss_h, w, h;
+
+  w = y4m_si_get_width(si);
+  h = y4m_si_get_height(si);
+
+  chroma_ss = y4m_si_get_chroma(si);
+  ss_h = y4m_chroma_ss_x_ratio(chroma_ss).d;
+  ss_v = y4m_chroma_ss_y_ratio(chroma_ss).d;
+
   yuv[0] = malloc (w * h * sizeof(yuv[0][0]));
-  yuv[1] = malloc (w * h / 4 * sizeof(yuv[1][0]));
-  yuv[2] = malloc (w * h / 4 * sizeof(yuv[2][0]));
+  yuv[1] = malloc ((w / ss_h) * (h / ss_v) * sizeof(yuv[1][0]));
+  yuv[2] = malloc ((w / ss_h) * (h / ss_v) * sizeof(yuv[2][0]));
 }
 
 static void free_yuv_buffers(unsigned char *yuv[3])
@@ -392,9 +401,7 @@ void setup_segment_filter(PipeSegment *seg, pipe_filter_t *filt, int frame)
     y4m_read_stream_header(filt->in_fd, &(filt->in_streaminfo));
     mjpeg_debug("SSF:  read filter result stream header");
     y4m_log_stream_info(LOG_DEBUG, "result: ", &(filt->in_streaminfo));
-    alloc_yuv_buffers(filt->yuv, 
-		      y4m_si_get_width(&(filt->out_streaminfo)),
-		      y4m_si_get_height(&(filt->out_streaminfo)));
+    alloc_yuv_buffers(filt->yuv, &(filt->out_streaminfo));
   } else {
     /* ...no filter; direct output:
      *     o result stream info is just a copy of the source stream info
@@ -661,9 +668,7 @@ void process_pipe_sequence(pipe_sequence_t *ps)
       y4m_copy_stream_info(&(ps->output.out_streaminfo),
 			   &(filt->in_streaminfo));
       y4m_write_stream_header(ps->output.out_fd, &(ps->output.out_streaminfo));
-      alloc_yuv_buffers(ps->output.yuv, 
-			y4m_si_get_width(&(ps->output.out_streaminfo)),
-			y4m_si_get_height(&(ps->output.out_streaminfo)));
+      alloc_yuv_buffers(ps->output.yuv,  &(ps->output.out_streaminfo));
       mjpeg_debug("output stream initialized");
       first_iteration = 0;
     } else {
