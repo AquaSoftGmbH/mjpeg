@@ -505,7 +505,7 @@ void writeoutYUV4MPEGheader(int out_fd,
      break;
 
    case DATAFORMAT_MJPG:
-     if (param->chroma != Y4M_CHROMA_422 && el.MJPG_chroma == CHROMA422)
+     if (param->chroma != Y4M_CHROMA_422 && el.chroma == CHROMA422)
        mjpeg_info("chroma '422' recommended with this input");
      switch (param->chroma) {
      case Y4M_CHROMA_420MPEG2:

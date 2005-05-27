@@ -41,7 +41,7 @@ typedef struct
    int video_sar_height;
 
    long max_frame_size;
-   int  MJPG_chroma;
+   int  chroma;
 	/* TODO: Need to flag mixed chroma model files? */
 
    int  has_audio;

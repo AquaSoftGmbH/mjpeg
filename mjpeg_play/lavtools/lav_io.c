@@ -323,7 +323,7 @@ lav_file_t *lav_open_output_file(char *filename, char format,
                                       LAV_NOT_INTERLACED;
    lav_fd->has_audio   = (asize>0 && achans>0);
    lav_fd->bps         = (asize*achans+7)/8;
-   lav_fd->MJPG_chroma = CHROMAUNKNOWN;
+   lav_fd->chroma = CHROMAUNKNOWN;
 
    switch(format)
    {
@@ -658,9 +658,9 @@ void lav_video_sampleaspect(lav_file_t *lav_file, int *sar_w, int *sar_h)
   return;
 }
 
-int lav_video_MJPG_chroma(lav_file_t *lav_file)
+int lav_video_chroma(lav_file_t *lav_file)
 {
-	return lav_file->MJPG_chroma;
+	return lav_file->chroma;
 }
 
 const char *lav_video_compressor(lav_file_t *lav_file)
@@ -902,7 +902,7 @@ lav_file_t *lav_open_input_file(char *filename)
    lav_fd->sar_h       = 1; 
    lav_fd->has_audio   = 0;
    lav_fd->bps         = 0;
-   lav_fd->MJPG_chroma = CHROMAUNKNOWN;
+   lav_fd->chroma = CHROMAUNKNOWN;
 
    /* open video file, try AVI first */
 
@@ -990,9 +990,9 @@ lav_file_t *lav_open_input_file(char *filename)
       || strncasecmp(video_comp,"dv",2)==0) {
        ierr = check_DV2_input(lav_fd);
 #ifdef LIBDV_PAL_YV12
-       lav_fd->MJPG_chroma = CHROMA420;
+       lav_fd->chroma = CHROMA420;
 #else
-       lav_fd->MJPG_chroma = CHROMA422;
+       lav_fd->chroma = CHROMA422;
 #endif
        if (ierr) goto ERREXIT;
        /* DV is always interlaced, bottom first */
@@ -1010,11 +1010,11 @@ lav_file_t *lav_open_input_file(char *filename)
 #ifdef HAVE_LIBQUICKTIME
        /* check for YUV format if quicktime file */
        if (strncasecmp(video_comp,QUICKTIME_YUV420,4)==0)
-           lav_fd->MJPG_chroma = CHROMA420;
+           lav_fd->chroma = CHROMA420;
        else if (strncasecmp(video_comp,QUICKTIME_YUV4,4)==0)
-           lav_fd->MJPG_chroma = CHROMA422;
+           lav_fd->chroma = CHROMA422;
 #else
-   lav_fd->MJPG_chroma = CHROMA420;
+   lav_fd->chroma = CHROMA420;
 #endif
        if (ierr) goto ERREXIT;
    }
@@ -1073,15 +1073,15 @@ lav_file_t *lav_open_input_file(char *filename)
 	  {
 		 if( vf[0] == vf[1] && vf[0] == vf[2] )
 		 {
-			 lav_fd->MJPG_chroma = CHROMA422;
+			 lav_fd->chroma = CHROMA422;
 		 }
 		 else if( vf[0] == 2*vf[1] && vf[0] == 2*vf[2] )
-			 lav_fd->MJPG_chroma = CHROMA420;
+			 lav_fd->chroma = CHROMA420;
 		 else		
-			 lav_fd->MJPG_chroma = CHROMAUNKNOWN;
+			 lav_fd->chroma = CHROMAUNKNOWN;
 	  }
 	  else
-		  lav_fd->MJPG_chroma = CHROMAUNKNOWN;
+		  lav_fd->chroma = CHROMAUNKNOWN;
    }
 
    /* Check if video is interlaced */
