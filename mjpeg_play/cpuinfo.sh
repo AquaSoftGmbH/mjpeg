@@ -67,15 +67,15 @@ fi
 
 # Cpu determination logic adapted from the MPlayer configure script.
 
-pname=`$_cpuinfo | grep 'model name' | cut -d ':' -f 2 | head -1`
-pvendor=`$_cpuinfo | grep 'vendor_id' | cut -d':' -f2 | cut -d' ' -f2 | head -1`
-pfamily=`$_cpuinfo | grep 'cpu family' | cut -d':' -f2 | cut -d' ' -f2 | head -1`
-pmodel=`$_cpuinfo | grep -v 'model name' | grep 'model' | cut -d':' -f2 | cut -d' ' -f2 | head -1`
-pstep=`$_cpuinfo | grep 'stepping' | cut -d':' -f2 | cut -d' ' -f2 | head -1`
-pparam=`$_cpuinfo | grep 'features' | cut -d':' -f2 | head -1`
+pname=`$_cpuinfo | grep 'model name' | cut -d ':' -f 2 | head -n 1`
+pvendor=`$_cpuinfo | grep 'vendor_id' | cut -d':' -f2 | cut -d' ' -f2 | head -n 1`
+pfamily=`$_cpuinfo | grep 'cpu family' | cut -d':' -f2 | cut -d' ' -f2 | head -n 1`
+pmodel=`$_cpuinfo | grep -v 'model name' | grep 'model' | cut -d':' -f2 | cut -d' ' -f2 | head -n 1`
+pstep=`$_cpuinfo | grep 'stepping' | cut -d':' -f2 | cut -d' ' -f2 | head -n 1`
+pparam=`$_cpuinfo | grep 'features' | cut -d':' -f2 | head -n 1`
 
 if test -z "$pparam" ; then
- pparam=`$_cpuinfo | grep 'flags' | cut -d ':' -f 2 | head -1`
+ pparam=`$_cpuinfo | grep 'flags' | cut -d ':' -f 2 | head -n 1`
 fi
 
 _mmx=no
@@ -266,7 +266,7 @@ do_ppc()
 # Darwin (OS/X) has the hostinfo command
 # If neither of those we have no idea what to do - so do nothing.
 if test -r /proc/cpuinfo; then
-	proc=`grep cpu /proc/cpuinfo | cut -d':' -f2 | cut -d',' -f1 | cut -b 2- | head -1`
+	proc=`grep cpu /proc/cpuinfo | cut -d':' -f2 | cut -d',' -f1 | cut -b 2- | head -n 1`
 elif test $IsDarwin = yes; then
 	proc=`hostinfo | grep "Processor type" | cut -f3 -d' ' | sed 's/ppc//'`
 else
