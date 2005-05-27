@@ -294,24 +294,22 @@ lav_file_t *lav_open_output_file(char *filename, char format,
         {
         case 'a':
         case 'A':
-          if (strcmp(extension, "avi") && strcmp(extension, "AVI")) 
+          if (strcasecmp(extension, "avi"))
             {
                internal_error = ERROR_FORMAT;
                return 0;
             }
           break;
         case 'q':
-          if (strcmp(extension,  "qt") && strcmp(extension,  "QT") &&
-              strcmp(extension, "mov") && strcmp(extension, "MOV") && 
-              strcmp(extension,"moov") && strcmp(extension,"MOOV")) 
+          if (strcasecmp(extension,  "qt") &&
+              strcasecmp(extension, "mov") && strcasecmp(extension,"moov"))
             {
              internal_error = ERROR_FORMAT;
              return 0;
             }
           break;
         case 'j':
-          if (strcmp(extension, "jpg") && strcmp(extension, "jpg") &&
-              strcmp(extension,"jpeg") && strcmp(extension,"JPEG"))
+          if (strcasecmp(extension, "jpg") && strcasecmp(extension,"jpeg"))
             {
               internal_error = ERROR_FORMAT;
               return 0;
