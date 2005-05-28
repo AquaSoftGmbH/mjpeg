@@ -405,8 +405,12 @@ EOF
     ALTIVEC_CFLAGS=""
     if $CC -o conftest conftest.c >/dev/null 2>&1; then
       have_altivec=true
+    elif $CC $CFLAGS -faltivec -maltivec -o conftest conftest.c >/dev/null 2>&1; then
+      # Mac OS X style with -maltivec
+      have_altivec=true
+      ALTIVEC_CFLAGS="-faltivec -maltivec"
     elif $CC $CFLAGS -faltivec -o conftest conftest.c >/dev/null 2>&1; then
-      # Mac OS X style
+      # Mac OS X style without -maltivec
       have_altivec=true
       ALTIVEC_CFLAGS="-faltivec"
     elif $CC $CFLAGS -fvec -o conftest conftest.c >/dev/null 2>&1; then
