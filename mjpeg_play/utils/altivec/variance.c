@@ -197,8 +197,8 @@ void variance_altivec(VARIANCE_PDECL)
     }
 #endif
 
-    vs32(sum) = vec_sum4s(sum, vs32(zero));
-    vs32(sum) = vec_sums(vs32(sum), vs32(zero));
+    sum = vs16(vec_sum4s(sum, vs32(zero)));
+    sum = vs16(vec_sums(vs32(sum), vs32(zero)));
     msum = vec_sums(msum, vs32(zero));
 
 #ifdef ALTIVEC_DST
