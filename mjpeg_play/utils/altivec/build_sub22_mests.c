@@ -201,9 +201,9 @@ int build_sub22_mests_altivec(BUILD_SUB22_MESTS_PDECL)
     threshold = 6 * null_ctl_sad / (reduction << 2);
     vio.init.threshold = threshold;
     xy22 = (vector signed char)VCONST(0,0,0,0, 0,0,2,0, 0,0,0,2, 0,0,2,2);
-    vu32(xint) = vec_splat_u32(0xf);
+    xint = vu8(vec_splat_u32(0xf));
     xint = vec_add(xint, lvsl);
-    vu32(yint) = vec_splat_u32(1);
+    yint = vu8(vec_splat_u32(1));
     yint = vec_add(yint, xint);
 
     perm2 = vec_lvsl(0, s22blk);
@@ -218,8 +218,8 @@ int build_sub22_mests_altivec(BUILD_SUB22_MESTS_PDECL)
     ih = (h >> 1) - 1;
 
     vthreshold = vec_ld(0, (unsigned int*) &vio.init);
-    vu32(xylim) = vec_splat(vu32(vthreshold), 0);      /* vio.init.xylim */
-    vu32(vthreshold) = vec_splat(vu32(vthreshold), 1); /* vio.init.threshold */
+    xylim = vu8(vec_splat(vu32(vthreshold), 0));      /* vio.init.xylim */
+    vthreshold = vu8(vec_splat(vu32(vthreshold), 1)); /* vio.init.threshold */
 
     do { /* while (--len) */
 
@@ -463,10 +463,10 @@ int build_sub22_mests_altivec(BUILD_SUB22_MESTS_PDECL)
 	    sad22 = vec_sum4s(dif, sad22);
 
 	    /* calculate final sums {{{ */
-	    vs32(sads) = vec_sums(vs32(sads), vs32(zero));
-	    vs32(sad20) = vec_sums(vs32(sad20), vs32(zero));
-	    vs32(sad02) = vec_sums(vs32(sad02), vs32(zero));
-	    vs32(sad22) = vec_sums(vs32(sad22), vs32(zero));
+	    sads = vu32(vec_sums(vs32(sads), vs32(zero)));
+	    sad20 = vu32(vec_sums(vs32(sad20), vs32(zero)));
+	    sad02 = vu32(vec_sums(vs32(sad02), vs32(zero)));
+	    sad22 = vu32(vec_sums(vs32(sad22), vs32(zero)));
 	    /* }}} */
 
 	    /* sads = {sads, sad20, sad02, sad22} {{{ */
@@ -486,7 +486,7 @@ int build_sub22_mests_altivec(BUILD_SUB22_MESTS_PDECL)
 	    vector signed char xy;
 
 	    xy = vec_ld(0, (signed char*) &vio.xy);
-	    vu32(xy) = vec_splat(vu32(xy), 0); /* splat vio.xy */
+	    xy = vu8(vec_splat(vu32(xy), 0)); /* splat vio.xy */
 	    xy = vec_add(xy, xy22); /* adjust xy values for elements 1-3 */
 
 	    /* add distance penalty {{{ */
@@ -505,8 +505,8 @@ int build_sub22_mests_altivec(BUILD_SUB22_MESTS_PDECL)
 		 * (0,0,0,x, 0,0,0,x, 0,0,0,x, 0,0,0,x) |lvsl+(0x0000000F,...)| 
 		 * (0,0,0,y, 0,0,0,y, 0,0,0,y, 0,0,0,y) |lvsl+(0x00000010,...)|
 		 */
-		vs8(xxxx) = vec_perm(vs8(zero), xyabs, xint);
-		vs8(yyyy) = vec_perm(vs8(zero), xyabs, yint);
+		xxxx = vu32(vec_perm(vs8(zero), xyabs, xint));
+		yyyy = vu32(vec_perm(vs8(zero), xyabs, yint));
 
 		/* penalty = max(abs(x),abs(y)) << 3  */
 		xymax = vec_max(xxxx, yyyy);
@@ -536,7 +536,7 @@ int build_sub22_mests_altivec(BUILD_SUB22_MESTS_PDECL)
 	    {
 		vector bool int xymask;
 
-		vb8(xymask) = vec_cmpgt(xy, xylim);
+		xymask = vb32(vec_cmpgt(xy, xylim));
 		xymask = vec_cmpgt(vu32(xymask), zero);
 
 		/* add (saturated) xymask to sads thereby forcing
@@ -558,9 +558,9 @@ int build_sub22_mests_altivec(BUILD_SUB22_MESTS_PDECL)
 		 *
 		 * ( sad,  xy, sad,  xy, sad,  xy, sad,  xy )
 		 */ /* }}} */
-		vu16(xy) = vec_pack(vu32(xy), vu32(xy));
-		vu16(mests) = vec_pack(vu32(sads), vu32(sads));
-		vu16(mests) = vec_mergeh(vu16(mests), vu16(xy));
+		xy = vu8(vec_pack(vu32(xy), vu32(xy)));
+		mests = vu32(vec_pack(vu32(sads), vu32(sads)));
+		mests = vu32(vec_mergeh(vu16(mests), vu16(xy)));
 
 		vec_st(mests, 0, (unsigned int*)&vio.mests);
 	    } /* }}} */
