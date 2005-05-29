@@ -230,7 +230,7 @@ int build_sub44_mests_altivec(BUILD_SUB44_MESTS_PDECL)
     shifter = vec_splat_u8(2);
     shifter = vec_sr(shift /* lvsl */, shifter /* (2) */ );
     /* }}} */
-    vu32(shift) = vec_splat(vu32(shift), 0); /* (0x00010203, ...) */
+    shift = vu8(vec_splat(vu32(shift), 0)); /* (0x00010203, ...) */
     shift = vec_add(shift, shifter);
     increment = vec_splat_u8(4);
     /* }}} */
@@ -270,7 +270,7 @@ int build_sub44_mests_altivec(BUILD_SUB44_MESTS_PDECL)
     vr0 = vec_ld(0, (unsigned char*)s44blk);
     vr1 = vec_ld(rowstride, (unsigned char*)s44blk);
     t1 = vec_lvsl(0, (unsigned char*)s44blk);
-    vu32(t1) = vec_splat(vu32(t1), 0);
+    t1 = vu8(vec_splat(vu32(t1), 0));
     vr0 = vec_perm(vr0, vr0, t1);
     vr1 = vec_perm(vr1, vr1, t1);
 
@@ -310,13 +310,13 @@ int build_sub44_mests_altivec(BUILD_SUB44_MESTS_PDECL)
 		t2 = vec_max(t1, vr0);  /* find largest of two      */  
 		t3 = vec_min(t1, vr0);  /* find smaller of two      */  
 		t3 = vec_sub(t2, t3);   /* find absolute difference */  
-		vu32(sads) = vec_sum4s(t3, vu32(sads));
+		sads = vs32(vec_sum4s(t3, vu32(sads)));
 
 		t1 = vec_perm(vx0y1, vx16y1, shifter);
 		t2 = vec_max(t1, vr1);
 		t3 = vec_min(t1, vr1);
 		t3 = vec_sub(t2, t3);
-		vu32(sads) = vec_sum4s(t3, vu32(sads));
+		sads = vs32(vec_sum4s(t3, vu32(sads)));
 
 		vec_st(vu32(sads), 0, psad);
 		psad += 4;
@@ -357,13 +357,13 @@ int build_sub44_mests_altivec(BUILD_SUB44_MESTS_PDECL)
 			t2 = vec_max(t1, vr0);  /* find largest of two      */  
 			t3 = vec_min(t1, vr0);  /* find smaller of two      */  
 			t3 = vec_sub(t2, t3);   /* find absolute difference */  
-			vu32(sads) = vec_sum4s(t3, vu32(sads));
+			sads = vs32(vec_sum4s(t3, vu32(sads)));
 
 			t1 = vec_perm(vn0y1, vn16y1, shifter);
 			t2 = vec_max(t1, vr1);
 			t3 = vec_min(t1, vr1);
 			t3 = vec_sub(t2, t3);
-			vu32(sads) = vec_sum4s(t3, vu32(sads));
+			sads = vs32(vec_sum4s(t3, vu32(sads)));
 
 			vec_st(vu32(sads), 0, psad);
 			psad += 4;
@@ -507,25 +507,25 @@ int build_sub44_mests_altivec(BUILD_SUB44_MESTS_PDECL)
 		t2 = vec_max(t1, vr0);  /* find largest of two      */  
 		t3 = vec_min(t1, vr0);  /* find smaller of two      */  
 		t3 = vec_sub(t2, t3);   /* find absolute difference */  
-		vu32(sads) = vec_sum4s(t3, vu32(sads));
+		sads = vs32(vec_sum4s(t3, vu32(sads)));
 
 		t1 = vec_perm(vx0y1, vx16y1, shifter);
 		t2 = vec_max(t1, vr1);
 		t3 = vec_min(t1, vr1);
 		t3 = vec_sub(t2, t3);
-		vu32(sads) = vec_sum4s(t3, vu32(sads));
+		sads = vs32(vec_sum4s(t3, vu32(sads)));
 
 		t1 = vec_perm(vx0y2, vx16y2, shifter);
 		t2 = vec_max(t1, vr2);
 		t3 = vec_min(t1, vr2);
 		t3 = vec_sub(t2, t3);
-		vu32(sads) = vec_sum4s(t3, vu32(sads));
+		sads = vs32(vec_sum4s(t3, vu32(sads)));
 
 		t1 = vec_perm(vx0y3, vx16y3, shifter);
 		t2 = vec_max(t1, vr3);
 		t3 = vec_min(t1, vr3);
 		t3 = vec_sub(t2, t3);
-		vu32(sads) = vec_sum4s(t3, vu32(sads));
+		sads = vs32(vec_sum4s(t3, vu32(sads)));
 
 		vec_st(vu32(sads), 0, psad);
 		psad += 4;
@@ -573,25 +573,25 @@ int build_sub44_mests_altivec(BUILD_SUB44_MESTS_PDECL)
 			t2 = vec_max(t1, vr0);  /* find largest of two      */  
 			t3 = vec_min(t1, vr0);  /* find smaller of two      */  
 			t3 = vec_sub(t2, t3);   /* find absolute difference */  
-			vu32(sads) = vec_sum4s(t3, vu32(sads));
+			sads = vs32(vec_sum4s(t3, vu32(sads)));
 
 			t1 = vec_perm(vn0y1, vn16y1, shifter);
 			t2 = vec_max(t1, vr1);
 			t3 = vec_min(t1, vr1);
 			t3 = vec_sub(t2, t3);
-			vu32(sads) = vec_sum4s(t3, vu32(sads));
+			sads = vs32(vec_sum4s(t3, vu32(sads)));
 
 			t1 = vec_perm(vn0y2, vn16y2, shifter);
 			t2 = vec_max(t1, vr2);
 			t3 = vec_min(t1, vr2);
 			t3 = vec_sub(t2, t3);
-			vu32(sads) = vec_sum4s(t3, vu32(sads));
+			sads = vs32(vec_sum4s(t3, vu32(sads)));
 
 			t1 = vec_perm(vn0y3, vn16y3, shifter);
 			t2 = vec_max(t1, vr3);
 			t3 = vec_min(t1, vr3);
 			t3 = vec_sub(t2, t3);
-			vu32(sads) = vec_sum4s(t3, vu32(sads));
+			sads = vs32(vec_sum4s(t3, vu32(sads)));
 
 			vec_st(vu32(sads), 0, psad);
 			psad += 4;
