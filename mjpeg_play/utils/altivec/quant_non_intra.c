@@ -219,10 +219,10 @@ int quant_non_intra_altivec(QUANT_NON_INTRA_PDECL)
 
 #define SIGN_AND_STORE /* {{{ */                                             \
     /* sign dst blocks */                                                    \
-    selA = vec_cmpgt(vs16(zero), srcA);                                      \
+    selA = vec_cmpgt(vs16(zero), srcA);                                \
     selB = vec_cmpgt(vs16(zero), srcB);                                      \
-    t1 = vs16(vec_subs(vs16(zero), dstA));                                   \
-    t2 = vs16(vec_subs(vs16(zero), dstB));                                   \
+    t1 = vu16(vec_subs(vs16(zero), dstA));                                   \
+    t2 = vu16(vec_subs(vs16(zero), dstB));                                   \
     dstA = vec_sel(dstA, vs16(t1), selA);                                    \
     dstB = vec_sel(dstB, vs16(t2), selB);                                    \
 									     \
@@ -306,8 +306,8 @@ recalc:
 		    pd += 8;
 		    srcB = vec_ld(0, pd);
 		    /* (dstA,dstB) = abs(srcA,srcB) {{{ */
-		    t1 = vs16(vec_subs(vs16(zero), srcA));
-		    t2 = vs16(vec_subs(vs16(zero), srcB));
+		    t1 = vu16(vec_subs(vs16(zero), srcA));
+		    t2 = vu16(vec_subs(vs16(zero), srcB));
 		    dstA = vec_max(srcA, vs16(t1));
 		    dstB = vec_max(srcB, vs16(t2));
 		    /* }}} */
@@ -318,8 +318,8 @@ recalc:
 		    /* restore sign {{{ */
 		    selA = vec_cmpgt(vs16(zero), srcA);
 		    selB = vec_cmpgt(vs16(zero), srcB);
-		    t1 = vs16(vec_subs(vs16(zero), dstA));
-		    t2 = vs16(vec_subs(vs16(zero), dstB));
+		    t1 = vu16(vec_subs(vs16(zero), dstA));
+		    t2 = vu16(vec_subs(vs16(zero), dstB));
 		    dstA = vec_sel(dstA, vs16(t1), selA);
 		    dstB = vec_sel(dstB, vs16(t2), selB);
 		    /* }}} */
