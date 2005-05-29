@@ -158,18 +158,18 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
     vio.init.xylim = mres;
 
     yint = vec_lvsl(0, (unsigned char*)0);
-    vu32(xint) = vec_splat_u32(0xf);
+    xint = vu8(vec_splat_u32(0xf));
     xint = vec_add(xint, yint /* lvsl */ );
-    vu32(yint) = vec_splat_u32(1);
+    yint = vu8(vec_splat_u32(1));
     yint = vec_add(yint, xint);
 
     /* initialize to zero */
     zero = vec_splat_u32(0);
 
     xylim = vec_ld(0, (signed char*) &vio.init.xylim);
-    vu32(xylim) = vec_splat(vu32(xylim), 0);
+    xylim = vs8(vec_splat(vu32(xylim), 0));
 
-    vs8(minsad) = vec_splat_s8(-1);
+    minsad = vu32(vec_splat_s8(-1));
     
     sub22mests = sub22set->mests;
 
@@ -290,10 +290,10 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 
 
 	/* calculate final sums {{{ */
-	vs32(sad00) = vec_sums(vs32(sad00), vs32(zero));         
-	vs32(sad10) = vec_sums(vs32(sad10), vs32(zero));         
-	vs32(sad01) = vec_sums(vs32(sad01), vs32(zero));         
-	vs32(sad11) = vec_sums(vs32(sad11), vs32(zero));         
+	sad00 = vu32(vec_sums(vs32(sad00), vs32(zero)));
+	sad10 = vu32(vec_sums(vs32(sad10), vs32(zero)));
+	sad01 = vu32(vec_sums(vs32(sad01), vs32(zero)));
+	sad11 = vu32(vec_sums(vs32(sad11), vs32(zero)));
 	/* }}} */
 
 	/* sads = {sad00, sad10, sad01, sad11} {{{ */
@@ -312,7 +312,7 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 	/* add penalty, clip xy, arrange into me_result_s ... {{{ */
 	{
 	    xy = vec_ld(0, (signed char*) &vio.xy);
-	    vu32(xy) = vec_splat(vu32(xy), 0); /* splat vio.xy */
+	    xy = vs8(vec_splat(vu32(xy), 0)); /* splat vio.xy */
 
 	    /* add distance penalty {{{ */
 	    /* penalty = (abs(x) + abs(y)) << 3 */
@@ -330,8 +330,8 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 		 * (0,0,0,x, 0,0,0,x, 0,0,0,x, 0,0,0,x) |lvsl+(0x0000000F,...)| 
 		 * (0,0,0,y, 0,0,0,y, 0,0,0,y, 0,0,0,y) |lvsl+(0x00000010,...)|
 		 */
-		vs8(xxxx) = vec_perm(vs8(zero), xyabs, xint);
-		vs8(yyyy) = vec_perm(vs8(zero), xyabs, yint);
+		xxxx = vu32(vec_perm(vs8(zero), xyabs, xint));
+		yyyy = vu32(vec_perm(vs8(zero), xyabs, yint));
 
 		/* penalty = (abs(x) + abs(y)) << 3 */
 		xxxx = vec_add(xxxx, yyyy);
@@ -367,7 +367,7 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 	    {
 		vector bool int xymask;
 
-		vb8(xymask) = vec_cmpgt(xy, xylim);
+		xymask = vb32(vec_cmpgt(xy, xylim));
 		xymask = vec_cmpgt(vu32(xymask), zero);
 
 		/* 'or' xymask to sads thereby forcing
@@ -385,8 +385,8 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 
 #define minsad32 vu32(t0)
 #define minxy32  vs8(t1)
-	vu32(minsad32) = vec_sld(vu32(zero), vu32(minsad), 12);
-	vu32(minxy32) = vec_sld(vu32(zero), vu32(minxy), 12);
+	t0 = vu8(vec_sld(vu32(zero), vu32(minsad), 12));
+	t1 = vu8(vec_sld(vu32(zero), vu32(minxy), 12));
 
 	minsel = vec_cmplt(minsad, minsad32);
 	minsad = vec_sel(minsad32, minsad, minsel);
@@ -396,8 +396,8 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 
 #define minsad64 vu32(t0)
 #define minxy64  vs8(t1)
-	vu32(minsad64) = vec_sld(vu32(zero), vu32(minsad), 8);
-	vu32(minxy64) = vec_sld(vu32(zero), vu32(minxy), 8);
+	t0 = vu8(vec_sld(vu32(zero), vu32(minsad), 8));
+	t1 = vu8(vec_sld(vu32(zero), vu32(minxy), 8));
 
 	minsel = vec_cmplt(minsad, minsad64);
 	minsad = vec_sel(minsad64, minsad, minsel);
@@ -406,7 +406,7 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 #undef minxy64  /* t1 */
 
 	minsad = vec_splat(minsad, 3);
-	vu32(minxy) = vec_splat(vu32(minxy), 3);
+	minxy = vs8(vec_splat(vu32(minxy), 3));
 	/* }}} */
     } while (--len);
 
@@ -420,9 +420,9 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
      *
      * ( sad,  xy, sad,  xy, sad,  xy, sad,  xy )
      */
-    vu16(minsad) = vec_pack(vu32(minsad), vu32(minsad));
-    vu16(minxy) = vec_pack(vu32(minxy), vu32(minxy));
-    vu16(minsad) = vec_mergeh(vu16(minsad), vu16(minxy));
+    minsad = vu32(vec_pack(vu32(minsad), vu32(minsad)));
+    minxy = vs8(vec_pack(vu32(minxy), vu32(minxy)));
+    minsad = vu32(vec_mergeh(vu16(minsad), vu16(minxy)));
     /* }}} */
 
     /* store mests to vo for scalar access */
