@@ -111,9 +111,9 @@ void iquant_intra_m1_altivec(IQUANT_INTRA_PDECL)
     one = vec_splat_s16(1);
     four = vec_splat_u32(4);
     /* max = (2047); min = (-2048); {{{ */
-    max = vu16(vec_splat_u8(0x7));
+    max = vs16(vec_splat_u8(0x7));
     t0 = vec_splat_s16(-1); /* 0xffff */
-    max = vu16(vec_mergeh(vu8(max), vu8(t0))); /* 0x07ff == 2047 */
+    max = vs16(vec_mergeh(vu8(max), vu8(t0))); /* 0x07ff == 2047 */
     min = vec_sub(t0, max);
     /* }}} */
     offset = 0;
@@ -317,9 +317,9 @@ void iquant_intra_m2_altivec(IQUANT_INTRA_PDECL)
     zero = vec_splat_s16(0);
     four = vec_splat_u32(4);
     /* max = (2047); min = (-2048); {{{ */
-    max = vu16(vec_splat_u8(0x7));
+    max = vs16(vec_splat_u8(0x7));
     t0 = vec_splat_s16(-1); /* 0xffff */
-    max = vu16(vec_mergeh(vu8(max), vu8(t0))); /* 0x07ff == 2047 */
+    max = vs16(vec_mergeh(vu8(max), vu8(t0))); /* 0x07ff == 2047 */
     min = vec_sub(t0, max);
     /* }}} */
     offset = 0;
