@@ -164,36 +164,36 @@ int bsumsq_altivec(BSUMSQ_PDECL)
 	pby += rowstride;
 
 	/* (unsigned short[]) pf[0-7] */    
-	vu8(fH) = vec_mergeh(zero, vf);   
+	fH = vu16(vec_mergeh(zero, vf));
 			
 	/* (unsigned short[]) pf[8-15] */   
-	vu8(fL) = vec_mergel(zero, vf);   
+	fL = vu16(vec_mergel(zero, vf));
 			
 	/* (unsigned short[]) pfa[0-7] */    
-	vu8(tH) = vec_mergeh(zero, vfa);   
+	tH = vu16(vec_mergeh(zero, vfa));
 			
 	/* (unsigned short[]) pfa[8-15] */   
-	vu8(tL) = vec_mergel(zero, vfa);   
+	tL = vu16(vec_mergel(zero, vfa));
 
 	/* pf[i] + pfa[i] */                                                 
 	fH = vec_add(fH, tH);                                               
 	fL = vec_add(fL, tL);                                               
 
 	/* (unsigned short[]) pfb[0-7] */  
-	vu8(tH) = vec_mergeh(zero, vfb);   
+	tH = vu16(vec_mergeh(zero, vfb));
 			
 	/* (unsigned short[]) pfb[8-15] */ 
-	vu8(tL) = vec_mergel(zero, vfb);   
+	tL = vu16(vec_mergel(zero, vfb));
 
 	/* (pf[i]+pfa[i]) + pfb[i] */                                       
 	fH = vec_add(fH, tH);                                                
 	fL = vec_add(fL, tL);                                                
 			
 	/* (unsigned short[]) pfc[0-7] */  
-	vu8(tH) = vec_mergeh(zero, vfc);   
+	tH = vu16(vec_mergeh(zero, vfc));
 			
 	/* (unsigned short[]) pfc[8-15] */ 
-	vu8(tL) = vec_mergel(zero, vfc);   
+	tL = vu16(vec_mergel(zero, vfc));
 
 	/* (pf[i]+pfa[i]+pfb[i]) + pfc[i] */
 	fH = vec_add(fH, tH);                                                
@@ -225,38 +225,37 @@ int bsumsq_altivec(BSUMSQ_PDECL)
 	l0 = vec_ld(0, pfy);
 	l1 = vec_ld(16, pfy);
 
-
 	/* (unsigned short[]) pb[0-7] */    
-	vu8(bH) = vec_mergeh(zero, vb);   
-			
+	bH = vu16(vec_mergeh(zero, vb));
+
 	/* (unsigned short[]) pb[8-15] */   
-	vu8(bL) = vec_mergel(zero, vb);   
-			
+	bL = vu16(vec_mergel(zero, vb));
+
 	/* (unsigned short[]) pba[0-7] */    
-	vu8(tH) = vec_mergeh(zero, vba);   
-			
+	tH = vu16(vec_mergeh(zero, vba));
+
 	/* (unsigned short[]) pba[8-15] */   
-	vu8(tL) = vec_mergel(zero, vba);   
+	tL = vu16(vec_mergel(zero, vba));
 
 	/* pb[i] + pba[i] */                                                 
 	bH = vec_add(bH, tH);                                               
 	bL = vec_add(bL, tL);                                               
 
 	/* (unsigned short[]) pbb[0-7] */  
-	vu8(tH) = vec_mergeh(zero, vbb);   
-			
+	tH = vu16(vec_mergeh(zero, vbb));
+
 	/* (unsigned short[]) pbb[8-15] */ 
-	vu8(tL) = vec_mergel(zero, vbb);   
+	tL = vu16(vec_mergel(zero, vbb));
 
 	/* (pb[i]+pba[i]) + pbb[i] */                                       
 	bH = vec_add(bH, tH);                                                
 	bL = vec_add(bL, tL);                                                
 			
 	/* (unsigned short[]) pbc[0-7] */  
-	vu8(tH) = vec_mergeh(zero, vbc);   
-			
+	tH = vu16(vec_mergeh(zero, vbc));
+
 	/* (unsigned short[]) pbc[8-15] */ 
-	vu8(tL) = vec_mergel(zero, vbc);   
+	tL = vu16(vec_mergel(zero, vbc));
 
 	/* (pb[i]+pba[i]+pbb[i]) + pbc[i] */
 	bH = vec_add(bH, tH);                                                
@@ -266,12 +265,10 @@ int bsumsq_altivec(BSUMSQ_PDECL)
 	/* (pb[i]+pba[i]+pbb[i]+pbc[i]) + 2 */
 	bH = vec_add(bH, two);                                                
 	bL = vec_add(bL, two);                                                
-							
+
 	/* (pb[i]+pba[i]+pbb[i]+pbc[i]+2) >> 2 */
 	bH = vec_sra(bH, two);                                                
 	bL = vec_sra(bL, two);                                                
-
-
 
 	/* ((pf[i]+pfa[i]+pfb[i]+pfc[i]+2)>>2) +
 	 * ((pb[i]+pba[i]+pbb[i]+pbc[i]+2)>>2)
@@ -279,13 +276,11 @@ int bsumsq_altivec(BSUMSQ_PDECL)
 	tH = vec_add(fH, bH);                                                
 	tL = vec_add(fL, bL);                                                
 
-
 	/* (((pf[i]+pfa[i]+pfb[i]+pfc[i]+2)>>2)+
 	 *  ((pb[i]+pba[i]+pbb[i]+pbc[i]+2)>>2)) + 1
          */
 	tH = vec_add(tH, one);                                                
 	tL = vec_add(tL, one);                                                
-							
 
 	/* (((pf[i]+pfa[i]+pfb[i]+pfc[i]+2)>>2)+
 	 *  ((pb[i]+pba[i]+pbb[i]+pbc[i]+2)>>2)+1) >> 1
@@ -293,23 +288,21 @@ int bsumsq_altivec(BSUMSQ_PDECL)
 	tH = vec_sra(tH, one);                                                
 	tL = vec_sra(tL, one);                                                
 
-
 	/* absolute value increases parallelism (x16 instead of x8)
 	 * since a bit isn't lost on the sign.
 	 * 
 	 * d = abs( ((((pf[i]+pfa[i]+pfb[i]+pfc[i]+2)>>2)+
 	 *            ((pb[i]+pba[i]+pbb[i]+pbc[i]+2)>>2)+1)>>1) - p2[i] )
          */
-	vu8(tH) = vec_packsu(tH, tL);                                         
+	tH = vu16(vec_packsu(tH, tL));
 	min = vec_min(vu8(tH), lR);                                           
 	max = vec_max(vu8(tH), lR);                                           
 	dif = vec_sub(max, min);                                              
-							
+
 	/* sum += (d * d) */                                                   
 	sum = vec_msum(dif, dif, sum);                                        
 
     } while (--i);
-
 
     vf = vec_perm(vfb, vfc, permF0);
     vfa = vec_perm(vfb, vfc, permF1);
@@ -321,93 +314,88 @@ int bsumsq_altivec(BSUMSQ_PDECL)
     l0 = vec_ld(0, pby);
     l1 = vec_ld(16, pby);
 
-
     /* (unsigned short[]) pf[0-7] */    
-    vu8(fH) = vec_mergeh(zero, vf);   
+    fH = vu16(vec_mergeh(zero, vf));
 			
     /* (unsigned short[]) pf[8-15] */   
-    vu8(fL) = vec_mergel(zero, vf);   
+    fL = vu16(vec_mergel(zero, vf));
 			
     /* (unsigned short[]) pfa[0-7] */    
-    vu8(tH) = vec_mergeh(zero, vfa);   
+    tH = vu16(vec_mergeh(zero, vfa));
 			
     /* (unsigned short[]) pfa[8-15] */   
-    vu8(tL) = vec_mergel(zero, vfa);   
+    tL = vu16(vec_mergel(zero, vfa));
 
     /* pf[i] + pfa[i] */                                                 
     fH = vec_add(fH, tH);                                               
     fL = vec_add(fL, tL);                                               
 
     /* (unsigned short[]) pfb[0-7] */  
-    vu8(tH) = vec_mergeh(zero, vfb);   
-			
+    tH = vu16(vec_mergeh(zero, vfb));
+
     /* (unsigned short[]) pfb[8-15] */ 
-    vu8(tL) = vec_mergel(zero, vfb);   
+    tL = vu16(vec_mergel(zero, vfb));
 
     /* (pf[i]+pfa[i]) + pfb[i] */                                       
     fH = vec_add(fH, tH);                                                
     fL = vec_add(fL, tL);                                                
-			
+
     /* (unsigned short[]) pfc[0-7] */  
-    vu8(tH) = vec_mergeh(zero, vfc);   
+    tH = vu16(vec_mergeh(zero, vfc));
 			
     /* (unsigned short[]) pfc[8-15] */ 
-    vu8(tL) = vec_mergel(zero, vfc);   
+    tL = vu16(vec_mergel(zero, vfc));
 
     /* (pf[i]+pfa[i]+pfb[i]) + pfc[i] */
     fH = vec_add(fH, tH);                                                
     fL = vec_add(fL, tL);                                                
 
-							
     /* (pf[i]+pfa[i]+pfb[i]+pfc[i]) + 2 */
-    fH = vec_add(fH, two);                                                
-    fL = vec_add(fL, two);                                                
-							
-    /* (pf[i]+pfa[i]+pfb[i]+pfc[i]+2) >> 2 */
-    fH = vec_sra(fH, two);                                                
-    fL = vec_sra(fL, two);                                                
+    fH = vec_add(fH, two);
+    fL = vec_add(fL, two);
 
+    /* (pf[i]+pfa[i]+pfb[i]+pfc[i]+2) >> 2 */
+    fH = vec_sra(fH, two);
+    fL = vec_sra(fL, two);
 
     lR = vec_ld(0, p2);
-
 
     vb = vec_perm(vbb, vbc, permB0);
     vba = vec_perm(vbb, vbc, permB1);
     vbb = vec_perm(l0, l1, permB0);
     vbc = vec_perm(l0, l1, permB1);
 
-
     /* (unsigned short[]) pb[0-7] */    
-    vu8(bH) = vec_mergeh(zero, vb);   
+    bH = vu16(vec_mergeh(zero, vb));
 			
     /* (unsigned short[]) pb[8-15] */   
-    vu8(bL) = vec_mergel(zero, vb);   
-			
-    /* (unsigned short[]) pba[0-7] */    
-    vu8(tH) = vec_mergeh(zero, vba);   
-			
+    bL = vu16(vec_mergel(zero, vb));
+
+    /* (unsigned short[]) pba[0-7] */
+    tH = vu16(vec_mergeh(zero, vba));
+
     /* (unsigned short[]) pba[8-15] */   
-    vu8(tL) = vec_mergel(zero, vba);   
+    tL = vu16(vec_mergel(zero, vba));
 
     /* pb[i] + pba[i] */                                                 
     bH = vec_add(bH, tH);                                               
     bL = vec_add(bL, tL);                                               
 
     /* (unsigned short[]) pbb[0-7] */  
-    vu8(tH) = vec_mergeh(zero, vbb);   
-			
+    tH = vu16(vec_mergeh(zero, vbb));
+
     /* (unsigned short[]) pbb[8-15] */ 
-    vu8(tL) = vec_mergel(zero, vbb);   
+    tL = vu16(vec_mergel(zero, vbb));
 
     /* (pb[i]+pba[i]) + pbb[i] */                                       
     bH = vec_add(bH, tH);                                                
     bL = vec_add(bL, tL);                                                
 			
     /* (unsigned short[]) pbc[0-7] */  
-    vu8(tH) = vec_mergeh(zero, vbc);   
+    tH = vu16(vec_mergeh(zero, vbc));
 			
     /* (unsigned short[]) pbc[8-15] */ 
-    vu8(tL) = vec_mergel(zero, vbc);   
+    tL = vu16(vec_mergel(zero, vbc));
 
     /* (pb[i]+pba[i]+pbb[i]) + pbc[i] */
     bH = vec_add(bH, tH);                                                
@@ -422,28 +410,23 @@ int bsumsq_altivec(BSUMSQ_PDECL)
     bH = vec_sra(bH, two);                                                
     bL = vec_sra(bL, two);                                                
 
-
-
     /* ((pf[i]+pfa[i]+pfb[i]+pfc[i]+2)>>2) +
      * ((pb[i]+pba[i]+pbb[i]+pbc[i]+2)>>2)
      */
     tH = vec_add(fH, bH);                                                
     tL = vec_add(fL, bL);                                                
 
-
     /* (((pf[i]+pfa[i]+pfb[i]+pfc[i]+2)>>2)+
      *  ((pb[i]+pba[i]+pbb[i]+pbc[i]+2)>>2)) + 1
      */
     tH = vec_add(tH, one);                                                
-    tL = vec_add(tL, one);                                                
-							
+    tL = vec_add(tL, one);
 
     /* (((pf[i]+pfa[i]+pfb[i]+pfc[i]+2)>>2)+
      *  ((pb[i]+pba[i]+pbb[i]+pbc[i]+2)>>2)+1) >> 1
      */
     tH = vec_sra(tH, one);                                                
     tL = vec_sra(tL, one);                                                
-    
 
     /* absolute value increases parallelism (x16 instead of x8)
      * since a bit isn't lost on the sign.
@@ -451,24 +434,20 @@ int bsumsq_altivec(BSUMSQ_PDECL)
      * d = abs( ((((pf[i]+pfa[i]+pfb[i]+pfc[i]+2)>>2)+
      *            ((pb[i]+pba[i]+pbb[i]+pbc[i]+2)>>2)+1)>>1) - p2[i] )
      */
-    vu8(tH) = vec_packsu(tH, tL);                                         
+    tH = vu16(vec_packsu(tH, tL));
     min = vec_min(vu8(tH), lR);                                           
     max = vec_max(vu8(tH), lR);                                           
     dif = vec_sub(max, min);                                              
-							
+
     /* sum += (d * d) */                                                   
     sum = vec_msum(dif, dif, sum);                                        
-
-
 
     /* sum all parts of difference into one 32 bit quantity */
     vo.v = vec_sums(vs32(sum), vs32(zero));
 
     AMBER_STOP;
-
     return vo.s.sum;
 }
-
 
 #if ALTIVEC_TEST_FUNCTION(bsumsq)
 
