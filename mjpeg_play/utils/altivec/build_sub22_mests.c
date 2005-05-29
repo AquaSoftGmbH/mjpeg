@@ -218,8 +218,8 @@ int build_sub22_mests_altivec(BUILD_SUB22_MESTS_PDECL)
     ih = (h >> 1) - 1;
 
     vthreshold = vec_ld(0, (unsigned int*) &vio.init);
-    xylim = vu8(vec_splat(vu32(vthreshold), 0));      /* vio.init.xylim */
-    vthreshold = vu8(vec_splat(vu32(vthreshold), 1)); /* vio.init.threshold */
+    xylim = vs8(vec_splat(vu32(vthreshold), 0));      /* vio.init.xylim */
+    vthreshold = vu32(vec_splat(vu32(vthreshold), 1)); /* vio.init.threshold */
 
     do { /* while (--len) */
 
@@ -486,8 +486,8 @@ int build_sub22_mests_altivec(BUILD_SUB22_MESTS_PDECL)
 	    vector signed char xy;
 
 	    xy = vec_ld(0, (signed char*) &vio.xy);
-	    xy = vu8(vec_splat(vu32(xy), 0)); /* splat vio.xy */
-	    xy = vec_add(xy, xy22); /* adjust xy values for elements 1-3 */
+	    xy = vs8(vec_splat(vu32(xy), 0)); /* splat vio.xy */
+	    xy = vs8(vec_add(xy, xy22)); /* adjust xy values for elements 1-3 */
 
 	    /* add distance penalty {{{ */
 	    /* penalty = (max(abs(x),abs(y))<<3) */
@@ -558,7 +558,7 @@ int build_sub22_mests_altivec(BUILD_SUB22_MESTS_PDECL)
 		 *
 		 * ( sad,  xy, sad,  xy, sad,  xy, sad,  xy )
 		 */ /* }}} */
-		xy = vu8(vec_pack(vu32(xy), vu32(xy)));
+		xy = vs8(vec_pack(vu32(xy), vu32(xy)));
 		mests = vu32(vec_pack(vu32(sads), vu32(sads)));
 		mests = vu32(vec_mergeh(vu16(mests), vu16(xy)));
 
