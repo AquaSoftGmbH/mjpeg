@@ -108,7 +108,7 @@ int sad_10_altivec(SAD_10_PDECL)
     bL = vec_sra(bL, one);                                                   \
                                                                              \
     /* abs( ((pB[i]+pB[i+s]+1)>>1) - pR[i] ) */                              \
-    vu8(bH) = vec_packsu(bH, bL);                                            \
+    bH = vu16(vec_packsu(bH, bL));                                            \
     min = vec_min(vu8(bH), lR);                                              \
     max = vec_max(vu8(bH), lR);                                              \
     dif = vec_sub(max, min);                                                 \
@@ -141,16 +141,16 @@ int sad_10_altivec(SAD_10_PDECL)
 	lR = vec_ld(0, pR);
 
 	/* (unsigned short[]) pB[0-7] */
-	vu8(b0H) = vec_mergeh(zero, lB0);
+	b0H = vu16(vec_mergeh(zero, lB0));
 
 	/* (unsigned short[]) pB[8-15] */
-	vu8(b0L) = vec_mergel(zero, lB0);
+	b0L = vu16(vec_mergel(zero, lB0));
 
 	/* (unsigned short[]) pB+s[0-7] */
-	vu8(b1H) = vec_mergeh(zero, lB1);
+	b1H = vu16(vec_mergeh(zero, lB1));
 
 	/* (unsigned short[]) pB+s[8-15] */
-	vu8(b1L) = vec_mergel(zero, lB1);
+	b1L = vu16(vec_mergel(zero, lB1));
 
 	lB0 = vec_sld(l0, l0, 0);
 
@@ -165,10 +165,10 @@ int sad_10_altivec(SAD_10_PDECL)
 	    lR = vec_ld(0, pR);
 
 	    /* (unsigned short[]) pB[0-7] */
-	    vu8(b0H) = vec_mergeh(zero, lB0);
+	    b0H = vu16(vec_mergeh(zero, lB0));
 
 	    /* (unsigned short[]) pB[8-15] */
-	    vu8(b0L) = vec_mergel(zero, lB0);
+	    b0L = vu16(vec_mergel(zero, lB0));
 
 	    pB += rowstride;
 	    lB0 = vec_ld(0, pB);
@@ -180,11 +180,10 @@ int sad_10_altivec(SAD_10_PDECL)
 	    lR = vec_ld(0, pR);
 
 	    /* (unsigned short[]) pB[0-7] */
-	    vu8(b1H) = vec_mergeh(zero, lB1);
+	    b1H = vu16(vec_mergeh(zero, lB1));
 
 	    /* (unsigned short[]) pB[8-15] */
-	    vu8(b1L) = vec_mergel(zero, lB1);
-
+	    b1L = vu16(vec_mergel(zero, lB1));
 
 	} while (--i);
 
@@ -210,16 +209,16 @@ int sad_10_altivec(SAD_10_PDECL)
 	lB1 = vec_perm(lB1, l1, perm);
 
 	/* (unsigned short[]) pB[0-7] */
-	vu8(b0H) = vec_mergeh(zero, lB0);
+	b0H = vu16(vec_mergeh(zero, lB0));
 
 	/* (unsigned short[]) pB[8-15] */
-	vu8(b0L) = vec_mergel(zero, lB0);
+	b0L = vu16(vec_mergel(zero, lB0));
 
 	/* (unsigned short[]) pB+s[0-7] */
-	vu8(b1H) = vec_mergeh(zero, lB1);
+	b1H = vu16(vec_mergeh(zero, lB1));
 
 	/* (unsigned short[]) pB+s[8-15] */
-	vu8(b1L) = vec_mergel(zero, lB1);
+	b1L = vu16(vec_mergel(zero, lB1));
 
 	pB += rowstride;
 	l0 = vec_ld(0, pB);
@@ -236,10 +235,10 @@ int sad_10_altivec(SAD_10_PDECL)
 	    l1 = vec_ld(16, pB);
 
 	    /* (unsigned short[]) pB[0-7] */
-	    vu8(b0H) = vec_mergeh(zero, lB0);
+	    b0H = vu16(vec_mergeh(zero, lB0));
 
 	    /* (unsigned short[]) pB[8-15] */
-	    vu8(b0L) = vec_mergel(zero, lB0);
+	    b0L = vu16(vec_mergel(zero, lB0));
 
 	    /* start loading next lR */
 	    pR += rowstride;
@@ -254,11 +253,10 @@ int sad_10_altivec(SAD_10_PDECL)
 	    l1 = vec_ld(16, pB);
 
 	    /* (unsigned short[]) pB[0-7] */
-	    vu8(b1H) = vec_mergeh(zero, lB1);
+	    b1H = vu16(vec_mergeh(zero, lB1));
 
 	    /* (unsigned short[]) pB[8-15] */
-	    vu8(b1L) = vec_mergel(zero, lB1);
-
+	    b1L = vu16(vec_mergel(zero, lB1));
 
 	    /* start loading next lR */
 	    pR += rowstride;
@@ -274,12 +272,11 @@ int sad_10_altivec(SAD_10_PDECL)
 	lB0 = vec_perm(l0, l1, perm);
     }
 
-
     /* (unsigned short[]) pB[0-7] */
-    vu8(b0H) = vec_mergeh(zero, lB0);
+    b0H = vu16(vec_mergeh(zero, lB0));
 
     /* (unsigned short[]) pB[8-15] */
-    vu8(b0L) = vec_mergel(zero, lB0);
+    b0L = vu16(vec_mergel(zero, lB0));
 
     ISAD();
 
