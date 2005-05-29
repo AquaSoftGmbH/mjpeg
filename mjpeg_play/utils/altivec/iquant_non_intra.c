@@ -102,9 +102,9 @@ void iquant_non_intra_m1_altivec(IQUANT_NON_INTRA_PDECL)
     one = vec_splat_s16(1);
     five = vec_splat_u32(5);
     /* max = (2047); min = (-2048); {{{ */
-    vu8(max) = vec_splat_u8(0x7);
+    max = vs16(vec_splat_u8(0x7));
     t0 = vec_splat_s16(-1); /* 0xffff */
-    vu8(max) = vec_mergeh(vu8(max), vu8(t0)); /* 0x07ff == 2047 */
+    max = vs16(vec_mergeh(vu8(max), vu8(t0))); /* 0x07ff == 2047 */
     min = vec_sub(t0, max);
     /* }}} */
 
@@ -125,13 +125,13 @@ void iquant_non_intra_m1_altivec(IQUANT_NON_INTRA_PDECL)
 	val = vec_add(val, one);
 
 	/* val = (val * quant) >> 5 */
-	vu32(t0) = vec_mule(vu16(val), vqmat);
-	vu32(t0) = vec_sra(vu32(t0), five);
-	vu16(t0) = vec_pack(vu32(t0), vu32(t0));
-	vu32(val) = vec_mulo(vu16(val), vqmat);
-	vu32(val) = vec_sra(vu32(val), five);
-	vu16(val) = vec_pack(vu32(val), vu32(val));
-	vu16(val) = vec_mergeh(vu16(t0), vu16(val));
+	t0 = vs16(vec_mule(vu16(val), vqmat));
+	t0 = vs16(vec_sra(vu32(t0), five));
+	t0 = vs16(vec_pack(vu32(t0), vu32(t0)));
+	val = vs16(vec_mulo(vu16(val), vqmat));
+	val = vs16(vec_sra(vu32(val), five));
+	val = vs16(vec_pack(vu32(val), vu32(val)));
+	val = vs16(vec_mergeh(vu16(t0), vu16(val)));
 
 	src += 8;
 	vsrc = vec_ld(0, (signed short*)src);
@@ -173,13 +173,13 @@ void iquant_non_intra_m1_altivec(IQUANT_NON_INTRA_PDECL)
     val = vec_add(val, one);
 
     /* val = (val * quant) >> 5 */
-    vu32(t0) = vec_mule(vu16(val), vqmat);
-    vu32(t0) = vec_sra(vu32(t0), five);
-    vu16(t0) = vec_pack(vu32(t0), vu32(t0));
-    vu32(val) = vec_mulo(vu16(val), vqmat);
-    vu32(val) = vec_sra(vu32(val), five);
-    vu16(val) = vec_pack(vu32(val), vu32(val));
-    vu16(val) = vec_mergeh(vu16(t0), vu16(val));
+    t0 = vs16(vec_mule(vu16(val), vqmat));
+    t0 = vs16(vec_sra(vu32(t0), five));
+    t0 = vs16(vec_pack(vu32(t0), vu32(t0)));
+    val = vs16(vec_mulo(vu16(val), vqmat));
+    val = vs16(vec_sra(vu32(val), five));
+    val = vs16(vec_pack(vu32(val), vu32(val)));
+    val = vs16(vec_mergeh(vu16(t0), vu16(val)));
 
     /* val = val - 1&~(val|val==0) */
     t0 = vec_or(val, eqzero);
@@ -267,9 +267,9 @@ void iquant_non_intra_m2_altivec(IQUANT_NON_INTRA_PDECL)
     one = vec_splat_s16(1);
     five = vec_splat_u32(5);
     /* max = (2047); min = (-2048); {{{ */
-    vu8(max) = vec_splat_u8(0x7);
+    max = vs16(vec_splat_u8(0x7));
     t0 = vec_splat_s16(-1); /* 0xffff */
-    vu8(max) = vec_mergeh(vu8(max), vu8(t0)); /* 0x07ff == 2047 */
+    max = vs16(vec_mergeh(vu8(max), vu8(t0))); /* 0x07ff == 2047 */
     min = vec_sub(t0, max);
     /* }}} */
     offset = 0;
@@ -294,13 +294,13 @@ void iquant_non_intra_m2_altivec(IQUANT_NON_INTRA_PDECL)
 	val = vec_add(val, one);
 
 	/* val = (val * quant) >> 5 */
-	vu32(t0) = vec_mule(vu16(val), vqmat);
-	vu32(t0) = vec_sra(vu32(t0), five);
-	vu16(t0) = vec_pack(vu32(t0), vu32(t0));
-	vu32(val) = vec_mulo(vu16(val), vqmat);
-	vu32(val) = vec_sra(vu32(val), five);
-	vu16(val) = vec_pack(vu32(val), vu32(val));
-	vu16(val) = vec_mergeh(vu16(t0), vu16(val));
+	t0 = vs16(vec_mule(vu16(val), vqmat));
+	t0 = vs16(vec_sra(vu32(t0), five));
+	t0 = vs16(vec_pack(vu32(t0), vu32(t0)));
+	val = vs16(vec_mulo(vu16(val), vqmat));
+	val = vs16(vec_sra(vu32(val), five));
+	val = vs16(vec_pack(vu32(val), vu32(val)));
+	val = vs16(vec_mergeh(vu16(t0), vu16(val)));
 
 	offset2 = offset;
 	offset += 8*sizeof(int16_t);
@@ -338,13 +338,13 @@ void iquant_non_intra_m2_altivec(IQUANT_NON_INTRA_PDECL)
     val = vec_add(val, one);
 
     /* val = (val * quant) >> 5 */
-    vu32(t0) = vec_mule(vu16(val), vqmat);
-    vu32(t0) = vec_sra(vu32(t0), five);
-    vu16(t0) = vec_pack(vu32(t0), vu32(t0));
-    vu32(val) = vec_mulo(vu16(val), vqmat);
-    vu32(val) = vec_sra(vu32(val), five);
-    vu16(val) = vec_pack(vu32(val), vu32(val));
-    vu16(val) = vec_mergeh(vu16(t0), vu16(val));
+    t0 = vs16(vec_mule(vu16(val), vqmat));
+    t0 = vs16(vec_sra(vu32(t0), five));
+    t0 = vs16(vec_pack(vu32(t0), vu32(t0)));
+    val = vs16(vec_mulo(vu16(val), vqmat));
+    val = vs16(vec_sra(vu32(val), five));
+    val = vs16(vec_pack(vu32(val), vu32(val)));
+    val = vs16(vec_mergeh(vu16(t0), vu16(val)));
 
     /* val = samesign(src, val) */
     t0 = vec_sub(zero, val);
@@ -422,8 +422,6 @@ void iquant_non_intra_m2_altivec(IQUANT_NON_INTRA_PDECL)
 
     AMBER_STOP;
 }
-
-
 
 /* iquant_non_intra_altivec_verify {{{ */
 #if ALTIVEC_TEST_FUNCTION(iquant_non_intra_m1) || \
