@@ -151,23 +151,22 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
 
 			    /* (unsigned short[]) s[0-7] */
-			    vu8(s0H) = vec_mergeh(zero, lS0);
+			    s0H = vu16(vec_mergeh(zero, lS0));
 
 			    /* (unsigned short[]) s[1-8] */
-			    vu8(s1H) = vec_mergeh(zero, lS1);
+			    s1H = vu16(vec_mergeh(zero, lS1));
 
 			    /* (unsigned short[]) s+lx[0-7] */
-			    vu8(s2H) = vec_mergeh(zero, lS2);
+			    s2H = vu16(vec_mergeh(zero, lS2));
 
 			    /* (unsigned short[]) s+lx[1-8] */
-			    vu8(s3H) = vec_mergeh(zero, lS3);
+			    s3H = vu16(vec_mergeh(zero, lS3));
 
 			    /* (unsigned short[]) d[0-7] */
-			    vu8(dH) = vec_mergeh(zero, lD);
+			    dH = vu16(vec_mergeh(zero, lD));
 
 			    /* (unsigned short[]) d[8-15] */
-			    vu8(dL) = vec_mergel(zero, lD);
-
+			    dL = vu16(vec_mergel(zero, lD));
 
 			    /* s[i] + s[i+1] */
 			    s0H = vec_add(s0H, s1H);
@@ -198,7 +197,7 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    dH = vec_sra(dH, one);
 
 			    /* (unsigned char[]) d[0-7], d[8-15] */
-			    vu8(dH) = vec_packsu(dH, dL);
+			    dH = vu16(vec_packsu(dH, dL));
 			    vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			    lS0 = lS2;
@@ -228,23 +227,22 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
 
 			    /* (unsigned short[]) s[0-7] */
-			    vu8(s0H) = vec_mergeh(zero, lS0);
+			    s0H = vu16(vec_mergeh(zero, lS0));
 
 			    /* (unsigned short[]) s[1-8] */
-			    vu8(s1H) = vec_mergeh(zero, lS1);
+			    s1H = vu16(vec_mergeh(zero, lS1));
 
 			    /* (unsigned short[]) s+lx[0-7] */
-			    vu8(s2H) = vec_mergeh(zero, lS2);
+			    s2H = vu16(vec_mergeh(zero, lS2));
 
 			    /* (unsigned short[]) s+lx[1-8] */
-			    vu8(s3H) = vec_mergeh(zero, lS3);
+			    s3H = vu16(vec_mergeh(zero, lS3));
 
 			    /* (unsigned short[]) d[0-7] */
-			    vu8(dH) = vec_mergeh(zero, lD);
+			    dH = vu16(vec_mergeh(zero, lD));
 
 			    /* (unsigned short[]) d[8-15] */
-			    vu8(dL) = vec_mergel(zero, lD);
-
+			    dL = vu16(vec_mergel(zero, lD));
 
 			    /* s[i] + s[i+1] */
 			    s0H = vec_add(s0H, s1H);
@@ -275,7 +273,7 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    dL = vec_sra(dL, one);
 
 			    /* (unsigned char[]) d[0-7], d[8-15] */
-			    vu8(dH) = vec_packsu(dH, dL);
+			    dH = vu16(vec_packsu(dH, dL));
 			    vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			    lS0 = lS2;
@@ -308,37 +306,34 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			lD = vec_ld(0, (unsigned char*)d);
 
 			/* (unsigned short[]) s[0-7] */
-			vu8(s0H) = vec_mergeh(zero, lS0);
+			s0H = vu16(vec_mergeh(zero, lS0));
 
 			/* (unsigned short[]) s[8-15] */
-			vu8(s0L) = vec_mergel(zero, lS0);
+			s0L = vu16(vec_mergel(zero, lS0));
 
 			/* (unsigned short[]) s[1-8] */
-			vu8(s1H) = vec_mergeh(zero, lS1);
+			s1H = vu16(vec_mergeh(zero, lS1));
 
 			/* (unsigned short[]) s[9-16] */
-			vu8(s1L) = vec_mergel(zero, lS1);
+			s1L = vu16(vec_mergel(zero, lS1));
 
 			/* (unsigned short[]) s+lx[0-7] */
-			vu8(s2H) = vec_mergeh(zero, lS2);
+			s2H = vu16(vec_mergeh(zero, lS2));
 
 			/* (unsigned short[]) s+lx[8-15] */
-			vu8(s2L) = vec_mergel(zero, lS2);
+			s2L = vu16(vec_mergel(zero, lS2));
 
 			/* (unsigned short[]) s+lx[1-8] */
-			vu8(s3H) = vec_mergeh(zero, lS3);
+			s3H = vu16(vec_mergeh(zero, lS3));
 
 			/* (unsigned short[]) s+lx[9-16] */
-			vu8(s3L) = vec_mergel(zero, lS3);
-
+			s3L = vu16(vec_mergel(zero, lS3));
 
 			/* (unsigned short[]) d[0-7] */
-			vu8(dH) = vec_mergeh(zero, lD);
+			dH = vu16(vec_mergeh(zero, lD));
 
 			/* (unsigned short[]) d[8-15] */
-			vu8(dL) = vec_mergel(zero, lD);
-
-
+			dL = vu16(vec_mergel(zero, lD));
 
 			/* s[i] + s[i+1] */
 			s0H = vec_add(s0H, s1H);
@@ -377,7 +372,7 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			dL = vec_sra(dL, one);
 
 			/* (unsigned char[]) d[0-7], d[8-15] */
-			vu8(dH) = vec_packsu(dH, dL);
+			dH = vu16(vec_packsu(dH, dL));
 			vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			lS0 = lS2;
@@ -428,20 +423,19 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
 
 			    /* (unsigned short[]) s[0-7] */
-			    vu8(s0H) = vec_mergeh(zero, lS0);
+			    s0H = vu16(vec_mergeh(zero, lS0));
 
 			    /* (unsigned short[]) s[1-8] */
-			    vu8(s1H) = vec_mergeh(zero, lS1);
+			    s1H = vu16(vec_mergeh(zero, lS1));
 
 			    /* (unsigned short[]) s+lx[0-7] */
-			    vu8(s2H) = vec_mergeh(zero, lS2);
+			    s2H = vu16(vec_mergeh(zero, lS2));
 
 			    /* (unsigned short[]) s+lx[1-8] */
-			    vu8(s3H) = vec_mergeh(zero, lS3);
+			    s3H = vu16(vec_mergeh(zero, lS3));
 
 			    /* (unsigned short[]) d[8-15] */
-			    vu8(dL) = vec_mergel(zero, lD);
-
+			    dL = vu16(vec_mergel(zero, lD));
 
 			    /* s[i] + s[i+1] */
 			    s0H = vec_add(s0H, s1H);
@@ -459,7 +453,7 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    s0H = vec_sra(s0H, two);
 
 			    /* (unsigned char[]) d[0-7], d[8-15] */
-			    vu8(dH) = vec_packsu(s0H, dL);
+			    dH = vu16(vec_packsu(s0H, dL));
 			    vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			    lS0 = lS2;
@@ -489,20 +483,19 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
 
 			    /* (unsigned short[]) s[0-7] */
-			    vu8(s0H) = vec_mergeh(zero, lS0);
+			    s0H = vu16(vec_mergeh(zero, lS0));
 
 			    /* (unsigned short[]) s[1-8] */
-			    vu8(s1H) = vec_mergeh(zero, lS1);
+			    s1H = vu16(vec_mergeh(zero, lS1));
 
 			    /* (unsigned short[]) s+lx[0-7] */
-			    vu8(s2H) = vec_mergeh(zero, lS2);
+			    s2H = vu16(vec_mergeh(zero, lS2));
 
 			    /* (unsigned short[]) s+lx[1-8] */
-			    vu8(s3H) = vec_mergeh(zero, lS3);
+			    s3H = vu16(vec_mergeh(zero, lS3));
 
 			    /* (unsigned short[]) d[0-7] */
-			    vu8(dH) = vec_mergeh(zero, lD);
-
+			    dH = vu16(vec_mergeh(zero, lD));
 
 			    /* s[i] + s[i+1] */
 			    s0H = vec_add(s0H, s1H);
@@ -519,9 +512,8 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    /* (s[i]+s[i+1]+s[i+lx]+s[i+lx+1]+2) >> 2 */
 			    s0H = vec_sra(s0H, two);
 
-
 			    /* (unsigned char[]) d[0-7], d[8-15] */
-			    vu8(dH) = vec_packsu(dH, s0H);
+			    dH = vu16(vec_packsu(dH, s0H));
 			    vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			    lS0 = lS2;
@@ -551,32 +543,29 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			lS2 = vec_perm(lS, lS3, perm);
 			lS3 = vec_perm(lS, lS3, perm1);
 
-
 			/* (unsigned short[]) s[0-7] */
-			vu8(s0H) = vec_mergeh(zero, lS0);
+			s0H = vu16(vec_mergeh(zero, lS0));
 
 			/* (unsigned short[]) s[8-15] */
-			vu8(s0L) = vec_mergel(zero, lS0);
+			s0L = vu16(vec_mergel(zero, lS0));
 
 			/* (unsigned short[]) s[1-8] */
-			vu8(s1H) = vec_mergeh(zero, lS1);
+			s1H = vu16(vec_mergeh(zero, lS1));
 
 			/* (unsigned short[]) s[9-16] */
-			vu8(s1L) = vec_mergel(zero, lS1);
+			s1L = vu16(vec_mergel(zero, lS1));
 
 			/* (unsigned short[]) s+lx[0-7] */
-			vu8(s2H) = vec_mergeh(zero, lS2);
+			s2H = vu16(vec_mergeh(zero, lS2));
 
 			/* (unsigned short[]) s+lx[8-15] */
-			vu8(s2L) = vec_mergel(zero, lS2);
+			s2L = vu16(vec_mergel(zero, lS2));
 
 			/* (unsigned short[]) s+lx[1-8] */
-			vu8(s3H) = vec_mergeh(zero, lS3);
+			s3H = vu16(vec_mergeh(zero, lS3));
 
 			/* (unsigned short[]) s+lx[9-16] */
-			vu8(s3L) = vec_mergel(zero, lS3);
-
-
+			s3L = vu16(vec_mergel(zero, lS3));
 
 			/* s[i] + s[i+1] */
 			s0H = vec_add(s0H, s1H);
@@ -598,9 +587,8 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			s0H = vec_sra(s0H, two);
 			s0L = vec_sra(s0L, two);
 
-
 			/* (unsigned char[]) d[0-7], d[8-15] */
-			vu8(dH) = vec_packsu(s0H, s0L);
+			dH = vu16(vec_packsu(s0H, s0L));
 			vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			lS0 = lS2;
@@ -646,16 +634,16 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    lD = vec_ld(0, (unsigned char*)d);
 
 			    /* (unsigned short[]) s[0-7] */
-			    vu8(s0H) = vec_mergeh(zero, lS0);
+			    s0H = vu16(vec_mergeh(zero, lS0));
 
 			    /* (unsigned short[]) s[1-8] */
-			    vu8(s1H) = vec_mergeh(zero, lS1);
+			    s1H = vu16(vec_mergeh(zero, lS1));
 
 			    /* (unsigned short[]) d[0-7] */
-			    vu8(dH) = vec_mergeh(zero, lD);
+			    dH = vu16(vec_mergeh(zero, lD));
 
 			    /* (unsigned short[]) d[8-15] */
-			    vu8(dL) = vec_mergel(zero, lD);
+			    dL = vu16(vec_mergel(zero, lD));
 
 			    /* s[i] + s[i+1] */
 			    s0H = vec_add(s0H, s1H);
@@ -676,7 +664,7 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    dH = vec_sra(dH, one);
 
 			    /* (unsigned char[]) d[0-7], d[8-15] */
-			    vu8(dH) = vec_packsu(dH, dL);
+			    dH = vu16(vec_packsu(dH, dL));
 			    vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			    s += lx;
@@ -696,16 +684,16 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    lD = vec_ld(0, (unsigned char*)d);
 
 			    /* (unsigned short[]) s[0-7] */
-			    vu8(s0H) = vec_mergeh(zero, lS0);
+			    s0H = vu16(vec_mergeh(zero, lS0));
 
 			    /* (unsigned short[]) s[1-8] */
-			    vu8(s1H) = vec_mergeh(zero, lS1);
+			    s1H = vu16(vec_mergeh(zero, lS1));
 
 			    /* (unsigned short[]) d[8-15] */
-			    vu8(dL) = vec_mergel(zero, lD);
+			    dL = vu16(vec_mergel(zero, lD));
 
 			    /* (unsigned short[]) d[0-7] */
-			    vu8(dH) = vec_mergeh(zero, lD);
+			    dH = vu16(vec_mergeh(zero, lD));
 
 			    /* s[i] + s[i+1] */
 			    s0H = vec_add(s0H, s1H);
@@ -726,7 +714,7 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    dL = vec_sra(dL, one);
 
 			    /* (unsigned char[]) d[0-7], d[8-15] */
-			    vu8(dH) = vec_packsu(dH, dL);
+			    dH = vu16(vec_packsu(dH, dL));
 			    vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			    s += lx;
@@ -749,23 +737,22 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			lD = vec_ld(0, (unsigned char*)d);
 
 			/* (unsigned short[]) s[0-7] */
-			vu8(s0H) = vec_mergeh(zero, lS0);
+			s0H = vu16(vec_mergeh(zero, lS0));
 
 			/* (unsigned short[]) s[8-15] */
-			vu8(s0L) = vec_mergel(zero, lS0);
+			s0L = vu16(vec_mergel(zero, lS0));
 
 			/* (unsigned short[]) s[1-8] */
-			vu8(s1H) = vec_mergeh(zero, lS1);
+			s1H = vu16(vec_mergeh(zero, lS1));
 
 			/* (unsigned short[]) s[9-16] */
-			vu8(s1L) = vec_mergel(zero, lS1);
+			s1L = vu16(vec_mergel(zero, lS1));
 
 			/* (unsigned short[]) d[0-7] */
-			vu8(dH) = vec_mergeh(zero, lD);
+			dH = vu16(vec_mergeh(zero, lD));
 
 			/* (unsigned short[]) d[8-15] */
-			vu8(dL) = vec_mergel(zero, lD);
-
+			dL = vu16(vec_mergel(zero, lD));
 
 			/* s[i] + s[i+1] */
 			s0H = vec_add(s0H, s1H);
@@ -792,7 +779,7 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			dL = vec_sra(dL, one);
 
 			/* (unsigned char[]) d[0-7], d[8-15] */
-			vu8(dH) = vec_packsu(dH, dL);
+			dH = vu16(vec_packsu(dH, dL));
 			vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			s += lx;
@@ -834,14 +821,13 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
 
 			    /* (unsigned short[]) s[0-7] */
-			    vu8(s0H) = vec_mergeh(zero, lS0);
+			    s0H = vu16(vec_mergeh(zero, lS0));
 
 			    /* (unsigned short[]) s[1-8] */
-			    vu8(s1H) = vec_mergeh(zero, lS1);
+			    s1H = vu16(vec_mergeh(zero, lS1));
 
 			    /* (unsigned short[]) d[8-15] */
-			    vu8(dL) = vec_mergel(zero, lD);
-
+			    dL = vu16(vec_mergel(zero, lD));
 
 			    /* s[i] + s[i+1] */
 			    s0H = vec_add(s0H, s1H);
@@ -852,9 +838,8 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    /* (s[i]+s[i+1]+1) >> 1 */
 			    s0H = vec_sra(s0H, one);
 
-
 			    /* (unsigned char[]) d[0-7], d[8-15] */
-			    vu8(dH) = vec_packsu(s0H, dL);
+			    dH = vu16(vec_packsu(s0H, dL));
 			    vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			    s += lx;
@@ -874,14 +859,13 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    lD = vec_ld(0, (unsigned char*)d);
 
 			    /* (unsigned short[]) s[0-7] */
-			    vu8(s0H) = vec_mergeh(zero, lS0);
+			    s0H = vu16(vec_mergeh(zero, lS0));
 
 			    /* (unsigned short[]) s[1-8] */
-			    vu8(s1H) = vec_mergeh(zero, lS1);
+			    s1H = vu16(vec_mergeh(zero, lS1));
 
 			    /* (unsigned short[]) d[0-7] */
-			    vu8(dH) = vec_mergeh(zero, lD);
-
+			    dH = vu16(vec_mergeh(zero, lD));
 
 			    /* s[i] + s[i+1] */
 			    s0H = vec_add(s0H, s1H);
@@ -892,9 +876,8 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    /* (s[i]+s[i+1]+1) >> 1 */
 			    s0H = vec_sra(s0H, one);
 
-
 			    /* (unsigned char[]) d[0-7], d[8-15] */
-			    vu8(dH) = vec_packsu(dH, s0H);
+			    dH = vu16(vec_packsu(dH, s0H));
 			    vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			    s += lx;
@@ -917,17 +900,16 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
 
 			/* (unsigned short[]) s[0-7] */
-			vu8(s0H) = vec_mergeh(zero, lS0);
+			s0H = vu16(vec_mergeh(zero, lS0));
 
 			/* (unsigned short[]) s[8-15] */
-			vu8(s0L) = vec_mergel(zero, lS0);
+			s0L = vu16(vec_mergel(zero, lS0));
 
 			/* (unsigned short[]) s[1-8] */
-			vu8(s1H) = vec_mergeh(zero, lS1);
+			s1H = vu16(vec_mergeh(zero, lS1));
 
 			/* (unsigned short[]) s[9-16] */
-			vu8(s1L) = vec_mergel(zero, lS1);
-
+			s1L = vu16(vec_mergel(zero, lS1));
 
 			/* s[i] + s[i+1] */
 			s0H = vec_add(s0H, s1H);
@@ -941,9 +923,8 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			s0H = vec_sra(s0H, one);
 			s0L = vec_sra(s0L, one);
 
-
 			/* (unsigned char[]) d[0-7], d[8-15] */
-			vu8(dH) = vec_packsu(s0H, s0L);
+			dH = vu16(vec_packsu(s0H, s0L));
 			vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			s += lx;
@@ -991,19 +972,17 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
 			    lD = vec_ld(0, (unsigned char*)d);
 
-
 			    /* (unsigned short[]) s[0-7] */
-			    vu8(s0H) = vec_mergeh(zero, lS0);
+			    s0H = vu16(vec_mergeh(zero, lS0));
 
 			    /* (unsigned short[]) s+lx[0-7] */
-			    vu8(s2H) = vec_mergeh(zero, lS2);
+			    s2H = vu16(vec_mergeh(zero, lS2));
 
 			    /* (unsigned short[]) d[0-7] */
-			    vu8(dH) = vec_mergeh(zero, lD);
+			    dH = vu16(vec_mergeh(zero, lD));
 
 			    /* (unsigned short[]) d[8-15] */
-			    vu8(dL) = vec_mergel(zero, lD);
-
+			    dL = vu16(vec_mergel(zero, lD));
 
 			    /* s[i] + s[i+lx] */
 			    s0H = vec_add(s0H, s2H);
@@ -1024,7 +1003,7 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    dH = vec_sra(dH, one);
 
 			    /* (unsigned char[]) d[0-7], d[8-15] */
-			    vu8(dH) = vec_packsu(dH, dL);
+			    dH = vu16(vec_packsu(dH, dL));
 			    vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			    lS0 = lS2;
@@ -1049,19 +1028,17 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
 			    lD = vec_ld(0, (unsigned char*)d);
 
-
 			    /* (unsigned short[]) s[0-7] */
-			    vu8(s0H) = vec_mergeh(zero, lS0);
+			    s0H = vu16(vec_mergeh(zero, lS0));
 
 			    /* (unsigned short[]) s+lx[0-7] */
-			    vu8(s2H) = vec_mergeh(zero, lS2);
+			    s2H = vu16(vec_mergeh(zero, lS2));
 
 			    /* (unsigned short[]) d[0-7] */
-			    vu8(dH) = vec_mergeh(zero, lD);
+			    dH = vu16(vec_mergeh(zero, lD));
 
 			    /* (unsigned short[]) d[8-15] */
-			    vu8(dL) = vec_mergel(zero, lD);
-
+			    dL = vu16(vec_mergel(zero, lD));
 
 			    /* s[i] + s[i+lx] */
 			    s0H = vec_add(s0H, s2H);
@@ -1082,7 +1059,7 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    dL = vec_sra(dL, one);
 
 			    /* (unsigned char[]) d[0-7], d[8-15] */
-			    vu8(dH) = vec_packsu(dH, dL);
+			    dH = vu16(vec_packsu(dH, dL));
 			    vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			    lS0 = lS2;
@@ -1111,23 +1088,22 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			lD = vec_ld(0, (unsigned char*)d);
 
 			/* (unsigned short[]) s[0-7] */
-			vu8(s0H) = vec_mergeh(zero, lS0);
+			s0H = vu16(vec_mergeh(zero, lS0));
 
 			/* (unsigned short[]) s[8-15] */
-			vu8(s0L) = vec_mergel(zero, lS0);
+			s0L = vu16(vec_mergel(zero, lS0));
 
 			/* (unsigned short[]) s+lx[0-7] */
-			vu8(s2H) = vec_mergeh(zero, lS2);
+			s2H = vu16(vec_mergeh(zero, lS2));
 
 			/* (unsigned short[]) s+lx[8-15] */
-			vu8(s2L) = vec_mergel(zero, lS2);
+			s2L = vu16(vec_mergel(zero, lS2));
 
 			/* (unsigned short[]) d[0-7] */
-			vu8(dH) = vec_mergeh(zero, lD);
+			dH = vu16(vec_mergeh(zero, lD));
 
 			/* (unsigned short[]) d[8-15] */
-			vu8(dL) = vec_mergel(zero, lD);
-
+			dL = vu16(vec_mergel(zero, lD));
 
 			/* s[i] + s[i+lx] */
 			s0H = vec_add(s0H, s2H);
@@ -1153,9 +1129,8 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			dH = vec_sra(dH, one);
 			dL = vec_sra(dL, one);
 
-
 			/* (unsigned char[]) d[0-7], d[8-15] */
-			vu8(dH) = vec_packsu(dH, dL);
+			dH = vu16(vec_packsu(dH, dL));
 			vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			lS0 = lS2;
@@ -1199,16 +1174,14 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
 			    lD = vec_ld(0, (unsigned char*)d);
 
-
 			    /* (unsigned short[]) s[0-7] */
-			    vu8(s0H) = vec_mergeh(zero, lS0);
+			    s0H = vu16(vec_mergeh(zero, lS0));
 
 			    /* (unsigned short[]) s+lx[0-7] */
-			    vu8(s2H) = vec_mergeh(zero, lS2);
+			    s2H = vu16(vec_mergeh(zero, lS2));
 
 			    /* (unsigned short[]) d[8-15] */
-			    vu8(dL) = vec_mergel(zero, lD);
-
+			    dL = vu16(vec_mergel(zero, lD));
 
 			    /* s[i] + s[i+lx] */
 			    s0H = vec_add(s0H, s2H);
@@ -1221,7 +1194,7 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
 
 			    /* (unsigned char[]) d[0-7], d[8-15] */
-			    vu8(dH) = vec_packsu(s0H, dL);
+			    dH = vu16(vec_packsu(s0H, dL));
 			    vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			    lS0 = lS2;
@@ -1248,14 +1221,13 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
 
 			    /* (unsigned short[]) s[0-7] */
-			    vu8(s0H) = vec_mergeh(zero, lS0);
+			    s0H = vu16(vec_mergeh(zero, lS0));
 
 			    /* (unsigned short[]) s+lx[0-7] */
-			    vu8(s2H) = vec_mergeh(zero, lS2);
+			    s2H = vu16(vec_mergeh(zero, lS2));
 
 			    /* (unsigned short[]) d[0-7] */
-			    vu8(dH) = vec_mergeh(zero, lD);
-
+			    dH = vu16(vec_mergeh(zero, lD));
 
 			    /* s[i] + s[i+lx] */
 			    s0H = vec_add(s0H, s2H);
@@ -1266,9 +1238,8 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    /* (s[i]+s[i+lx]+1) >> 1 */
 			    s0H = vec_sra(s0H, one);
 
-
 			    /* (unsigned char[]) d[0-7], d[8-15] */
-			    vu8(dH) = vec_packsu(dH, s0H);
+			    dH = vu16(vec_packsu(dH, s0H));
 			    vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			    lS0 = lS2;
@@ -1296,17 +1267,16 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
 
 			/* (unsigned short[]) s[0-7] */
-			vu8(s0H) = vec_mergeh(zero, lS0);
+			s0H = vu16(vec_mergeh(zero, lS0));
 
 			/* (unsigned short[]) s[8-15] */
-			vu8(s0L) = vec_mergel(zero, lS0);
+			s0L = vu16(vec_mergel(zero, lS0));
 
 			/* (unsigned short[]) s+lx[0-7] */
-			vu8(s2H) = vec_mergeh(zero, lS2);
+			s2H = vu16(vec_mergeh(zero, lS2));
 
 			/* (unsigned short[]) s+lx[8-15] */
-			vu8(s2L) = vec_mergel(zero, lS2);
-
+			s2L = vu16(vec_mergel(zero, lS2));
 
 			/* s[i] + s[i+lx] */
 			s0H = vec_add(s0H, s2H);
@@ -1322,7 +1292,7 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
 
 			/* (unsigned char[]) d[0-7], d[8-15] */
-			vu8(dH) = vec_packsu(s0H, s0L);
+			dH = vu16(vec_packsu(s0H, s0L));
 			vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			lS0 = lS2;
@@ -1364,14 +1334,13 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    lD = vec_ld(0, (unsigned char*)d);
 
 			    /* (unsigned short[]) s[0-7] */
-			    vu8(s0H) = vec_mergeh(zero, lS0);
+			    s0H = vu16(vec_mergeh(zero, lS0));
 
 			    /* (unsigned short[]) d[0-7] */
-			    vu8(dH) = vec_mergeh(zero, lD);
+			    dH = vu16(vec_mergeh(zero, lD));
 
 			    /* (unsigned short[]) d[8-15] */
-			    vu8(dL) = vec_mergel(zero, lD);
-
+			    dL = vu16(vec_mergel(zero, lD));
 
 			    /* d[i] + s[i] */
 			    dH = vec_add(dH, s0H);
@@ -1382,9 +1351,8 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    /* (d[i]+s[i]+1) >> 1 */
 			    dH = vec_sra(dH, one);
 
-
 			    /* (unsigned char[]) d[0-7], d[8-15] */
-			    vu8(dH) = vec_packsu(dH, dL);
+			    dH = vu16(vec_packsu(dH, dL));
 			    vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			    s += lx;
@@ -1403,14 +1371,13 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    lD = vec_ld(0, (unsigned char*)d);
 
 			    /* (unsigned short[]) s[0-7] */
-			    vu8(s0H) = vec_mergeh(zero, lS0);
+			    s0H = vu16(vec_mergeh(zero, lS0));
 
 			    /* (unsigned short[]) d[0-7] */
-			    vu8(dH) = vec_mergeh(zero, lD);
+			    dH = vu16(vec_mergeh(zero, lD));
 
 			    /* (unsigned short[]) d[8-15] */
-			    vu8(dL) = vec_mergel(zero, lD);
-
+			    dL = vu16(vec_mergel(zero, lD));
 
 			    /* d[i] + s[i] */
 			    dL = vec_add(dL, s0H);
@@ -1422,7 +1389,7 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			    dL = vec_sra(dL, one);
 
 			    /* (unsigned char[]) d[0-7], d[8-15] */
-			    vu8(dH) = vec_packsu(dH, dL);
+			    dH = vu16(vec_packsu(dH, dL));
 			    vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			    s += lx;
@@ -1442,17 +1409,16 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 			lD = vec_ld(0, (unsigned char*)d);
 
 			/* (unsigned short[]) s[0-7] */
-			vu8(s0H) = vec_mergeh(zero, lS0);
+			s0H = vu16(vec_mergeh(zero, lS0));
 
 			/* (unsigned short[]) s[8-15] */
-			vu8(s0L) = vec_mergel(zero, lS0);
+			s0L = vu16(vec_mergel(zero, lS0));
 
 			/* (unsigned short[]) d[0-7] */
-			vu8(dH) = vec_mergeh(zero, lD);
+			dH = vu16(vec_mergeh(zero, lD));
 
 			/* (unsigned short[]) d[8-15] */
-			vu8(dL) = vec_mergel(zero, lD);
-
+			dL = vu16(vec_mergel(zero, lD));
 
 			/* d[i] + s[i] */
 			dH = vec_add(dH, s0H);
@@ -1468,7 +1434,7 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
 
 			/* (unsigned char[]) d[0-7], d[8-15] */
-			vu8(dH) = vec_packsu(dH, dL);
+			dH = vu16(vec_packsu(dH, dL));
 			vec_st(vu8(dH), 0, (unsigned char*)d);
 
 			s += lx;
