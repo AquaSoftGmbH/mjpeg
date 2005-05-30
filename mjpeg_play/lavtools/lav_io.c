@@ -568,8 +568,8 @@ int lav_write_audio(lav_file_t *lav_file, uint8_t *buff, long samps)
 		qt_audion[j][i] = qt_audio[(2*i) + j];
 	    }
 	res = lqt_encode_audio_track(lav_file->qt_fd, qt_audion, NULL,samps,0);
-	free(qt_audion[0]);
-	free(qt_audion[1]);
+	for (j = 0; j < channels; j++)
+	    free(qt_audion[j]);
 	free(qt_audion);
         break;
 #endif
@@ -865,8 +865,8 @@ long lav_read_audio(lav_file_t *lav_file, uint8_t *audbuf, long samps)
 		qt_audio[(2*i) + j] = qt_audion[j][i];
 	    }
 out:
-	 free(qt_audion[0]);
-	 free(qt_audion[1]);
+	for (j = 0; j < channels; j++)
+	    free(qt_audion[j]);
 	 free(qt_audion);
          return(res);
 #endif
