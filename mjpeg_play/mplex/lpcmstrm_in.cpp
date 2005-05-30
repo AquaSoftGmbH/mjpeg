@@ -294,8 +294,8 @@ completion:
     // the smallest value is 1!
     dst[0] = LPCM_SUB_STR_0 + stream_num;
     dst[1] = frames;
-    dst[2] = (starting_frame_offset+1)>>8;
-    dst[3] = (starting_frame_offset+1)&0xff;
+    dst[2] = (starting_frame_offset+4)>>8;
+    dst[3] = (starting_frame_offset+4)&0xff;
     unsigned int bps_code;
     switch( bits_per_sample )
     {
