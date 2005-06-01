@@ -37,9 +37,9 @@ int Y_radius = 5;
 int U_radius = 5;
 int V_radius = 5;
 
-int temp_Y_thres = 8;
-int temp_U_thres = 16;
-int temp_V_thres = 16;
+int temp_Y_thres = 6;
+int temp_U_thres = 6;
+int temp_V_thres = 6;
 
 uint8_t *frame1[3];
 uint8_t *frame2[3];
@@ -338,6 +338,84 @@ main (int argc, char *argv[])
 	static uint32_t frame_nr=0;
 	uint8_t * temp[3];
 
+	// prefilter (lowpass) the image as you can't reconstruct the full
+	// spatial resolution either and this helps all parts of the denoiser
+	// and it helps a lot...
+	{
+	int x,y;
+	int v;
+	int delta;
+	for(y=0;y<lheight;y++)
+		for(x=0;x<lwidth;x++)
+		{
+			v  = *(frame1[0]+(x-2)+(y-2)*lwidth)*1; 
+			v += *(frame1[0]+(x-1)+(y-2)*lwidth)*2;
+			v += *(frame1[0]+(x  )+(y-2)*lwidth)*8;
+			v += *(frame1[0]+(x+1)+(y-2)*lwidth)*2;
+			v += *(frame1[0]+(x+2)+(y-2)*lwidth)*1;
+
+			v += *(frame1[0]+(x-2)+(y-1)*lwidth)*2; 
+			v += *(frame1[0]+(x-1)+(y-1)*lwidth)*4;
+			v += *(frame1[0]+(x  )+(y-1)*lwidth)*16;
+			v += *(frame1[0]+(x+1)+(y-1)*lwidth)*4;
+			v += *(frame1[0]+(x+2)+(y-1)*lwidth)*2;
+
+			v += *(frame1[0]+(x-2)+(y  )*lwidth)*4; 
+			v += *(frame1[0]+(x-1)+(y  )*lwidth)*8;
+			v += *(frame1[0]+(x  )+(y  )*lwidth)*139;
+			v += *(frame1[0]+(x+1)+(y  )*lwidth)*8;
+			v += *(frame1[0]+(x+2)+(y  )*lwidth)*4;
+
+			v += *(frame1[0]+(x-2)+(y+1)*lwidth)*2; 
+			v += *(frame1[0]+(x-1)+(y+1)*lwidth)*4;
+			v += *(frame1[0]+(x  )+(y+1)*lwidth)*16;
+			v += *(frame1[0]+(x+1)+(y+1)*lwidth)*4;
+			v += *(frame1[0]+(x+2)+(y+1)*lwidth)*2;
+
+			v += *(frame1[0]+(x-2)+(y+2)*lwidth)*1; 
+			v += *(frame1[0]+(x-1)+(y+2)*lwidth)*2;
+			v += *(frame1[0]+(x  )+(y+2)*lwidth)*8;
+			v += *(frame1[0]+(x+1)+(y+2)*lwidth)*2;
+			v += *(frame1[0]+(x+2)+(y+2)*lwidth)*1;
+
+			v /= 255;
+			*(frame1[0]+(x  )+(y  )*lwidth)=v;
+		}
+	// yes! this harsh chroma-lowpass is really needed
+	// for PAL and NTSC it adds something similay to the
+	// advanced SECAM color-processing (I'm not sure if
+	// I should make it possible to turn it off for SECAM)
+	for(y=1;y<(cheight-1);y++)
+		for(x=0;x<cwidth;x++)
+		{
+			v  = *(frame1[1]+(x-1)+(y-1)*cwidth);
+			v += *(frame1[1]+(x  )+(y-1)*cwidth);
+			v += *(frame1[1]+(x+1)+(y-1)*cwidth);
+			v += *(frame1[1]+(x-1)+(y  )*cwidth);
+			v += *(frame1[1]+(x  )+(y  )*cwidth);
+			v += *(frame1[1]+(x+1)+(y  )*cwidth);
+			v += *(frame1[1]+(x-1)+(y+1)*cwidth);
+			v += *(frame1[1]+(x  )+(y+1)*cwidth);
+			v += *(frame1[1]+(x+1)+(y+1)*cwidth);
+			
+			v /= 9;
+			*(frame1[1]+(x-1)+(y-1)*cwidth)=v;
+
+			v  = *(frame1[2]+(x-1)+(y-1)*cwidth);
+			v += *(frame1[2]+(x  )+(y-1)*cwidth);
+			v += *(frame1[2]+(x+1)+(y-1)*cwidth);
+			v += *(frame1[2]+(x-1)+(y  )*cwidth);
+			v += *(frame1[2]+(x  )+(y  )*cwidth);
+			v += *(frame1[2]+(x+1)+(y  )*cwidth);
+			v += *(frame1[2]+(x-1)+(y+1)*cwidth);
+			v += *(frame1[2]+(x  )+(y+1)*cwidth);
+			v += *(frame1[2]+(x+1)+(y+1)*cwidth);
+			
+			v /= 9;
+			*(frame1[2]+(x-1)+(y-1)*cwidth)=v;
+		}
+	}
+
 	// motion-compensate frames to the reference frame
 	{
 		int x,y,vx,vy,sx,sy;
@@ -345,7 +423,7 @@ main (int argc, char *argv[])
 		uint32_t sad;
 		uint32_t min;
 
-		int r=7; 
+		int r=4; 
 
 		// blocksize may not(!) be to small for this type of denoiser
 		for(y=0;y<lheight;y+=8)
@@ -357,6 +435,7 @@ main (int argc, char *argv[])
 					frame2[0]+(x)+(y)*lwidth,
 					lwidth,8 )*0.8;
 			vx=vy=bx=by=0;
+			// coarse search
 			for(sy=-r;sy<=r;sy++)
 				for(sx=-r;sx<=r;sx++)
 				{
@@ -366,10 +445,12 @@ main (int argc, char *argv[])
 				if(sad<min)
 					{
 					min = sad;
-					vx=bx=sx;
-					vy=by=sy;
+					vx=sx;
+					vy=sy;
 					}
-				}			
+				}
+			bx=vx;
+			by=vy;	
 
 			// compensate block for frame2
 			{
@@ -520,35 +601,72 @@ main (int argc, char *argv[])
 		for(x=0;x<lwidth;x++)
 		{
 
-		ref  = *(p3-lwidth);
-		ref += *(p3)*2;
-		ref += *(p3+lwidth);
-		ref /= 4;
+		//ref  = *(p3-lwidth);
+		ref = *(p3);
+		//ref += *(p3+lwidth);
+		//ref /= 4;
 
-		interpolated_pixel = ref;
-		delta_sum = 1;
+		delta_sum = 0;
+		interpolated_pixel = 0;
 
-		delta = abs( *(p1)-ref );
-		delta = (delta<t)? 1:0;
-		delta_sum += delta;
-		interpolated_pixel += *(p1)*delta;
+		mean = ( *(p1)+*(p2)+*(p3)+*(p4)+*(p5) )/5;
+		delta = abs( mean-ref );
+		if (delta<t)
+		{
+			delta_sum++;
+			interpolated_pixel += mean;
+		}
+		if(delta_sum==0)
+		{
+			mean = ( *(p2)+*(p3)+*(p4) )/3;
+			delta = abs( mean-ref );
+			if (delta<t)
+			{
+				delta_sum++;
+				interpolated_pixel += mean;
+			}
 
-		delta = abs( *(p2)-ref );
-		delta = (delta<t)? 1:0;
-		delta_sum += delta;
-		interpolated_pixel += *(p2)*delta;
+			mean = ( *(p1)+*(p2)+*(p3) )/3;
+			delta = abs( mean-ref );
+			if (delta<t)
+			{
+				delta_sum++;
+				interpolated_pixel += mean;
+			}
 
-		delta = abs( *(p4)-ref );
-		delta = (delta<t)? 1:0;
-		delta_sum += delta;
-		interpolated_pixel += *(p4)*delta;
+			mean = ( *(p3)+*(p4)+*(p5) )/3;
+			delta = abs( mean-ref );
+			if (delta<t)
+			{
+				delta_sum++;
+				interpolated_pixel += mean;
+			}
 
-		delta = abs( *(p5)-ref );
-		delta = (delta<t)? 1:0;
-		delta_sum += delta;
-		interpolated_pixel += *(p5)*delta;
-		
-		interpolated_pixel /= delta_sum;
+			if(delta_sum==0) // we still have not found a good interpolation :-(
+			{
+				mean = ( *(p2)+*(p3) )/2;
+				delta = abs( mean-ref );
+				if (delta<t)
+				{
+					delta_sum++;
+					interpolated_pixel += mean;
+				}
+	
+				mean = ( *(p3)+*(p4) )/2;
+				delta = abs( mean-ref );
+				if (delta<t)
+				{
+					delta_sum++;
+					interpolated_pixel += mean;
+				}
+	
+			}
+			if (delta_sum==0)
+				interpolated_pixel = *(p3);
+			else
+				interpolated_pixel /= delta_sum;
+		}
+
 		*(dst)=interpolated_pixel;
 
 		p1++;
@@ -576,30 +694,67 @@ main (int argc, char *argv[])
 		ref += *(p3+cwidth);
 		ref /= 3;
 
-		interpolated_pixel = ref;
-		delta_sum = 1;
+		delta_sum = 0;
+		interpolated_pixel = 0;
 
-		delta = abs( *(p1)-ref );
-		delta = (delta<t)? 1:0;
-		delta_sum += delta;
-		interpolated_pixel += *(p1)*delta;
+		mean = ( *(p1)+*(p2)+*(p3)+*(p4)+*(p5) )/5;
+		delta = abs( mean-ref );
+		if (delta<t)
+		{
+			delta_sum++;
+			interpolated_pixel += mean;
+		}
+		if(delta_sum==0)
+		{
+			mean = ( *(p2)+*(p3)+*(p4) )/3;
+			delta = abs( mean-ref );
+			if (delta<t)
+			{
+				delta_sum++;
+				interpolated_pixel += mean;
+			}
 
-		delta = abs( *(p2)-ref );
-		delta = (delta<t)? 1:0;
-		delta_sum += delta;
-		interpolated_pixel += *(p2)*delta;
+			mean = ( *(p1)+*(p2)+*(p3) )/3;
+			delta = abs( mean-ref );
+			if (delta<t)
+			{
+				delta_sum++;
+				interpolated_pixel += mean;
+			}
 
-		delta = abs( *(p4)-ref );
-		delta = (delta<t)? 1:0;
-		delta_sum += delta;
-		interpolated_pixel += *(p4)*delta;
+			mean = ( *(p3)+*(p4)+*(p5) )/3;
+			delta = abs( mean-ref );
+			if (delta<t)
+			{
+				delta_sum++;
+				interpolated_pixel += mean;
+			}
 
-		delta = abs( *(p5)-ref );
-		delta = (delta<t)? 1:0;
-		delta_sum += delta;
-		interpolated_pixel += *(p5)*delta;
+			if(delta_sum==0) // we still have not found a good interpolation :-(
+			{
+				mean = ( *(p2)+*(p3) )/2;
+				delta = abs( mean-ref );
+				if (delta<t)
+				{
+					delta_sum++;
+					interpolated_pixel += mean;
+				}
+	
+				mean = ( *(p3)+*(p4) )/2;
+				delta = abs( mean-ref );
+				if (delta<t)
+				{
+					delta_sum++;
+					interpolated_pixel += mean;
+				}
+	
+			}
+			if (delta_sum==0)
+				interpolated_pixel = *(p3);
+			else
+				interpolated_pixel /= delta_sum;
+		}
 
-		interpolated_pixel /= delta_sum;
 		*(dst)=interpolated_pixel;
 
 		p1++;
@@ -626,30 +781,67 @@ main (int argc, char *argv[])
 		ref += *(p3+cwidth);
 		ref /= 3;
 
-		interpolated_pixel = ref;
-		delta_sum = 1;
+		delta_sum = 0;
+		interpolated_pixel = 0;
 
-		delta = abs( *(p1)-ref );
-		delta = (delta<t)? 1:0;
-		delta_sum += delta;
-		interpolated_pixel += *(p1)*delta;
+		mean = ( *(p1)+*(p2)+*(p3)+*(p4)+*(p5) )/5;
+		delta = abs( mean-ref );
+		if (delta<t)
+		{
+			delta_sum++;
+			interpolated_pixel += mean;
+		}
+		if(delta_sum==0)
+		{
+			mean = ( *(p2)+*(p3)+*(p4) )/3;
+			delta = abs( mean-ref );
+			if (delta<t)
+			{
+				delta_sum++;
+				interpolated_pixel += mean;
+			}
 
-		delta = abs( *(p2)-ref );
-		delta = (delta<t)? 1:0;
-		delta_sum += delta;
-		interpolated_pixel += *(p2)*delta;
+			mean = ( *(p1)+*(p2)+*(p3) )/3;
+			delta = abs( mean-ref );
+			if (delta<t)
+			{
+				delta_sum++;
+				interpolated_pixel += mean;
+			}
 
-		delta = abs( *(p4)-ref );
-		delta = (delta<t)? 1:0;
-		delta_sum += delta;
-		interpolated_pixel += *(p4)*delta;
+			mean = ( *(p3)+*(p4)+*(p5) )/3;
+			delta = abs( mean-ref );
+			if (delta<t)
+			{
+				delta_sum++;
+				interpolated_pixel += mean;
+			}
 
-		delta = abs( *(p5)-ref );
-		delta = (delta<t)? 1:0;
-		delta_sum += delta;
-		interpolated_pixel += *(p5)*delta;
+			if(delta_sum==0) // we still have not found a good interpolation :-(
+			{
+				mean = ( *(p2)+*(p3) )/2;
+				delta = abs( mean-ref );
+				if (delta<t)
+				{
+					delta_sum++;
+					interpolated_pixel += mean;
+				}
+	
+				mean = ( *(p3)+*(p4) )/2;
+				delta = abs( mean-ref );
+				if (delta<t)
+				{
+					delta_sum++;
+					interpolated_pixel += mean;
+				}
+	
+			}
+			if (delta_sum==0)
+				interpolated_pixel = *(p3);
+			else
+				interpolated_pixel /= delta_sum;
+		}
 
-		interpolated_pixel /= delta_sum;
 		*(dst)=interpolated_pixel;
 
 		p1++;
@@ -677,13 +869,14 @@ main (int argc, char *argv[])
 			d6  = abs( *(outframe[0]+x+y*lwidth)-*(pixlock6[0]+x+y*lwidth) );
 			d7  = abs( *(outframe[0]+x+y*lwidth)-*(pixlock7[0]+x+y*lwidth) );
 
-			if (d1>6 || d2>6 || d3>6 || d4>6 || d5>6 || d6>6 || d7>6)
+			if (d1>4 || d2>4 || d3>4 || d4>4 || d5>4 || d6>4 || d7>4)
 			{
 				*(outframe[0]+x+y*lwidth) = *(pixlock4[0]+x+y*lwidth);
 			}
+#if 0
 			else
 			{
-//				if (d1>3 || d2>3 || d3>3 || d4>3 || d5>3 || d6>3 || d7>3)
+				if (d1>3 || d2>3 || d3>3 || d4>3 || d5>3 || d6>3 || d7>3)
 				{
 					*(outframe[0]+x+y*lwidth) = 
 						(
@@ -697,6 +890,7 @@ main (int argc, char *argv[])
 						)/7;
 				}
 			}
+#endif
 		}
 	for(y=0;y<cheight;y++)
 		for(x=0;x<cwidth;x++)
@@ -709,13 +903,14 @@ main (int argc, char *argv[])
 			d6  = abs( *(outframe[1]+x+y*cwidth)-*(pixlock6[1]+x+y*cwidth) );
 			d7  = abs( *(outframe[1]+x+y*cwidth)-*(pixlock7[1]+x+y*cwidth) );
 
-			if (d1>6 || d2>6 || d3>6 || d4>6 || d5>6 || d6>6 || d7>6)
+			if (d1>4 || d2>4 || d3>4 || d4>4 || d5>4 || d6>4 || d7>4)
 			{
 				*(outframe[1]+x+y*cwidth) = *(pixlock4[1]+x+y*cwidth);
 			}
+#if 0
 			else
 			{
-//				if (d1>4 || d2>4 || d3>4 || d4>4 || d5>4 || d6>4 || d7>4)
+				if (d1>3 || d2>3 || d3>3 || d4>3 || d5>3 || d6>3 || d7>3)
 				{
 					*(outframe[1]+x+y*cwidth) = 
 						(
@@ -729,7 +924,7 @@ main (int argc, char *argv[])
 						)/7;
 				}
 			}
-
+#endif
 			d1  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock1[2]+x+y*cwidth) );
 			d2  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock2[2]+x+y*cwidth) );
 			d3  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock3[2]+x+y*cwidth) );
@@ -738,13 +933,14 @@ main (int argc, char *argv[])
 			d6  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock6[2]+x+y*cwidth) );
 			d7  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock7[2]+x+y*cwidth) );
 
-			if (d1>6 || d2>6 || d3>6 || d4>6 || d5>6 || d6>6 || d7>6)
+			if (d1>4 || d2>4 || d3>4 || d4>4 || d5>4 || d6>4 || d7>4)
 			{
 				*(outframe[2]+x+y*cwidth) = *(pixlock4[2]+x+y*cwidth);
 			}
+#if 0
 			else
 			{
-//				if (d1>4 || d2>4 || d3>4 || d4>4 || d5>4 || d6>4 || d7>4)
+				if (d1>3 || d2>3 || d3>3 || d4>3 || d5>3 || d6>3 || d7>3)
 				{
 					*(outframe[2]+x+y*cwidth) = 
 						(
@@ -758,6 +954,7 @@ main (int argc, char *argv[])
 						)/7;
 				}
 			}
+#endif
 		}
 	}
 
@@ -765,6 +962,7 @@ main (int argc, char *argv[])
 	frame_nr++;
 	if(frame_nr>=7)
 		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, outframe);
+//		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, mc3);
 
 	// rotate buffer pointers to rotate input-buffers
 	temp[0] = frame5[0];
