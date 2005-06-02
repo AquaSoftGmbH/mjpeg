@@ -342,9 +342,7 @@ main (int argc, char *argv[])
 	// spatial resolution either and this helps all parts of the denoiser
 	// and it helps a lot...
 	{
-	int x,y;
-	int v;
-	int delta;
+	int x, y, v;
 	for(y=0;y<lheight;y++)
 		for(x=0;x<lwidth;x++)
 		{
