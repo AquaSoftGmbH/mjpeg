@@ -987,7 +987,6 @@ lav_file_t *lav_open_input_file(char *filename)
 #endif
       || strncasecmp(video_comp,"dv",2)==0) {
        ierr = check_DV2_input(lav_fd);
-       lav_fd->chroma = CHROMA422;
        if (ierr) goto ERREXIT;
        /* DV is always interlaced, bottom first */
        lav_fd->interlacing = LAV_INTER_BOTTOM_FIRST; 
@@ -1205,59 +1204,89 @@ const char *lav_strerror(void)
 
 #ifdef HAVE_LIBDV
 static int check_DV2_input(lav_file_t *lav_fd)
-{
-   int ierr = 0;
-   double len = 0;
-   unsigned char *frame = NULL;
+	{
+	int ierr = 0;
+	double len = 0;
+	unsigned char *frame = NULL;
+	dv_decoder_t *decoder = NULL;
 
    /* Make some checks on the video source, we read the first frame for that */
 
-   if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
-   if ( (len = lav_frame_size(lav_fd,0)) <=0 ) goto ERREXIT;
-   if ( (frame = (unsigned char*) malloc(len)) == 0 ) { ierr=ERROR_MALLOC; goto ERREXIT; }
+	if	(lav_set_video_position(lav_fd,0))
+		goto ERREXIT;
+	if	((len = lav_frame_size(lav_fd,0)) <=0)
+		goto ERREXIT;
+	if	((frame = (unsigned char*) malloc(len)) == 0)
+		{
+		ierr=ERROR_MALLOC;
+		goto ERREXIT;
+		}
 
-   if ( lav_read_frame(lav_fd,frame) <= 0 ) goto ERREXIT;
-   {
-     dv_decoder_t *decoder = dv_decoder_new(0,0,0);
-     dv_parse_header(decoder, frame);
+	if	(lav_read_frame(lav_fd, frame) <= 0)
+		goto ERREXIT;
 
-     switch (decoder->system) {
-     case e_dv_system_525_60:
-       if (dv_format_wide(decoder)) {
-	 lav_fd->sar_w = 40;
-	 lav_fd->sar_h = 33;
-       } else {
-	 lav_fd->sar_w = 10;
-	 lav_fd->sar_h = 11;
-       } 
-       break;
-     case e_dv_system_625_50:
-       if (dv_format_wide(decoder)) {
-	 lav_fd->sar_w = 118;
-	 lav_fd->sar_h = 81;
-       } else {
-	 lav_fd->sar_w = 59;
-	 lav_fd->sar_h = 54;
-       } 
-       break;
-     default:
-       lav_fd->sar_w = 0; /* ??? -> unknown */
-       lav_fd->sar_h = 0;
-       break;
-     }
-     dv_decoder_free(decoder);
-   }
+	decoder = dv_decoder_new(0,0,0);
+	dv_parse_header(decoder, frame);
 
-   /* reset video position to 0 */
-   if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
-   return 0;
+	switch	(decoder->system)
+		{
+		case	e_dv_system_525_60:
+			if	(dv_format_wide(decoder))
+				{
+				lav_fd->sar_w = 40;
+				lav_fd->sar_h = 33;
+				}
+			else	{
+	 			lav_fd->sar_w = 10;
+	 			lav_fd->sar_h = 11;
+       				} 
+       			break;
+		case	e_dv_system_625_50:
+			if	(dv_format_wide(decoder))
+				{
+				lav_fd->sar_w = 118;
+				lav_fd->sar_h = 81;
+			} else {
+				lav_fd->sar_w = 59;
+				lav_fd->sar_h = 54;
+				} 
+			break;
+		default:
+			lav_fd->sar_w = 0; /* ??? -> unknown */
+			lav_fd->sar_h = 0;
+			break;
+		}
+
+	switch	(decoder->sampling)
+		{
+		case	e_dv_sample_420:
+			lav_fd->chroma = CHROMA420;
+			break;
+		case	e_dv_sample_411:
+		case	e_dv_sample_422:
+			lav_fd->chroma = CHROMA422;
+			break;
+		default:
+   			/* chroma has been initialized to CHROMAUNKNOWN 
+			 * so if we get here just leave chromas as unknown
+			*/
+			break;
+		}
+
+	dv_decoder_free(decoder);
+
+	if	(lav_set_video_position(lav_fd,0))
+		goto ERREXIT;
+	return 0;
 
 ERREXIT:
-   lav_close(lav_fd);
-   if(frame) free(frame);
-   if (ierr) internal_error = ierr;
-   return 1;
-}
+	lav_close(lav_fd);
+	if	(frame)
+		free(frame);
+	if	(ierr)
+		internal_error = ierr;
+	return 1;
+	}
 #endif
 
 static int check_YUV420_input(lav_file_t *lav_fd)
