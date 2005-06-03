@@ -1267,8 +1267,10 @@ static int check_DV2_input(lav_file_t *lav_fd)
 			lav_fd->chroma = CHROMA422;
 			break;
 		default:
-   			/* chroma has been initialized to CHROMAUNKNOWN 
-			 * so if we get here just leave chromas as unknown
+   			/*
+			 * chroma has been initialized to CHROMAUNKNOWN.
+			 * If we get here just leave chroma as unknown and 
+			 * rely on the caller(s) to detect something is broken.
 			*/
 			break;
 		}
