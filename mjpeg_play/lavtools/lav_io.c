@@ -987,11 +987,7 @@ lav_file_t *lav_open_input_file(char *filename)
 #endif
       || strncasecmp(video_comp,"dv",2)==0) {
        ierr = check_DV2_input(lav_fd);
-#ifdef LIBDV_PAL_YV12
-       lav_fd->chroma = CHROMA420;
-#else
        lav_fd->chroma = CHROMA422;
-#endif
        if (ierr) goto ERREXIT;
        /* DV is always interlaced, bottom first */
        lav_fd->interlacing = LAV_INTER_BOTTOM_FIRST; 

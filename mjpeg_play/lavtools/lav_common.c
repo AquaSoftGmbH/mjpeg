@@ -314,7 +314,6 @@ int readframe(int numframe,
     dv_parse_header(decoder, jpeg_data);
     switch(decoder->sampling) {
     case e_dv_sample_420:
-#ifdef LIBDV_PAL_YV12
       /* libdv decodes PAL DV directly as planar YUV 420
        * (YV12 or 4CC 0x32315659) if configured with the flag
        * --with-pal-yuv=YV12 which is not (!) the default
@@ -335,7 +334,6 @@ int readframe(int numframe,
 	frame[1] = frame_tmp;
       }
       break;
-#endif /* LIBDV_PAL_YV12 */
     case e_dv_sample_411:
     case e_dv_sample_422:
       /* libdv decodes NTSC DV (native 411) and by default also PAL
@@ -467,9 +465,6 @@ void writeoutYUV4MPEGheader(int out_fd,
      dv_parse_header(decoder, jpeg_data);
      switch(decoder->sampling) {
      case e_dv_sample_420:
-# ifndef LIBDV_PAL_YV12
-       mjpeg_error_exit1("DV PAL YV12 input was not configured at compile time");
-# else
        switch (param->chroma) {
        case Y4M_UNKNOWN:
 	 mjpeg_info("set chroma '420paldv' from imput");
@@ -486,7 +481,6 @@ void writeoutYUV4MPEGheader(int out_fd,
 	 break;
        }
        break;
-# endif
      case e_dv_sample_411:
      case e_dv_sample_422:
        if (param->chroma != Y4M_CHROMA_422)
