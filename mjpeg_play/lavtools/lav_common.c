@@ -341,7 +341,7 @@ int readframe(int numframe,
 	  dv_frame[2][0]=255;
 	  dv_frame[2][1]=0;
 	  dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
-			       dv_frame, pitches);
+			       dv_frame, (int *)pitches);
 	  if (dv_frame[1][0]==0   && dv_frame[1][1]==255 &&
 	      dv_frame[2][0]==255 && dv_frame[2][1]==0) {
 	    libdv_pal_yv12 = 0;
@@ -363,7 +363,7 @@ int readframe(int numframe,
 	  res = 1;
 	} else {
 	  dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
-			       frame, pitches);
+			       frame, (int *)pitches);
 	  /* swap the U and V components */
 	  frame_tmp = frame[2];
 	  frame[2] = frame[1];
@@ -387,7 +387,7 @@ int readframe(int numframe,
 	res = 1;
       } else {
 	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
-			     dv_frame, pitches);
+			     dv_frame, (int *)pitches);
 	frame_YUV422_to_planar(frame, dv_frame[0],
 			       decoder->width,	decoder->height,
 			       (param->chroma == Y4M_CHROMA_422));
