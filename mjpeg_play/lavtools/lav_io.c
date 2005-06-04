@@ -72,8 +72,6 @@ static unsigned long jpeg_app1_offset    = 0;
 
 #define QUICKTIME_MJPG_TAG 0x6d6a7067  /* 'mjpg' */
 
-static int check_YUV420_input(lav_file_t *lav_fd);
-
 #ifdef HAVE_LIBDV
 static int check_DV2_input(lav_file_t *lav_fd);
 #endif
@@ -993,25 +991,12 @@ lav_file_t *lav_open_input_file(char *filename)
    }
 #endif /* HAVE_LIBDV */
 
-   if(strncasecmp(video_comp,"yuv",3)==0
-#ifdef HAVE_LIBQUICKTIME
-/*    || strncasecmp(video_comp,QUICKTIME_YUV4,4)==0 */
-      || strncasecmp(video_comp,QUICKTIME_YUV420,4)==0
-#endif
-      ) {
-       ierr = check_YUV420_input(lav_fd);
-#ifdef HAVE_LIBQUICKTIME
-       /* check for YUV format if quicktime file */
-       if (strncasecmp(video_comp,QUICKTIME_YUV420,4)==0)
-           lav_fd->chroma = CHROMA420;
-       else if (strncasecmp(video_comp,QUICKTIME_YUV4,4)==0)
-           lav_fd->chroma = CHROMA422;
-#else
-   lav_fd->chroma = CHROMA420;
-#endif
-       if (ierr) goto ERREXIT;
-   }
-      return lav_fd;
+   if (strncasecmp(video_comp,"yuv",3)==0 || strncasecmp(video_comp, "yv12",4)==0)
+      {
+      lav_fd->chroma = CHROMA420;
+      if (ierr) goto ERREXIT;
+      }
+   return lav_fd;
    }
 
    /* Make some checks on the video source, we read the first frame for that */
@@ -1257,63 +1242,21 @@ static int check_DV2_input(lav_file_t *lav_fd)
 			break;
 		}
 
-	switch	(decoder->sampling)
-		{
-		case	e_dv_sample_420:
-			lav_fd->chroma = CHROMA420;
-			break;
-		case	e_dv_sample_411:
-		case	e_dv_sample_422:
-			lav_fd->chroma = CHROMA422;
-			break;
-		default:
-   			/*
-			 * chroma has been initialized to CHROMAUNKNOWN.
-			 * If we get here just leave chroma as unknown and 
-			 * rely on the caller(s) to detect something is broken.
-			*/
-			break;
-		}
-
 	dv_decoder_free(decoder);
-
-	if	(lav_set_video_position(lav_fd,0))
-		goto ERREXIT;
+	lav_set_video_position(lav_fd,0);
 	return 0;
 
 ERREXIT:
 	lav_close(lav_fd);
 	if	(frame)
 		free(frame);
+	if	(decoder)
+		dv_decoder_free(decoder);
 	if	(ierr)
 		internal_error = ierr;
 	return 1;
 	}
 #endif
-
-static int check_YUV420_input(lav_file_t *lav_fd)
-{
-   int ierr = 0;
-   double len = 0;
-   unsigned char *frame = NULL;
-
-   /* Make some checks on the video source, we read the first frame for that */
-
-   if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
-   if ( (len = lav_frame_size(lav_fd,0)) <=0 ) goto ERREXIT;
-   if ( (frame = (unsigned char*) malloc(len)) == 0 ) { ierr=ERROR_MALLOC; goto ERREXIT; }
-
-   if ( lav_read_frame(lav_fd,frame) <= 0 ) goto ERREXIT;
-   /* reset video position to 0 */
-   if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
-   return 0;
-
-ERREXIT:
-   lav_close(lav_fd);
-   if(frame) free(frame);
-   if (ierr) internal_error = ierr;
-   return 1;
-}
 
 int lav_fileno(lav_file_t *lav_file)
 {
