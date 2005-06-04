@@ -45,8 +45,9 @@ static uint8_t jpeg_data[MAX_JPEG_LEN];
 #ifdef HAVE_LIBDV
 
 dv_decoder_t *decoder;
-int pitches[3];
+uint16_t pitches[3];
 uint8_t *dv_frame[3] = {NULL,NULL,NULL};
+int libdv_pal_yv12 = -1;
 
 /*
  * As far as I (maddog) can tell, this is what is going on with libdv-0.9
@@ -278,8 +279,9 @@ void init(LavParam *param, uint8_t *buffer[])
    
 #ifdef HAVE_LIBDV
    dv_frame[0] = bufalloc(3 * param->output_width * param->output_height);
-   dv_frame[1] = NULL;
-   dv_frame[2] = NULL;
+   dv_frame[1] = buffer[1];
+   dv_frame[2] = buffer[2];
+   libdv_pal_yv12 = -1;
 #endif
 }
 
@@ -318,22 +320,57 @@ int readframe(int numframe,
        * (YV12 or 4CC 0x32315659) if configured with the flag
        * --with-pal-yuv=YV12 which is not (!) the default
        */
-      pitches[0] = decoder->width;
-      pitches[1] = decoder->width / 2;
-      pitches[2] = decoder->width / 2;
-      if (pitches[0] != param->output_width ||
-	  pitches[1] != param->chroma_width) {
-	mjpeg_error("for DV 4:2:0 only full width output is supported");
-	res = 1;
-      } else {
-	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
-			     frame, pitches);
-	/* swap the U and V components */
-	frame_tmp = frame[2];
-	frame[2] = frame[1];
-	frame[1] = frame_tmp;
+      if (libdv_pal_yv12 < 0 ) {
+        /* PAL YV12 not already detected. Setting decoding options for
+	 * 4:2:2
+	 */
+	pitches[0] = decoder->width * 2;
+	pitches[1] = 0;
+	pitches[2] = 0;
+	if (decoder->width != param->output_width) {
+	  mjpeg_error("for DV 4:2:0 only full width output is supported");
+	  res = 1;
+	} else {
+	  /* Hacking libdv: set invalid values for chroma. If libdv
+	   * was compile with PAL YV12, the values are overwritten,
+	   * otherwise (4:2:2 output) only dv_frame[0] is filled and
+	   * chroma planes remain untouched 
+	   */
+	  dv_frame[1][0]=0;
+	  dv_frame[1][1]=255;
+	  dv_frame[2][0]=255;
+	  dv_frame[2][1]=0;
+	  dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
+			       dv_frame, pitches);
+	  if (dv_frame[1][0]==0   && dv_frame[1][1]==255 &&
+	      dv_frame[2][0]==255 && dv_frame[2][1]==0) {
+	    libdv_pal_yv12 = 0;
+	    mjpeg_info("Detected libdv PAL output YUY2 (4:2:2)");
+	  } else {
+	    libdv_pal_yv12 = 1;
+	    mjpeg_info("Detected libdv PAL output YV12 (4:2:0)");
+	  }
+        }
       }
-      break;
+
+      if (libdv_pal_yv12 == 1) {
+	pitches[0] = decoder->width;
+	pitches[1] = decoder->width / 2;
+	pitches[2] = decoder->width / 2;
+	if (pitches[0] != param->output_width ||
+	    pitches[1] != param->chroma_width) {
+	  mjpeg_error("for DV 4:2:0 only full width output is supported");
+	  res = 1;
+	} else {
+	  dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
+			       frame, pitches);
+	  /* swap the U and V components */
+	  frame_tmp = frame[2];
+	  frame[2] = frame[1];
+	  frame[1] = frame_tmp;
+	}
+	break;
+      }
     case e_dv_sample_411:
     case e_dv_sample_422:
       /* libdv decodes NTSC DV (native 411) and by default also PAL
@@ -467,7 +504,7 @@ void writeoutYUV4MPEGheader(int out_fd,
      case e_dv_sample_420:
        switch (param->chroma) {
        case Y4M_UNKNOWN:
-	 mjpeg_info("set chroma '420paldv' from imput");
+	 mjpeg_info("set chroma '420paldv' from input");
 	 param->chroma = Y4M_CHROMA_420PALDV;
 	 break;
        case Y4M_CHROMA_420PALDV:
