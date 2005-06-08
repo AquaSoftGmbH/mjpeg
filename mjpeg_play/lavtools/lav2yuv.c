@@ -61,7 +61,8 @@ void Usage(char *str)
    "              '420jpeg', '420mpeg2', '420paldv', '422' are available\n"
    "   -o num     Frame offset - skip num frames in the beginning\n"
    "              if num is negative, all but the last num frames are skipped\n"
-   "   -f num     Only num frames are written to stdout (0 means all frames)\n",
+   "   -f num     Only num frames are written to stdout (0 means all frames)\n"
+   "   -x         Exchange fields\n",
   str);
    exit(0);
 }
@@ -187,6 +188,7 @@ int main(argc, argv)
 	char *argv[];
 {
 	int n, nerr = 0;
+	int exchange_fields = 0;
 
 	y4m_accept_extensions(1);
 
@@ -203,7 +205,7 @@ int main(argc, argv)
 	param.dar = y4m_dar_4_3;
 	param.chroma = Y4M_UNKNOWN;
 
-	while ((n = getopt(argc, argv, "mYv:S:T:D:o:f:P:A:C:")) != EOF) {
+	while ((n = getopt(argc, argv, "xmYv:S:T:D:o:f:P:A:C:")) != EOF) {
 		switch (n) {
 
 		case 'v':
@@ -215,6 +217,9 @@ int main(argc, argv)
 			break;
 		case 'm':
 			param.mono = 1;
+			break;
+		case 'x':
+			exchange_fields = 1;
 			break;
 		case 'S':
 			param.scenefile = optarg;
@@ -278,6 +283,19 @@ int main(argc, argv)
 
 	param.output_width = el.video_width;
 	param.output_height = el.video_height;
+	if(exchange_fields) {
+	  if(el.video_inter==LAV_INTER_BOTTOM_FIRST) {
+		mjpeg_info("Exchange from BOTTOM_FIRST to TOP_FIRST");
+	  	el.video_inter=LAV_INTER_TOP_FIRST;
+	  }
+	  else if(el.video_inter==LAV_INTER_TOP_FIRST) {
+		mjpeg_info("Exchange from TOP_FIRST to BOTTOM_FIRST");
+	  	el.video_inter=LAV_INTER_BOTTOM_FIRST;
+	  }
+	  else {
+		mjpeg_warn("Video IS NOT INTERLACED!! Could not exchange fields");
+	  }
+	}
 
 	if (param.offset < 0) {
 		param.offset = el.video_frames + param.offset;
