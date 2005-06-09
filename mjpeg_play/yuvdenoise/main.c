@@ -37,7 +37,7 @@ int Y_radius = 5;
 int U_radius = 5;
 int V_radius = 5;
 
-int temp_Y_thres = 6;
+int temp_Y_thres = 4;
 int temp_U_thres = 6;
 int temp_V_thres = 6;
 
@@ -338,82 +338,6 @@ main (int argc, char *argv[])
 	static uint32_t frame_nr=0;
 	uint8_t * temp[3];
 
-	// prefilter (lowpass) the image as you can't reconstruct the full
-	// spatial resolution either and this helps all parts of the denoiser
-	// and it helps a lot...
-	{
-	int x, y, v;
-	for(y=0;y<lheight;y++)
-		for(x=0;x<lwidth;x++)
-		{
-			v  = *(frame1[0]+(x-2)+(y-2)*lwidth)*1; 
-			v += *(frame1[0]+(x-1)+(y-2)*lwidth)*2;
-			v += *(frame1[0]+(x  )+(y-2)*lwidth)*8;
-			v += *(frame1[0]+(x+1)+(y-2)*lwidth)*2;
-			v += *(frame1[0]+(x+2)+(y-2)*lwidth)*1;
-
-			v += *(frame1[0]+(x-2)+(y-1)*lwidth)*2; 
-			v += *(frame1[0]+(x-1)+(y-1)*lwidth)*4;
-			v += *(frame1[0]+(x  )+(y-1)*lwidth)*16;
-			v += *(frame1[0]+(x+1)+(y-1)*lwidth)*4;
-			v += *(frame1[0]+(x+2)+(y-1)*lwidth)*2;
-
-			v += *(frame1[0]+(x-2)+(y  )*lwidth)*4; 
-			v += *(frame1[0]+(x-1)+(y  )*lwidth)*8;
-			v += *(frame1[0]+(x  )+(y  )*lwidth)*139;
-			v += *(frame1[0]+(x+1)+(y  )*lwidth)*8;
-			v += *(frame1[0]+(x+2)+(y  )*lwidth)*4;
-
-			v += *(frame1[0]+(x-2)+(y+1)*lwidth)*2; 
-			v += *(frame1[0]+(x-1)+(y+1)*lwidth)*4;
-			v += *(frame1[0]+(x  )+(y+1)*lwidth)*16;
-			v += *(frame1[0]+(x+1)+(y+1)*lwidth)*4;
-			v += *(frame1[0]+(x+2)+(y+1)*lwidth)*2;
-
-			v += *(frame1[0]+(x-2)+(y+2)*lwidth)*1; 
-			v += *(frame1[0]+(x-1)+(y+2)*lwidth)*2;
-			v += *(frame1[0]+(x  )+(y+2)*lwidth)*8;
-			v += *(frame1[0]+(x+1)+(y+2)*lwidth)*2;
-			v += *(frame1[0]+(x+2)+(y+2)*lwidth)*1;
-
-			v /= 255;
-			*(frame1[0]+(x  )+(y  )*lwidth)=v;
-		}
-	// yes! this harsh chroma-lowpass is really needed
-	// for PAL and NTSC it adds something similay to the
-	// advanced SECAM color-processing (I'm not sure if
-	// I should make it possible to turn it off for SECAM)
-	for(y=1;y<(cheight-1);y++)
-		for(x=0;x<cwidth;x++)
-		{
-			v  = *(frame1[1]+(x-1)+(y-1)*cwidth);
-			v += *(frame1[1]+(x  )+(y-1)*cwidth);
-			v += *(frame1[1]+(x+1)+(y-1)*cwidth);
-			v += *(frame1[1]+(x-1)+(y  )*cwidth);
-			v += *(frame1[1]+(x  )+(y  )*cwidth);
-			v += *(frame1[1]+(x+1)+(y  )*cwidth);
-			v += *(frame1[1]+(x-1)+(y+1)*cwidth);
-			v += *(frame1[1]+(x  )+(y+1)*cwidth);
-			v += *(frame1[1]+(x+1)+(y+1)*cwidth);
-			
-			v /= 9;
-			*(frame1[1]+(x-1)+(y-1)*cwidth)=v;
-
-			v  = *(frame1[2]+(x-1)+(y-1)*cwidth);
-			v += *(frame1[2]+(x  )+(y-1)*cwidth);
-			v += *(frame1[2]+(x+1)+(y-1)*cwidth);
-			v += *(frame1[2]+(x-1)+(y  )*cwidth);
-			v += *(frame1[2]+(x  )+(y  )*cwidth);
-			v += *(frame1[2]+(x+1)+(y  )*cwidth);
-			v += *(frame1[2]+(x-1)+(y+1)*cwidth);
-			v += *(frame1[2]+(x  )+(y+1)*cwidth);
-			v += *(frame1[2]+(x+1)+(y+1)*cwidth);
-			
-			v /= 9;
-			*(frame1[2]+(x-1)+(y-1)*cwidth)=v;
-		}
-	}
-
 	// motion-compensate frames to the reference frame
 	{
 		int x,y,vx,vy,sx,sy;
@@ -421,7 +345,7 @@ main (int argc, char *argv[])
 		uint32_t sad;
 		uint32_t min;
 
-		int r=4; 
+		int r=6; 
 
 		// blocksize may not(!) be to small for this type of denoiser
 		for(y=0;y<lheight;y+=8)
@@ -599,17 +523,23 @@ main (int argc, char *argv[])
 		for(x=0;x<lwidth;x++)
 		{
 
-		//ref  = *(p3-lwidth);
-		ref = *(p3);
-		//ref += *(p3+lwidth);
-		//ref /= 4;
+		ref  = *(p3-1-lwidth);
+		ref += *(p3  -lwidth);
+		ref += *(p3+1-lwidth);
+		ref += *(p3-1       );
+		ref += *(p3         )*8;
+		ref += *(p3+1       );
+		ref += *(p3-1+lwidth);
+		ref += *(p3  +lwidth);
+		ref += *(p3+1+lwidth);
+		ref /= 16;
 
 		delta_sum = 0;
 		interpolated_pixel = 0;
 
 		mean = ( *(p1)+*(p2)+*(p3)+*(p4)+*(p5) )/5;
 		delta = abs( mean-ref );
-		if (delta<t)
+		if (delta<(t/2)) // half the threshold as this interpolation might introduce ghosts!
 		{
 			delta_sum++;
 			interpolated_pixel += mean;
@@ -618,7 +548,7 @@ main (int argc, char *argv[])
 		{
 			mean = ( *(p2)+*(p3)+*(p4) )/3;
 			delta = abs( mean-ref );
-			if (delta<t)
+			if (delta<(t/2)) // half the threshold as this interpolation might introduce ghosts!
 			{
 				delta_sum++;
 				interpolated_pixel += mean;
@@ -626,7 +556,7 @@ main (int argc, char *argv[])
 
 			mean = ( *(p1)+*(p2)+*(p3) )/3;
 			delta = abs( mean-ref );
-			if (delta<t)
+			if (delta<(t/2))
 			{
 				delta_sum++;
 				interpolated_pixel += mean;
@@ -634,7 +564,7 @@ main (int argc, char *argv[])
 
 			mean = ( *(p3)+*(p4)+*(p5) )/3;
 			delta = abs( mean-ref );
-			if (delta<t)
+			if (delta<(t/2))
 			{
 				delta_sum++;
 				interpolated_pixel += mean;
@@ -659,8 +589,37 @@ main (int argc, char *argv[])
 				}
 	
 			}
-			if (delta_sum==0)
-				interpolated_pixel = *(p3);
+
+			if (delta_sum==0) 
+			// oh shit, this really is bad. as a last resort try if we can find any matching pixels
+			{
+				delta = abs( *(p1)-ref );
+				if (delta<t)
+				{
+					delta_sum++;
+					interpolated_pixel += *(p1);
+				}
+				delta = abs( *(p2)-ref );
+				if (delta<t)
+				{
+					delta_sum++;
+					interpolated_pixel += *(p2);
+				}
+				delta = abs( *(p4)-ref );
+				if (delta<t)
+				{
+					delta_sum++;
+					interpolated_pixel += *(p4);
+				}
+				delta = abs( *(p5)-ref );
+				if (delta<t)
+				{
+					delta_sum++;
+					interpolated_pixel += *(p5);
+				}
+			}
+			if (delta_sum==0) 
+				interpolated_pixel = *(p3); // really give up...
 			else
 				interpolated_pixel /= delta_sum;
 		}
@@ -687,17 +646,23 @@ main (int argc, char *argv[])
 		for(x=0;x<cwidth;x++)
 		{
 
-		ref  = *(p3-cwidth);
-		ref += *(p3);
-		ref += *(p3+cwidth);
-		ref /= 3;
+		ref  = *(p3-1-cwidth);
+		ref += *(p3  -cwidth);
+		ref += *(p3+1-cwidth);
+		ref += *(p3-1       );
+		ref += *(p3         )*8;
+		ref += *(p3+1       );
+		ref += *(p3-1+cwidth);
+		ref += *(p3  +cwidth);
+		ref += *(p3+1+cwidth);
+		ref /= 16;
 
 		delta_sum = 0;
 		interpolated_pixel = 0;
 
 		mean = ( *(p1)+*(p2)+*(p3)+*(p4)+*(p5) )/5;
 		delta = abs( mean-ref );
-		if (delta<t)
+		if (delta<(t/2))
 		{
 			delta_sum++;
 			interpolated_pixel += mean;
@@ -706,7 +671,7 @@ main (int argc, char *argv[])
 		{
 			mean = ( *(p2)+*(p3)+*(p4) )/3;
 			delta = abs( mean-ref );
-			if (delta<t)
+			if (delta<(t/2))
 			{
 				delta_sum++;
 				interpolated_pixel += mean;
@@ -714,7 +679,7 @@ main (int argc, char *argv[])
 
 			mean = ( *(p1)+*(p2)+*(p3) )/3;
 			delta = abs( mean-ref );
-			if (delta<t)
+			if (delta<(t/2))
 			{
 				delta_sum++;
 				interpolated_pixel += mean;
@@ -722,7 +687,7 @@ main (int argc, char *argv[])
 
 			mean = ( *(p3)+*(p4)+*(p5) )/3;
 			delta = abs( mean-ref );
-			if (delta<t)
+			if (delta<(t/2))
 			{
 				delta_sum++;
 				interpolated_pixel += mean;
@@ -774,17 +739,23 @@ main (int argc, char *argv[])
 		for(x=0;x<cwidth;x++)
 		{
 
-		ref  = *(p3-cwidth);
-		ref += *(p3);
-		ref += *(p3+cwidth);
-		ref /= 3;
+		ref  = *(p3-1-cwidth);
+		ref += *(p3  -cwidth);
+		ref += *(p3+1-cwidth);
+		ref += *(p3-1       );
+		ref += *(p3         )*8;
+		ref += *(p3+1       );
+		ref += *(p3-1+cwidth);
+		ref += *(p3  +cwidth);
+		ref += *(p3+1+cwidth);
+		ref /= 16;
 
 		delta_sum = 0;
 		interpolated_pixel = 0;
 
 		mean = ( *(p1)+*(p2)+*(p3)+*(p4)+*(p5) )/5;
 		delta = abs( mean-ref );
-		if (delta<t)
+		if (delta<(t/2))
 		{
 			delta_sum++;
 			interpolated_pixel += mean;
@@ -793,7 +764,7 @@ main (int argc, char *argv[])
 		{
 			mean = ( *(p2)+*(p3)+*(p4) )/3;
 			delta = abs( mean-ref );
-			if (delta<t)
+			if (delta<(t/2))
 			{
 				delta_sum++;
 				interpolated_pixel += mean;
@@ -801,7 +772,7 @@ main (int argc, char *argv[])
 
 			mean = ( *(p1)+*(p2)+*(p3) )/3;
 			delta = abs( mean-ref );
-			if (delta<t)
+			if (delta<(t/2))
 			{
 				delta_sum++;
 				interpolated_pixel += mean;
@@ -809,7 +780,7 @@ main (int argc, char *argv[])
 
 			mean = ( *(p3)+*(p4)+*(p5) )/3;
 			delta = abs( mean-ref );
-			if (delta<t)
+			if (delta<(t/2))
 			{
 				delta_sum++;
 				interpolated_pixel += mean;
@@ -867,7 +838,7 @@ main (int argc, char *argv[])
 			d6  = abs( *(outframe[0]+x+y*lwidth)-*(pixlock6[0]+x+y*lwidth) );
 			d7  = abs( *(outframe[0]+x+y*lwidth)-*(pixlock7[0]+x+y*lwidth) );
 
-			if (d1>4 || d2>4 || d3>4 || d4>4 || d5>4 || d6>4 || d7>4)
+			if (d1>8 || d2>8 || d3>8 || d4>8 || d5>8 || d6>8 || d7>8)
 			{
 				*(outframe[0]+x+y*lwidth) = *(pixlock4[0]+x+y*lwidth);
 			}
