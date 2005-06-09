@@ -391,6 +391,85 @@ main (int argc, char *argv[])
 	static uint32_t frame_nr=0;
 	uint8_t * temp[3];
 
+{
+	// Gauss-filter input-image
+	int x,y,v;
+	if(input_interlaced == Y4M_ILACE_NONE)
+	{
+		for(y=0;y<lheight;y++)
+		for(x=0;x<lwidth;x++)
+		{
+			// 0.75 gauss-filter
+			v  = *(frame1[0]+(x-1)+(y-1)*lwidth);
+			v += *(frame1[0]+(x  )+(y-1)*lwidth)*2;
+			v += *(frame1[0]+(x+1)+(y-1)*lwidth);
+			v += *(frame1[0]+(x-1)+(y  )*lwidth)*2;
+			v += *(frame1[0]+(x  )+(y  )*lwidth)*6;
+			v += *(frame1[0]+(x+1)+(y  )*lwidth)*2;
+			v += *(frame1[0]+(x-1)+(y+1)*lwidth);
+			v += *(frame1[0]+(x  )+(y+1)*lwidth)*2;
+			v += *(frame1[0]+(x+1)+(y+1)*lwidth);
+			v /= 18;
+			*(mc1[0]+x+y*lwidth)=v; // use mc1[x] as temp, gets overwritten later
+		}
+	}
+	else
+	{
+		for(y=0;y<lheight;y++)
+		for(x=0;x<lwidth;x++)
+		{
+			// 0.25 gauss-filter for interlaced luma
+			v  = *(frame1[0]+(x-1)+(y-1)*lwidth);
+			v += *(frame1[0]+(x  )+(y-1)*lwidth)*2;
+			v += *(frame1[0]+(x+1)+(y-1)*lwidth);
+			v += *(frame1[0]+(x-1)+(y  )*lwidth)*2;
+			v += *(frame1[0]+(x  )+(y  )*lwidth)*16;
+			v += *(frame1[0]+(x+1)+(y  )*lwidth)*2;
+			v += *(frame1[0]+(x-1)+(y+1)*lwidth);
+			v += *(frame1[0]+(x  )+(y+1)*lwidth)*2;
+			v += *(frame1[0]+(x+1)+(y+1)*lwidth);
+			v /= 28;
+			*(mc1[0]+x+y*lwidth)=v; // use mc1[x] as temp, gets overwritten later
+		}
+	}
+
+	memset(frame1[1]-cwidth,128,cwidth);
+	memset(frame1[2]-cwidth,128,cwidth);
+	memset(frame1[1]+cwidth*cheight,128,cwidth);
+	memset(frame1[2]+cwidth*cheight,128,cwidth);
+	for(y=0;y<cheight;y++)
+	for(x=0;x<cwidth;x++)
+	{
+		// gauss-filter
+		v  = *(frame1[1]+(x-1)+(y-1)*cwidth);
+		v += *(frame1[1]+(x  )+(y-1)*cwidth)*2;
+		v += *(frame1[1]+(x+1)+(y-1)*cwidth);
+		v += *(frame1[1]+(x-1)+(y  )*cwidth)*2;
+		v += *(frame1[1]+(x  )+(y  )*cwidth)*4;
+		v += *(frame1[1]+(x+1)+(y  )*cwidth)*2;
+		v += *(frame1[1]+(x-1)+(y+1)*cwidth);
+		v += *(frame1[1]+(x  )+(y+1)*cwidth)*2;
+		v += *(frame1[1]+(x+1)+(y+1)*cwidth);
+		v /= 16;
+		*(mc1[1]+x+y*cwidth)=v; // use mc1[x] as temp, gets overwritten later
+		// gauss-filter
+		v  = *(frame1[2]+(x-1)+(y-1)*cwidth);
+		v += *(frame1[2]+(x  )+(y-1)*cwidth)*2;
+		v += *(frame1[2]+(x+1)+(y-1)*cwidth);
+		v += *(frame1[2]+(x-1)+(y  )*cwidth)*2;
+		v += *(frame1[2]+(x  )+(y  )*cwidth)*4;
+		v += *(frame1[2]+(x+1)+(y  )*cwidth)*2;
+		v += *(frame1[2]+(x-1)+(y+1)*cwidth);
+		v += *(frame1[2]+(x  )+(y+1)*cwidth)*2;
+		v += *(frame1[2]+(x+1)+(y+1)*cwidth);
+		v /= 16;
+		*(mc1[2]+x+y*cwidth)=v; // use mc1[x] as temp, gets overwritten later
+	}
+	memcpy(frame1[0],mc1[0],lwidth*lheight);
+	memcpy(frame1[1],mc1[1],cwidth*cheight);
+	memcpy(frame1[2],mc1[2],cwidth*cheight);
+}
+
 	// motion-compensate frames to the reference frame
 	{
 		int x,y,vx,vy,sx,sy;
