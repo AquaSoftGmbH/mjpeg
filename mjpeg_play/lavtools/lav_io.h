@@ -59,6 +59,10 @@ typedef struct
    int         chroma;
 } lav_file_t;
 
+#ifdef HAVE_LIBDV
+extern int libdv_pal_yv12;
+#endif
+
 int  lav_query_APP_marker(char format);
 int  lav_query_APP_length(char format);
 int  lav_query_polarity(char format);

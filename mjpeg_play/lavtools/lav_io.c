@@ -44,6 +44,7 @@ extern int AVI_errno;
 
 static char video_format=' ';
 static int  internal_error=0;
+int libdv_pal_yv12 = -1;
 
 #define ERROR_JPEG      1
 #define ERROR_MALLOC    2
@@ -974,6 +975,8 @@ lav_file_t *lav_open_input_file(char *filename)
 
    /* Check compressor, no further action if not Motion JPEG */
 
+   ierr  = 0;
+
    if(strncasecmp(video_comp,"mjpg",4)!=0 &&
       strncasecmp(video_comp,"mjpa",4)!=0 &&
       strncasecmp(video_comp,"jpeg",4)!=0 )
@@ -1001,7 +1004,6 @@ lav_file_t *lav_open_input_file(char *filename)
 
    /* Make some checks on the video source, we read the first frame for that */
 
-   ierr  = 0;
    frame = NULL;
    if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
    if ( (len = lav_frame_size(lav_fd,0)) <=0 ) goto ERREXIT;
@@ -1194,6 +1196,8 @@ static int check_DV2_input(lav_file_t *lav_fd)
 	double len = 0;
 	unsigned char *frame = NULL;
 	dv_decoder_t *decoder = NULL;
+	uint8_t *output[3] = { NULL, NULL, NULL };
+	uint16_t pitches[3];
 
    /* Make some checks on the video source, we read the first frame for that */
 
@@ -1242,6 +1246,76 @@ static int check_DV2_input(lav_file_t *lav_fd)
 			break;
 		}
 
+	switch(decoder->sampling) {
+	case e_dv_sample_420:
+	  /* libdv decodes PAL DV directly as planar YUV 420
+	   * (YV12 or 4CC 0x32315659) if configured with the flag
+	   * --with-pal-yuv=YV12 which is not (!) the default
+	   */
+	  if (libdv_pal_yv12 < 0 ) {
+	    /* PAL YV12 not already detected.
+	     * Setting decoding options for 4:2:2, because libdv pitches
+	     * is *int* for YUY2 and *uint16_t* for YV12 (no comment...)
+	     * In YV12 mode, even if pitches is 0, the first line is filled.
+	     */
+
+	    pitches[0] = decoder->width * 2;
+	    pitches[1] = 0;
+	    pitches[2] = 0;
+
+	    /* Hacking libdv: set invalid values for chroma. If libdv
+	     * was compiled with PAL YV12, the values are overwritten,
+	     * otherwise (4:2:2 output) only dv_frame[0] is filled and
+	     * chroma planes remain untouched.
+	     */
+	    output[0] = (uint8_t *)malloc(decoder->width * decoder->height * 2);
+	    output[1] = (uint8_t *)malloc(decoder->width * decoder->height / 2);
+	    if (!output[0] || !output[1])
+	    {
+	      ierr=ERROR_MALLOC;
+	      goto ERREXIT;
+	    } else {
+	      output[2] = output[1] + (decoder->width * decoder->height / 4 );
+	      output[1][0] = 0;
+	      output[1][1] = 255;
+	      output[2][0] = 255;
+	      output[2][1] = 0;
+	      dv_decode_full_frame(decoder, frame, e_dv_color_yuv,
+				   output, (int *)pitches);
+	      if (output[1][0]==0   && output[1][1]==255 &&
+		  output[2][0]==255 && output[2][1]==0) {
+		libdv_pal_yv12 = 0;
+		lav_fd->chroma = CHROMA422;
+		mjpeg_info("Detected libdv PAL output YUY2 (4:2:2)");
+	      } else {
+		libdv_pal_yv12 = 1;
+		lav_fd->chroma = CHROMA420;
+		mjpeg_info("Detected libdv PAL output YV12 (4:2:0)");
+	      }
+	      free(output[0]);
+	      free(output[1]);
+	    }
+	  } else {
+	    if(libdv_pal_yv12 == 0)
+	      lav_fd->chroma = CHROMA422;
+	    else
+	      lav_fd->chroma = CHROMA420;
+	  }
+	  break;
+	case e_dv_sample_411:
+	case e_dv_sample_422:
+	   /* libdv decodes NTSC DV (native 411) and by default also PAL
+	    * DV (native 420) as packed YUV 422 (YUY2 or 4CC 0x32595559)
+	    * where the U and V information is repeated.  This can be
+	    * transformed to planar 420 (YV12 or 4CC 0x32315659).
+	    * For NTSC DV this transformation is lossy.
+	    */
+	   lav_fd->chroma = CHROMA422;
+	   break;
+	case e_dv_sample_none:
+	   /* FIXME */
+	   break;
+	}
 	dv_decoder_free(decoder);
 	lav_set_video_position(lav_fd,0);
 	return 0;
@@ -1252,6 +1326,10 @@ ERREXIT:
 		free(frame);
 	if	(decoder)
 		dv_decoder_free(decoder);
+	if	(output[0])
+		free(output[0]);
+	if	(output[1])
+		free(output[1]);
 	if	(ierr)
 		internal_error = ierr;
 	return 1;

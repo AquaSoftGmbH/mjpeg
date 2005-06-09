@@ -350,7 +350,7 @@ typedef struct {
    uint8_t *yuvbuff[3];
 # ifdef	HAVE_LIBDV
    dv_decoder_t *decoder;
-   int pitches[3];
+   uint16_t pitches[3];
 # endif
 #endif
 
@@ -720,6 +720,7 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
 {
    video_playback_setup *settings = (video_playback_setup *)info->settings;
    uint8_t *output[3];
+   uint8_t *frame_tmp;
    EditList *editlist = info->editlist;
 
 
@@ -752,9 +753,26 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
    case DATAFORMAT_DV2:
       dv_parse_header(settings->decoder, jpeg_buffer);
       switch(settings->decoder->sampling) {
-      /* FIXME: not implemented, do default: */
       case e_dv_sample_420:
+	/* libdv decodes PAL DV directly as planar YUV 420
+	 * (YV12 or 4CC 0x32315659) if configured with the flag
+	 * --with-pal-yuv=YV12 which is not (!) the default
+	 */
+	if (libdv_pal_yv12 == 1) {
+	  settings->pitches[0] = settings->decoder->width;
+	  settings->pitches[1] = settings->decoder->width / 2;
+	  settings->pitches[2] = settings->decoder->width / 2;
+	  dv_decode_full_frame(settings->decoder, jpeg_buffer, e_dv_color_yuv,
+			       settings->yuvbuff, (int *)settings->pitches);
+	  /* swap the U and V components */
+	  frame_tmp = settings->yuvbuff[2];
+	  settings->yuvbuff[2] = settings->yuvbuff[1];
+	  settings->yuvbuff[1] = frame_tmp;
+	  frame_planar_to_packed(settings->yuv_overlay->pixels[0], settings->yuvbuff,
+				 editlist->video_width, editlist->video_height,
+				 settings->yuvformat, FOURCC_I420, 1);
 	  break;
+	}
       case e_dv_sample_411:
       case e_dv_sample_422:
          /* libdv decodes NTSC DV (native 411) and by default also PAL
@@ -768,7 +786,7 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
          settings->pitches[2] = 0;
 
 	 dv_decode_full_frame(settings->decoder, jpeg_buffer, e_dv_color_yuv,
-		settings->yuv_overlay->pixels, settings->pitches);
+		settings->yuv_overlay->pixels, (int *)settings->pitches);
 	 break;
       case e_dv_sample_none:
 	 /* FIXME */
