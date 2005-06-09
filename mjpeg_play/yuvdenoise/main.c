@@ -33,6 +33,8 @@ int cheight = 0;
 int input_chroma_subsampling = 0;
 int input_interlaced = 0;
 
+int motionsearch_radius = 6;
+
 int Y_radius = 5;
 int U_radius = 5;
 int V_radius = 5;
@@ -84,18 +86,71 @@ main (int argc, char *argv[])
   y4m_frame_info_t oframeinfo;
   y4m_stream_info_t ostreaminfo;
 
-  while ((c = getopt (argc, argv, "hiy:u:v:")) != -1)
+  mjpeg_log (LOG_INFO, "--------------------------------------------------------------------------");
+  mjpeg_log (LOG_INFO, "mjpeg-tools yuvdenoise version %s",VERSION);
+  mjpeg_log (LOG_INFO, "--------------------------------------------------------------------------");
+
+  while ((c = getopt (argc, argv, "hiy:u:v:r:")) != -1)
     {
       switch (c)
 	{
 	case 'h':
 	  {
-	    mjpeg_log (LOG_INFO, " Usage of the denoiser (very brief this time... :)");
-	    mjpeg_log (LOG_INFO, " will be fixed ASAP...");
-	    mjpeg_log (LOG_INFO, " -y [n]   temporal Y-filter-threshold");
-	    mjpeg_log (LOG_INFO, " -u [n]   temporal U-filter-threshold");
-	    mjpeg_log (LOG_INFO, " -v [n]   temporal V-filter-threshold");
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, " Usage                                                                    ");
+	    mjpeg_log (LOG_INFO, " =====                                                                    ");
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, " This is a motion-compensated-temporal-denoiser for Y4M-Video-Streams. It ");
+	    mjpeg_log (LOG_INFO, " can be used to improve the signal-noise-ratio of a sequence of video-    ");
+	    mjpeg_log (LOG_INFO, " frames. As it needs a lot of frames to be motion-compensated to a given  ");
+	    mjpeg_log (LOG_INFO, " reference-frame in time, it will take some more time to process than the ");
+	    mjpeg_log (LOG_INFO, " video-encoder used (the Motion-Vector-Estimation (MVE) used in this pro- ");
+	    mjpeg_log (LOG_INFO, " gram is sub-optimal in terms of speed and will eventually changed to an  ");
+	    mjpeg_log (LOG_INFO, " EPZS).                                                                   ");
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, " You can use it like this:                                                ");
+	    mjpeg_log (LOG_INFO, " $> cat y4mstream | yuvdenoise [options] | encoder                        ");
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, " Available Options                                                        ");
+	    mjpeg_log (LOG_INFO, " =================                                                        ");
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, " -r [n]   search-radius of the MVE    (default:%i)",motionsearch_radius);
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, " -y [n]   temporal Y-filter-threshold (default:%i)",temp_Y_thres);
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, " -u [n]   temporal U-filter-threshold (default:%i)",temp_U_thres);
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, " -v [n]   temporal V-filter-threshold (default:%i)",temp_V_thres);
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, " Usage-Tips                                                               ");
+	    mjpeg_log (LOG_INFO, " ==========                                                               ");
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, " Do not set the radius of the motion-search to high. This will not only   ");
+	    mjpeg_log (LOG_INFO, " lead to a higher system-load, but it will not dramatically affect the    ");
+	    mjpeg_log (LOG_INFO, " image-quality. So if you want a CPU-hog without quality-improvement set  ");
+	    mjpeg_log (LOG_INFO, " it to 24 or so. Usually a radius of 4-8 is sufficient for denoising.     ");
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, " Keep the Y-threshold low, as the human visual-system is very sensitive   ");
+	    mjpeg_log (LOG_INFO, " for luminance-errors (ghosts will show at scene-changes if you do other- ");
+	    mjpeg_log (LOG_INFO, " wise). But this can be a matter of taste, too...                         ");
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, " -y 4 -u 6 -v 6            works well for sources with low noiselevel     ");
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, " -y 7 -u 10 -v 10          works well for sources with med noiselevel     ");
+	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, " -y 12 -u 16 -v 16         works well for really bad VHS-tapes :)         ");
+	    mjpeg_log (LOG_INFO, "                           Those will remain bad,BTW,but use a lower      ");
+	    mjpeg_log (LOG_INFO, "                           bitrate...                                     ");
+
 	    exit (0);
+	    break;
+	  }
+	case 'r':
+	  {
+	    motionsearch_radius = atoi(optarg);
 	    break;
 	  }
 	case 'i':
@@ -123,8 +178,6 @@ main (int argc, char *argv[])
           exit(1);
 	}
     }
-
-  mjpeg_log (LOG_INFO, "yuvdenoise version %s",VERSION);
 
   /* initialize stream-information */
   y4m_accept_extensions (1);
@@ -345,7 +398,7 @@ main (int argc, char *argv[])
 		uint32_t sad;
 		uint32_t min;
 
-		int r=6; 
+		int r=motionsearch_radius; 
 
 		// blocksize may not(!) be to small for this type of denoiser
 		for(y=0;y<lheight;y+=8)
@@ -357,7 +410,7 @@ main (int argc, char *argv[])
 					frame2[0]+(x)+(y)*lwidth,
 					lwidth,8 )*0.8;
 			vx=vy=bx=by=0;
-			// coarse search
+			if(min>512)
 			for(sy=-r;sy<=r;sy++)
 				for(sx=-r;sx<=r;sx++)
 				{
@@ -396,6 +449,7 @@ main (int argc, char *argv[])
 					frame1[0]+(x+bx)+(y+by)*lwidth,
 					lwidth,8 )*0.8;
 			vx=vy=0;
+			if(min>512)
 			for(sy=(by-r);sy<=(by+r);sy++)
 				for(sx=(bx-r);sx<=(bx+r);sx++)
 				{
@@ -432,6 +486,7 @@ main (int argc, char *argv[])
 					frame4[0]+(x)+(y)*lwidth,
 					lwidth,8 )*0.8;
 			vx=vy=bx=by=0;
+			if(min>512)
 			for(sy=-r;sy<=r;sy++)
 				for(sx=-r;sx<=r;sx++)
 				{
@@ -468,6 +523,7 @@ main (int argc, char *argv[])
 					frame5[0]+(x+bx)+(y+by)*lwidth,
 					lwidth,8 )*0.8;
 			vx=vy=0;
+			if(min>512)
 			for(sy=(by-r);sy<=(by+r);sy++)
 				for(sx=(bx-r);sx<=(bx+r);sx++)
 				{
@@ -838,14 +894,13 @@ main (int argc, char *argv[])
 			d6  = abs( *(outframe[0]+x+y*lwidth)-*(pixlock6[0]+x+y*lwidth) );
 			d7  = abs( *(outframe[0]+x+y*lwidth)-*(pixlock7[0]+x+y*lwidth) );
 
-			if (d1>8 || d2>8 || d3>8 || d4>8 || d5>8 || d6>8 || d7>8)
+			if (d1>4 || d2>4 || d3>4 || d4>4 || d5>4 || d6>4 || d7>4)
 			{
 				*(outframe[0]+x+y*lwidth) = *(pixlock4[0]+x+y*lwidth);
 			}
-#if 0
 			else
 			{
-				if (d1>3 || d2>3 || d3>3 || d4>3 || d5>3 || d6>3 || d7>3)
+				if (d1>2 || d2>2 || d3>2 || d4>2 || d5>2 || d6>2 || d7>2)
 				{
 					*(outframe[0]+x+y*lwidth) = 
 						(
@@ -859,7 +914,6 @@ main (int argc, char *argv[])
 						)/7;
 				}
 			}
-#endif
 		}
 	for(y=0;y<cheight;y++)
 		for(x=0;x<cwidth;x++)
@@ -876,10 +930,9 @@ main (int argc, char *argv[])
 			{
 				*(outframe[1]+x+y*cwidth) = *(pixlock4[1]+x+y*cwidth);
 			}
-#if 0
 			else
 			{
-				if (d1>3 || d2>3 || d3>3 || d4>3 || d5>3 || d6>3 || d7>3)
+				if (d1>2 || d2>2 || d3>2 || d4>2 || d5>2 || d6>2 || d7>2)
 				{
 					*(outframe[1]+x+y*cwidth) = 
 						(
@@ -893,8 +946,8 @@ main (int argc, char *argv[])
 						)/7;
 				}
 			}
-#endif
-			d1  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock1[2]+x+y*cwidth) );
+
+ 			d1  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock1[2]+x+y*cwidth) );
 			d2  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock2[2]+x+y*cwidth) );
 			d3  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock3[2]+x+y*cwidth) );
 			d4  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock4[2]+x+y*cwidth) );
@@ -906,10 +959,9 @@ main (int argc, char *argv[])
 			{
 				*(outframe[2]+x+y*cwidth) = *(pixlock4[2]+x+y*cwidth);
 			}
-#if 0
 			else
 			{
-				if (d1>3 || d2>3 || d3>3 || d4>3 || d5>3 || d6>3 || d7>3)
+				if (d1>2 || d2>2 || d3>2 || d4>2 || d5>2 || d6>2 || d7>2)
 				{
 					*(outframe[2]+x+y*cwidth) = 
 						(
@@ -923,7 +975,6 @@ main (int argc, char *argv[])
 						)/7;
 				}
 			}
-#endif
 		}
 	}
 
@@ -931,7 +982,6 @@ main (int argc, char *argv[])
 	frame_nr++;
 	if(frame_nr>=7)
 		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, outframe);
-//		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, mc3);
 
 	// rotate buffer pointers to rotate input-buffers
 	temp[0] = frame5[0];
