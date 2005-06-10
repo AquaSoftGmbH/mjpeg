@@ -264,7 +264,7 @@ silence_bs=0; silence_ch=0;
         }
     }
 
-      /* The endiat detection copied from mp2enc */
+      /* The endian detection copied from mp2enc */
       fred = 2 | (1 << (sizeof(int)*8-8));
       pfred = (char *)&fred;
 
