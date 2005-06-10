@@ -1392,18 +1392,9 @@ int lav_detect_endian (void)
   pfred = (char *)&fred;
 
   if  (*pfred == 1)
-      {
-      mjpeg_info("System is big endian");
       return 1;
-      }
   else if(*pfred == 2)
-      {
-      mjpeg_info("System is little endian");
       return 0;
-      }
   else
-      {
-      mjpeg_error("Cannot determine if system is big or little endian");
       return -1;
-      }
 }
