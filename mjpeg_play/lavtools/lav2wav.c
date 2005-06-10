@@ -90,7 +90,7 @@ int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int
              wave.common.wBlockAlign = channels*bits/8;
              wave.common.wBitsPerSample = bits;
           }
-        else  /* We have a big endian machine and have to swapp the bytes */
+        else  /* We have a big endian machine and have to swap the bytes */
           {
              temp_16 = WAVE_FORMAT_PCM;
              swab(&temp_16, &wave.common.wFormatTag,2);
