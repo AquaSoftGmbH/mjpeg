@@ -470,9 +470,9 @@ int build_sub22_mests_altivec(BUILD_SUB22_MESTS_PDECL)
 	    /* }}} */
 
 	    /* sads = {sads, sad20, sad02, sad22} {{{ */
-	    vu32(sads) = vec_mergel(vu32(sads), vu32(sad02));
-	    vu32(sad20) = vec_mergel(vu32(sad20), vu32(sad22));
-	    vu32(sads) = vec_mergel(vu32(sads), vu32(sad20));
+	    sads = vu32(vec_mergel(vu32(sads), vu32(sad02)));
+	    sad20 = vu32(vec_mergel(vu32(sad20), vu32(sad22)));
+	    sads = vu32(vec_mergel(vu32(sads), vu32(sad20)));
 	    /* }}} */
 	} /* }}} */
 
