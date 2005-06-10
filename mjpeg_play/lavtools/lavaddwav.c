@@ -93,7 +93,6 @@ void free_video_memory(int ientries);
 void free_audio_memory(int ientries);
 int compare_input_files(int iVidEntries, int iAudEntries);
 long find_max_frame_size(int ientries);
-int detect_endian(void);
 
 /* Global variables */
 int verbose = 1;
@@ -192,11 +191,9 @@ int main(int argc, char **argv)
   handle_args(argc, argv);
 
   /* Are we big or little endian? */
-  big_endian = detect_endian();
+  big_endian = lav_detect_endian();
   if( big_endian < 0 )
-  {
     exit(1);
-  }
 
   /* Check for enough string space for output filename */
   if( strlen(argv[optind+2]) > (sizeof(chOutFile)-2) )
@@ -1238,31 +1235,3 @@ long find_max_frame_size(int ientries)
 
 }
 /********************************************************************/
-
-
-int detect_endian (void)
-{
-  unsigned int fred;
-  char *pfred;
-
-  /* The endian detection based on that in lavtrans */
-  fred = 2 | (1 << (sizeof(int)*8-8));
-  pfred = (char *)&fred;
-
-  if(*pfred == 1)
-  {
-    mjpeg_info("System is big endian");
-    return 1;
-  }
-  else if(*pfred == 2)
-  {
-    mjpeg_info("System is little endian");
-    return 0;
-  }
-  else
-  {
-    mjpeg_error("Cannot determine if system is big or little endian");
-    return -1;
-  }
-
-}

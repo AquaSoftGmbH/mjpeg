@@ -74,7 +74,7 @@ static char format=0;
 
 static int process_image_frame = -1; /* All, >-1 means not all */
 
-#define FOURCC(a,b,c,d) ( (d<<24) | ((c&0xff)<<16) | ((b&0xff)<<8) | (a&0xff) )
+#define FOURCC(a,b,c,d) ((d<<24) | ((c&0xff)<<16) | ((b&0xff)<<8) | (a&0xff))
 
 #define FOURCC_RIFF     FOURCC ('R', 'I', 'F', 'F')
 #define FOURCC_WAVE     FOURCC ('W', 'A', 'V', 'E')
@@ -99,41 +99,13 @@ static struct
 } wave_hdr;
 
 static uint8_t abuff[16384];
-unsigned int fred; /* needed for endian detection */
-char *pfred;       /* needed for endian detection */
-int big_endian;    /* and that too ;) */
-
+int big_endian;
 int	verbose = 1;
 
 /* Prototype definitions */
 void Usage(char *str);
 void system_error(const char *str1, const char *str2);
-void detect_endian (void);
 void initwav_hdr(void);
-
-/* The rest of the code */
-void detect_endian ()
-{
-  /* The endian detection copied from mp2enc */
-    fred = 2 | (1 << (sizeof(int)*8-8));
-    pfred = (char *)&fred;
-
-    if(*pfred == 1)
-      {
-         big_endian = 1;
-         mjpeg_info("System is big endian");
-      }
-    else if(*pfred == 2)
-      {
-         big_endian = 0;
-         mjpeg_info("System is little endian");
-      }
-    else
-      {
-         mjpeg_error("Can not determine if system is big/little endian");
-         mjpeg_error_exit1("Are you running on a Cray - or what?");
-      }
-}
 
 void initwav_hdr()
 {
@@ -178,7 +150,7 @@ int main(int argc, char ** argv)
    int res, n, nv = 0, na = 0, nframe;
    int forcestereo = 0;
 
-   while( (n=getopt(argc,argv,"o:f:i:v:")) != EOF)
+   while ((n=getopt(argc,argv,"o:f:i:v:")) != EOF)
    {
       switch(n) {
 		  
@@ -195,7 +167,7 @@ int main(int argc, char ** argv)
 		  break;
       case 'v':
 		  verbose = atoi (optarg);
-		  if( verbose < 0 || verbose >2 )
+		  if (verbose < 0 || verbose >2)
 		  {
 			  Usage (argv[0]);
 			  exit (1);
@@ -210,22 +182,24 @@ int main(int argc, char ** argv)
 
    (void)mjpeg_default_handler_verbosity(verbose);
 
-   detect_endian();
+   big_endian = lav_detect_endian();
+   if (big_endian < 0)
+      exit(1);
 
-   if(outfile==0) Usage(argv[0]);
-   if(optind>=argc) Usage(argv[0]);
-   if(outfile != 0 && format == 0) {
-      if((dotptr = strrchr(outfile, '.'))) {
+   if (outfile==0) Usage(argv[0]);
+   if (optind>=argc) Usage(argv[0]);
+   if (outfile != 0 && format == 0) {
+      if ((dotptr = strrchr(outfile, '.'))) {
 #ifdef HAVE_LIBQUICKTIME
-            if(!strcasecmp(dotptr+1, "mov") || !strcasecmp(dotptr+1, "qt")
+            if (!strcasecmp(dotptr+1, "mov") || !strcasecmp(dotptr+1, "qt")
                || !strcasecmp(dotptr+1, "moov")) format = 'q';
 #endif
-            if(!strcasecmp(dotptr+1, "avi")) format = 'a';
-            if(!strcasecmp(dotptr+1, "wav")) format = 'w';
+            if (!strcasecmp(dotptr+1, "avi")) format = 'a';
+            if (!strcasecmp(dotptr+1, "wav")) format = 'w';
          }
-      if(format == '\0') format = 'a';
+      if (format == '\0') format = 'a';
    }
-   if(format!='a' && format!='q' && format!='i' && format!='w' && format!='A' && format!='W') Usage(argv[0]);
+   if (format!='a' && format!='q' && format!='i' && format!='w' && format!='A' && format!='W') Usage(argv[0]);
 
    if (process_image_frame != -1 && format!='i')
    {
@@ -238,35 +212,35 @@ int main(int argc, char ** argv)
    read_video_files(argv + optind, argc - optind, &el,0);
 
 
-   if(format == 'a' && el.video_inter == LAV_INTER_BOTTOM_FIRST) format = 'A';
+   if (format == 'a' && el.video_inter == LAV_INTER_BOTTOM_FIRST) format = 'A';
 
-   if((format == 'q') && el.video_inter == LAV_INTER_BOTTOM_FIRST)
+   if ((format == 'q') && el.video_inter == LAV_INTER_BOTTOM_FIRST)
    {
       mjpeg_error_exit1("Output is Quicktime - wrong interlacing order");
    }
 
-   if(format == 'q' || format == 'a' || format == 'A')
+   if (format == 'q' || format == 'a' || format == 'A')
    {
       outfd = lav_open_output_file(outfile,format,
                                    el.video_width,el.video_height,el.video_inter, 
                                    el.video_fps /* was:video_norm=='n' ? 30000.0/1001.0 : 25.0*/ ,
                                    el.audio_bits,el.audio_chans,el.audio_rate);
-      if(!outfd)
+      if (!outfd)
       {
 		  mjpeg_error_exit1("Opening output file %s: %s",
 					  outfile,lav_strerror());
       }
    }
 
-   if(format == 'w' || format == 'W')
+   if (format == 'w' || format == 'W')
    {
-      if(!el.has_audio)
+      if (!el.has_audio)
       {
          mjpeg_error_exit1("WAV output requested but no audio present");
       }
-      if( format == 'W' )
+      if (format == 'W')
       {
-          if( el.audio_bits == 16 && el.audio_chans == 1 )
+          if (el.audio_bits == 16 && el.audio_chans == 1)
 		forcestereo = 1;
           else
           {
@@ -289,13 +263,13 @@ int main(int argc, char ** argv)
 	 }
 
       wavfd = fopen(outfile,"wb");
-      if(wavfd==0) system_error("opening WAV file","fopen");
+      if (wavfd==0) system_error("opening WAV file","fopen");
       res = fwrite(&wave_hdr,sizeof(wave_hdr),1,wavfd);
-      if(res!=1) system_error("writing WAV file","fwrite");
+      if (res!=1) system_error("writing WAV file","fwrite");
    }
 
    vbuff = (uint8_t*) malloc(el.max_frame_size);
-   if(vbuff==0) { mjpeg_error_exit1("malloc failed");  }
+   if (vbuff==0) { mjpeg_error_exit1("malloc failed");  }
 
    /* Quick hack by Ronald to enable one-frame picture grabbing */
    if (process_image_frame != -1)
@@ -303,9 +277,9 @@ int main(int argc, char ** argv)
       nv = el_get_video_frame(vbuff, process_image_frame, &el);
       sprintf(imgfname,outfile);
       imgfd = fopen(imgfname,"wb");
-      if(imgfd==0) system_error("opening image file","fopen");
+      if (imgfd==0) system_error("opening image file","fopen");
       res = fwrite(vbuff,nv,1,imgfd);
-      if(res!=1) system_error("writing image","fwrite");
+      if (res!=1) system_error("writing image","fwrite");
       fclose(imgfd);
       mjpeg_info("Frame %d grabbed", process_image_frame);
       exit(1);
@@ -324,9 +298,9 @@ int main(int argc, char ** argv)
          case 'A':
          case 'q':
             res = lav_write_frame(outfd,vbuff,nv,1);
-            if(el.has_audio && res==0)
+            if (el.has_audio && res==0)
                res = lav_write_audio(outfd,abuff,na/el.audio_bps);
-            if(res)
+            if (res)
             {
                mjpeg_error_exit1("Error writing output: %s",lav_strerror());
             }
@@ -335,23 +309,23 @@ int main(int argc, char ** argv)
          case 'i':
             sprintf(imgfname,outfile,nframe);
             imgfd = fopen(imgfname,"wb");
-            if(imgfd==0) system_error("opening image file","fopen");
+            if (imgfd==0) system_error("opening image file","fopen");
             res = fwrite(vbuff,nv,1,imgfd);
-            if(res!=1) system_error("writing image","fwrite");
+            if (res!=1) system_error("writing image","fwrite");
             fclose(imgfd);
             break;
 
          case 'w':
          case 'W':
-	    if( forcestereo  )
+	    if (forcestereo)
 	    {
 		/* Double up the samples */
 	        int i;
                 short *sbuff = (short *)abuff;
-                for( i = na-1; i >= 0; --i )
-                {
+                for (i = na-1; i >= 0; --i)
+                  {
 		  sbuff[i+i+1]=sbuff[i+i]=sbuff[i];
-                }
+                  }
 		na = na + na;
                 res = fwrite(abuff,na,1,wavfd);
  	    }
@@ -359,29 +333,29 @@ int main(int argc, char ** argv)
             {
               res = fwrite(abuff,na,1,wavfd);
             }
-            if(res!=1) system_error("writing WAV file","fwrite");
+            if (res!=1) system_error("writing WAV file","fwrite");
             audio_bytes_out += na;
             break;
       }
    }
 
-   if(format == 'q' || format == 'a' || format == 'A')
+   if (format == 'q' || format == 'a' || format == 'A')
    {
       res = lav_close(outfd);
-      if(res)
+      if (res)
       {
          mjpeg_error_exit1("Closing output file: %s",lav_strerror());
       }
    }
 
-   if(format == 'w' || format == 'W')
+   if (format == 'w' || format == 'W')
    {
      wave_hdr.rifflen = reorder_32(sizeof(wave_hdr) -8+ audio_bytes_out, big_endian);
       wave_hdr.datalen = reorder_32(audio_bytes_out, big_endian);
       res = fseek(wavfd,0,SEEK_SET);
-      if(res) system_error("writing WAV file","fseek");
+      if (res) system_error("writing WAV file","fseek");
       res = fwrite(&wave_hdr,sizeof(wave_hdr),1,wavfd);
-      if(res!=1) system_error("writing WAV file","fwrite");
+      if (res!=1) system_error("writing WAV file","fwrite");
       fclose(wavfd);
    }
    return 0;

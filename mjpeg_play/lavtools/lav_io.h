@@ -95,4 +95,5 @@ int  lav_get_field_size(uint8_t * jpegdata, long jpeglen);
 const char *lav_strerror(void);
 int  lav_fileno( lav_file_t *lav_file );
 uint32_t reorder_32(uint32_t, int);
+int  lav_detect_endian (void);
 #endif

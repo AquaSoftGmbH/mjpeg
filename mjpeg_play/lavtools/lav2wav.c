@@ -225,8 +225,6 @@ char    **argv;
 	int num_frames = -1;
         int ignore_bitrate = 0;
 	int fragments;
-        unsigned int fred;
-        char *pfred;
    
 silence_sr=0; /* silence_sr is use for detecting if the -r option is used */
 silence_bs=0; silence_ch=0; 
@@ -264,25 +262,9 @@ silence_bs=0; silence_ch=0;
         }
     }
 
-      /* The endian detection copied from mp2enc */
-      fred = 2 | (1 << (sizeof(int)*8-8));
-      pfred = (char *)&fred;
-
-      if(*pfred == 1)
-      {
-         big_endian = 1;
-         mjpeg_info("System is big endian");
-      }
-      else if(*pfred == 2)
-      {
-         big_endian = 0;
-                 mjpeg_info("System is little endian");
-      }
-      else
-      {
-         mjpeg_error("Can not determine if system is big/little endian");
-         mjpeg_error_exit1("Are you running on a Cray - or what?");
-      }
+    big_endian = lav_detect_endian();
+    if (big_endian < 0)
+	exit(1);
 
     /* Open editlist */
 	if( argc-optind < 1)
