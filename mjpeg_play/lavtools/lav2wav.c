@@ -280,7 +280,7 @@ silence_bs=0; silence_ch=0;
       }
       else
       {
-         mjpeg_error("Can not determine if system is big/lttle endian");
+         mjpeg_error("Can not determine if system is big/little endian");
          mjpeg_error_exit1("Are you running on a Cray - or what?");
       }
 
