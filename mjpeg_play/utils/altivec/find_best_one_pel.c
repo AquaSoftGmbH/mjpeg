@@ -297,9 +297,9 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 	/* }}} */
 
 	/* sads = {sad00, sad10, sad01, sad11} {{{ */
-	vu32(sad00) = vec_mergel(vu32(sad00), vu32(sad01));            
-	vu32(sad10) = vec_mergel(vu32(sad10), vu32(sad11));            
-	vu32(sads) = vec_mergel(vu32(sad00), vu32(sad10));      
+	sad00 = vu32(vec_mergel(vu32(sad00), vu32(sad01)));
+	sad10 = vu32(vec_mergel(vu32(sad10), vu32(sad11)));
+	sads = vu32(vec_mergel(vu32(sad00), vu32(sad10)));
 	/* }}} */
 
 #ifdef VERIFY_FIND_BEST_ONE_PEL /* {{{ */
