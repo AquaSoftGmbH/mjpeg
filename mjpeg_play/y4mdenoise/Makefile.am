@@ -8,6 +8,9 @@ AM_CXXFLAGS = -DNDEBUG -finline-functions @PROGRAM_NOPIC@
 INCLUDES =  -I$(top_srcdir) -I$(includedir) -I$(top_srcdir)/utils
 
 LIBMJPEGUTILS = $(top_builddir)/utils/libmjpegutils.la
+if HAVE_ALTIVEC
+LIBMJPEGUTILS += $(top_builddir)/mpeg2enc/libmpeg2encpp.la
+endif
 
 bin_PROGRAMS = y4mdenoise
 

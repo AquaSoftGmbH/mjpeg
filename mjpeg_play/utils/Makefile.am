@@ -13,8 +13,6 @@ EXTRA_DIST = cpuinfo.c
 
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/utils
 
-bin_PROGRAMS = mjpeg_simd_helper
-
 lib_LTLIBRARIES = libmjpegutils.la
 
 if HAVE_ALTIVEC
@@ -55,8 +53,5 @@ pkginclude_HEADERS = \
 	mpegconsts.h \
 	mpegtimecode.h \
 	yuv4mpeg.h
-
-mjpeg_simd_helper_SOURCES = mjpeg_simd_helper.c
-mjpeg_simd_helper_LDADD = libmjpegutils.la
 
 MAINTAINERCLEANFILES = Makefile.in

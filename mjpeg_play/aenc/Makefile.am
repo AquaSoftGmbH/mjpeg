@@ -27,3 +27,6 @@ noinst_HEADERS = \
 	wav_io.h
 
 mp2enc_LDADD = $(top_builddir)/utils/libmjpegutils.la $(LIBM_LIBS)
+if HAVE_ALTIVEC
+mp2enc_LDADD += $(top_builddir)/mpeg2enc/libmpeg2encpp.la
+endif

@@ -7,6 +7,9 @@ AM_CPPFLAGS = -I$(top_srcdir) -I$(includedir) -I$(top_srcdir)/utils \
 
 
 LIBMJPEGUTILS = $(top_builddir)/utils/libmjpegutils.la
+if HAVE_ALTIVEC
+LIBMJPEGUTILS += $(top_builddir)/mpeg2enc/libmpeg2encpp.la
+endif
 
 # *********************************************************************
 # Support lib
@@ -57,6 +60,7 @@ liblavplay_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
 # The tools themselves
 
 bin_PROGRAMS = \
+	mjpeg_simd_helper \
 	lav2wav \
 	lav2yuv \
 	yuvmedianfilter \
@@ -115,6 +119,9 @@ noinst_HEADERS = \
 	lav2wav.h \
 	yuvscaler.h \
 	yuvcorrect.h
+
+mjpeg_simd_helper_SOURCES = mjpeg_simd_helper.c
+mjpeg_simd_helper_LDADD = $(LIBMJPEGUTILS)
 
 ypipe_SOURCES = ypipe.c
 ypipe_LDADD = $(LIBMJPEGUTILS)

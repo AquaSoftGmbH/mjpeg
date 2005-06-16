@@ -1,11 +1,19 @@
 # Process with automake to produce Makefile.in
 
+# NOTE:  utils and mpeg2enc MUST be built first so that libmjpegutils AND
+#        libmpeg2encpp exist.  Then in the following Makefile.am files if
+#        HAVE_ALTIVEC is defined libmpeg2encpp will be added to the list of
+#        libraries dependencies.  All this because utils/altivec/libaltivec.la
+#        contains routines which  which should have gone into the encoder
+#        library libmpeg2encpp.  Sigh.  Feel free to do it differently if you
+#        can come up with a better method.
+
 SUBDIRS = \
 	utils \
+	mpeg2enc \
 	lavtools \
 	aenc \
 	mplex \
-	mpeg2enc \
 	scripts \
 	docs \
 	yuvdenoise \

@@ -8,6 +8,9 @@ noinst_LTLIBRARIES = libyuvfilters.la
 
 AM_CPPFLAGS = -I$(top_srcdir)/utils
 MJPEGLIB = $(top_builddir)/utils/libmjpegutils.la
+if HAVE_ALTIVEC
+MJPEGLIB += $(top_builddir)/mpeg2enc/libmpeg2encpp.la
+endif
 
 libyuvfilters_la_SOURCES = \
 	addtask.c \
