@@ -111,7 +111,7 @@ void iquant_non_intra_m1_altivec(IQUANT_NON_INTRA_PDECL)
     i = (64/8) - 1;
     do {
 	/* inter_q[i] * mquant */
-	vu16(vqmat) = vec_mulo(vu8(vqmat), vu8(vmquant));
+	vqmat = vu16(vec_mulo(vu8(vqmat), vu8(vmquant)));
 
 	ltzero = vec_cmplt(vsrc, zero);
 	eqzero = vec_cmpeq(vsrc, zero);
@@ -159,7 +159,7 @@ void iquant_non_intra_m1_altivec(IQUANT_NON_INTRA_PDECL)
     } while (--i);
 
     /* inter_q[i] * mquant */
-    vu16(vqmat) = vec_mulo(vu8(vqmat), vu8(vmquant));
+    vqmat = vu16(vec_mulo(vu8(vqmat), vu8(vmquant)));
 
     ltzero = vec_cmplt(vsrc, zero);
     eqzero = vec_cmpeq(vsrc, zero);
@@ -280,7 +280,7 @@ void iquant_non_intra_m2_altivec(IQUANT_NON_INTRA_PDECL)
     i = (64/8) - 1;
     do {
 	/* inter_q[i] * mquant */
-	vu16(vqmat) = vec_mulo(vu8(vqmat), vu8(vmquant));
+	vqmat = vu16(vec_mulo(vu8(vqmat), vu8(vmquant)));
 
 	ltzero = vec_cmplt(vsrc, zero);
 	eqzero = vec_cmpeq(vsrc, zero);
@@ -324,7 +324,7 @@ void iquant_non_intra_m2_altivec(IQUANT_NON_INTRA_PDECL)
     } while (--i);
 
     /* inter_q[i] * mquant */
-    vu16(vqmat) = vec_mulo(vu8(vqmat), vu8(vmquant));
+    vqmat = vu16(vec_mulo(vu8(vqmat), vu8(vmquant)));
 
     ltzero = vec_cmplt(vsrc, zero);
     eqzero = vec_cmpeq(vsrc, zero);

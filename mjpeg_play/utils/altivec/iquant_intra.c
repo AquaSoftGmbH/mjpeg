@@ -124,7 +124,7 @@ void iquant_intra_m1_altivec(IQUANT_INTRA_PDECL)
     i = (64/8) - 1;
     do {
 	/* intra_q[i] * mquant */
-	vu16(vqmat) = vec_mulo(vu8(vqmat), vu8(vmquant));
+	vqmat = vu16(vec_mulo(vu8(vqmat), vu8(vmquant)));
 
 	/* save sign */
 	ltzero = vec_cmplt(vsrc, zero);
@@ -164,7 +164,7 @@ void iquant_intra_m1_altivec(IQUANT_INTRA_PDECL)
 	vec_st(val, offset2, dst);
     } while (--i);
     /* intra_q[i] * mquant */
-    vu16(vqmat) = vec_mulo(vu8(vqmat), vu8(vmquant));
+    vqmat = vu16(vec_mulo(vu8(vqmat), vu8(vmquant)));
 
     /* save sign */
     ltzero = vec_cmplt(vsrc, zero);
@@ -330,7 +330,7 @@ void iquant_intra_m2_altivec(IQUANT_INTRA_PDECL)
     i = (64/8) - 1;
     do {
 	/* intra_q[i] * mquant */
-	vu16(vqmat) = vec_mulo(vu8(vqmat), vu8(vmquant));
+	vqmat = vu16(vec_mulo(vu8(vqmat), vu8(vmquant)));
 
 	/* save sign */
 	ltzero = vec_cmplt(vsrc, zero);
@@ -366,7 +366,7 @@ void iquant_intra_m2_altivec(IQUANT_INTRA_PDECL)
 	vec_st(val, offset2, dst);
     } while (--i);
     /* intra_q[i] * mquant */
-    vu16(vqmat) = vec_mulo(vu8(vqmat), vu8(vmquant));
+    vqmat = vu16(vec_mulo(vu8(vqmat), vu8(vmquant)));
 
     /* save sign */
     ltzero = vec_cmplt(vsrc, zero);
