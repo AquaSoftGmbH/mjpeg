@@ -62,6 +62,7 @@ void Usage(char *str)
    "   -o num     Frame offset - skip num frames in the beginning\n"
    "              if num is negative, all but the last num frames are skipped\n"
    "   -f num     Only num frames are written to stdout (0 means all frames)\n"
+   "   -c         Conceal corrupt jpeg frames by repeating previous frame\n"
    "   -x         Exchange fields\n",
   str);
    exit(0);
@@ -74,12 +75,16 @@ static int scene_num;
 static int scene_start;
 
 LavParam param;
-uint8_t *frame_buf[3];
+uint8_t *frame_bufs[6];
+
+static int conceal_errframes;
+static int altbuf;
 
 void streamout(void)
 {
 
 	int framenum, movie_num=0, index[MAX_EDIT_LIST_FILES];
+	int concealnum = 0;
 	long int oldframe=N_EL_FRAME(el.frame_list[0])-1;
 	FILE *fd=NULL;
 
@@ -132,7 +137,30 @@ void streamout(void)
 
 	for (framenum = param.offset; framenum < (param.offset + param.frames); ++framenum) 
 	{
-	  readframe(framenum, frame_buf, &param, el);
+		int rf;
+		uint8_t **read_buf;
+		uint8_t **frame_buf;
+		if(conceal_errframes)
+			read_buf = &frame_bufs[4 * (altbuf ^ 1)];
+		else
+			read_buf = &frame_bufs[0];
+		
+		rf = readframe(framenum, read_buf, &param, el);
+		if(conceal_errframes) {
+			if(rf == 2) {  // corrupt frame; repeat previous
+				mjpeg_debug("corrupt jpeg data in frame %d; repeating previous frame.", framenum);
+				frame_buf = &frame_bufs[4 * altbuf];
+				concealnum++;
+			} else {  // use new frame
+				frame_buf = read_buf;
+				altbuf ^= 1;
+			}
+		} else {
+			if(rf == 2)
+				mjpeg_debug("corrupt jpeg data in frame %d", framenum);
+			frame_buf = &frame_bufs[0];
+		}
+		
 		if (param.scenefile) 
 		{
 			lum_mean =
@@ -173,6 +201,7 @@ void streamout(void)
 		    mjpeg_error("Failed to write frame: %s", y4m_strerr(i));
 		}
 	}
+	mjpeg_info( "Repeated frames (for error concealment): %d", concealnum);
 	if (param.scenefile)
 	{
 		fprintf(fd, "%s %ld\n", temp, N_EL_FRAME(el.video_frames-1));
@@ -205,7 +234,7 @@ int main(argc, argv)
 	param.dar = y4m_dar_4_3;
 	param.chroma = Y4M_UNKNOWN;
 
-	while ((n = getopt(argc, argv, "xmYv:S:T:D:o:f:P:A:C:")) != EOF) {
+	while ((n = getopt(argc, argv, "xmYv:S:T:D:o:f:P:A:C:c")) != EOF) {
 		switch (n) {
 
 		case 'v':
@@ -220,6 +249,9 @@ int main(argc, argv)
 			break;
 		case 'x':
 			exchange_fields = 1;
+			break;
+		case 'c':
+			conceal_errframes = 1;
 			break;
 		case 'S':
 			param.scenefile = optarg;
@@ -313,8 +345,9 @@ int main(argc, argv)
 
 	param.interlace = el.video_inter;
 
-
-	init(&param, frame_buf /*&buffer*/);
+	init(&param, &frame_bufs[0] /*&buffer*/);
+	if(conceal_errframes)
+		init(&param, &frame_bufs[4] /*&buffer*/);
 
 #ifdef HAVE_LIBDV
 	lav_init_dv_decoder();

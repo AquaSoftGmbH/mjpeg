@@ -276,6 +276,10 @@ jpeg_buffer_dest (j_compress_ptr cinfo, unsigned char *buf, long len)
 struct my_error_mgr {
    struct jpeg_error_mgr pub;   /* "public" fields */
    jmp_buf setjmp_buffer;       /* for return to caller */
+
+	/* original emit_message method */
+   JMETHOD(void, original_emit_message, (j_common_ptr cinfo, int msg_level));
+   int warning_seen;		/* was a corrupt-data warning seen */
 };
 
 static void my_error_exit (j_common_ptr cinfo)
@@ -289,6 +293,18 @@ static void my_error_exit (j_common_ptr cinfo)
 
    /* Return control to the setjmp point */
    longjmp (myerr->setjmp_buffer, 1);
+}
+
+static void my_emit_message (j_common_ptr cinfo, int msg_level)
+{
+   /* cinfo->err really points to a my_error_mgr struct, so coerce pointer */
+   struct my_error_mgr *myerr = (struct my_error_mgr *) cinfo->err;
+
+   if(msg_level < 0)
+	   myerr->warning_seen = 1;
+
+   /* call original emit_message() */
+   (myerr->original_emit_message)(cinfo, msg_level);
 }
 
 #define MAX_LUMA_WIDTH   4096
@@ -432,6 +448,12 @@ static void guarantee_huff_tables(j_decompress_ptr dinfo)
  *                  2: Interlaced, Bottom field first
  * ctype            Chroma format for decompression.
  *                  Currently only CHROMA420 and CHROMA422 are available
+ * returns:
+ *	-1 on fatal error
+ *	0 on success
+ *	1 if jpeg lib threw a "corrupt jpeg data" warning.  
+ *		in this case, "a damaged output image is likely."
+ *	
  */
 
 int decode_jpeg_raw (unsigned char *jpeg_data, int len,
@@ -459,6 +481,10 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
    /* We set up the normal JPEG error routines, then override error_exit. */
    dinfo.err = jpeg_std_error (&jerr.pub);
    jerr.pub.error_exit = my_error_exit;
+   /* also hook the emit_message routine to note corrupt-data warnings */
+   jerr.original_emit_message = jerr.pub.emit_message;
+   jerr.pub.emit_message = my_emit_message;
+   jerr.warning_seen = 0;
 
    /* Establish the setjmp return context for my_error_exit to use. */
    if (setjmp (jerr.setjmp_buffer)) {
@@ -722,7 +748,10 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
      }
 
    jpeg_destroy_decompress (&dinfo);
-   return 0;
+   if(jerr.warning_seen)
+	   return 1;
+   else
+	   return 0;
 
  ERR_EXIT:
    jpeg_destroy_decompress (&dinfo);

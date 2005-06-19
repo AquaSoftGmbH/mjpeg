@@ -284,8 +284,15 @@ void init(LavParam *param, uint8_t *buffer[])
 }
 
 
-
-
+/*
+ * readframe - read jpeg or dv frame into yuv buffer
+ *
+ * returns:
+ *	0   success
+ *	1   fatal error
+ *	2   corrupt data encountered; 
+ *		decoding can continue, but this frame may be damaged 
+ */
 int readframe(int numframe, 
 	      uint8_t *frame[],
 	      LavParam *param,
@@ -293,6 +300,8 @@ int readframe(int numframe,
 {
   int len, i, res, data_format;
   uint8_t *frame_tmp;
+  int warn;
+  warn = 0;
 
   if (MAX_JPEG_LEN < el.max_frame_size) {
     mjpeg_error_exit1( "Max size of JPEG frame = %ld: too big",
@@ -386,10 +395,13 @@ int readframe(int numframe,
 			  frame[0], frame[1], frame[2]);
   }
   
-  if (res) {
-    mjpeg_warn( "Decoding of Frame %d failed", numframe);
-    /* TODO: Selective exit here... */
+  if (res < 0) {
+    mjpeg_warn( "Fatal Error Decoding Frame %d", numframe);
     return 1;
+  } else if (res == 1) {
+    mjpeg_warn( "Decoding of Frame %d failed", numframe);
+    warn = 1;
+    res = 0;
   }
   
   
@@ -401,8 +413,11 @@ int readframe(int numframe,
       frame[2][i] = 0x80;
     }
   }
-  return 0;
-  
+
+  if(warn)
+	  return 2;
+  else
+	  return 0;
 }
 
 
