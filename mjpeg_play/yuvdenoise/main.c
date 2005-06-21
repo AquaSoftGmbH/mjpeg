@@ -33,15 +33,15 @@ int cheight = 0;
 int input_chroma_subsampling = 0;
 int input_interlaced = 0;
 
-int motionsearch_radius = 6;
+int motionsearch_radius = 4;
 
 int Y_radius = 5;
 int U_radius = 5;
 int V_radius = 5;
 
 int temp_Y_thres = 4;
-int temp_U_thres = 6;
-int temp_V_thres = 6;
+int temp_U_thres = 8;
+int temp_V_thres = 8;
 
 uint8_t *frame1[3];
 uint8_t *frame2[3];
@@ -391,85 +391,8 @@ main (int argc, char *argv[])
 	static uint32_t frame_nr=0;
 	uint8_t * temp[3];
 
-{
-	// Gauss-filter input-image
-	int x,y,v;
-	if(input_interlaced == Y4M_ILACE_NONE)
-	{
-		for(y=0;y<lheight;y++)
-		for(x=0;x<lwidth;x++)
-		{
-			// 0.75 gauss-filter
-			v  = *(frame1[0]+(x-1)+(y-1)*lwidth);
-			v += *(frame1[0]+(x  )+(y-1)*lwidth)*2;
-			v += *(frame1[0]+(x+1)+(y-1)*lwidth);
-			v += *(frame1[0]+(x-1)+(y  )*lwidth)*2;
-			v += *(frame1[0]+(x  )+(y  )*lwidth)*6;
-			v += *(frame1[0]+(x+1)+(y  )*lwidth)*2;
-			v += *(frame1[0]+(x-1)+(y+1)*lwidth);
-			v += *(frame1[0]+(x  )+(y+1)*lwidth)*2;
-			v += *(frame1[0]+(x+1)+(y+1)*lwidth);
-			v /= 18;
-			*(mc1[0]+x+y*lwidth)=v; // use mc1[x] as temp, gets overwritten later
-		}
-	}
-	else
-	{
-		for(y=0;y<lheight;y++)
-		for(x=0;x<lwidth;x++)
-		{
-			// 0.25 gauss-filter for interlaced luma
-			v  = *(frame1[0]+(x-1)+(y-1)*lwidth);
-			v += *(frame1[0]+(x  )+(y-1)*lwidth)*2;
-			v += *(frame1[0]+(x+1)+(y-1)*lwidth);
-			v += *(frame1[0]+(x-1)+(y  )*lwidth)*2;
-			v += *(frame1[0]+(x  )+(y  )*lwidth)*16;
-			v += *(frame1[0]+(x+1)+(y  )*lwidth)*2;
-			v += *(frame1[0]+(x-1)+(y+1)*lwidth);
-			v += *(frame1[0]+(x  )+(y+1)*lwidth)*2;
-			v += *(frame1[0]+(x+1)+(y+1)*lwidth);
-			v /= 28;
-			*(mc1[0]+x+y*lwidth)=v; // use mc1[x] as temp, gets overwritten later
-		}
-	}
-
-	memset(frame1[1]-cwidth,128,cwidth);
-	memset(frame1[2]-cwidth,128,cwidth);
-	memset(frame1[1]+cwidth*cheight,128,cwidth);
-	memset(frame1[2]+cwidth*cheight,128,cwidth);
-	for(y=0;y<cheight;y++)
-	for(x=0;x<cwidth;x++)
-	{
-		// gauss-filter
-		v  = *(frame1[1]+(x-1)+(y-1)*cwidth);
-		v += *(frame1[1]+(x  )+(y-1)*cwidth)*2;
-		v += *(frame1[1]+(x+1)+(y-1)*cwidth);
-		v += *(frame1[1]+(x-1)+(y  )*cwidth)*2;
-		v += *(frame1[1]+(x  )+(y  )*cwidth)*4;
-		v += *(frame1[1]+(x+1)+(y  )*cwidth)*2;
-		v += *(frame1[1]+(x-1)+(y+1)*cwidth);
-		v += *(frame1[1]+(x  )+(y+1)*cwidth)*2;
-		v += *(frame1[1]+(x+1)+(y+1)*cwidth);
-		v /= 16;
-		*(mc1[1]+x+y*cwidth)=v; // use mc1[x] as temp, gets overwritten later
-		// gauss-filter
-		v  = *(frame1[2]+(x-1)+(y-1)*cwidth);
-		v += *(frame1[2]+(x  )+(y-1)*cwidth)*2;
-		v += *(frame1[2]+(x+1)+(y-1)*cwidth);
-		v += *(frame1[2]+(x-1)+(y  )*cwidth)*2;
-		v += *(frame1[2]+(x  )+(y  )*cwidth)*4;
-		v += *(frame1[2]+(x+1)+(y  )*cwidth)*2;
-		v += *(frame1[2]+(x-1)+(y+1)*cwidth);
-		v += *(frame1[2]+(x  )+(y+1)*cwidth)*2;
-		v += *(frame1[2]+(x+1)+(y+1)*cwidth);
-		v /= 16;
-		*(mc1[2]+x+y*cwidth)=v; // use mc1[x] as temp, gets overwritten later
-	}
-	memcpy(frame1[0],mc1[0],lwidth*lheight);
-	memcpy(frame1[1],mc1[1],cwidth*cheight);
-	memcpy(frame1[2],mc1[2],cwidth*cheight);
-}
-
+// undefine this to check the performance of stage 2 processing alone
+#if 1 
 	// motion-compensate frames to the reference frame
 	{
 		int x,y,vx,vy,sx,sy;
@@ -659,13 +582,13 @@ main (int argc, char *argv[])
 		{
 
 		ref  = *(p3-1-lwidth);
-		ref += *(p3  -lwidth);
+		ref += *(p3  -lwidth)*2;
 		ref += *(p3+1-lwidth);
-		ref += *(p3-1       );
-		ref += *(p3         )*8;
-		ref += *(p3+1       );
+		ref += *(p3-1       )*2;
+		ref += *(p3         )*4;
+		ref += *(p3+1       )*2;
 		ref += *(p3-1+lwidth);
-		ref += *(p3  +lwidth);
+		ref += *(p3  +lwidth)*2;
 		ref += *(p3+1+lwidth);
 		ref /= 16;
 
@@ -782,15 +705,16 @@ main (int argc, char *argv[])
 		{
 
 		ref  = *(p3-1-cwidth);
-		ref += *(p3  -cwidth);
+		ref += *(p3  -cwidth)*2;
 		ref += *(p3+1-cwidth);
-		ref += *(p3-1       );
-		ref += *(p3         )*8;
-		ref += *(p3+1       );
+		ref += *(p3-1       )*2;
+		ref += *(p3         )*4;
+		ref += *(p3+1       )*2;
 		ref += *(p3-1+cwidth);
-		ref += *(p3  +cwidth);
+		ref += *(p3  +cwidth)*2;
 		ref += *(p3+1+cwidth);
 		ref /= 16;
+
 
 		delta_sum = 0;
 		interpolated_pixel = 0;
@@ -875,15 +799,16 @@ main (int argc, char *argv[])
 		{
 
 		ref  = *(p3-1-cwidth);
-		ref += *(p3  -cwidth);
+		ref += *(p3  -cwidth)*2;
 		ref += *(p3+1-cwidth);
-		ref += *(p3-1       );
-		ref += *(p3         )*8;
-		ref += *(p3+1       );
+		ref += *(p3-1       )*2;
+		ref += *(p3         )*4;
+		ref += *(p3+1       )*2;
 		ref += *(p3-1+cwidth);
-		ref += *(p3  +cwidth);
+		ref += *(p3  +cwidth)*2;
 		ref += *(p3+1+cwidth);
 		ref /= 16;
+
 
 		delta_sum = 0;
 		interpolated_pixel = 0;
@@ -956,7 +881,11 @@ main (int argc, char *argv[])
 		dst++;
 		}
 	}
-	
+#else
+memcpy (pixlock1[0],frame1[0],lwidth*lheight);
+memcpy (pixlock1[1],frame1[1],cwidth*cheight);
+memcpy (pixlock1[2],frame1[2],cwidth*cheight);
+#endif	
 	// lock pixels and do this right (that is do it *without* producing visable artefacts!)
 	{
 	int x,y;
@@ -973,25 +902,9 @@ main (int argc, char *argv[])
 			d6  = abs( *(outframe[0]+x+y*lwidth)-*(pixlock6[0]+x+y*lwidth) );
 			d7  = abs( *(outframe[0]+x+y*lwidth)-*(pixlock7[0]+x+y*lwidth) );
 
-			if (d1>4 || d2>4 || d3>4 || d4>4 || d5>4 || d6>4 || d7>4)
+			if (d1>3 || d2>3 || d3>3 || d4>3 || d5>3 || d6>3 || d7>3)
 			{
 				*(outframe[0]+x+y*lwidth) = *(pixlock4[0]+x+y*lwidth);
-			}
-			else
-			{
-				if (d1>2 || d2>2 || d3>2 || d4>2 || d5>2 || d6>2 || d7>2)
-				{
-					*(outframe[0]+x+y*lwidth) = 
-						(
-						  *(pixlock1[0]+x+y*lwidth)+
-						  *(pixlock2[0]+x+y*lwidth)+
-						  *(pixlock3[0]+x+y*lwidth)+
-						  *(pixlock4[0]+x+y*lwidth)+
-						  *(pixlock5[0]+x+y*lwidth)+
-						  *(pixlock6[0]+x+y*lwidth)+
-						  *(pixlock7[0]+x+y*lwidth)
-						)/7;
-				}
 			}
 		}
 	for(y=0;y<cheight;y++)
@@ -1005,25 +918,9 @@ main (int argc, char *argv[])
 			d6  = abs( *(outframe[1]+x+y*cwidth)-*(pixlock6[1]+x+y*cwidth) );
 			d7  = abs( *(outframe[1]+x+y*cwidth)-*(pixlock7[1]+x+y*cwidth) );
 
-			if (d1>4 || d2>4 || d3>4 || d4>4 || d5>4 || d6>4 || d7>4)
+			if (d1>3 || d2>3 || d3>3 || d4>3 || d5>3 || d6>3 || d7>3)
 			{
 				*(outframe[1]+x+y*cwidth) = *(pixlock4[1]+x+y*cwidth);
-			}
-			else
-			{
-				if (d1>2 || d2>2 || d3>2 || d4>2 || d5>2 || d6>2 || d7>2)
-				{
-					*(outframe[1]+x+y*cwidth) = 
-						(
-						  *(pixlock1[1]+x+y*cwidth)+
-						  *(pixlock2[1]+x+y*cwidth)+
-						  *(pixlock3[1]+x+y*cwidth)+
-						  *(pixlock4[1]+x+y*cwidth)+
-						  *(pixlock5[1]+x+y*cwidth)+
-						  *(pixlock6[1]+x+y*cwidth)+
-						  *(pixlock7[1]+x+y*cwidth)
-						)/7;
-				}
 			}
 
  			d1  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock1[2]+x+y*cwidth) );
@@ -1034,25 +931,9 @@ main (int argc, char *argv[])
 			d6  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock6[2]+x+y*cwidth) );
 			d7  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock7[2]+x+y*cwidth) );
 
-			if (d1>4 || d2>4 || d3>4 || d4>4 || d5>4 || d6>4 || d7>4)
+			if (d1>3 || d2>3 || d3>3 || d4>3 || d5>3 || d6>3 || d7>3)
 			{
 				*(outframe[2]+x+y*cwidth) = *(pixlock4[2]+x+y*cwidth);
-			}
-			else
-			{
-				if (d1>2 || d2>2 || d3>2 || d4>2 || d5>2 || d6>2 || d7>2)
-				{
-					*(outframe[2]+x+y*cwidth) = 
-						(
-						  *(pixlock1[2]+x+y*cwidth)+
-						  *(pixlock2[2]+x+y*cwidth)+
-						  *(pixlock3[2]+x+y*cwidth)+
-						  *(pixlock4[2]+x+y*cwidth)+
-						  *(pixlock5[2]+x+y*cwidth)+
-						  *(pixlock6[2]+x+y*cwidth)+
-						  *(pixlock7[2]+x+y*cwidth)
-						)/7;
-				}
 			}
 		}
 	}
