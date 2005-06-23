@@ -115,7 +115,7 @@ public:
             fclose( outfile );
         }
         
-    virtual size_t BitCount() { return flushed * 8LL; }
+    virtual uint64_t BitCount() { return flushed * 8LL; }
 private:
     FILE *outfile;
 };

@@ -33,7 +33,7 @@ public:
     virtual void WriteOutBufferUpto( const uint8_t *buffer, const uint32_t flush_upto ) = 0;
     inline uint64_t Flushed() const { return flushed; }
     
-    virtual size_t BitCount() = 0;
+    virtual uint64_t BitCount() = 0;
 protected:
     uint64_t flushed;
 };
