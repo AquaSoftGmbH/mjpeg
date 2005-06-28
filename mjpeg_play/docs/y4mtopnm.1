@@ -1,4 +1,4 @@
-.\" 
+.\"
 .TH "y4mtopnm" "1" "28 April 2004" "MJPEG Linux Square" "MJPEG tools manual"
 .SH "NAME"
 y4mtopnm \- Convert a YUV4MPEG2 stream to PNM images
@@ -10,7 +10,7 @@ y4mtopnm \- Convert a YUV4MPEG2 stream to PNM images
 .SH "DESCRIPTION"
 \fBy4mtopnm\fP converts a YUV4MPEG2 stream into a sequence
 of raw PPM, PGM, or PAM images.  (Technically, "pnm" comprises the PPM, PGM and
-PBM formats.  PAM is a fourth format, which can effectively contain any of 
+PBM formats.  PAM is a fourth format, which can effectively contain any of
 the other three, and more.)
 
 Output is to stdout (but feel free to have the shell redirect to a file).
@@ -23,14 +23,15 @@ and produce PPM images.  "MONO" (luma-only) streams will be converted
 to full-range [0,255] grayscale and output as PGM images.
 
 YUV4MPEG2 streams may (often!) have subsampled chroma planes, but
-\fBy4mtopnm\fP will not process them.  Subsampled streams will need to
-be converted to 4:4:4 using a tool such as \fBy4mscaler\fP. 
+\fBy4mtopnm\fP will not process them (except in the special 'flatten' mode;
+see below).  Subsampled streams will need to
+be converted to 4:4:4 using a tool such as \fBy4mscaler\fP.
 
 If \fBy4mtopnm\fP is given a "444ALPHA" stream (4:4:4 video with
 an 8-bit alpha channel), the results depend on whether or not the "-P" option
 is specified.  With "-P", it will produce PAM images with a TUPLTYPE of
 RGB_ALPHA, containing both color and alpha channel data.
-Without "-P", it will produce pairs of PPM and PGM images: 
+Without "-P", it will produce pairs of PPM and PGM images:
 a PPM for the color pixels followed by a PGM for the alpha channel data.
 (Such a sequence of interspersed PPM and PGM images cannot be later
 re-processed by \fBpnmtoy4m\fP.  This feature is mostly for quick and
@@ -76,8 +77,36 @@ temporal order is ambiguous, and the top-field will always be output first.
 Note that it will \fInot\fP be possible to later use \fBpnmtoy4m\fP to
 reconstruct a "mixed-mode" stream from a sequence of PNM/PAM images.
 .TP 5
+.BI \-f
+Produce a special 'flattened' output, most useful for analyzing and
+debugging streams.  All the planes of a frame/field are tiled together into
+an enlarged PGM (or grayscale PAM) output image as follows:
+.nf
+               +-----+                    +-----+
+       4:4:4   |  Y  |    4:4:4 w/alpha   |  Y  |
+               +-----+                    +-----+
+               |  Cb |                    |  Cb |
+               +-----+                    +-----+
+               |  Cr |                    |  Cr |
+               +-----+                    +-----+
+                                          |  A  |
+               +-----+                    +-----+
+       4:2:2,  |  Y  |
+       4:2:0   +--+--+                    +-----+--+--+
+               |Cb|Cr|            4:1:1   |  Y  |Cb|Cr|
+               +--+--+                    +-----+--+--+
+                            +-----+
+                     MONO   |  Y  |
+                            +-----+
+.fi
+In this mode, any YUV4MPEG2 chroma format is accepted, but no upsampling or
+colorspace conversion is performed.
+This is essentially just a reformatting/permutation of the original data from
+the input stream into a PGM image container.
+All the other command-line flags continue to have the same effect on output.
+.TP 5
 .BI \-v " [0,1,2]"
-Set verbosity level.  
+Set verbosity level.
  0 = warnings and errors only.
  1 = add informative messages, too.
  2 = add chatty debugging message, too.
@@ -93,12 +122,12 @@ lav2yuv -f 15 your-video.avi | y4mscaler -O chromass=444 | y4mtopnm | pnmsplit -
 
 .SH "AUTHOR"
 This manual page was written by Matt Marjanovic.
-.br 
+.br
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:
   \fImjpeg\-users@lists.sourceforge.net\fP
 
-.TP 
+.TP
 For more info, see our website at
 .I http://mjpeg.sourceforge.net/
 

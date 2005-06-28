@@ -5,7 +5,7 @@
  *               (or Rec.601 Y' to [0,255] grayscale, for PGM).
  *
  *
- *  Copyright (C) 2004 Matthew J. Marjanovic <maddog@mir.com>
+ *  Copyright (C) 2005 Matthew J. Marjanovic <maddog@mir.com>
  *
  *
  *  This program is free software; you can redistribute it and/or
@@ -42,6 +42,7 @@
 /* command-line parameters */
 typedef struct _cl_info {
   int make_pam;
+  int make_flat;
   int deinterleave;
   int verbosity;
   FILE *outfp;
@@ -61,10 +62,12 @@ void usage(const char *progname)
   fprintf(stdout, "\n");
   fprintf(stdout, " options:  (defaults specified in [])\n");
   fprintf(stdout, "\n");
-  fprintf(stdout, "  -P       produce PAM output instead of PPM/PGM\n");
-  fprintf(stdout, "  -D       de-interleave fields into two PNM images\n");
-  fprintf(stdout, "  -v n     verbosity (0,1,2) [1]\n");
-  fprintf(stdout, "  -h       print this help message\n");
+  fprintf(stdout, "  -P    produce PAM output instead of PPM/PGM\n");
+  fprintf(stdout, "  -D    de-interleave fields into two PNM images\n");
+  fprintf(stdout, "  -f    'flatten' multiplane frames/fields in raw composite grayscale images\n");
+  fprintf(stdout, "          (for stream debugging, see manpage for details)\n");
+  fprintf(stdout, "  -v n  verbosity (0,1,2) [1]\n");
+  fprintf(stdout, "  -h    print this help message\n");
 }
 
 
@@ -75,17 +78,21 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
   int c;
 
   cl->make_pam = 0;
+  cl->make_flat = 0;
   cl->deinterleave = 0;
   cl->verbosity = 1;
   cl->outfp = stdout; /* default to stdout */
 
-  while ((c = getopt(argc, argv, "PDv:h")) != -1) {
+  while ((c = getopt(argc, argv, "PDfv:h")) != -1) {
     switch (c) {
     case 'P':
       cl->make_pam = 1;
       break;
     case 'D':
       cl->deinterleave = 1;
+      break;
+    case 'f':
+      cl->make_flat = 1;
       break;
     case 'v':
       cl->verbosity = atoi(optarg);
@@ -104,7 +111,6 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
   }
   if (optind != argc) 
     goto ERROR_EXIT;
-
 
   mjpeg_default_handler_verbosity(cl->verbosity);
   /* DONE! */
@@ -141,6 +147,7 @@ void write_pam(FILE *fp,
       uint8_t *R = buffers[0];
       uint8_t *G = buffers[1];
       uint8_t *B = buffers[2];
+      assert(rowbuffer != NULL);
       for (y = 0; y < height; y++) {
         pixels = rowbuffer;
         for (x = 0; x < width; x++) {
@@ -163,6 +170,7 @@ void write_pam(FILE *fp,
       uint8_t *G = buffers[1];
       uint8_t *B = buffers[2];
       uint8_t *A = buffers[3];
+      assert(rowbuffer != NULL);
       for (y = 0; y < height; y++) {
         pixels = rowbuffer;
         for (x = 0; x < width; x++) {
@@ -201,6 +209,7 @@ void write_ppm(FILE *fp,
 
   mjpeg_debug("write raw PPM image from one buffer, %dx%d", width, height);
   fprintf(fp, "P6\n%d %d 255\n", width, height);
+  assert(rowbuffer != NULL);
   for (y = 0; y < height; y++) {
     pixels = rowbuffer;
     for (x = 0; x < width; x++) {
@@ -253,7 +262,186 @@ void write_image(FILE *fp,
     }
   }
 }
-  
+
+/************************************************************************/
+/************** Structure/code for 'flattening' images ******************/
+/************************************************************************/
+
+typedef struct {
+  int chroma;
+  int planes;
+  int image_w;
+  int image_h;
+  int flat_w;
+  int flat_h;
+  uint8_t *flat_buffer;
+} flattener_t;
+
+static
+void init_flattener(flattener_t *fl,
+                    int chroma, int planes, int width, int height)
+{
+  fl->chroma = chroma;
+  fl->planes = planes;
+  fl->image_w = width;
+  fl->image_h = height;
+  switch (chroma) {
+  case Y4M_CHROMA_444:        
+  case Y4M_CHROMA_444ALPHA:   
+  case Y4M_CHROMA_MONO:       
+  case Y4M_CHROMA_420JPEG:
+  case Y4M_CHROMA_420MPEG2:
+  case Y4M_CHROMA_420PALDV:   
+  case Y4M_CHROMA_422:        fl->flat_w = width;           break;
+  case Y4M_CHROMA_411:        fl->flat_w = 3 * width / 2;   break;
+  default:
+    assert(0); break;
+  }
+  switch (chroma) {
+  case Y4M_CHROMA_444:        fl->flat_h = 3 * height;      break;
+  case Y4M_CHROMA_444ALPHA:   fl->flat_h = 4 * height;      break; 
+  case Y4M_CHROMA_MONO:       fl->flat_h = height;          break;
+  case Y4M_CHROMA_420JPEG:
+  case Y4M_CHROMA_420MPEG2:
+  case Y4M_CHROMA_420PALDV:   fl->flat_h = 3 * height / 2;  break;
+  case Y4M_CHROMA_422:        fl->flat_h = 2 * height;      break;
+  case Y4M_CHROMA_411:        fl->flat_h = height;          break;
+  default:
+    assert(0); break;
+  }
+  fl->flat_buffer = (uint8_t *) malloc(fl->flat_w * fl->flat_h);
+  assert(fl->flat_buffer != NULL);
+}
+
+static
+void fini_flattener(flattener_t *fl)
+{
+  if (fl->flat_buffer != NULL) {
+    free(fl->flat_buffer);
+    fl->flat_buffer = NULL;
+  }
+}
+
+
+static
+void flatten(flattener_t *fl, uint8_t *img_buffers[])
+{
+  switch (fl->chroma) {
+    /* Non-subsampled:  Y, Cb, Cr, (A) vertically appended */
+  case Y4M_CHROMA_444ALPHA:
+  case Y4M_CHROMA_444:
+  case Y4M_CHROMA_MONO:
+    {
+      int planesize = fl->image_w * fl->image_h;
+      uint8_t *fbuf = fl->flat_buffer;
+      int p;
+      for (p = 0; p < fl->planes; p++) {
+        memcpy(fbuf, img_buffers[p], planesize);
+        fbuf += planesize;
+      }
+    }
+    break;
+    /* 1/2 horizontal:  Y followed by (Cb,Cr) */
+  case Y4M_CHROMA_422:
+    {
+      uint8_t *fbuf = fl->flat_buffer;
+      uint8_t *ib1 = img_buffers[1];
+      uint8_t *ib2 = img_buffers[2];
+      int planesize = fl->image_w * fl->image_h;
+      int halfwidth = fl->image_w / 2;
+      int y;
+      memcpy(fbuf, img_buffers[0], planesize);
+      fbuf += planesize;
+      for (y = 0; y < fl->image_h; y++) {
+        memcpy(fbuf, ib1, halfwidth);
+        fbuf += halfwidth;
+        ib1 += halfwidth;
+        memcpy(fbuf, ib2, halfwidth);
+        fbuf += halfwidth;
+        ib2 += halfwidth;
+      }
+    }
+    break;
+    /* 1/2 horizontal, 1/2 vertical:  Y followed by (Cb,Cr) */
+  case Y4M_CHROMA_420JPEG:
+  case Y4M_CHROMA_420MPEG2:
+  case Y4M_CHROMA_420PALDV:
+    {
+      uint8_t *fbuf = fl->flat_buffer;
+      uint8_t *ib1 = img_buffers[1];
+      uint8_t *ib2 = img_buffers[2];
+      int planesize = fl->image_w * fl->image_h;
+      int halfwidth = fl->image_w / 2;
+      int y;
+      memcpy(fbuf, img_buffers[0], planesize);
+      fbuf += planesize;
+      for (y = 0; y < fl->image_h / 2; y++) {
+        memcpy(fbuf, ib1, halfwidth);
+        fbuf += halfwidth;
+        ib1 += halfwidth;
+        memcpy(fbuf, ib2, halfwidth);
+        fbuf += halfwidth;
+        ib2 += halfwidth;
+      }
+    }
+    break;
+    /* 1/4 horizontal:  Y, Cb, Cr horizontally appended */
+  case Y4M_CHROMA_411:
+    {
+      uint8_t *fbuf = fl->flat_buffer;
+      uint8_t *ib0 = img_buffers[0];
+      uint8_t *ib1 = img_buffers[1];
+      uint8_t *ib2 = img_buffers[2];
+      int qtrwidth = fl->image_w / 4;
+      int y;
+      for (y = 0; y < fl->image_h; y++) {
+        memcpy(fbuf, ib0, fl->image_w);
+        fbuf += fl->image_w;
+        ib0 += fl->image_w;
+        memcpy(fbuf, ib1, qtrwidth);
+        fbuf += qtrwidth;
+        ib1 += qtrwidth;
+        memcpy(fbuf, ib2, qtrwidth);
+        fbuf += qtrwidth;
+        ib2 += qtrwidth;
+      }
+    }
+    break;
+  default:
+    assert(0); break;
+  }
+}
+
+
+static
+void write_flattened(flattener_t *fl, FILE *fp, int make_pam)
+{
+  write_image(fp, make_pam, Y4M_CHROMA_MONO,
+              &(fl->flat_buffer), NULL /* rowbuffer */,
+              fl->flat_w, fl->flat_h);
+}
+
+
+
+static
+void convert_chroma(int chroma, uint8_t *buffers[], int width, int height)
+{
+  switch (chroma) {
+  case Y4M_CHROMA_444:
+    convert_YCbCr_to_RGB(buffers, width * height);
+    break;
+  case Y4M_CHROMA_444ALPHA:
+    convert_YCbCr_to_RGB(buffers, width * height);
+    convert_Y219_to_Y255(buffers[3], width * height);
+    break;
+  case Y4M_CHROMA_MONO:
+    convert_Y219_to_Y255(buffers[0], width * height);
+    break;
+  default:
+    assert(0);  break;
+  }
+}
+
 
 
 int main(int argc, char **argv)
@@ -269,6 +457,7 @@ int main(int argc, char **argv)
   int interlace, chroma, planes;
   uint8_t *rowbuffer = NULL;
   int frame_count;
+  flattener_t fl;
 
   y4m_accept_extensions(1); /* allow non-4:2:0 chroma */
   y4m_init_stream_info(&streaminfo);
@@ -295,13 +484,17 @@ int main(int argc, char **argv)
   case Y4M_CHROMA_MONO:
     break;
   default:
-    mjpeg_error("Cannot handle input stream's chroma mode!");
-    mjpeg_error_exit1("Input must be non-subsampled (e.g. 4:4:4).");
+    if (!cl.make_flat) {
+      mjpeg_error("Cannot handle input stream's chroma mode!");
+      mjpeg_error_exit1("Input must be non-subsampled (e.g. 4:4:4).");
+    }
   }
-    
+  
+  /*** Tell the user what is going to happen ***/
   mjpeg_info("Output image parameters:");
   mjpeg_info("   format:  %s",
              (cl.make_pam) ? "PAM" :
+             (cl.make_flat) ? "PGM" :
              (chroma == Y4M_CHROMA_444) ? "PPM" :
              (chroma == Y4M_CHROMA_444ALPHA) ? "PPM+PGM" :
              (chroma == Y4M_CHROMA_MONO) ? "PGM" : "???");
@@ -313,12 +506,21 @@ int main(int argc, char **argv)
                (interlace == Y4M_ILACE_BOTTOM_FIRST) ? "bottom field first" :
                "top field first");
   }
+  if (cl.make_flat) 
+    mjpeg_info(" 'flattened' --> all planes in one image");
 
   /*** Allocate buffers ***/
   mjpeg_debug("allocating buffers...");
-  rowbuffer = malloc(width * planes * sizeof(rowbuffer[0]));
+  if (cl.make_flat) {
+    if (!cl.deinterleave) 
+      init_flattener(&fl, chroma, planes, width, height);
+    else 
+      init_flattener(&fl, chroma, planes, width, height / 2);
+    rowbuffer = NULL;
+  } else {
+    rowbuffer = malloc(width * planes * sizeof(rowbuffer[0]));
+  }
   mjpeg_debug("  rowbuffer %p", rowbuffer);
-  /* allocate buffers big enough for 4:4:4 supersampled components */
   for (i = 0; i < planes; i++) {
     switch (interlace) {
     case Y4M_ILACE_NONE:
@@ -353,65 +555,67 @@ int main(int argc, char **argv)
       mjpeg_debug("reading whole frame...");
       err = y4m_read_frame_data(in_fd, &streaminfo, &frameinfo, buffers);
       if (err != Y4M_OK) break;
-      switch (chroma) {
-      case Y4M_CHROMA_444:
-        convert_YCbCr_to_RGB(buffers, width * height);
-        break;
-      case Y4M_CHROMA_444ALPHA:
-        convert_YCbCr_to_RGB(buffers, width * height);
-        convert_Y219_to_Y255(buffers[3], width * height);
-        break;
-      case Y4M_CHROMA_MONO:
-        convert_Y219_to_Y255(buffers[0], width * height);
-        break;
-      default:
-        assert(0);  break;
+      if (cl.make_flat) {
+        flatten(&fl, buffers);
+        write_flattened(&fl, cl.outfp, cl.make_pam);
+      } else {
+        convert_chroma(chroma, buffers, width, height);
+        write_image(cl.outfp, cl.make_pam,
+                    chroma, buffers, rowbuffer, width, height);
       }
-      write_image(cl.outfp, cl.make_pam,
-                  chroma, buffers, rowbuffer, width, height);
     } else {
       mjpeg_debug("reading separate fields...");
       err = y4m_read_fields_data(in_fd, &streaminfo, &frameinfo, 
                                  buffers, buffers2);
       if (err != Y4M_OK) break;
-      switch (chroma) {
-      case Y4M_CHROMA_444:
-        convert_YCbCr_to_RGB(buffers,  width * height / 2);
-        convert_YCbCr_to_RGB(buffers2, width * height / 2);
-        break;
-      case Y4M_CHROMA_444ALPHA:
-        convert_YCbCr_to_RGB(buffers,     width * height / 2);
-        convert_YCbCr_to_RGB(buffers2,    width * height / 2);
-        convert_Y219_to_Y255(buffers[3],  width * height / 2);
-        convert_Y219_to_Y255(buffers2[3], width * height / 2);
-        break;
-      case Y4M_CHROMA_MONO:
-        convert_Y219_to_Y255(buffers[0],  width * height / 2);
-        convert_Y219_to_Y255(buffers2[0], width * height / 2);
-        break;
-      default:
-        assert(0);  break;
-      }
-      switch (interlace) {
-      case Y4M_ILACE_NONE:       /* ambiguous temporal order */
-      case Y4M_ILACE_MIXED:      /* ambiguous temporal order */
-      case Y4M_ILACE_TOP_FIRST:
-        /* write top field first */
-        write_image(cl.outfp, cl.make_pam,
-                    chroma, buffers, rowbuffer, width, height / 2);
-        write_image(cl.outfp, cl.make_pam,
-                    chroma, buffers2, rowbuffer, width, height / 2);
-        break;
-      case Y4M_ILACE_BOTTOM_FIRST:
-        /* write bottom field first */
-        write_image(cl.outfp, cl.make_pam,
-                    chroma, buffers2, rowbuffer, width, height / 2);
-        write_image(cl.outfp, cl.make_pam,
-                    chroma, buffers, rowbuffer, width, height / 2);
-        break;
-      default:
-        mjpeg_error_exit1("Unknown input interlacing mode (%d).\n", interlace);
-        break;
+      if (cl.make_flat) {
+        switch (interlace) {
+        case Y4M_ILACE_NONE:       /* ambiguous temporal order */
+        case Y4M_ILACE_MIXED:      /* ambiguous temporal order */
+        case Y4M_ILACE_TOP_FIRST:
+          /* write top field first */
+          flatten(&fl, buffers);
+          write_flattened(&fl, cl.outfp, cl.make_pam);
+          flatten(&fl, buffers2);
+          write_flattened(&fl, cl.outfp, cl.make_pam);
+          break;
+        case Y4M_ILACE_BOTTOM_FIRST:
+          /* write bottom field first */
+          flatten(&fl, buffers2);
+          write_flattened(&fl, cl.outfp, cl.make_pam);
+          flatten(&fl, buffers);
+          write_flattened(&fl, cl.outfp, cl.make_pam);
+          break;
+        default:
+          mjpeg_error_exit1("Unknown input interlacing mode (%d).\n",
+                            interlace);
+          break;
+        }
+      } else {
+        convert_chroma(chroma, buffers, width, height / 2);
+        convert_chroma(chroma, buffers2, width, height / 2);
+        switch (interlace) {
+        case Y4M_ILACE_NONE:       /* ambiguous temporal order */
+        case Y4M_ILACE_MIXED:      /* ambiguous temporal order */
+        case Y4M_ILACE_TOP_FIRST:
+          /* write top field first */
+          write_image(cl.outfp, cl.make_pam,
+                      chroma, buffers, rowbuffer, width, height / 2);
+          write_image(cl.outfp, cl.make_pam,
+                      chroma, buffers2, rowbuffer, width, height / 2);
+          break;
+        case Y4M_ILACE_BOTTOM_FIRST:
+          /* write bottom field first */
+          write_image(cl.outfp, cl.make_pam,
+                      chroma, buffers2, rowbuffer, width, height / 2);
+          write_image(cl.outfp, cl.make_pam,
+                      chroma, buffers, rowbuffer, width, height / 2);
+          break;
+        default:
+          mjpeg_error_exit1("Unknown input interlacing mode (%d).\n",
+                            interlace);
+          break;
+        }
       }
     }
   }     
@@ -422,7 +626,8 @@ int main(int argc, char **argv)
 
   /*** Clean-up after ourselves ***/
   mjpeg_debug("freeing buffers; cleaning up");
-  free(rowbuffer);
+  if (rowbuffer != NULL) 
+    free(rowbuffer);
   for (i = 0; i < planes; i++) {
     free(buffers[i]);
     if (buffers2[i] != NULL)
@@ -430,6 +635,8 @@ int main(int argc, char **argv)
   }
   y4m_fini_stream_info(&streaminfo);
   y4m_fini_frame_info(&frameinfo);
+  if (cl.make_flat)
+    fini_flattener(&fl);
   
   mjpeg_debug("Done.");
   return 0;
