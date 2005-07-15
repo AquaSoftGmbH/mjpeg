@@ -33,34 +33,33 @@ int cheight = 0;
 int input_chroma_subsampling = 0;
 int input_interlaced = 0;
 
-int motionsearch_radius = 4;
+int temp_Y_thres = 8;
+int temp_U_thres = 12;
+int temp_V_thres = 12;
 
-int Y_radius = 5;
-int U_radius = 5;
-int V_radius = 5;
+int spat_Y_thres = 4;
+int spat_U_thres = 6;
+int spat_V_thres = 6;
 
-int temp_Y_thres = 4;
-int temp_U_thres = 8;
-int temp_V_thres = 8;
+int gauss_Y = 128;
+int gauss_U = 255;
+int gauss_V = 255;
 
 uint8_t *frame1[3];
 uint8_t *frame2[3];
 uint8_t *frame3[3];
 uint8_t *frame4[3];
 uint8_t *frame5[3];
-uint8_t *mc1[3];
-uint8_t *mc2[3];
-uint8_t *mc3[3];
-uint8_t *mc4[3];
-uint8_t *mc5[3];
-
-uint8_t *pixlock1[3];
-uint8_t *pixlock2[3];
-uint8_t *pixlock3[3];
-uint8_t *pixlock4[3];
-uint8_t *pixlock5[3];
-uint8_t *pixlock6[3];
-uint8_t *pixlock7[3];
+uint8_t *frame6[3];
+uint8_t *frame7[3];
+uint8_t *frame8[3];
+uint8_t *frame9[3];
+uint8_t *framea[3];
+uint8_t *frameb[3];
+uint8_t *framec[3];
+uint8_t *framed[3];
+uint8_t *framee[3];
+uint8_t *framef[3];
 uint8_t *outframe[3];
 
 int buff_offset;
@@ -69,6 +68,240 @@ int buff_size;
 /***********************************************************
  * helper-functions                                        *
  ***********************************************************/
+
+// 3x3 gauss filter image-plane and overlay this with factor p (0...255) on the source
+// p=0       use source-pixels unfiltered
+// p=1...254 use mixed gauss and source-pixels
+// p=255     use gauss-filtered pixels
+void gauss_filter_plane (uint8_t * plane, int w, int h, int p)
+{
+int x,y;
+int g;
+uint8_t * src = plane;
+uint8_t * dst = frame8[0];
+
+// fill first and last line content into out of bounds-region
+memcpy (src-w,src,w);
+memcpy (src+w*h,src+w*h-w,w);
+
+for(y=0;y<h;y++)
+	for(x=0;x<w;x++)
+	{
+		g  = *(src+(-1)+(-1)*w);
+		g += *(src     +(-1)*w)*2;
+		g += *(src+(+1)+(-1)*w);
+		g += *(src+(-1)       )*2;
+		g += *(src            )*4;
+		g += *(src+(+1)       )*2;
+		g += *(src+(-1)+(+1)*w);
+		g += *(src     +(+1)*w)*2;
+		g += *(src+(+1)+(+1)*w);
+		g /= 16;
+
+		*(dst) = (g*p + *(src)*(255-p) )/255;
+		dst++;
+		src++;
+	}
+	memcpy (plane,frame8[0],w*h);
+}
+
+void adaptive_filter_plane( uint8_t * ref, int w, int h, uint8_t t)
+{
+	uint8_t * ff = ref;       // reference buffer
+
+	int m0,m1,m2,m3,m4,m5,m6,m7,m;
+	int x,d,i,c;
+	int r;
+
+	for(x=0;x<(w*h);x++)
+		{
+
+		r  = *(ff-1);
+		r += *(ff+1);
+		r += *(ff-w);
+		r += *(ff+w);
+		r += *(ff)*4;
+		r /= 8;
+
+		m0  = *(ff-4    );
+		m0 += *(ff-3    );
+		m0 += *(ff-2    );
+		m0 += *(ff-1    );
+		m0 /= 4;
+
+		m1  = *(ff-4-4*w);
+		m1 += *(ff-3-3*w);
+		m1 += *(ff-2-2*w);
+		m1 += *(ff-1-1*w);
+		m1 /= 4;
+
+		m2  = *(ff  -4*w);
+		m2 += *(ff  -3*w);
+		m2 += *(ff  -2*w);
+		m2 += *(ff  -1*w);
+		m2 /= 4;
+
+		m3  = *(ff+4-4*w);
+		m3 += *(ff+3-3*w);
+		m3 += *(ff+2-2*w);
+		m3 += *(ff+1-1*w);
+		m3 /= 4;
+
+		m4  = *(ff+4    );
+		m4 += *(ff+3    );
+		m4 += *(ff+2    );
+		m4 += *(ff+1    );
+		m4 /= 4;
+
+		m5  = *(ff+4+4*w);
+		m5 += *(ff+3+3*w);
+		m5 += *(ff+2+2*w);
+		m5 += *(ff+1+1*w);
+		m5 /= 4;
+
+		m6  = *(ff  +4*w);
+		m6 += *(ff  +3*w);
+		m6 += *(ff  +2*w);
+		m6 += *(ff  +1*w);
+		m6 /= 4;
+
+		m7  = *(ff-4+4*w);
+		m7 += *(ff-3+3*w);
+		m7 += *(ff-2+2*w);
+		m7 += *(ff-1+1*w);
+		m7 /= 4;
+
+		i = *(ff);
+		c = 1;
+
+		d = abs( r-m0 );
+		d = (d<t)? t-d:0;
+		i = i+m0*d;
+		c = c+d;
+
+		d = abs( r-m1 );
+		d = (d<t)? t-d:0;
+		i = i+m1*d;
+		c = c+d;
+
+		d = abs( r-m2 );
+		d = (d<t)? t-d:0;
+		i = i+m2*d;
+		c = c+d;
+
+		d = abs( r-m3 );
+		d = (d<t)? t-d:0;
+		i = i+m3*d;
+		c = c+d;
+
+		d = abs( r-m4 );
+		d = (d<t)? t-d:0;
+		i = i+m4*d;
+		c = c+d;
+
+		d = abs( r-m5 );
+		d = (d<t)? t-d:0;
+		i = i+m5*d;
+		c = c+d;
+
+		d = abs( r-m6 );
+		d = (d<t)? t-d:0;
+		i = i+m6*d;
+		c = c+d;
+
+		d = abs( r-m7 );
+		d = (d<t)? t-d:0;
+		i = i+m7*d;
+		c = c+d;
+
+		m7 = (m0+m1+m2+m3+m4+m5+m6+m7)/8;
+
+		d = abs( *(ff)-m7 );
+		d = (d<t)? t-d:0;
+		i = i+m7*d*4;
+		c = c+d*4;
+
+		m = (i/c)+1; // The "+1" is a needed correction as its allways rounded down here ...
+		m = m>255? 255:m;
+		*(ff) = m;
+		ff++;
+		}
+}
+
+void temporal_filter_planes ( int idx, int w, int h, int t )
+{
+	int x,c,d,i,r,m;
+
+	uint8_t * f1 = frame1[idx];
+	uint8_t * f2 = frame2[idx];
+	uint8_t * f3 = frame3[idx];
+	uint8_t * f4 = frame4[idx];
+	uint8_t * f5 = frame5[idx];
+	uint8_t * f6 = frame6[idx];
+	uint8_t * f7 = frame7[idx];
+	uint8_t * of = outframe[idx];
+
+	for(x=0;x<(w*h);x++)
+		{
+			r  = *(f4-1-w);
+			r += *(f4  -w);
+			r += *(f4+1-w);
+			r += *(f4-1       );
+			r += *(f4         );
+			r += *(f4+1       );
+			r += *(f4-1+w);
+			r += *(f4  +w);
+			r += *(f4+1+w);
+			r /= 9;
+
+			i=*(f4)*t;
+			c=t;
+
+			d = t - abs(r-*(f1));
+			d = d<0? 0:d;
+			c = c+d;
+			i = i + d * *(f1);
+
+			d = t - abs(r-*(f2));
+			d = d<0? 0:d;
+			c = c+d;
+			i = i + d * *(f2);
+
+			d = t - abs(r-*(f3));
+			d = d<0? 0:d;
+			c = c+d;
+			i = i + d * *(f3);
+
+			d = t - abs(r-*(f5));
+			d = d<0? 0:d;
+			c = c+d;
+			i = i + d * *(f5);
+
+			d = t - abs(r-*(f6));
+			d = d<0? 0:d;
+			c = c+d;
+			i = i + d * *(f6);
+
+			d = t - abs(r-*(f7));
+			d = d<0? 0:d;
+			c = c+d;
+			i = i + d * *(f7);
+
+			m = (i/c)+1; // The "+1" is a needed correction as its allways rounded down here ...
+			m = m>255? 255:m;
+			*(of)=m;
+
+			f1++;
+			f2++;
+			f3++;
+			f4++;
+			f5++;
+			f6++;
+			f7++;
+			of++;
+		}
+}
+
 
 /***********************************************************
  * Main Loop                                               *
@@ -90,7 +323,7 @@ main (int argc, char *argv[])
   mjpeg_log (LOG_INFO, "mjpeg-tools yuvdenoise version %s",VERSION);
   mjpeg_log (LOG_INFO, "--------------------------------------------------------------------------");
 
-  while ((c = getopt (argc, argv, "hiy:u:v:r:")) != -1)
+  while ((c = getopt (argc, argv, "hvs:t:g:")) != -1)
     {
       switch (c)
 	{
@@ -101,76 +334,48 @@ main (int argc, char *argv[])
 	    mjpeg_log (LOG_INFO, " Usage                                                                    ");
 	    mjpeg_log (LOG_INFO, " =====                                                                    ");
 	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " This is a motion-compensated-temporal-denoiser for Y4M-Video-Streams. It ");
-	    mjpeg_log (LOG_INFO, " can be used to improve the signal-noise-ratio of a sequence of video-    ");
-	    mjpeg_log (LOG_INFO, " frames. As it needs a lot of frames to be motion-compensated to a given  ");
-	    mjpeg_log (LOG_INFO, " reference-frame in time, it will take some more time to process than the ");
-	    mjpeg_log (LOG_INFO, " video-encoder used (the Motion-Vector-Estimation (MVE) used in this pro- ");
-	    mjpeg_log (LOG_INFO, " gram is sub-optimal in terms of speed and will eventually changed to an  ");
-	    mjpeg_log (LOG_INFO, " EPZS).                                                                   ");
+	    mjpeg_log (LOG_INFO, " This is a spatio-temporal noise-filter for Y4M-video-streams. You can    ");
+	    mjpeg_log (LOG_INFO, " control its behaviour with the following options:                        ");
 	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " You can use it like this:                                                ");
-	    mjpeg_log (LOG_INFO, " $> cat y4mstream | yuvdenoise [options] | encoder                        ");
+	    mjpeg_log (LOG_INFO, " -s y,u,v     This sets the thresholds [0..255] for the spatial noise-    ");
+	    mjpeg_log (LOG_INFO, "              filter. If you set this too high, expect blurring your      ");
+	    mjpeg_log (LOG_INFO, "              images.                                                     ");
 	    mjpeg_log (LOG_INFO, "                                                                          ");
+	    mjpeg_log (LOG_INFO, " -g y,u,v     This sets the mixing-level [0..255] for the gauss-filter.   ");
+	    mjpeg_log (LOG_INFO, "              The default-values for the chroma-planes are sane. Believe  ");
+	    mjpeg_log (LOG_INFO, "              me. You only should change them, if you have noise-free     ");
+	    mjpeg_log (LOG_INFO, "              chroma-planes... It sometimes may be usefull, to smooth     ");
+	    mjpeg_log (LOG_INFO, "              the luma-plane, too. Default is to only smooth it very very ");
+	    mjpeg_log (LOG_INFO, "              little, just to get rid of jaggies.                         ");
 	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " Available Options                                                        ");
-	    mjpeg_log (LOG_INFO, " =================                                                        ");
+	    mjpeg_log (LOG_INFO, " -T y,u,v     This sets the thresholds for the temporal noise-filter.     ");
+	    mjpeg_log (LOG_INFO, "              Values above 12 may introduce ghosts. But usualy you can't  ");
+	    mjpeg_log (LOG_INFO, "              see them in a sequence of moving frames until you pass 18.  ");
+	    mjpeg_log (LOG_INFO, "              This is due to the fact that our brain supresses these.     ");
 	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " -r [n]   search-radius of the MVE    (default:%i)",motionsearch_radius);
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " -y [n]   temporal Y-filter-threshold (default:%i)",temp_Y_thres);
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " -u [n]   temporal U-filter-threshold (default:%i)",temp_U_thres);
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " -v [n]   temporal V-filter-threshold (default:%i)",temp_V_thres);
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " Usage-Tips                                                               ");
-	    mjpeg_log (LOG_INFO, " ==========                                                               ");
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " Do not set the radius of the motion-search to high. This will not only   ");
-	    mjpeg_log (LOG_INFO, " lead to a higher system-load, but it will not dramatically affect the    ");
-	    mjpeg_log (LOG_INFO, " image-quality. So if you want a CPU-hog without quality-improvement set  ");
-	    mjpeg_log (LOG_INFO, " it to 24 or so. Usually a radius of 4-8 is sufficient for denoising.     ");
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " Keep the Y-threshold low, as the human visual-system is very sensitive   ");
-	    mjpeg_log (LOG_INFO, " for luminance-errors (ghosts will show at scene-changes if you do other- ");
-	    mjpeg_log (LOG_INFO, " wise). But this can be a matter of taste, too...                         ");
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " -y 4 -u 6 -v 6            works well for sources with low noiselevel     ");
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " -y 7 -u 10 -v 10          works well for sources with med noiselevel     ");
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " -y 12 -u 16 -v 16         works well for really bad VHS-tapes :)         ");
-	    mjpeg_log (LOG_INFO, "                           Those will remain bad,BTW,but use a lower      ");
-	    mjpeg_log (LOG_INFO, "                           bitrate...                                     ");
+
 
 	    exit (0);
 	    break;
 	  }
-	case 'r':
-	  {
-	    motionsearch_radius = atoi(optarg);
-	    break;
-	  }
-	case 'i':
+	case 'v':
 	  {
 	    verbose = 1;
 	    break;
 	  }
-	case 'y':
+	case 's':
 	  {
-        temp_Y_thres = atoi(optarg);
+	    sscanf(optarg,"%i,%i,%i",&spat_Y_thres,&spat_U_thres,&spat_V_thres);
 	    break;
 	  }
-	case 'u':
+	case 't':
 	  {
-        temp_U_thres = atoi(optarg);
+	    sscanf(optarg,"%i,%i,%i",&temp_Y_thres,&temp_U_thres,&temp_V_thres);
 	    break;
 	  }
-	case 'v':
+	case 'g':
 	  {
-        temp_V_thres = atoi(optarg);
+	    sscanf(optarg,"%i,%i,%i",&gauss_Y,&gauss_U,&gauss_V);
 	    break;
 	  }
 	case '?':
@@ -178,6 +383,11 @@ main (int argc, char *argv[])
           exit(1);
 	}
     }
+
+  mjpeg_log (LOG_INFO, "Using the following thresholds:");
+  mjpeg_log (LOG_INFO, " Spatial-Noise-Filter [Y,U,V] : [%i,%i,%i]",spat_Y_thres,spat_U_thres,spat_V_thres);
+  mjpeg_log (LOG_INFO, " Gauss-Lowpass-Filter [Y,U,V] : [%i,%i,%i]",gauss_Y,gauss_U,gauss_V);
+  mjpeg_log (LOG_INFO, "Temporal-Noise-Filter [Y,U,V] : [%i,%i,%i]",temp_Y_thres,temp_U_thres,temp_V_thres);
 
   /* initialize stream-information */
   y4m_accept_extensions (1);
@@ -325,53 +535,45 @@ main (int argc, char *argv[])
     frame5[1] = buff_offset + (uint8_t *) malloc (buff_size);
     frame5[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    mc1[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    mc1[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    mc1[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame6[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame6[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame6[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    mc2[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    mc2[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    mc2[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame7[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame7[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame7[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    mc3[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    mc3[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    mc3[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame8[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame8[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame8[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    mc4[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    mc4[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    mc4[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame9[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame9[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame9[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    mc5[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    mc5[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    mc5[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    framea[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    framea[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    framea[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    pixlock1[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixlock1[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixlock1[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    frameb[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    frameb[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    frameb[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    pixlock2[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixlock2[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixlock2[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    framec[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    framec[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    framec[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    pixlock3[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixlock3[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixlock3[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    framed[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    framed[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    framed[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    pixlock4[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixlock4[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixlock4[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    framee[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    framee[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    framee[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    pixlock5[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixlock5[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixlock5[2] = buff_offset + (uint8_t *) malloc (buff_size);
-
-    pixlock6[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixlock6[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixlock6[2] = buff_offset + (uint8_t *) malloc (buff_size);
-
-    pixlock7[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixlock7[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    pixlock7[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    framef[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    framef[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    framef[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
     outframe[0] = buff_offset + (uint8_t *) malloc (buff_size);
     outframe[1] = buff_offset + (uint8_t *) malloc (buff_size);
@@ -391,562 +593,67 @@ main (int argc, char *argv[])
 	static uint32_t frame_nr=0;
 	uint8_t * temp[3];
 
-// undefine this to check the performance of stage 2 processing alone
-#if 1 
-	// motion-compensate frames to the reference frame
-	{
-		int x,y,vx,vy,sx,sy;
-		int bx,by;
-		uint32_t sad;
-		uint32_t min;
-
-		int r=motionsearch_radius; 
-
-		// blocksize may not(!) be to small for this type of denoiser
-		for(y=0;y<lheight;y+=8)
-			for(x=0;x<lwidth;x+=8)
-			{
-
-			// search the best vector for frame2
-			min = psad_sub22 (	frame3[0]+(x)+(y)*lwidth,
-					frame2[0]+(x)+(y)*lwidth,
-					lwidth,8 )*0.8;
-			vx=vy=bx=by=0;
-			if(min>512)
-			for(sy=-r;sy<=r;sy++)
-				for(sx=-r;sx<=r;sx++)
-				{
-				sad  = psad_sub22 (	frame3[0]+(x   )+(y   )*lwidth,
-							frame2[0]+(x+sx)+(y+sy)*lwidth,
-							lwidth,8 );
-				if(sad<min)
-					{
-					min = sad;
-					vx=sx;
-					vy=sy;
-					}
-				}
-			bx=vx;
-			by=vy;	
-
-			// compensate block for frame2
-			{
-			uint8_t *p0 = mc2[0]+(x)+(y)*lwidth;
-			uint8_t *p1 = frame2[0]+(x+vx)+(y+vy)*lwidth;
-			for(sy=0;sy<8;sy++)
-				{
-					for(sx=0;sx<8;sx++)
-					{
-					*(p0) = *(p1);
-					p0++;
-					p1++;
-					}
-				p0 += lwidth-8;
-				p1 += lwidth-8;
-				}
-			}
-
-			// search the best vector for frame1 (arround the match of frame2)
-			min = psad_sub22 (	frame3[0]+(x)+(y)*lwidth,
-					frame1[0]+(x+bx)+(y+by)*lwidth,
-					lwidth,8 )*0.8;
-			vx=vy=0;
-			if(min>512)
-			for(sy=(by-r);sy<=(by+r);sy++)
-				for(sx=(bx-r);sx<=(bx+r);sx++)
-				{
-				sad  = psad_sub22 (	frame3[0]+(x   )+(y   )*lwidth,
-							frame1[0]+(x+sx)+(y+sy)*lwidth,
-							lwidth,8 );
-				if(sad<min)
-					{
-					min = sad;
-					vx=sx;
-					vy=sy;
-					}
-				}			
-
-			// compensate block for frame1
-			{
-			uint8_t *p0 = mc1[0]+(x)+(y)*lwidth;
-			uint8_t *p1 = frame1[0]+(x+vx)+(y+vy)*lwidth;
-			for(sy=0;sy<8;sy++)
-				{
-					for(sx=0;sx<8;sx++)
-					{
-					*(p0) = *(p1);
-					p0++;
-					p1++;
-					}
-				p0 += lwidth-8;
-				p1 += lwidth-8;
-				}
-			}
-
-			// search the best vector for frame4
-			min = psad_sub22 (	frame3[0]+(x)+(y)*lwidth,
-					frame4[0]+(x)+(y)*lwidth,
-					lwidth,8 )*0.8;
-			vx=vy=bx=by=0;
-			if(min>512)
-			for(sy=-r;sy<=r;sy++)
-				for(sx=-r;sx<=r;sx++)
-				{
-				sad  = psad_sub22 (	frame3[0]+(x   )+(y   )*lwidth,
-							frame4[0]+(x+sx)+(y+sy)*lwidth,
-							lwidth,8 );
-				if(sad<min)
-					{
-					min = sad;
-					vx=bx=sx;
-					vy=by=sy;
-					}
-				}			
-
-			// compensate block for frame4
-			{
-			uint8_t *p0 = mc4[0]+(x)+(y)*lwidth;
-			uint8_t *p1 = frame4[0]+(x+vx)+(y+vy)*lwidth;
-			for(sy=0;sy<8;sy++)
-				{
-					for(sx=0;sx<8;sx++)
-					{
-					*(p0) = *(p1);
-					p0++;
-					p1++;
-					}
-				p0 += lwidth-8;
-				p1 += lwidth-8;
-				}
-			}
-
-			// search the best vector for frame5 (arround the match of frame4)
-			min = psad_sub22 (	frame3[0]+(x)+(y)*lwidth,
-					frame5[0]+(x+bx)+(y+by)*lwidth,
-					lwidth,8 )*0.8;
-			vx=vy=0;
-			if(min>512)
-			for(sy=(by-r);sy<=(by+r);sy++)
-				for(sx=(bx-r);sx<=(bx+r);sx++)
-				{
-				sad  = psad_sub22 (	frame3[0]+(x   )+(y   )*lwidth,
-							frame5[0]+(x+sx)+(y+sy)*lwidth,
-							lwidth,8 );
-				if(sad<min)
-					{
-					min = sad;
-					vx=sx;
-					vy=sy;
-					}
-				}			
-
-			// compensate block for frame5
-			{
-			uint8_t *p0 = mc5[0]+(x)+(y)*lwidth;
-			uint8_t *p1 = frame5[0]+(x+vx)+(y+vy)*lwidth;
-			for(sy=0;sy<8;sy++)
-				{
-					for(sx=0;sx<8;sx++)
-					{
-					*(p0) = *(p1);
-					p0++;
-					p1++;
-					}
-				p0 += lwidth-8;
-				p1 += lwidth-8;
-				}
-			}
-	}
-	}
-
-	// mix frames
-	{
-	int x,y;
-	int mean;
-	int delta;
-	int delta_sum;
-	uint32_t interpolated_pixel;
-	int t=temp_Y_thres;
-	int ref;
-
-	uint8_t *p1 = mc1[0];
-	uint8_t *p2 = mc2[0];
-	uint8_t *p3 = frame3[0];
-	uint8_t *p4 = mc4[0];
-	uint8_t *p5 = mc5[0];
-	uint8_t *dst = mc3[0];
-
-	// denoise the luma-plane
-	for(y=0;y<lheight;y++)
-		for(x=0;x<lwidth;x++)
-		{
-
-		ref  = *(p3-1-lwidth);
-		ref += *(p3  -lwidth)*2;
-		ref += *(p3+1-lwidth);
-		ref += *(p3-1       )*2;
-		ref += *(p3         )*4;
-		ref += *(p3+1       )*2;
-		ref += *(p3-1+lwidth);
-		ref += *(p3  +lwidth)*2;
-		ref += *(p3+1+lwidth);
-		ref /= 16;
-
-		delta_sum = 0;
-		interpolated_pixel = 0;
-
-		mean = ( *(p1)+*(p2)+*(p3)+*(p4)+*(p5) )/5;
-		delta = abs( mean-ref );
-		if (delta<(t/2)) // half the threshold as this interpolation might introduce ghosts!
-		{
-			delta_sum++;
-			interpolated_pixel += mean;
-		}
-		if(delta_sum==0)
-		{
-			mean = ( *(p2)+*(p3)+*(p4) )/3;
-			delta = abs( mean-ref );
-			if (delta<(t/2)) // half the threshold as this interpolation might introduce ghosts!
-			{
-				delta_sum++;
-				interpolated_pixel += mean;
-			}
-
-			mean = ( *(p1)+*(p2)+*(p3) )/3;
-			delta = abs( mean-ref );
-			if (delta<(t/2))
-			{
-				delta_sum++;
-				interpolated_pixel += mean;
-			}
-
-			mean = ( *(p3)+*(p4)+*(p5) )/3;
-			delta = abs( mean-ref );
-			if (delta<(t/2))
-			{
-				delta_sum++;
-				interpolated_pixel += mean;
-			}
-
-			if(delta_sum==0) // we still have not found a good interpolation :-(
-			{
-				mean = ( *(p2)+*(p3) )/2;
-				delta = abs( mean-ref );
-				if (delta<t)
-				{
-					delta_sum++;
-					interpolated_pixel += mean;
-				}
-	
-				mean = ( *(p3)+*(p4) )/2;
-				delta = abs( mean-ref );
-				if (delta<t)
-				{
-					delta_sum++;
-					interpolated_pixel += mean;
-				}
-	
-			}
-
-			if (delta_sum==0) 
-			// oh shit, this really is bad. as a last resort try if we can find any matching pixels
-			{
-				delta = abs( *(p1)-ref );
-				if (delta<t)
-				{
-					delta_sum++;
-					interpolated_pixel += *(p1);
-				}
-				delta = abs( *(p2)-ref );
-				if (delta<t)
-				{
-					delta_sum++;
-					interpolated_pixel += *(p2);
-				}
-				delta = abs( *(p4)-ref );
-				if (delta<t)
-				{
-					delta_sum++;
-					interpolated_pixel += *(p4);
-				}
-				delta = abs( *(p5)-ref );
-				if (delta<t)
-				{
-					delta_sum++;
-					interpolated_pixel += *(p5);
-				}
-			}
-			if (delta_sum==0) 
-				interpolated_pixel = *(p3); // really give up...
-			else
-				interpolated_pixel /= delta_sum;
-		}
-
-		*(dst)=interpolated_pixel;
-
-		p1++;
-		p2++;
-		p3++;
-		p4++;
-		p5++;
-		dst++;
-		}
-
-	// denoise chroma1-plane
-	t=temp_U_thres;
-	p1 = frame1[1];
-	p2 = frame2[1];
-	p3 = frame3[1];
-	p4 = frame4[1];
-	p5 = frame5[1];
-	dst = mc3[1];
-	for(y=0;y<cheight;y++)
-		for(x=0;x<cwidth;x++)
-		{
-
-		ref  = *(p3-1-cwidth);
-		ref += *(p3  -cwidth)*2;
-		ref += *(p3+1-cwidth);
-		ref += *(p3-1       )*2;
-		ref += *(p3         )*4;
-		ref += *(p3+1       )*2;
-		ref += *(p3-1+cwidth);
-		ref += *(p3  +cwidth)*2;
-		ref += *(p3+1+cwidth);
-		ref /= 16;
-
-
-		delta_sum = 0;
-		interpolated_pixel = 0;
-
-		mean = ( *(p1)+*(p2)+*(p3)+*(p4)+*(p5) )/5;
-		delta = abs( mean-ref );
-		if (delta<(t/2))
-		{
-			delta_sum++;
-			interpolated_pixel += mean;
-		}
-		if(delta_sum==0)
-		{
-			mean = ( *(p2)+*(p3)+*(p4) )/3;
-			delta = abs( mean-ref );
-			if (delta<(t/2))
-			{
-				delta_sum++;
-				interpolated_pixel += mean;
-			}
-
-			mean = ( *(p1)+*(p2)+*(p3) )/3;
-			delta = abs( mean-ref );
-			if (delta<(t/2))
-			{
-				delta_sum++;
-				interpolated_pixel += mean;
-			}
-
-			mean = ( *(p3)+*(p4)+*(p5) )/3;
-			delta = abs( mean-ref );
-			if (delta<(t/2))
-			{
-				delta_sum++;
-				interpolated_pixel += mean;
-			}
-
-			if(delta_sum==0) // we still have not found a good interpolation :-(
-			{
-				mean = ( *(p2)+*(p3) )/2;
-				delta = abs( mean-ref );
-				if (delta<t)
-				{
-					delta_sum++;
-					interpolated_pixel += mean;
-				}
-	
-				mean = ( *(p3)+*(p4) )/2;
-				delta = abs( mean-ref );
-				if (delta<t)
-				{
-					delta_sum++;
-					interpolated_pixel += mean;
-				}
-	
-			}
-			if (delta_sum==0)
-				interpolated_pixel = *(p3);
-			else
-				interpolated_pixel /= delta_sum;
-		}
-
-		*(dst)=interpolated_pixel;
-
-		p1++;
-		p2++;
-		p3++;
-		p4++;
-		p5++;
-		dst++;
-		}
-	// denoise chroma2-plane
-	t=temp_V_thres;
-	p1 = frame1[2];
-	p2 = frame2[2];
-	p3 = frame3[2];
-	p4 = frame4[2];
-	p5 = frame5[2];
-	dst = mc3[2];
-	for(y=0;y<cheight;y++)
-		for(x=0;x<cwidth;x++)
-		{
-
-		ref  = *(p3-1-cwidth);
-		ref += *(p3  -cwidth)*2;
-		ref += *(p3+1-cwidth);
-		ref += *(p3-1       )*2;
-		ref += *(p3         )*4;
-		ref += *(p3+1       )*2;
-		ref += *(p3-1+cwidth);
-		ref += *(p3  +cwidth)*2;
-		ref += *(p3+1+cwidth);
-		ref /= 16;
-
-
-		delta_sum = 0;
-		interpolated_pixel = 0;
-
-		mean = ( *(p1)+*(p2)+*(p3)+*(p4)+*(p5) )/5;
-		delta = abs( mean-ref );
-		if (delta<(t/2))
-		{
-			delta_sum++;
-			interpolated_pixel += mean;
-		}
-		if(delta_sum==0)
-		{
-			mean = ( *(p2)+*(p3)+*(p4) )/3;
-			delta = abs( mean-ref );
-			if (delta<(t/2))
-			{
-				delta_sum++;
-				interpolated_pixel += mean;
-			}
-
-			mean = ( *(p1)+*(p2)+*(p3) )/3;
-			delta = abs( mean-ref );
-			if (delta<(t/2))
-			{
-				delta_sum++;
-				interpolated_pixel += mean;
-			}
-
-			mean = ( *(p3)+*(p4)+*(p5) )/3;
-			delta = abs( mean-ref );
-			if (delta<(t/2))
-			{
-				delta_sum++;
-				interpolated_pixel += mean;
-			}
-
-			if(delta_sum==0) // we still have not found a good interpolation :-(
-			{
-				mean = ( *(p2)+*(p3) )/2;
-				delta = abs( mean-ref );
-				if (delta<t)
-				{
-					delta_sum++;
-					interpolated_pixel += mean;
-				}
-	
-				mean = ( *(p3)+*(p4) )/2;
-				delta = abs( mean-ref );
-				if (delta<t)
-				{
-					delta_sum++;
-					interpolated_pixel += mean;
-				}
-	
-			}
-			if (delta_sum==0)
-				interpolated_pixel = *(p3);
-			else
-				interpolated_pixel /= delta_sum;
-		}
-
-		*(dst)=interpolated_pixel;
-
-		p1++;
-		p2++;
-		p3++;
-		p4++;
-		p5++;
-		dst++;
-		}
-	}
-#else
-memcpy (pixlock1[0],frame1[0],lwidth*lheight);
-memcpy (pixlock1[1],frame1[1],cwidth*cheight);
-memcpy (pixlock1[2],frame1[2],cwidth*cheight);
-#endif	
-	// lock pixels and do this right (that is do it *without* producing visable artefacts!)
-	{
-	int x,y;
-	int d1,d2,d3,d4,d5,d6,d7;
-
-	for(y=0;y<lheight;y++)
-		for(x=0;x<lwidth;x++)
-		{
-			d1  = abs( *(outframe[0]+x+y*lwidth)-*(pixlock1[0]+x+y*lwidth) );
-			d2  = abs( *(outframe[0]+x+y*lwidth)-*(pixlock2[0]+x+y*lwidth) );
-			d3  = abs( *(outframe[0]+x+y*lwidth)-*(pixlock3[0]+x+y*lwidth) );
-			d4  = abs( *(outframe[0]+x+y*lwidth)-*(pixlock4[0]+x+y*lwidth) );
-			d5  = abs( *(outframe[0]+x+y*lwidth)-*(pixlock5[0]+x+y*lwidth) );
-			d6  = abs( *(outframe[0]+x+y*lwidth)-*(pixlock6[0]+x+y*lwidth) );
-			d7  = abs( *(outframe[0]+x+y*lwidth)-*(pixlock7[0]+x+y*lwidth) );
-
-			if (d1>3 || d2>3 || d3>3 || d4>3 || d5>3 || d6>3 || d7>3)
-			{
-				*(outframe[0]+x+y*lwidth) = *(pixlock4[0]+x+y*lwidth);
-			}
-		}
-	for(y=0;y<cheight;y++)
-		for(x=0;x<cwidth;x++)
-		{
-			d1  = abs( *(outframe[1]+x+y*cwidth)-*(pixlock1[1]+x+y*cwidth) );
-			d2  = abs( *(outframe[1]+x+y*cwidth)-*(pixlock2[1]+x+y*cwidth) );
-			d3  = abs( *(outframe[1]+x+y*cwidth)-*(pixlock3[1]+x+y*cwidth) );
-			d4  = abs( *(outframe[1]+x+y*cwidth)-*(pixlock4[1]+x+y*cwidth) );
-			d5  = abs( *(outframe[1]+x+y*cwidth)-*(pixlock5[1]+x+y*cwidth) );
-			d6  = abs( *(outframe[1]+x+y*cwidth)-*(pixlock6[1]+x+y*cwidth) );
-			d7  = abs( *(outframe[1]+x+y*cwidth)-*(pixlock7[1]+x+y*cwidth) );
-
-			if (d1>3 || d2>3 || d3>3 || d4>3 || d5>3 || d6>3 || d7>3)
-			{
-				*(outframe[1]+x+y*cwidth) = *(pixlock4[1]+x+y*cwidth);
-			}
-
- 			d1  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock1[2]+x+y*cwidth) );
-			d2  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock2[2]+x+y*cwidth) );
-			d3  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock3[2]+x+y*cwidth) );
-			d4  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock4[2]+x+y*cwidth) );
-			d5  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock5[2]+x+y*cwidth) );
-			d6  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock6[2]+x+y*cwidth) );
-			d7  = abs( *(outframe[2]+x+y*cwidth)-*(pixlock7[2]+x+y*cwidth) );
-
-			if (d1>3 || d2>3 || d3>3 || d4>3 || d5>3 || d6>3 || d7>3)
-			{
-				*(outframe[2]+x+y*cwidth) = *(pixlock4[2]+x+y*cwidth);
-			}
-		}
-	}
-
-	// increase frame-counter
 	frame_nr++;
-	if(frame_nr>=7)
-		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, outframe);
+
+	adaptive_filter_plane( frame1[0],lwidth,lheight,spat_Y_thres);
+	adaptive_filter_plane( frame1[1],cwidth,cheight,spat_U_thres);
+	adaptive_filter_plane( frame1[2],cwidth,cheight,spat_V_thres);
+
+	gauss_filter_plane(frame1[0],lwidth,lheight,gauss_Y);
+	gauss_filter_plane(frame1[1],cwidth,cheight,gauss_U);
+	gauss_filter_plane(frame1[2],cwidth,cheight,gauss_V);
+
+	temporal_filter_planes( 0, lwidth, lheight, temp_Y_thres );
+	temporal_filter_planes( 1, cwidth, cheight, temp_U_thres );
+	temporal_filter_planes( 2, cwidth, cheight, temp_V_thres );
+
+	if(frame_nr>=4)
+		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, outframe );
 
 	// rotate buffer pointers to rotate input-buffers
-	temp[0] = frame5[0];
-	temp[1] = frame5[1];
-	temp[2] = frame5[2];
+	temp[0] = framef[0];
+	temp[1] = framef[1];
+	temp[2] = framef[2];
+
+	framef[0] = framee[0];
+	framef[1] = framee[1];
+	framef[2] = framee[2];
+
+	framee[0] = framed[0];
+	framee[1] = framed[1];
+	framee[2] = framed[2];
+
+	framed[0] = framec[0];
+	framed[1] = framec[1];
+	framed[2] = framec[2];
+
+	framec[0] = frameb[0];
+	framec[1] = frameb[1];
+	framec[2] = frameb[2];
+
+	frameb[0] = framea[0];
+	frameb[1] = framea[1];
+	frameb[2] = framea[2];
+
+	framea[0] = frame9[0];
+	framea[1] = frame9[1];
+	framea[2] = frame9[2];
+
+	frame9[0] = frame8[0];
+	frame9[1] = frame8[1];
+	frame9[2] = frame8[2];
+
+	frame8[0] = frame7[0];
+	frame8[1] = frame7[1];
+	frame8[2] = frame7[2];
+
+	frame7[0] = frame6[0];
+	frame7[1] = frame6[1];
+	frame7[2] = frame6[2];
+
+	frame6[0] = frame5[0];
+	frame6[1] = frame5[1];
+	frame6[2] = frame5[2];
 
 	frame5[0] = frame4[0];
 	frame5[1] = frame4[1];
@@ -968,43 +675,6 @@ memcpy (pixlock1[2],frame1[2],cwidth*cheight);
 	frame1[1] = temp[1];
 	frame1[2] = temp[2];
 
-	// do the same for the pixlock-lookahead-buffers
-	temp[0] = pixlock7[0];
-	temp[1] = pixlock7[1];
-	temp[2] = pixlock7[2];
-
-	pixlock7[0] = pixlock6[0];
-	pixlock7[1] = pixlock6[1];
-	pixlock7[2] = pixlock6[2];
-
-	pixlock6[0] = pixlock5[0];
-	pixlock6[1] = pixlock5[1];
-	pixlock6[2] = pixlock5[2];
-
-	pixlock5[0] = pixlock4[0];
-	pixlock5[1] = pixlock4[1];
-	pixlock5[2] = pixlock4[2];
-
-	pixlock4[0] = pixlock3[0];
-	pixlock4[1] = pixlock3[1];
-	pixlock4[2] = pixlock3[2];
-
-	pixlock3[0] = pixlock2[0];
-	pixlock3[1] = pixlock2[1];
-	pixlock3[2] = pixlock2[2];
-
-	pixlock2[0] = pixlock1[0];
-	pixlock2[1] = pixlock1[1];
-	pixlock2[2] = pixlock1[2];
-
-	pixlock1[0] = temp[0];
-	pixlock1[1] = temp[1];
-	pixlock1[2] = temp[2];
-
-	// and fill in the reconstructed image in mc3[x]
-	memcpy(pixlock1[0],mc3[0],lwidth*lheight);
-	memcpy(pixlock1[1],mc3[1],cwidth*cheight);
-	memcpy(pixlock1[2],mc3[2],cwidth*cheight);
     }
 
   /* free allocated buffers */
@@ -1029,53 +699,13 @@ memcpy (pixlock1[2],frame1[2],cwidth*cheight);
     free (frame5[1] - buff_offset);
     free (frame5[2] - buff_offset);
 
-    free (mc1[0] - buff_offset);
-    free (mc1[1] - buff_offset);
-    free (mc1[2] - buff_offset);
+    free (frame6[0] - buff_offset);
+    free (frame6[1] - buff_offset);
+    free (frame6[2] - buff_offset);
 
-    free (mc2[0] - buff_offset);
-    free (mc2[1] - buff_offset);
-    free (mc2[2] - buff_offset);
-
-    free (mc3[0] - buff_offset);
-    free (mc3[1] - buff_offset);
-    free (mc3[2] - buff_offset);
-
-    free (mc4[0] - buff_offset);
-    free (mc4[1] - buff_offset);
-    free (mc4[2] - buff_offset);
-
-    free (mc5[0] - buff_offset);
-    free (mc5[1] - buff_offset);
-    free (mc5[2] - buff_offset);
-
-    free (pixlock1[0] - buff_offset);
-    free (pixlock1[1] - buff_offset);
-    free (pixlock1[2] - buff_offset);
-
-    free (pixlock2[0] - buff_offset);
-    free (pixlock2[1] - buff_offset);
-    free (pixlock2[2] - buff_offset);
-
-    free (pixlock3[0] - buff_offset);
-    free (pixlock3[1] - buff_offset);
-    free (pixlock3[2] - buff_offset);
-
-    free (pixlock4[0] - buff_offset);
-    free (pixlock4[1] - buff_offset);
-    free (pixlock4[2] - buff_offset);
-
-    free (pixlock5[0] - buff_offset);
-    free (pixlock5[1] - buff_offset);
-    free (pixlock5[2] - buff_offset);
-
-    free (pixlock6[0] - buff_offset);
-    free (pixlock6[1] - buff_offset);
-    free (pixlock6[2] - buff_offset);
-
-    free (pixlock7[0] - buff_offset);
-    free (pixlock7[1] - buff_offset);
-    free (pixlock7[2] - buff_offset);
+    free (frame7[0] - buff_offset);
+    free (frame7[1] - buff_offset);
+    free (frame7[2] - buff_offset);
 
     free (outframe[0] - buff_offset);
     free (outframe[1] - buff_offset);
