@@ -21,8 +21,6 @@
 
 AUD_TRACK="1"
 VOLUMES="1"
-FILTERING="none"
-FILTER_TYPE="median"
 PREFIX_OUT="out"
 VCD_TYPE="dvd"
 DEC_TOOL="ffmpeg"
@@ -42,6 +40,7 @@ SOX="sox"
 TCCAT="tccat"
 TCDEMUX="tcdemux"
 TCPROBE="tcprobe"
+TCREQUANT="tcrequant"
 TRANSCODE="transcode"
 Y4MDENOISE="y4mdenoise"
 Y4MSCALER="y4mscaler"
@@ -52,7 +51,7 @@ YUVFPS="yuvfps"
 YUVMEDIANFILTER="yuvmedianfilter"
 
 SCRIPT_NAME="anytovcd.sh"
-SCRIPT_VERSION="9"
+SCRIPT_VERSION="10"
 
 
 # custom quant. matrices
@@ -104,14 +103,14 @@ probe_aud_freq ()
 
 probe_vid_fps ()
 {
-    ${FFMPEG} -i "$1" -f yuv4mpegpipe -t 1 -y /tmp/tmp.y4m >/dev/null 2>&1
+    ${FFMPEG} -i "$1" -f yuv4mpegpipe -pix_fmt yuv420p -t 1 -y /tmp/tmp.y4m >/dev/null 2>&1
     echo "`head -1 /tmp/tmp.y4m | awk '{print $4}' | cut -c 2-`"
     rm -f /tmp/tmp.y4m
 }
 
 probe_vid_ilace ()
 {
-    ${FFMPEG} -i "$1" -f yuv4mpegpipe -t 1 -y /tmp/tmp.y4m >/dev/null 2>&1
+    ${FFMPEG} -i "$1" -f yuv4mpegpipe -pix_fmt yuv420p -t 1 -y /tmp/tmp.y4m >/dev/null 2>&1
     echo "`head -1 /tmp/tmp.y4m | awk '{print $5}' | cut -c 2-`"
     rm -f /tmp/tmp.y4m
 }
@@ -125,8 +124,9 @@ probe_vid_sar ()
 
 probe_vid_size ()
 {
-    echo "`${FFMPEG} -i "$1" 2>&1 | \
-    awk '/Video:/ {print $5}' | sed s/,// | head -1`"
+    ${FFMPEG} -i "$1" -f yuv4mpegpipe -pix_fmt yuv420p -t 1 -y /tmp/tmp.y4m >/dev/null 2>&1
+    echo "`head -1 /tmp/tmp.y4m | awk '{sub("W","",$2); sub("H","",$3); print $2"x"$3}'`"
+    rm -f /tmp/tmp.y4m
 }
 
 probe_vid_fmt ()
@@ -221,8 +221,18 @@ show_help ()
     echo "               bottom_first       "
     echo "-J    force output ilace flag (if possible)"
     echo "      avail. : none, top_first and bottom_first"
-    echo "-f    filtering method (*none*)   "
-    echo "      avail.: light, medium, heavy"
+    echo "-f filter1[:filter1_level][,filter2:[filter2_level]]..."
+    echo "      avail. filters :"
+    echo "      - hqdenoise (y4mdenoise)"
+    echo "      - mean      (yuvmedianfilter -f)"
+    echo "      - median    (yuvmedianfilter)"
+    echo "      - spatial   (y4mspatialfilter)"
+    echo "      - temporal  (yuvdenoise)"
+    echo "      - unsharp   (y4munsharp)"
+    echo "      avail. levels :"
+    echo "      - light     (for low noise source)"
+    echo "      - medium    (for middle noise)"
+    echo "      - heavy     (for high noise)"
     echo "-m    mute mode (no audio)        "
     echo "-n    output norm in case of input"
     echo "      with non-standard framerate "
@@ -235,15 +245,6 @@ show_help ()
     echo "      avail. : best, good, fair   "
     echo "-r    enable two passes encoding mode"
     echo "-R    force input framerate (X:Y) "
-    echo "-t    filter type to use with     "
-    echo "      the chosen filter method    "
-    echo "      (default = median)          "
-    echo "      avail. : mean (yuvmedianfilter -f) "
-    echo "               median (yuvmedianfilter)  "
-    echo "               spatial (y4mspatialfilter)"
-    echo "               temporal (yuvdenoise)     "
-    echo "               unsharp (y4munsharp)      "
-    echo "               hqdenoise (y4mdenoise)    "
     echo "-T    force input length (minutes)"
     echo "-v    script version              "
     echo "-V    number of volumes (1)       "
@@ -280,7 +281,7 @@ for BIN in ${FFMPEG} ${MPLEX} ${PGMTOY4M}; do
 
 done
 
-while getopts a:A:bcd:e:f:i:I:J:mn:o:p:q:rR:t:T:vV: OPT
+while getopts a:A:bcd:e:f:hi:I:J:mn:o:p:q:rR:T:vV: OPT
 do
     case ${OPT} in
     a)    AUD_TRACK="${OPTARG}";;
@@ -289,29 +290,33 @@ do
     c)    ACOPY_MODE="1";;
     d)    DEC_TOOL="${OPTARG}";;
     e)    ENC_TOOL="${OPTARG}";;
+    h)    show_help;
+          exit 0;;
     i)    VIDEO_SRC="${OPTARG}"; AUDIO_SRC="${VIDEO_SRC}";;
     I)    INTERLACING="${OPTARG}";;
     J)    INTERLACING_OUT="${OPTARG}";;
-    f)    FILTERING="${OPTARG}";;
+    f)    FILTERS_CHAIN="${OPTARG}";;
     m)    MUTE_MODE="1";;
     n)    OUT_NORM="${OPTARG}";;
     o)    PREFIX_OUT="${OPTARG}";;
     p)    VCD_TYPE="${OPTARG}";;
     q)    QUALITY="${OPTARG}";;
-    r)    ENC_TYPE="abr";;
+#   r)    ENC_TYPE="abr";;
+    r)    REQUANT_MODE="1";;
     R)    VID_FPS_SRC="${OPTARG}";;
-    t)    FILTER_TYPE="${OPTARG}";;
     T)    DURATION="${OPTARG}";;
     v)    echo "${SCRIPT_NAME} version ${SCRIPT_VERSION}"; exit 0;;
     V)    VOLUMES="${OPTARG}";;
-    \?)   show_help; exit 0;;
+    \?)   show_error "Unknown or uncomplete command line option.";
+          show_error "Use -h to get help.";
+          exit 2;;
     esac
 done
 
 if test "${VIDEO_SRC}" == "" || ! test -r "${VIDEO_SRC}"; then
 
     show_error "input file not specified or not present."
-    show_help
+    show_error "Use -h to get help."
     exit 2
 
 fi
@@ -319,7 +324,7 @@ fi
 FFMPEG_VERSION="`probe_ffmpeg_version`"
 
 AUD_TRACK="`range_check ${AUD_TRACK} 1 99`"
-FFMPEG_AUD_TRACK="`${FFMPEG} -i \"${AUDIO_SRC}\" 2>&1 | awk '/Audio:/ {sub("^#","",$2); print $2}' | head -${AUD_TRACK} | tail -1`"
+FFMPEG_AUD_TRACK="`${FFMPEG} -i \"${AUDIO_SRC}\" 2>&1 | awk '/Audio:/ {sub("^#","",$2); print $2}' | awk -F[ '{print $1}' | head -${AUD_TRACK} | tail -1`"
 
 AUD_BITRATE_SRC="`probe_aud_bitrate "${AUDIO_SRC}" ${AUD_TRACK}`"
 AUD_FMT_SRC="`probe_aud_fmt "${AUDIO_SRC}" ${AUD_TRACK}`"
@@ -375,8 +380,16 @@ fi
 # input pixel/sample aspect ratio
 if test "${VID_SAR_SRC}" == ""; then
 
-    test_bin ${TRANSCODE}
-    VID_SAR_SRC="`probe_vid_sar "${VIDEO_SRC}"`"
+    if which ${TRANSCODE} >/dev/null; then
+
+        VID_SAR_SRC="`probe_vid_sar "${VIDEO_SRC}"`"
+
+    else
+
+        show_warn "No transcode binary found, assuming 1:1 input pixel aspect ratio."
+        VID_SAR_SRC="1:1"
+
+    fi
 
 fi
 
@@ -396,8 +409,7 @@ FF_ENC="${FFMPEG} -v 0 -f yuv4mpegpipe -i /dev/stdin -bf 2"
 MPEG2ENC="${MPEG2ENC} -v 0 -M 0 -R 2 -P -s -2 1 -E -5"
 MPLEX="${MPLEX} -v 1"
 PGMTOY4M="${PGMTOY4M} -r ${VID_FPS_SRC} -i ${VID_ILACE_SRC} -a ${VID_SAR_SRC}"
-Y4MDENOISE_FLAGS="-v 0"
-Y4MSCALER="${Y4MSCALER} -v 0 -S option=cubicCR"
+Y4MSCALER="${Y4MSCALER} -v 0 -S option=cubicCR -O infer=exact"
 
 # ffmpeg decoder version
 if test "${FFMPEG_VERSION}" -ge "4731"; then
@@ -407,50 +419,6 @@ if test "${FFMPEG_VERSION}" -ge "4731"; then
 else
 
     FF_DEC="${FF_DEC} -f imagepipe -img pgmyuv"
-
-fi
-
-# filtering method(s)
-if test "${FILTERING}" == "none"; then
-
-    YUVMEDIANFILTER=""
-    YUVDENOISE=""
-    Y4MSPATIALFILTER=""
-    MEAN_FILTER=""
-    Y4MUNSHARP=""
-
-elif test "${FILTERING}" == "light"; then
-
-    YUVMEDIANFILTER="${YUVMEDIANFILTER} -t 0"
-    YUVDENOISE="${YUVDENOISE} -l 1 -t 4 -S 0"
-    Y4MSPATIALFILTER="${Y4MSPATIALFILTER} -x 0 -y 0"
-    MEAN_FILTER="${YUVMEDIANFILTER} -f -r 1 -R 1"
-    Y4MDENOISE_FLAGS="${Y4MDENOISE_FLAGS} -t 1"
-    Y4MUNSHARP="${Y4MUNSHARP} -L 1.5,0.2,0"
-
-elif test "${FILTERING}" == "medium"; then
-
-    YUVMEDIANFILTER="${YUVMEDIANFILTER} -t 1 -T 1"
-    YUVDENOISE="${YUVDENOISE} -l 2 -t 6 -S 0"
-    Y4MSPATIALFILTER="${Y4MSPATIALFILTER} -X 4,0.64 -Y 4,0.8"
-    MEAN_FILTER="${YUVMEDIANFILTER} -f -r 1 -R 1 -w 2.667"
-    Y4MDENOISE_FLAGS="${Y4MDENOISE_FLAGS} -t 2"
-    Y4MUNSHARP="${Y4MUNSHARP} -L 2.0,0.3,0"
-
-elif test "${FILTERING}" == "heavy"; then
-
-    YUVMEDIANFILTER="${YUVMEDIANFILTER}"
-    YUVDENOISE="${YUVDENOISE} -l 3 -t 8 -S 0"
-    Y4MSPATIALFILTER="${Y4MSPATIALFILTER} -X 4,0.5 -Y 4,0.5 -x 2,0.5 -y 2,0.5"
-    MEAN_FILTER="${YUVMEDIANFILTER} -f"
-    Y4MDENOISE_FLAGS="${Y4MDENOISE_FLAGS} -t 3"
-    Y4MUNSHARP="${Y4MUNSHARP} -L 5.0,0.5,0"
-
-else
-
-    show_error "the specified filtering method is inexistant."
-    show_help
-    exit 2
 
 fi
 
@@ -470,7 +438,7 @@ elif test "${QUALITY}" == "fair"; then
 else
 
     show_error "the specified quality preset is inexistant."
-    show_help
+    show_error "Use -h to get help."
     exit 2
 
 fi
@@ -644,7 +612,7 @@ elif test "${VCD_TYPE}" == "vcd"; then
 else
 
     show_error "the specified output type/profile is inexistant."
-    show_help
+    show_error "Use -h to get help."
     exit 2
 
 fi
@@ -740,50 +708,7 @@ elif test "${DEC_TOOL}" == "ffmpeg"; then
 else
 
     show_error "the specified video decoder tool is not used by this script."
-    show_help
-    exit 2
-
-fi
-
-# video filter
-if test "${FILTERING}" == "none"; then
-
-    FILTER=""
-
-elif test "${FILTER_TYPE}" == "hqdenoise"; then
-
-    test_bin ${Y4MDENOISE}
-    FILTER="${Y4MDENOISE} ${Y4MDENOISE_FLAGS} |"
-
-elif test "${FILTER_TYPE}" == "mean"; then
-    
-    test_bin ${YUVMEDIANFILTER}
-    FILTER="${MEAN_FILTER} |"
-
-elif test "${FILTER_TYPE}" == "median"; then
-
-    test_bin ${YUVMEDIANFILTER}
-    FILTER="${YUVMEDIANFILTER} |"
-
-elif test "${FILTER_TYPE}" == "spatial"; then
-
-    test_bin ${Y4MSPATIALFILTER}
-    FILTER="${Y4MSPATIALFILTER} |"
-
-elif test "${FILTER_TYPE}" == "temporal"; then
-
-    test_bin ${YUVDENOISE}
-    FILTER="${YUVDENOISE} |"
-
-elif test "${FILTER_TYPE}" == "unsharp"; then
-
-    test_bin ${Y4MUNSHARP}
-    FILTER="${Y4MUNSHARP} |"
-
-else
-
-    show_error "the specified filter tool is not used by this script."
-    show_help
+    show_error "Use -h to get help."
     exit 2
 
 fi
@@ -818,6 +743,118 @@ else
     SCALER="${Y4MSCALER} |"
 
 fi
+
+# video filters chain
+for FILTER in `echo ${FILTERS_CHAIN} | sed s/,/"\n"/g`; do
+
+    FILTER_TYPE="`echo ${FILTER} | awk -F: '{print $1}'`"
+    FILTER_LEVEL="`echo ${FILTER} | awk -F: '{print $2}'`"
+    
+    if test "${FILTER_LEVEL}" == ""; then
+
+        FILTER_LEVEL="light"
+
+    fi
+
+    MEANFILTER_FLAGS="-f"
+    Y4MDENOISE_FLAGS="-v 0"
+    
+    # filter level
+    if test "${FILTER_LEVEL}" == "light"; then
+
+        YUVMEDIANFILTER_FLAGS="-t 0"
+        YUVDENOISE_FLAGS="-l 1 -t 4 -S 0"
+        YUVDENOISE2_FLAGS="-y 4 -u 8 -v 8"
+        YUVDENOISE3_FLAGS=""
+        Y4MSPATIALFILTER_FLAGS="-x 0 -y 0"
+        MEANFILTER_FLAGS="${MEANFILTER_FLAGS} -t 0"
+        Y4MDENOISE_FLAGS="${Y4MDENOISE_FLAGS} -t 1"
+        Y4MUNSHARP_FLAGS="-L 1.5,0.2,0"
+
+    elif test "${FILTER_LEVEL}" == "medium"; then
+
+        YUVMEDIANFILTER_FLAGS="-T 0"
+        YUVDENOISE_FLAGS="-l 2 -t 6 -S 0"
+        YUVDENOISE2_FLAGS="-y 8 -u 16 -v 16"
+        YUVDENOISE3_FLAGS=""
+        Y4MSPATIALFILTER_FLAGS="-X 4,0.64 -Y 4,0.8"
+        MEANFILTER_FLAGS="${MEANFILTER_FLAGS} -r 1 -T 0 -w 12"
+        Y4MDENOISE_FLAGS="${Y4MDENOISE_FLAGS} -t 2"
+        Y4MUNSHARP_FLAGS="-L 2.0,0.3,0"
+
+    elif test "${FILTER_LEVEL}" == "heavy"; then
+
+        YUVMEDIANFILTER_FLAGS=""
+        YUVDENOISE_FLAGS="-l 3 -t 8 -S 0"
+        YUVDENOISE2_FLAGS="-y 16 -u 32 -v 32"
+        YUVDENOISE3_FLAGS=""
+        Y4MSPATIALFILTER_FLAGS="-X 4,0.5 -Y 4,0.5 -x 2,0.5 -y 2,0.5"
+        MEANFILTER_FLAGS="${MEANFILTER_FLAGS} -r 1 -R 1"
+        Y4MDENOISE_FLAGS="${Y4MDENOISE_FLAGS} -t 3"
+        Y4MUNSHARP_FLAGS="-L 5.0,0.5,0"
+
+    else
+
+        show_error "the specified \"${FILTER_LEVEL}\" filter level is inexistant."
+        exit 2
+
+    fi
+
+    # filter type
+    if test "${FILTER_TYPE}" == "none"; then
+
+        FILTER=""
+
+    elif test "${FILTER_TYPE}" == "hqdenoise"; then
+
+        test_bin ${Y4MDENOISE}
+        FILTER="${Y4MDENOISE} ${Y4MDENOISE_FLAGS} |"
+
+    elif test "${FILTER_TYPE}" == "mean"; then
+    
+        test_bin ${YUVMEDIANFILTER}
+        FILTER="${YUVMEDIANFILTER} ${MEANFILTER_FLAGS} |"
+
+    elif test "${FILTER_TYPE}" == "median"; then
+
+        test_bin ${YUVMEDIANFILTER}
+        FILTER="${YUVMEDIANFILTER} ${YUVMEDIANFILTER_FLAGS} |"
+
+    elif test "${FILTER_TYPE}" == "spatial"; then
+
+        test_bin ${Y4MSPATIALFILTER}
+        FILTER="${Y4MSPATIALFILTER} ${Y4MSPATIALFILTER_FLAGS} |"
+
+    elif test "${FILTER_TYPE}" == "temporal_old"; then
+
+        test_bin ${YUVDENOISE}
+        FILTER="${YUVDENOISE} ${YUVDENOISE_FLAGS} |"
+
+    elif test "${FILTER_TYPE}" == "temporal_rc1"; then
+
+        test_bin ${YUVDENOISE}
+        FILTER="${YUVDENOISE} ${YUVDENOISE2_FLAGS} |"
+
+    elif test "${FILTER_TYPE}" == "temporal"; then
+        
+        test_bin ${YUVDENOISE}
+        FILTER="${YUVDENOISE} ${YUVDENOISE3_FLAGS} |"
+
+    elif test "${FILTER_TYPE}" == "unsharp"; then
+
+        test_bin ${Y4MUNSHARP}
+        FILTER="${Y4MUNSHARP} ${Y4MUNSHARP_FLAGS} |"
+
+    else
+
+        show_error "the specified \"${FILTER_TYPE}\" filter type is not used by this script."
+        exit 2
+
+    fi
+
+    FILTERS="${FILTERS} ${FILTER}"
+
+done
 
 # 3:2 pulldown
 if test "${VID_FPS_OUT}" == "24000:1001" && test "${VID_FMT_OUT}" == "m2v"; then
@@ -926,7 +963,7 @@ elif test "${ENC_TOOL}" == "mpeg2enc"; then
 else
 
     show_error "the specified video encoder tool is not used by this script."
-    show_help
+    show_error "Use -h to get help."
     exit 2
 
 fi
@@ -976,7 +1013,7 @@ show_info "   pixel aspect ratio: ${VID_SAR_OUT}"
 # video "analyse"
 if ! test "${BLIND_MODE}" == "1" && test "${ENC_TYPE}" == "abr"; then
 
-    eval "${DECODER} ${FILTER} ${FRC} ${SCALER} ${PIPE_BUFFER} ${ANALYSER}"
+    eval "${DECODER} ${FILTERS} ${FRC} ${SCALER} ${PIPE_BUFFER} ${ANALYSER}"
     
     if test "${ENC_TOOL}" == "mpeg2enc"; then
     
@@ -991,7 +1028,7 @@ fi
 # video (de)coding
 if ! test "${BLIND_MODE}" == "1"; then
 
-    eval "${DECODER} ${FILTER} ${FRC} ${SCALER} ${PIPE_BUFFER} ${ENCODER}"
+    eval "${DECODER} ${FILTERS} ${FRC} ${SCALER} ${PIPE_BUFFER} ${ENCODER}"
 
 fi
 
@@ -1004,6 +1041,32 @@ fi
 
 # multiplexing
 if ! test "${BLIND_MODE}" == "1" && ! test "${MUTE_MODE}" == "1"; then
+
+    if test "${REQUANT_MODE}" == "1"; then
+
+        VID_SRC_SIZE="`ls -l ${VIDEO_OUT} | awk '{print $5}'`"
+        AUD_SRC_SIZE="`ls -l ${AUDIO_OUT} | awk '{print $5}'`"
+        
+        REQUANT_FACT="`echo "scale=3; ${VID_SRC_SIZE} / (0.96 * ${VOL_SIZE} * 1000 * 1000 - ${AUD_SRC_SIZE})" | bc -l`"
+
+        # sed is here to replace a "requant_fact * 1000"
+        if test `echo ${REQUANT_FACT} | sed s/"\."//` -gt 1000; then
+
+            VIDEO_SRC="${VIDEO_OUT}"
+            VIDEO_OUT="${PREFIX_OUT}.req"
+
+            show_info "Requantisation factor: ${REQUANT_FACT}"
+            
+            test_bin ${TCREQUANT}
+            ${TCREQUANT} -i ${VIDEO_SRC} -o ${VIDEO_OUT} -f ${REQUANT_FACT}
+
+        else
+
+            show_warn "Requantisation not done. Requantisation factor lesser than 1.0."
+
+        fi
+
+    fi
 
     ${MPLEX} -o "${MPEG_OUT}" "${VIDEO_OUT}" "${AUDIO_OUT}"
 
