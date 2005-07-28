@@ -2845,6 +2845,8 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "emms                        \n\t"
 
+        "popl %%ebx                  \n\t"
+
 	:
 	//      %0           %1             %2       %3            %4
 	: "m"(quantptr), "m"(inptr), "m"(wsptr), "m"(outptr), "g"(output_col),
@@ -2864,7 +2866,7 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 	  "m"(fix_n196p307n256), "m"(fix_054p076), "m"(fix_054), "m"(fix_054n184),
 	//    %28
 	  "m"(const_0x0808)
-	: "eax", "ebx", "ecx", "edx", "edi", "esi", "cc", "memory", "st"
+	: "eax", "ecx", "edx", "edi", "esi", "cc", "memory", "st"
         );
 #endif /* ATT style assembler */
 }		

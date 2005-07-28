@@ -269,12 +269,11 @@ ycc_rgb_convert_mmx (j_decompress_ptr cinfo,
 #endif
 #if defined(HAVE_MMX_ATT_MNEMONICS)
       __asm__(
-	  "pushl %%ebx\n"
 	      "mov %1, %%eax\n"  
-	      "mov %2, %%ebx\n"  
+	      "mov %2, %%edx\n"  
 	      "mov %3, %%ecx\n"  
 	      "movd (%%eax),%%mm0\n"    // mm0: 0 0 0 0 y3 y2 y1 y0 - 8 bit
-	  "movd (%%ebx),%%mm1\n"    // mm1: 0 0 0 0 cb3 cb2 cb1 cb0
+	  "movd (%%edx),%%mm1\n"    // mm1: 0 0 0 0 cb3 cb2 cb1 cb0
 	  "movd (%%ecx),%%mm2\n"    // mm2: 0 0 0 0 cr3 cr2 cr1 cr0
 	  "pxor %%mm7,%%mm7\n"      // mm7 = 0
 	  "punpcklbw %%mm7,%%mm0\n" // mm0: y3 y2 y1 y0 - expand to 16 bit
@@ -359,7 +358,7 @@ ycc_rgb_convert_mmx (j_decompress_ptr cinfo,
 	  :"=m"(outptr[0])
 	  :"m"(inptr0),"m"(inptr1),"m"(inptr2), //y cb cr
 	   "m"(te0),"m"(te1),"m"(te2)
-	  :"eax", "ebx", "ecx", "st");
+	  :"eax", "edx", "ecx", "st");
 #endif
 
       outptr+=12;
