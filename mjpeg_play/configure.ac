@@ -85,6 +85,7 @@ AM_PROG_AS
 if test x"$with_extra_cflags" != "x"; then
    CFLAGS="$CFLAGS $with_extra_cflags"
    CXXFLAGS="$CXXFLAGS $with_extra_cflags"
+   CCASFLAGS="$CCASFLAGS $with_extra_cflags"
 fi
 
 dnl maddog:  What about CHECK-ALLOCA????
@@ -590,6 +591,9 @@ if test "$have_ppccpu" = "true" ; then
 fi
 if test x"$ARCHFLAGS" != x; then
   AC_MSG_NOTICE([  - arch/cpu compiler flags       : ${ARCHFLAGS}])
+fi
+if test x"$with_extra_cflags" != "x"; then
+  AC_MSG_NOTICE([  - extra_cflags added to CFLAGS: ${with_extra_cflags}])
 fi
 AC_MSG_NOTICE([  - video4linux recording/playback: ${have_video4linux}])
 AC_MSG_NOTICE([  - software MJPEG playback       : ${have_sdl}])
