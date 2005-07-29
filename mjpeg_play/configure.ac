@@ -248,6 +248,9 @@ dnl *********************************************************************
 have_libpng=false
 if test x$with_libpng != xno ; then
   PKG_CHECK_MODULES(LIBPNG, [libpng], [have_libpng=true], [have_libpng=false])
+  if test x$have_libpng = xfalse ; then
+    PKG_CHECK_MODULES(LIBPNG, [libpng12], [have_libpng=true], [have_libpng=false])
+  fi
 fi
 AM_CONDITIONAL(HAVE_LIBPNG, test x$have_libpng = xtrue)
 
