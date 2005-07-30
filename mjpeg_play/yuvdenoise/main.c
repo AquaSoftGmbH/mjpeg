@@ -329,31 +329,23 @@ main (int argc, char *argv[])
 	{
 	case 'h':
 	  {
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " Usage                                                                    ");
-	    mjpeg_log (LOG_INFO, " =====                                                                    ");
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " This is a spatio-temporal noise-filter for Y4M-video-streams. You can    ");
-	    mjpeg_log (LOG_INFO, " control its behaviour with the following options:                        ");
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " -s y,u,v     This sets the thresholds [0..255] for the spatial noise-    ");
-	    mjpeg_log (LOG_INFO, "              filter. If you set this too high, expect blurring your      ");
-	    mjpeg_log (LOG_INFO, "              images.                                                     ");
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " -g y,u,v     This sets the mixing-level [0..255] for the gauss-filter.   ");
-	    mjpeg_log (LOG_INFO, "              The default-values for the chroma-planes are sane. Believe  ");
-	    mjpeg_log (LOG_INFO, "              me. You only should change them, if you have noise-free     ");
-	    mjpeg_log (LOG_INFO, "              chroma-planes... It sometimes may be usefull, to smooth     ");
-	    mjpeg_log (LOG_INFO, "              the luma-plane, too. Default is to only smooth it very very ");
-	    mjpeg_log (LOG_INFO, "              little, just to get rid of jaggies.                         ");
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-	    mjpeg_log (LOG_INFO, " -T y,u,v     This sets the thresholds for the temporal noise-filter.     ");
-	    mjpeg_log (LOG_INFO, "              Values above 12 may introduce ghosts. But usualy you can't  ");
-	    mjpeg_log (LOG_INFO, "              see them in a sequence of moving frames until you pass 18.  ");
-	    mjpeg_log (LOG_INFO, "              This is due to the fact that our brain supresses these.     ");
-	    mjpeg_log (LOG_INFO, "                                                                          ");
-
+	    mjpeg_log (LOG_INFO, " Usage");
+	    mjpeg_log (LOG_INFO, " =====\n");
+	    mjpeg_log (LOG_INFO, " This is a spatio-temporal noise-filter for Y4M-video-streams. You can");
+	    mjpeg_log (LOG_INFO, " control its behaviour with the following options:\n");
+	    mjpeg_log (LOG_INFO, " -s y,u,v     This sets the thresholds [0..255] for the spatial noise-");
+	    mjpeg_log (LOG_INFO, "              filter. If you set this too high, expect blurring your");
+	    mjpeg_log (LOG_INFO, "              images.\n");
+	    mjpeg_log (LOG_INFO, " -g y,u,v     This sets the mixing-level [0..255] for the gauss-filter.");
+	    mjpeg_log (LOG_INFO, "              The default-values for the chroma-planes are sane. Believe");
+	    mjpeg_log (LOG_INFO, "              me. You only should change them, if you have noise-free");
+	    mjpeg_log (LOG_INFO, "              chroma-planes... It sometimes may be usefull, to smooth");
+	    mjpeg_log (LOG_INFO, "              the luma-plane, too. Default is to only smooth it very very");
+	    mjpeg_log (LOG_INFO, "              little, just to get rid of jaggies.\n");
+	    mjpeg_log (LOG_INFO, " -T y,u,v     This sets the thresholds for the temporal noise-filter.");
+	    mjpeg_log (LOG_INFO, "              Values above 12 may introduce ghosts. But usually you can't");
+	    mjpeg_log (LOG_INFO, "              see them in a sequence of moving frames until you pass 18.");
+	    mjpeg_log (LOG_INFO, "              This is due to the fact that our brain supresses these.");
 
 	    exit (0);
 	    break;
