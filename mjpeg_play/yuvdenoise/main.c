@@ -80,6 +80,11 @@ int g;
 uint8_t * src = plane;
 uint8_t * dst = frame8[0];
 
+// If the gaussian filter is disabled why go thru all the data copying - just
+// return early and speed things up.
+if (p == 0)
+   return;
+
 // fill first and last line content into out of bounds-region
 memcpy (src-w,src,w);
 memcpy (src+w*h,src+w*h-w,w);
