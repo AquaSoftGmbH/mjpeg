@@ -74,11 +74,6 @@
  * or Edit Lists arbitrarily mixed (as long as all files have the same
  * paramters like width, height and so on).
  *
- * Forcing a norm does not convert the video from NTSC to PAL or vice versa.
- * It is only intended to be used for foreign AVI/Quicktime files whose
- * norm can not be determined from the framerate encoded in the file.
- * So use with care!
- *
  * The format of an edit list file is as follows:
  *    line 1: "LAV Edit List"
  *    line 2: "PAL" or "NTSC"
@@ -169,7 +164,6 @@ static void Usage(char *progname)
 {
    fprintf(stderr, "Usage: %s [options] <filename> [<filename> ...]\n", progname);
    fprintf(stderr, "where options are:\n");
-   fprintf(stderr, "  -o/--norm [np]             NTSC or PAL (default: guess from framerate)\n");
    fprintf(stderr, "  -H/--H-offset num          Horizontal offset (for hardware playback)\n");
    fprintf(stderr, "  -V/--V-offset num          Vertical offset (for hardware playback)\n");
    fprintf(stderr, "  -s/--skip num              skip num seconds before playing\n");
@@ -471,8 +465,7 @@ static void check_command_line_options(int argc, char *argv[])
 #ifdef HAVE_GETOPT_LONG
    /* getopt_long options */
    static struct option long_options[]={
-      {"verbose"       ,1,0,0},     /* -v/--verbose         */
-      {"norm"            ,1,0,0},   /* -o/--norm            */
+      {"verbose"         ,1,0,0},   /* -v/--verbose         */
       {"h-offset"        ,1,0,0},   /* -H/--H-offset        */
       {"v-offset"        ,1,0,0},   /* -V/--V-offset        */
       {"skip"            ,1,0,0},   /* -s/--skip            */
