@@ -1,7 +1,7 @@
-.TH "yuvdenoise" "1" "24th May 2002" "MJPEG Linux Square" "MJPEG tools manual"
+.TH "yuvdenoise" "1" "11th August 2005" "MJPEG Linux Square" "MJPEG tools manual"
 
 .SH NAME
-yuvdenoise \- Motion-Compensating-YUV4MPEG-frame-denoiser
+yuvdenoise \- Motion-Compensating-YUV4MPEG2-frame-denoiser
 
 .SH SYNOPSIS
 .B yuvdenoise
@@ -9,115 +9,38 @@ yuvdenoise \- Motion-Compensating-YUV4MPEG-frame-denoiser
 .RI "</dev/stdin >/dev/stdout"
 
 .SH DESCRIPTION
-\fByuvdenoise\fP can be used to remove noise from movie images
-in an YUV4MPEG2 stream. This is useful to reduce the bitrate       
+\fByuvdenoise\fP is a spatio\-temporal noise\-filter for
+YUV4MPEG2 streams. This is useful to reduce the bitrate       
 needed to encode your captured movies for VCD and SVCD creation.
 
 .SH OPTIONS
 \fByuvdenoise\fP accepts the following options:
 
 .TP 4
-.BI \-X " Disable SIMD optimisations"
-Disable the use of MMX/SSE enhancements if they would ordinarily be used.  This
-is useful for testing to compare the C code against the SIMD code for timing
-and accuracy. 
+.BI \-s " y,u,v [0..255] Spatial noise-filter thresholds"
+This sets the thresholds for the spatial noise filter.
+If you set this too high expect the image to be blurred.  Reducing the
+Y' (y) value to 2 will preserve more detail but still remove noise.
+(default=4,6,6)
 
 .TP 4
-.BI \-t " [0..255] Denoiser threshold"
-Accept any image-error up to +/- threshold for a single
-pixel to be accepted as valid for the image. If the
-absolute error is greater than this, exchange the pixel
-with the corresponding pixel of the reference image.
-(default=5)
+.BI \-g " y,u,v [0..255] Gaussian blur mixing levels"
+The default values for the chroma (Cb/u, Cr/v) are sane and changing them
+is only recommended if the chroma is not noisy.  Setting the Y' (y) value
+too high will lose much detail and make a very blurry image.  To preserve
+detail in the image a Y' (y) value of 64 or less (0) is recommended.
+(default=128,255,255)
 
 .TP 4
-.BI \-l " [1..255] frames for a time-lowpassed pixel"
-Average 'n' frames for a time-lowpassed pixel. Values
-below 2 will lead to a good response to the reference
-frame, while larger values will cut out more noise (and
-as a drawback will lead to noticable artifacts on high
-motion scenes.) Values above 8 are allowed but rather
-useless. (default=3)
-
-.TP 4
-.BI \-r " [8..24] search radius"
-Limit the search radius to that value. Usually it will
-not make sense to go higher than 16, especially for VCD sizes.
-(default=8)
-
-.TP 4
-.BI \-b " <x>,<y>,<w>,<h> Border Setting"
-If you already know parts of the image are and remain black over
-the complete sequence of images you may use something like this:
-
-yuvdenoise -b 16,16,704,560
-
-This will set all the pixels in the image outside that search window
-to pure black. The area outside the search window will not go
-into the motion compensation algorithm which may give a moderate
-speed gain in processing the movie. 
-
-Sometimes it may be useful to have relative coordinates like this:
-
-yuvdenoise -b 16,16,-16,-16
-
-Provided there is a PAL-frame with 720x576 pixels, both options will
-turn the same area into black.
-
-.TP 4
-.BI \-L " [0..255] luminance contrast"
-Set luminance (Y Contrast) in percent. (default=100)  The default value of
-100 skips performing luminance contrast adjustment entirely.
-
-.TP 4
-.BI \-C " [0..255] chrominance contrast"
-Set chrominance (Cr/Cb Contrast) in percent. AKA "Saturation" (default=100)
-The default value of 100 skips performing chrominance contract adjustment
-entirely.
-
-.TP 4
-.BI \-S " [0..255] sharpness in percent"
-Set sharpness in percent. WARNING: do not set too high
-as this will gain bit-noise. (default=0)  A sharpness value of 0 will skip
-performing the sharpening pass (and speed up denoising about 20%).
-
-.TP 4
-.BI \-F " deinterlacing"
-Force deinterlacing. Default is to perform interlaced denoising.
-
-.TP 4
-.BI \-f " fast mode"
-Fast mode. Use only Pass II (bitnoise-reduction) for
-low to very low noise material. (default off)
-
-.TP 4
-.BI \-p " [0..255] Pass II threshold"
-Pass II threshold (same as -t). WARNING: If set to values greater than 8 
-you *will* see artifacts...(default=4)
-
-.TP 4
-.BI \-s " num"
-Number of beginning frames to skip.  The first num frames are written
-to stdout unfiltered.  This is useful for resuming an interrupted
-job without having to duplicate work.
-
+.BI \-T " y,u,v [0..255] Temporal noise\-filter thresholds"
+This sets the thresholds for the temporal noise\-filter.
+Values above 12 may introduce ghosting.  The default value for Y' (y)
+is often a little high and reducing it to 4 or 5 may be necessary.  If the
+chroma smears or ghosts try using values of 5 or 6 instead of the default (12).
+(default=8,12,12)
 
 .SH HOW IT WORKS
-Yuvdenoise works by temporal lowpass filtering. To avoid
-motion-blur it transforms the previous image with a
-motion-compensation as close as possible to the present frame. This
-motion-compensation is performed on 4x4 pixel blocks. The result is
-weighted and a block of the transformed previous frame is (depending
-on a matching coefficient) either taken in full, blended with the
-present image-block or discarded if the match is to bad.
-
-This procedure implies that the motion-compensation is very exact. If
-a video-encoder misses a transformed block it's not that bad, it only
-encodes a difference block there. If the denoiser fails to find a good
-matching block the only solution is to exchange the found block with
-the original frame block. Therefor a great amount of time is spent to
-find good matches. This is the main reason why the denoiser does not
-run at full framerate at CIF resolution as you might have wished.
+To Be Written (maybe) in the future.
 
 .SH TYPICAL USAGE AND TIPS
 As it is self-adapting to the noise-situation found in the stream you
@@ -125,37 +48,9 @@ normally just can go without any options set:
 
 lav2yuv my-video.avi | yuvdenoise | mpeg2enc -t 1 -o my-video.m1v
 
-However, to obtain the best possible result, you should take note of
-the following: 
-
-1. Grab at the maximum possible resolution (PAL 768x576
-pixels).  Do this even if you just want to create a 352x288 pixel
-movie as downscaling reduces noise (and at no cost to
-image-quality and/or sharpness in that case).
-
-2. First denoise, then scale! There are some rare situations where the
-denoiser itself may introduce artifacts (blocks, etc...). The
-perceptibilty of these artifacts is reduced by this processing order.
-
-3. If your movie contains black borders use the -b option to turn them
-into pure black. This helps the encoder use fewer bits to encode the data.
-
-4. You can greatly improve the recorded quality if you use correct
-cables.  Only use HF-in (the antenna-cable ...) if you really can't
-connect your VCR/Camcorder by other means (Composite, S-Video or
-SCART-RGB).
-
-5. If your movie is B&W only, then try the -B switch.
-
-Having said all that, I normally use a command-line like this one:
-
-lav2yuv movie.avi | yuvdenoise -b 8,64,-8,-64 | yuvscaler -O
-SIZE_352x288 | mpeg2enc -f 1 -o movie.m1v
-
-Have a lot of fun! ;-)
-
 .SH AUTHOR
-This man page was written by Stefan Fendt <stefan@lionfish.ping.de>.
+This man page was written by Stefan Fendt <stefan@lionfish.ping.de> and 
+revised by Steven Schultz.
 
 .SH FURTHER INFOS
 If you have questions, remarks, problems or you just want to contact
