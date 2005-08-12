@@ -430,12 +430,10 @@ EOF
   
     if test x$have_altivec = xtrue
     then
-      # add -O3 flag
-      ALTIVEC_CFLAGS="-O3 ${ALTIVEC_CFLAGS}"
+      CFLAGS="$CFLAGS ${ALTIVEC_CFLAGS}"
+      CXXFLAGS="$CXXFLAGS ${ALTIVEC_CFLAGS}"
       AC_MSG_RESULT(yes)
-      AC_DEFINE(HAVE_ALTIVEC,1,
-				[Inline PPC Altivec primitives available])
-      AC_SUBST(ALTIVEC_CFLAGS)
+      AC_DEFINE(HAVE_ALTIVEC,1, [Inline PPC Altivec primitives available])
     else
       AC_MSG_RESULT(no)
     fi
