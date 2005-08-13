@@ -33,5 +33,7 @@ noinst_HEADERS = \
 
 noinst_PROGRAMS = regiontest
 
+regiontest_SOURCES = regiontest.cc
+
 y4mdenoise_SOURCES = main.c newdenoise.cc
 y4mdenoise_LDADD = $(LIBMJPEGUTILS)
