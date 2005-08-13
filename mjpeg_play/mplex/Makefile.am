@@ -71,7 +71,7 @@ libmplex2_la_LIBADD = \
 # reference to a function (next_larger_quant)  in mpeg2enc's library.  OSX
 # doesn't care but Fedora4/PPC's linker gives an undefined symbol error
 if HAVE_ALTIVEC
-libmplex2_la_LIBADD += $(top_builddir)/utils/libmpeg2encpp.la
+libmplex2_la_LIBADD += $(top_builddir)/mpeg2enc/libmpeg2encpp.la
 endif
 
 libmplex2_la_CXXFLAGS = $(ZALPHA_FLAGS)
