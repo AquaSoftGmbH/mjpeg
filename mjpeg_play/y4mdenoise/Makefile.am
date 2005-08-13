@@ -31,5 +31,7 @@ noinst_HEADERS = \
 	TemplateLib.hh \
 	newdenoise.hh
 
+noinst_PROGRAMS = regiontest
+
 y4mdenoise_SOURCES = main.c newdenoise.cc
 y4mdenoise_LDADD = $(LIBMJPEGUTILS)

@@ -38,6 +38,7 @@ EXTRA_DIST = \
 	README.glav \
 	README.lavpipe \
 	README.transist \
+	INSTALL.real \
 	TODO \
 	cpuinfo.sh \
 	mjpeg_howto.txt \
