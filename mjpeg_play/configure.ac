@@ -485,6 +485,16 @@ AM_CONDITIONAL(HAVE_ASM_MMX, test x$have_asm_mmx = xtrue)
 AM_CONDITIONAL(HAVE_X86CPU, test x$have_x86cpu = xtrue)
 AM_CONDITIONAL(HAVE_PPCCPU, test x$have_ppccpu = xtrue)
 AM_CONDITIONAL(HAVE_ALTIVEC, test x$have_altivec = xtrue)
+
+# This is a redhat ppc hack - OSX (which also uses gcc4) does NOT have any
+# of the problems with undefined symbols, etc caused by a misplaced reference
+# to an encoder routine (next_larger_quant) in the utils/altivec routines.
+ALTIVEC_EXTRA_LIBS=
+if test x$have_altivec = xtrue; then
+   ALTIVEC_EXTRA_LIBS=-lmpeg2encpp
+fi
+AC_SUBST(ALTIVEC_EXTRA_LIBS)
+
 have_v4l_or_sdl=false
 if test x$have_video4linux = xtrue; then
   have_v4l_or_sdl=true

@@ -6,5 +6,5 @@ includedir=@includedir@/@PACKAGE@
 Name: MJPEG-tools
 Description: Video-recording, -editing, -filtering and -encoding tools
 Version: @VERSION@
-Libs: -L${libdir} -lmjpegutils
+Libs: -L${libdir} -lmjpegutils @ALTIVEC_EXTRA_LIBS@
 Cflags: -I${includedir} -I${includedir}/mpeg2enc -I${includedir}/mplex
