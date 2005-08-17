@@ -45,6 +45,7 @@ extern int AVI_errno;
 static char video_format=' ';
 static int  internal_error=0;
 int libdv_pal_yv12 = -1;
+uint16_t reorder_16(uint16_t todo, int big_endian);
 
 #define ERROR_JPEG      1
 #define ERROR_MALLOC    2
@@ -832,6 +833,7 @@ long lav_read_audio(lav_file_t *lav_file, uint8_t *audbuf, long samps)
    int res, i, j;
    int16_t *qt_audio = (int16_t *)audbuf, **qt_audion;
    int channels = lav_audio_channels(lav_file);
+   uint8_t b0, b1;
 
    qt_audion = malloc(channels * sizeof (int16_t **));
    for (i = 0; i < channels; i++)
@@ -863,9 +865,27 @@ long lav_read_audio(lav_file_t *lav_file, uint8_t *audbuf, long samps)
 	    for (j = 0; j < channels; j++)
 		qt_audio[(2*i) + j] = qt_audion[j][i];
 	    }
+
+        if (lav_detect_endian())
+          {
+            i= 0;
+            while (i < (2*res) )
+              {
+                 b0 = 0;
+                 b1 = 0; 
+                 b0 = ( qt_audio[i] & 0x00FF);
+                 b1 = ( qt_audio[i] & 0xFF00) >> 8;
+    
+                 qt_audio[i] = (b0 <<8) + b1;
+                 i = i +1;
+              } 
+          }
 out:
 	for (j = 0; j < channels; j++)
-	    free(qt_audion[j]);
+              {
+                 qt_audio[(2*i) + j] = qt_audion[j][i];
+               }
+
 	 free(qt_audion);
          return(res);
 #endif
@@ -1398,3 +1418,4 @@ int lav_detect_endian (void)
   else
       return -1;
 }
+
