@@ -1092,9 +1092,6 @@ void do_audio(void)
 #else
 void do_audio()
 {
-  fprintf(stderr, "ILLEGAL CALL TO do_audio in audiolib.c: NOT IMPLEMENTED IN IRIX !\n");
+  fprintf(stderr, "Unsupported audio system in audiolib.c: no soundcard.hn");
 }
-
 #endif
-
-
