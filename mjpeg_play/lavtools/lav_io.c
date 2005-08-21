@@ -874,8 +874,7 @@ long lav_read_audio(lav_file_t *lav_file, uint8_t *audbuf, long samps)
                  b0 = 0;
                  b1 = 0; 
                  b0 = (qt_audio[i] & 0x00FF);
-                 b1 =  qt_audio[i] & 0xFF00) >> 8;
-    
+                 b1 =  (qt_audio[i] & 0xFF00) >> 8;
                  qt_audio[i] = (b0 <<8) + b1;
                  i = i +1;
                  } 
