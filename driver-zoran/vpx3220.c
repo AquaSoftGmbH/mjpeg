@@ -414,6 +414,12 @@ vpx3220_command (struct i2c_client *client,
 	case DECODER_SET_NORM:
 	{
 		int *iarg = arg, data;
+		int temp_input;
+
+		/* Here we back up the input selection because it gets
+		   written when we fill the registers with the choosen
+                   video norm */		
+		temp_input = vpx3220_fp_read(client, 0xf2);
 
 		dprintk(1, KERN_DEBUG "%s: DECODER_SET_NORM %d\n",
 			I2C_NAME(client), *iarg);
@@ -453,6 +459,10 @@ vpx3220_command (struct i2c_client *client,
 
 		}
 		decoder->norm = *iarg;
+
+		/* And here we set the backed up video norm again */
+		vpx3220_fp_write(client, 0xf2, temp_input | 0x0010);
+		udelay(10);
 	}
 		break;
 

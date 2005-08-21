@@ -1,5 +1,6 @@
 Version 0.9.4 -> 0.9.5
 ----------------------
+* fix for the S-Video input for the DC30 (Bernhard)
 * don't ignore return value of videocodec_register()
 * call videocodec_unregister() no matter what on module unload
 * remove duplicate MOD_INC/DEC_USE_COUNT from i2c clients (oops)
