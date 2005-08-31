@@ -478,7 +478,7 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t *
 	   // we now scale it along the height, not the width
 	   
 	   intermediate_top_p=intermediate;
-	   intermediate_bot_p=intermediate+(local_output_active_height>>1)*local_output_active_width;
+	   intermediate_bot_p=intermediate+(local_padded_height>>1)*local_output_active_width;
 	   cspline_hp0=cspline_h;
 	   in_line_p=in_line;
 	   for (out_line = 0; out_line < (local_output_active_height>>1); out_line++)
