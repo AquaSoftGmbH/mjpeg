@@ -45,6 +45,7 @@ EXTRA_DIST = \
 	mjpeg_howto.txt \
 	mjpegtools.spec \
 	mjpegtools.spec.in \
+	mjpegtools.pc \
 	mjpegtools.pc.in \
 	autogen.sh
 
