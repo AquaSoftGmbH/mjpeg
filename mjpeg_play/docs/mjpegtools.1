@@ -2,7 +2,7 @@
 .TH "MJPEG tools" "MJPEG Linux Square" "MJPEG tools manual"
 .LP
 
-MJPEG HOWTO - An introduction to the MJPEG-toolsPraschinger Bernhardv1.48MJPEG capture/editting/replay and MPEG encoding toolset description
+MJPEG HOWTO - An introduction to the MJPEG-toolsPraschinger Bernhardv1.49MJPEG capture/editting/replay and MPEG encoding toolset description
 
 .PP
 Introduction
@@ -1690,7 +1690,7 @@ Example:
 \fB> plaympeg my_video.mpg\fP
 
 .PP
-oder
+or
 
 .PP
 \fB> gtv my_video.mpg\fP
@@ -1983,8 +1983,8 @@ if the size of the frames you encode is larger than the VCD size for
 your TV Norm.
 
 .PP
-If you denoise the images with yuvdenoise and use the deinterlacing  
-(-F) option you should tell mpeg2enc that it does not need to 
+If you deinterlacing the movie with yuvdeinterlace 
+you should tell mpeg2enc that it does not need to 
 do motion estimation for interlaced material. You have to use the -I 0
 option of mpeg2enc to say that the frames are already deinterlaced.
 This will save a lot of time when encoding. If you don't use -I 0 it will
@@ -2064,7 +2064,7 @@ A MPEG2 movie can be interlaced or progressive. It depends on the source
 
 .PP
 If you encode a film both fields should be the same. Deinterlace the
-stream with yuvdenoise -F, or if you have a high quality source, and  
+stream with yuvdeinterlace, or if you have a high quality source, and  
 don't need to use the denoiser, with yuvcorrect -T NOT_INTERLACED. Also
 set the mpeg2enc interlace-mode (-I) option to 0. This means that
 there is no interlacing.
@@ -2079,7 +2079,7 @@ problems.
 .PP
 If you have an interlaced source (broadcast) you can encode it as     
 interlaced stream. Or deinterlace the stream and encode it as
-progressive stream. If you deinterlace it with yuvdenoise -F, you will
+progressive stream. If you deinterlace it with yuvdeinterlace, you will
 lose details.
 But if you plan to play the recorded stream on your DVD player and your
 TV it would not be wise to perform deinterlacing.  If you only want to play it
@@ -2090,9 +2090,9 @@ interlaced frames or progressive frames.
 
 .PP
 If you plan to deinterlace the stream you can only do this with
-yuvdenoise -F, and set the mpeg2enc -I 0. If you do not want to
+yuvdeinterlace, and set the mpeg2enc -I 0. If you do not want to
 deinterlace the stream you do not need to set any special option (do
-not use yuvdenoise -F and mpeg2enc -I 0)
+not use yuvdeinterlace and mpeg2enc -I 0)
 
 .PP
 If you like to pause the stream and look on the still you should
@@ -2107,7 +2107,8 @@ or average looking film sequences with good still images.
 
 .PP
 For good film with average stills do not deinterlace.  For average film 
-sequences with good stills then deinterlace (using -F and -I 0).
+sequences with good stills then deinterlace (using yuvdeinterlace and 
+mpeg2enc -I 0).
 
 .PP
 MPEG2 Multiplexing Example
@@ -2376,7 +2377,7 @@ output (no field pictures)) option will also work for PAL
 You can use lower bitrates, but the SVCD standard limits \fBtotal
 bit-rate (audio and video) to 2788800 Bit/sec\fP\&. So with 224Kbps audio
 and overhead 2550 may already be marginally too tight. Since the SVCD
-format permits any audio rate between 32 and 224 kBit/sec you can save
+format permits any audio rate between 32 and 384 kBit/sec you can save
 a few bits/sec by using 192k audio (or for non-musical material 160k).
 
 .PP
@@ -2543,10 +2544,10 @@ noisy (from a VHS tape for example).
 A typical command will look like this:
 
 .PP
-\fBlav2yuv moby.eli \(br yuvdenoise -F -l 2 \(br mpeg2enc -f 8 -q 7 -4 1 -2 1 -P -I 0 -N -o video_DVD.m2v\fP
+\fBlav2yuv moby.eli \(br yuvdenoise \(br mpeg2enc -f 8 -q 7 -4 1 -2 1 -P -I 0 -N -o video_DVD.m2v\fP
 
 .PP
-DVD Mplex Example
+DVD Multiplexing Example
 
 
 .PP
@@ -2740,17 +2741,14 @@ Example:
 Now we are using yuvdenoise to improve the image. The filter mainly
 reduces color and luminance-noise and flickering due to phase errors but is
 also effective at removing speckles.
-If you want yuvdenoise to deinterlace the stream use the -F option.
 
 .PP
-By default yuvdenoise denoises interlaced if the input is interlaced.
-You can of course change the denoiser threshold (-t), as well as the
-different search radius (-r). You can also set a \fBactive area\fP where
-everything outside that area is set to real black.   Creating a black
-border can lower the bitrate of the encoded stream because pure black
-areas compress much better than noise (captures from analog sources such
-as VHS and 8mm usually have several lines at the time and bottom that are
-very noisy).
+yuvdenoise denoises interlaced if the input is interlaced.
+You can of course change the denoiser threshold (-s/g/t).
+Creating a black border can lower the bitrate of the encoded stream 
+because pure black areas compress much better than noise (captures 
+from analog sources such as VHS and 8mm usually have several lines at 
+the time and bottom that are very noisy). For this you can use the scaler
 
 .PP
 yuvdenoise uses a different approach to filter the noise.  More information
@@ -2758,8 +2756,8 @@ about how yuvdenoise works as well as descriptions of its options are found
 in the manpage.
 
 .PP
-If you have a high quality source you can only use \fBfast mode\fP\&. In
-the fast mode yuvdenoise only uses the bitnoise reduction.  You might also
+If you have a high quality source you should lower the filter to 
+levels like that: -s 2,2,2 -g 0,255,255 -t 2,2,2.  You might also
 use the mpeg2enc \fB-h/--keep-hf\fP option. That option tells mpeg2enc to
 keep as much high frequency information as possible.   Using -h will
 greatly increase the bitrate (filesize).  If the bitrate is too close to
@@ -3087,7 +3085,7 @@ This is a example to convert the source video to a NTSC video running at
 Example
 
 .PP
-\fB> lav2yuv video.eli \(br yuvdenoise -F \(br yuvfps -r 24000:1001 \(br yuvscaler -O SIZE_720x480 \(br
+\fB> lav2yuv video.eli \(br yuvdenoise \(br yuvfps -r 24000:1001 \(br yuvscaler -O SIZE_720x480 \(br
 mpeg2enc -f 3 -b 4000 -q 7 -o video_ntsc.m2v\fP
 
 .PP

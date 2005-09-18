@@ -1,6 +1,6 @@
   MJPEG HOWTO - An introduction to the MJPEG-tools
   Praschinger Bernhard
-  v1.48
+  v1.49
 
   MJPEG capture/editting/replay and MPEG encoding toolset description
   ______________________________________________________________________
@@ -67,7 +67,7 @@
      7.8 Creating DVD's
         7.8.1 DVD Audio creation Example
         7.8.2 DVD Video creation Example
-        7.8.3 DVD Mplex Example
+        7.8.3 DVD Multiplexing Example
         7.8.4 DVD creation Example
      7.9 Creating DIVX Videos
         7.9.1 lav2avi.sh
@@ -220,7 +220,7 @@
   There you also find how to create MPEG Still Images for VCD/SVCD.
 
   A good description of DV (Digital Video) can be found here:
-  http://www.iki.fi/znark/video/conversion/
+  http://www.uwasa.fi/~f76998/video/conversion/
 
 
   2.1.  Some books we found usefull
@@ -753,7 +753,8 @@
 
   If you have Transport Streams from your DVB card, or os Satelite
   Receiver you might want to demultiplex or cut them. A nice tool for
-  that is Project X available from: http://forum.lucike.info/
+  that is Project X available from:
+  http://http://forum.dvbtechnics.info//
 
   You can process the streams afterwards as you would do with any mpeg
   movie or demultiplexed audio video. So the Transcoding of existing
@@ -792,8 +793,10 @@
   glav and lavplay are nearly the same. Using no option SW playback is
   used.
 
+
   Using hardware playback a signal for the Composite and SVHS OUT is
   generated so you can view the movie on your TV.
+
   > lav2yuv test.eli | yuvplay
 
   Is a other way to get the video without sound. You can use yuvplay
@@ -855,7 +858,6 @@
 
 
      -o specifies the output name
-
 
      -f a
         specifies the output format (AVI for example)
@@ -922,6 +924,9 @@
 
   Maybe interesting if you need sample images and do not want to play
   around with grabbing a single image.
+
+
+
   6.5.  Creating movie transitions
 
   Thanks to Philipp Zabel's lavpipe, we can now make simple transitions
@@ -988,6 +993,7 @@
 
      -O num
         opacity of second input at the end [0-255]
+
      -d num
         duration of transition in frames
 
@@ -1045,6 +1051,7 @@
   file with lavtrans or lav2yuv|yuv2lav.
 
 
+
   7.  Converting the stream to MPEG or DIVx videos
 
   First there is some general description in the encoding process and
@@ -1053,6 +1060,7 @@
 
   If you want a one command conversation to mpeg videos try lav2mpeg in
   the scripts directory
+
   The encoding with the lav2mpeg script looks like this for mpeg1
   output:
 
@@ -1119,6 +1127,7 @@
 
   This creates a VCD (-V bitrate=224, stereo, sampling rate:44100)
   compatible output from the wav file.
+
   With -v 2 mp2enc is more verbose, while encoding you see the number of
   sec of audio already encoded.
 
@@ -1184,7 +1193,6 @@
   This will scale the stream to VCD size which for PAL/SECAM is 352x288
   and for NTSC is 352x240. The scaled yuvstream is encoded to MPEG-1.
 
-
   It can also do SVCD scaling to 480x480 (NTSC) or 480x576 (PAL/SECAM):
 
   > lav2yuv stream.avi | yuvscaler -O SVCD -M BICUBIC | mpeg2enc -o
@@ -1241,6 +1249,7 @@
   Other players (which can play MPEG-2 as well as MPEG-1 movies) are:
   xmovie, xine, and MPlayer.
 
+
   NOTE: If you have specified the -S option for mpeg2enc mplex will
   automatically split the files if there is in the output filename a %d
   (looks like: -o test%d.mpg) The files generated this way are separate
@@ -1277,7 +1286,7 @@
 
   > plaympeg my_video.mpg
 
-  oder
+  or
 
   > gtv my_video.mpg
 
@@ -1315,7 +1324,6 @@
   7.4.2.  MPEG1 Video creation Example
 
   > lav2yuv editlist.eli | mpeg2enc -b 2000 -r 24 -q 6 -o video.m1v
-
 
   mpeg2enc creates an video with an bitrate of 2000kBit/s (or
   2048000Bit/s) but the -q flag activates the variable bitrate and a
@@ -1374,7 +1382,6 @@
   rate to avoid visible artifacts.  If you want to reduce bit-rate
   without annoying artifacts when compressing broadcast material you
   should try one (or more) of the noise filters.
-
   Example:
 
   > lav2yuv stream.avi | mpeg2enc -b 1500 -n s -g 6 -G 20 -P -o
@@ -1439,6 +1446,7 @@
   have 1724 * 1.01 or about 1740kBit.
 
 
+
   7.5.  Creating MPEG2 Videos
 
   MPEG2 is recommended for sources with a greater picture than 352x240
@@ -1449,6 +1457,7 @@
   your favorite mp3encoder for the creation of the sound.  However, MP3
   audio is not valid for DVDs.  It is best to use MP2 (Layer 2) audio.
   The audio can also be a VBR Stream.
+
   MPEG2 is usually a VBR Stream. MPEG2 creation with optimization
   requires a lot of CPU power.  A film with the double resolution is NOT
   4 times larger than an MPEG1 Stream. Depending on your quality
@@ -1496,12 +1505,13 @@
   will use that logic if the size of the frames you encode is larger
   than the VCD size for your TV Norm.
 
-  If you denoise the images with yuvdenoise and use the deinterlacing
-  (-F) option you should tell mpeg2enc that it does not need to do
-  motion estimation for interlaced material. You have to use the -I 0
-  option of mpeg2enc to say that the frames are already deinterlaced.
-  This will save a lot of time when encoding. If you don't use -I 0 it
-  will not cause problems, the encoding will just take longer.
+  If you deinterlacing the movie with yuvdeinterlace you should tell
+  mpeg2enc that it does not need to do motion estimation for interlaced
+  material. You have to use the -I 0 option of mpeg2enc to say that the
+  frames are already deinterlaced.  This will save a lot of time when
+  encoding. If you don't use -I 0 it will not cause problems, the
+  encoding will just take longer.
+
 
   You can also use scaling an options that optimize (denoise) the images
   to get smaller streams.  These options are explained in detail in the
@@ -1563,30 +1573,30 @@
   source (film or broadcast) and on the viewing device.
 
   If you encode a film both fields should be the same. Deinterlace the
-  stream with yuvdenoise -F, or if you have a high quality source, and
+  stream with yuvdeinterlace, or if you have a high quality source, and
   don't need to use the denoiser, with yuvcorrect -T NOT_INTERLACED.
   Also set the mpeg2enc interlace-mode (-I) option to 0. This means that
   there is no interlacing.  We do not really need deinterlacing here
   because there is no motion between the fields of the frame. We only
   need to unite the two fields into a single progressive frame.
-
   This movie should play back an any device (TV or Monitor) without
   problems.
 
   If you have an interlaced source (broadcast) you can encode it as
   interlaced stream. Or deinterlace the stream and encode it as
-  progressive stream. If you deinterlace it with yuvdenoise -F, you will
-  lose details.  But if you plan to play the recorded stream on your DVD
-  player and your TV it would not be wise to perform deinterlacing.  If
-  you only want to play it back on the Monitor (progressive display) the
-  picture looks better when playing it back if it is deinterlaced. If
-  the player you use can do deinterlacing it does not matter if your
-  encoded video has interlaced frames or progressive frames.
+  progressive stream. If you deinterlace it with yuvdeinterlace, you
+  will lose details.  But if you plan to play the recorded stream on
+  your DVD player and your TV it would not be wise to perform
+  deinterlacing.  If you only want to play it back on the Monitor
+  (progressive display) the picture looks better when playing it back if
+  it is deinterlaced. If the player you use can do deinterlacing it does
+  not matter if your encoded video has interlaced frames or progressive
+  frames.
 
   If you plan to deinterlace the stream you can only do this with
-  yuvdenoise -F, and set the mpeg2enc -I 0. If you do not want to
+  yuvdeinterlace, and set the mpeg2enc -I 0. If you do not want to
   deinterlace the stream you do not need to set any special option (do
-  not use yuvdenoise -F and mpeg2enc -I 0)
+  not use yuvdeinterlace and mpeg2enc -I 0)
 
   If you like to pause the stream and look on the still you should
   deinterlace. Because then the image is flicker free when pausing.
@@ -1598,7 +1608,8 @@
   or average looking film sequences with good still images.
 
   For good film with average stills do not deinterlace.  For average
-  film sequences with good stills then deinterlace (using -F and -I 0).
+  film sequences with good stills then deinterlace (using yuvdeinterlace
+  and mpeg2enc -I 0).
 
   7.5.3.  MPEG2 Multiplexing Example
 
@@ -1633,6 +1644,7 @@
   to allow higher bitrates, dynamic GOP sizes, larger video buffer and
   so on
 
+
   7.6.1.  VCD Audio creation Example
 
   > lav2wav stream.avi | mp2enc -V -o sound.mp2
@@ -1647,6 +1659,7 @@
 
   > lav2yuv stream.avi | yuvscaler -O VCD | mpeg2enc -f 1 -r 16 -o
   video.mpg
+
   For a VCD compatible output the -f 1 sets all options in mpeg2enc as
   needed. It seems that many VCD players (Avex for example) are not able
   to play MPEG streams that are encoded with a search radius greater
@@ -1711,8 +1724,6 @@
   use different routines in its firmware and play it back correct, but
   there is no guarantee of that.
 
-
-
   7.6.6.  Storing MPEGs
 
   If you record the data as XA mode 2 tracks you can fit appreciably
@@ -1744,7 +1755,7 @@
   by a Chinese government-backed committee of manufacturers and
   researchers.  The final SVCD spec was announced in September 1998.  A
   good explanation of the SVCD format from Philips can be found here:
-  http://licensing.philips.com/information/cd/video/documents575.html.
+  http://www.licensing.philips.com/information/cd/video/documents575.html.
 
   Record at full TV resolution (means: -d 1 for PAL this is 720x576) The
   resolution is for NTSC is 480x480 of PAL 480x576, so you know why you
@@ -1763,6 +1774,7 @@
   per Audio frame
 
   The approximate frame length formula for MPEG-1 layer-II is:
+
 
 
   (frame length in bytes) = 144 * (byte rate) / (sample rate)
@@ -1795,7 +1807,7 @@
   You can use lower bitrates, but the SVCD standard limits total bit-
   rate (audio and video) to 2788800 Bit/sec. So with 224Kbps audio and
   overhead 2550 may already be marginally too tight. Since the SVCD
-  format permits any audio rate between 32 and 224 kBit/sec you can save
+  format permits any audio rate between 32 and 384 kBit/sec you can save
   a few bits/sec by using 192k audio (or for non-musical material 160k).
 
   SVCD supports variable bitrate (VBR), because MPEG2 is usually VBR,
@@ -1828,6 +1840,8 @@
   Don't forget the -S and -B options mentioned above. You want the
   stream to fit on a CD don't you ?
 
+
+
   7.7.3.  SVCD Multiplexing Example
 
   > mplex -f 4 -b 300 -r 2750 sound.mp2 video.m2v -o svcd_out.mpg
@@ -1843,7 +1857,6 @@
      -b 300
         is the buffer available on the playback device (the same value
         as used for the video encoding (mpeg2enc's -V option).
-
 
   7.7.4.  SVCD Creating the CD
 
@@ -1894,6 +1907,7 @@
   > lav2yuv stream.eli | mpeg2enc -f 8 -o video.m2v
 
 
+
      -f 8
         This sets the options correctly for a MPEG-2 video that is
         compliant with the DVD standard.  The maximum bitrate is set to
@@ -1907,11 +1921,10 @@
   data is noisy (from a VHS tape for example).  A typical command will
   look like this:
 
-  lav2yuv moby.eli | yuvdenoise -F -l 2 | mpeg2enc -f 8 -q 7 -4 1 -2 1
-  -P -I 0 -N -o video_DVD.m2v
+  lav2yuv moby.eli | yuvdenoise | mpeg2enc -f 8 -q 7 -4 1 -2 1 -P -I 0
+  -N -o video_DVD.m2v
 
-
-  7.8.3.  DVD Mplex Example
+  7.8.3.  DVD Multiplexing Example
 
   > mplex -f 8 sound.mp2 video.m2v -o my_dvdlikestream.mpg
 
@@ -1961,7 +1974,6 @@
   script. You can also specify other parameters used for encoding with
   encoderParam option in the script. For a description of the usable
   parameters take a look in the mplayer/mencoder manual.
-
   The outputfilename is that name of your input file (first option) but
   with the extension avi. If the size of file is less then specified by
   preferedSize it's because the source was of very high quality (no
@@ -2027,6 +2039,7 @@
   NOTE:a radius greater than the default value of 2 is horrendously
   slow!
 
+
   yuvmedianfilter has separate settings for luma and chroma. You can
   control the search radius and the trigger threshold independently.  If
   you use a threshold of 0 then filtering is disabled (-t 0 disables
@@ -2042,33 +2055,29 @@
   green.   Filtering on the luma component (disabling the chroma
   filtering) is the solution to that problem.
 
-
   Example:
 
   > lav2yuv stream.avi | yuvdenoise | mpeg2enc -o video.m1v
 
   Now we are using yuvdenoise to improve the image. The filter mainly
   reduces color and luminance-noise and flickering due to phase errors
-  but is also effective at removing speckles.  If you want yuvdenoise to
-  deinterlace the stream use the -F option.
+  but is also effective at removing speckles.
 
-  By default yuvdenoise denoises interlaced if the input is interlaced.
-  You can of course change the denoiser threshold (-t), as well as the
-  different search radius (-r). You can also set a active area where
-  everything outside that area is set to real black.   Creating a black
+  yuvdenoise denoises interlaced if the input is interlaced.  You can of
+  course change the denoiser threshold (-s/g/t).  Creating a black
   border can lower the bitrate of the encoded stream because pure black
   areas compress much better than noise (captures from analog sources
   such as VHS and 8mm usually have several lines at the time and bottom
-  that are very noisy).
+  that are very noisy). For this you can use the scaler
 
   yuvdenoise uses a different approach to filter the noise.  More
   information about how yuvdenoise works as well as descriptions of its
   options are found in the manpage.
 
-  If you have a high quality source you can only use fast mode. In the
-  fast mode yuvdenoise only uses the bitnoise reduction.  You might also
-  use the mpeg2enc -h/--keep-hf option. That option tells mpeg2enc to
-  keep as much high frequency information as possible.   Using -h will
+  If you have a high quality source you should lower the filter to
+  levels like that: -s 2,2,2 -g 0,255,255 -t 2,2,2.  You might also use
+  the mpeg2enc -h/--keep-hf option. That option tells mpeg2enc to keep
+  as much high frequency information as possible.   Using -h will
   greatly increase the bitrate (filesize).  If the bitrate is too close
   to the maximum (set with -b) the encoder will have to decrease the
   quality to avoid exceeding the maximum bitrate.
@@ -2162,6 +2171,7 @@
   plays back the yuv frames so you can see if the options you have
   chosen are making the thing better or worse.
 
+
   A command would look like this:
 
   > lav2yuv stream.eli | yuvdenoise -options | yuvscaler -options |
@@ -2228,7 +2238,6 @@
   lies between -20 and +20. You usually can expect that you have a 5%
   decreased filesize. The amount the bitrate is reduced can vary
   considerably, the range spans from not really noticable up to 20%.
-
   If you think a other quantization matrice will help use the
   -K|--custom-quant-matrices option. You can try out your own
   quanitsation matrice or use another builtin than the default.  You can
@@ -2333,8 +2342,8 @@
 
   Example
 
-  > lav2yuv video.eli | yuvdenoise -F | yuvfps -r 24000:1001 | yuvscaler
-  -O SIZE_720x480 | mpeg2enc -f 3 -b 4000 -q 7 -o video_ntsc.m2v
+  > lav2yuv video.eli | yuvdenoise | yuvfps -r 24000:1001 | yuvscaler -O
+  SIZE_720x480 | mpeg2enc -f 3 -b 4000 -q 7 -o video_ntsc.m2v
 
   This example shows how you should use the tools. Denoise first and
   than change the framerate and in the last step change the image size.
@@ -2559,14 +2568,11 @@
   it any more from the homepage from Brent Beyler, it can still be found
   when you search for it using that keywords " bbtools linux -suse
   -blackbox". Currenty it can be found at: http://www.nop.org/inkling/
-
-
   First run:
 
   > bbdmux myvideo.mpg
 
   You should get something like this:
-
 
 
   Found stream id 0xE0 = Video Stream 0
@@ -2701,6 +2707,7 @@
   to do stuff like this.  If you have three computers you can take this
   a stage further, one computer could do the decoding and scaling, the
   next could do denoising and the third could do MPEG encoding:
+
   > rsh machine1 "lav2yuv mycapture.eli | yuvscaler -O SVCD" |
   yuvdenoise | rsh machine3 mpeg2enc -f 4 -o mycapture.m2v
 
@@ -2733,7 +2740,7 @@
 
 
   If you have a Macintosh (MAC) and want to use the mjpeg tools look
-  there: http://www.sjoki.uta.fi/~shmhav/SVCD_on_a_Macintosh.txt and
+  there: http://www.sjoki.uta.fi/~shmhav/SVCD_on_a_Macintosh.html and
   http://homepage.mac.com/rnc/
 
   If you want to compile the mjpeg-tools on your MAC, our just want
@@ -2757,6 +2764,7 @@
   o  dvdview http://rachmaninoff.informatik.uni-mannheim.de/dvdview/
 
   o  xmovie http://heroinewarrior.com/xmovie.php3
+
 
   o  mplayer http://mplayer.sourceforge.net/
 

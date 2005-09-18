@@ -11,7 +11,7 @@ MJPEG HOWTO - An introduction to the MJPEG-tools
 ************************************************
 
      Praschinger Bernhard
-     v1.48
+     v1.49
 
    MJPEG capture/editting/replay and MPEG encoding toolset description
 
@@ -166,7 +166,7 @@ explained here: http://www.mir.com/DMG/
    There you also find how to create MPEG Still Images for VCD/SVCD.
 
    A good description of DV (Digital Video) can be found here:
-http://www.iki.fi/znark/video/conversion/
+http://www.uwasa.fi/~f76998/video/conversion/
 
 * Menu:
 
@@ -756,7 +756,8 @@ File: mjpeg-howto.info,  Node: Other things to know,  Prev: Decoding MPEG2 strea
 
 If you have Transport Streams from your DVB card, or os Satelite
 Receiver you might want to demultiplex or cut them. A nice tool for
-that is `Project X' available from: http://forum.lucike.info/
+that is `Project X' available from:
+http://http://forum.dvbtechnics.info//
 
    You can process the streams afterwards as you would do with any mpeg
 movie or demultiplexed audio video. So the `Transcoding of existing
@@ -1331,7 +1332,7 @@ have 1724 * 1.01 or about 1740kBit.
 
    `> plaympeg my_video.mpg'
 
-   oder
+   or
 
    `> gtv my_video.mpg'
 
@@ -1582,12 +1583,12 @@ interlaced motion compensation logic present in mpeg2enc.  Mpeg2enc
 will use that logic if the size of the frames you encode is larger than
 the VCD size for your TV Norm.
 
-   If you denoise the images with yuvdenoise and use the deinterlacing
-(-F) option you should tell mpeg2enc that it does not need to do motion
-estimation for interlaced material. You have to use the -I 0 option of
-mpeg2enc to say that the frames are already deinterlaced.  This will
-save a lot of time when encoding. If you don't use -I 0 it will not
-cause problems, the encoding will just take longer.
+   If you deinterlacing the movie with yuvdeinterlace you should tell
+mpeg2enc that it does not need to do motion estimation for interlaced
+material. You have to use the -I 0 option of mpeg2enc to say that the
+frames are already deinterlaced.  This will save a lot of time when
+encoding. If you don't use -I 0 it will not cause problems, the
+encoding will just take longer.
 
    You can also use scaling an options that optimize (denoise) the
 images to get smaller streams.  These options are explained in detail
@@ -1655,7 +1656,7 @@ A MPEG2 movie can be interlaced or progressive. It depends on the source
 (film or broadcast) and on the viewing device.
 
    If you encode a film both fields should be the same. Deinterlace the
-stream with yuvdenoise -F, or if you have a high quality source, and
+stream with yuvdeinterlace, or if you have a high quality source, and
 don't need to use the denoiser, with yuvcorrect -T NOT_INTERLACED. Also
 set the mpeg2enc interlace-mode (-I) option to 0. This means that there
 is no interlacing.  We do not really need deinterlacing here because
@@ -1667,7 +1668,7 @@ problems.
 
    If you have an interlaced source (broadcast) you can encode it as
 interlaced stream. Or deinterlace the stream and encode it as
-progressive stream. If you deinterlace it with yuvdenoise -F, you will
+progressive stream. If you deinterlace it with yuvdeinterlace, you will
 lose details.  But if you plan to play the recorded stream on your DVD
 player and your TV it would not be wise to perform deinterlacing.  If
 you only want to play it back on the Monitor (progressive display) the
@@ -1676,9 +1677,9 @@ player you use can do deinterlacing it does not matter if your encoded
 video has interlaced frames or progressive frames.
 
    If you plan to deinterlace the stream you can only do this with
-yuvdenoise -F, and set the mpeg2enc -I 0. If you do not want to
+yuvdeinterlace, and set the mpeg2enc -I 0. If you do not want to
 deinterlace the stream you do not need to set any special option (do
-not use yuvdenoise -F and mpeg2enc -I 0)
+not use yuvdeinterlace and mpeg2enc -I 0)
 
    If you like to pause the stream and look on the still you should
 deinterlace. Because then the image is flicker free when pausing.
@@ -1690,7 +1691,8 @@ have to choose between good film sequences with average still images or
 average looking film sequences with good still images.
 
    For good film with average stills do not deinterlace.  For average
-film sequences with good stills then deinterlace (using -F and -I 0).
+film sequences with good stills then deinterlace (using yuvdeinterlace
+and mpeg2enc -I 0).
 
 
 File: mjpeg-howto.info,  Node: MPEG2 Multiplexing Example,  Prev: MPEG2 Video creation Example,  Up: Creating MPEG2 Videos
@@ -1875,7 +1877,7 @@ Super Video CD (SVCD) is an enhancement to Video CD that was developed
 by a Chinese government-backed committee of manufacturers and
 researchers.  The final SVCD spec was announced in September 1998.  A
 good explanation of the SVCD format from Philips can be found here:
-http://licensing.philips.com/information/cd/video/documents575.html.
+http://www.licensing.philips.com/information/cd/video/documents575.html.
 
    Record at full TV resolution (means: -d 1 for PAL this is 720x576)
 The resolution is for NTSC is 480x480 of PAL 480x576, so you know why
@@ -1938,7 +1940,7 @@ File: mjpeg-howto.info,  Node: SVCD Video creation Example,  Next: SVCD Multiple
    You can use lower bitrates, but the SVCD standard limits `total
 bit-rate (audio and video) to 2788800 Bit/sec'. So with 224Kbps audio
 and overhead 2550 may already be marginally too tight. Since the SVCD
-format permits any audio rate between 32 and 224 kBit/sec you can save
+format permits any audio rate between 32 and 384 kBit/sec you can save
 a few bits/sec by using 192k audio (or for non-musical material 160k).
 
    SVCD supports variable bitrate (VBR), because MPEG2 is usually VBR,
@@ -2033,7 +2035,7 @@ http://dvdauthor.sourceforge.net.
 
 * DVD Audio creation Example::
 * DVD Video creation Example::
-* DVD Mplex Example::
+* DVD Multiplexing Example::
 * DVD creation Example::
 
 
@@ -2052,7 +2054,7 @@ File: mjpeg-howto.info,  Node: DVD Audio creation Example,  Next: DVD Video crea
 
 
 
-File: mjpeg-howto.info,  Node: DVD Video creation Example,  Next: DVD Mplex Example,  Prev: DVD Audio creation Example,  Up: Creating DVD's
+File: mjpeg-howto.info,  Node: DVD Video creation Example,  Next: DVD Multiplexing Example,  Prev: DVD Audio creation Example,  Up: Creating DVD's
 
 7.8.2 DVD Video creation Example
 --------------------------------
@@ -2073,14 +2075,14 @@ also use yuvdenoise to increase the picture quality if the input data is
 noisy (from a VHS tape for example).  A typical command will look like
 this:
 
-   `lav2yuv moby.eli | yuvdenoise -F -l 2 | mpeg2enc -f 8 -q 7 -4 1 -2
-1 -P -I 0 -N -o video_DVD.m2v'
+   `lav2yuv moby.eli | yuvdenoise | mpeg2enc -f 8 -q 7 -4 1 -2 1 -P -I
+0 -N -o video_DVD.m2v'
 
 
-File: mjpeg-howto.info,  Node: DVD Mplex Example,  Next: DVD creation Example,  Prev: DVD Video creation Example,  Up: Creating DVD's
+File: mjpeg-howto.info,  Node: DVD Multiplexing Example,  Next: DVD creation Example,  Prev: DVD Video creation Example,  Up: Creating DVD's
 
-7.8.3 DVD Mplex Example
------------------------
+7.8.3 DVD Multiplexing Example
+------------------------------
 
 `> mplex -f 8 sound.mp2 video.m2v -o my_dvdlikestream.mpg'
 
@@ -2094,7 +2096,7 @@ File: mjpeg-howto.info,  Node: DVD Mplex Example,  Next: DVD creation Example,  
 
 
 
-File: mjpeg-howto.info,  Node: DVD creation Example,  Prev: DVD Mplex Example,  Up: Creating DVD's
+File: mjpeg-howto.info,  Node: DVD creation Example,  Prev: DVD Multiplexing Example,  Up: Creating DVD's
 
 7.8.4 DVD creation Example
 --------------------------
@@ -2233,29 +2235,26 @@ filtering) is the solution to that problem.
 
    Now we are using yuvdenoise to improve the image. The filter mainly
 reduces color and luminance-noise and flickering due to phase errors
-but is also effective at removing speckles.  If you want yuvdenoise to
-deinterlace the stream use the -F option.
+but is also effective at removing speckles.
 
-   By default yuvdenoise denoises interlaced if the input is interlaced.
-You can of course change the denoiser threshold (-t), as well as the
-different search radius (-r). You can also set a `active area' where
-everything outside that area is set to real black.   Creating a black
+   yuvdenoise denoises interlaced if the input is interlaced.  You can
+of course change the denoiser threshold (-s/g/t).  Creating a black
 border can lower the bitrate of the encoded stream because pure black
-areas compress much better than noise (captures from analog sources such
-as VHS and 8mm usually have several lines at the time and bottom that
-are very noisy).
+areas compress much better than noise (captures from analog sources
+such as VHS and 8mm usually have several lines at the time and bottom
+that are very noisy). For this you can use the scaler
 
    yuvdenoise uses a different approach to filter the noise.  More
 information about how yuvdenoise works as well as descriptions of its
 options are found in the manpage.
 
-   If you have a high quality source you can only use `fast mode'. In
-the fast mode yuvdenoise only uses the bitnoise reduction.  You might
-also use the mpeg2enc `-h/-keep-hf' option. That option tells mpeg2enc
-to keep as much high frequency information as possible.   Using -h will
-greatly increase the bitrate (filesize).  If the bitrate is too close to
-the maximum (set with -b) the encoder will have to decrease the quality
-to avoid exceeding the maximum bitrate.
+   If you have a high quality source you should lower the filter to
+levels like that: -s 2,2,2 -g 0,255,255 -t 2,2,2.  You might also use
+the mpeg2enc `-h/-keep-hf' option. That option tells mpeg2enc to keep
+as much high frequency information as possible.   Using -h will greatly
+increase the bitrate (filesize).  If the bitrate is too close to the
+maximum (set with -b) the encoder will have to decrease the quality to
+avoid exceeding the maximum bitrate.
 
    A builtin filter in mpeg2enc is the -N/-reduce-HF option.  This
 option is not really filter in the usual sense.  Rather it changes how
@@ -2523,9 +2522,8 @@ running at 30000:1001 FPS (or about 29,97FPS) at SVCD size.
 
    Example
 
-   `> lav2yuv video.eli | yuvdenoise -F | yuvfps -r 24000:1001 |
-yuvscaler -O SIZE_720x480 | mpeg2enc -f 3 -b 4000 -q 7 -o
-video_ntsc.m2v'
+   `> lav2yuv video.eli | yuvdenoise | yuvfps -r 24000:1001 | yuvscaler
+-O SIZE_720x480 | mpeg2enc -f 3 -b 4000 -q 7 -o video_ntsc.m2v'
 
    This example shows how you should use the tools. Denoise first and
 than change the framerate and in the last step change the image size.
@@ -2951,7 +2949,7 @@ limitations in the Zoran hardware currently supported. Videos recorded
 with NuppelVideo can also be processed with the mjpeg tools.
 
    If you have a Macintosh (MAC) and want to use the mjpeg tools look
-there: http://www.sjoki.uta.fi/~shmhav/SVCD_on_a_Macintosh.txt and
+there: http://www.sjoki.uta.fi/~shmhav/SVCD_on_a_Macintosh.html and
 http://homepage.mac.com/rnc/
 
    If you want to compile the mjpeg-tools on your MAC, our just want
@@ -3006,73 +3004,73 @@ hints, `thanks'
 
 
 Tag Table:
-Node: Top135
-Node: Introduction786
-Node: Unsorted list of useful Hints2408
-Node: Some books we found usefull6778
-Node: Recording videos7487
-Node: lavrec examples7871
-Node: Other recording hints11420
-Node: Some information about the typical lavrec output while recording12952
-Node: Notes about "interlace field order - what can go wrong and how to fix it"14507
-Node: There are three bad things that can happen with fields15352
-Node: How can I recognize if I have one of these Problems ?17137
-Node: How can you fix it?18754
-Node: Hey what about NTSC movies ?22059
-Node: Creating videos from other sources23382
-Node: Creating videos from images23967
-Node: Decoding streams with mplayer27143
-Node: Decoding MPEG2 streams with mpeg2dec28424
-Node: Other things to know29478
-Node: Checking if recording was successful30061
-Node: Edit the video32325
-Node: Edit with glav32633
-Node: Unify videos34081
-Node: Separate sound34538
-Node: Separate images34965
-Node: Creating movie transitions35960
-Node: Converting the stream to MPEG or DIVx videos39681
-Node: Creating sound41421
-Node: Converting video43224
-Node: Scaling44784
-Node: Putting the streams together47056
-Node: Creating MPEG1 Videos49329
-Node: MPEG1 Audio creation Example50228
-Node: MPEG1 Video creation Example51035
-Node: MPEG1 Multiplexing Example55578
-Node: Creating MPEG2 Videos56451
-Node: MPEG2 Audio creation Example57506
-Node: MPEG2 Video creation Example58113
-Node: Which values should be used for VBR Encoding60583
-Node: Encoding destination TV (interlaced) or Monitor (progressive)62900
-Node: MPEG2 Multiplexing Example65431
-Node: Creating Video-CD's66249
-Node: VCD Audio creation Example67323
-Node: VCD Video creation Example67882
-Node: VCD Multiplexing Example69408
-Node: Creating the CD69774
-Node: Notes70335
-Node: Storing MPEGs71338
-Node: Creating SVCD72681
-Node: SVCD Audio creation Example73511
-Node: SVCD Video creation Example74493
-Node: SVCD Multiplexing Example76920
-Node: SVCD Creating the CD77467
-Node: Creating DVD's78155
-Node: DVD Audio creation Example79012
-Node: DVD Video creation Example79569
-Node: DVD Mplex Example80555
-Node: DVD creation Example81053
-Node: Creating DIVX Videos82031
-Node: lav2avi-sh82236
-Node: Optimizing the stream84844
-Node: Scaling and offset correction96242
-Node: Frame rate conversion98756
-Node: Transcoding of existing MPEG-2101614
-Node: If you want to do every step on your own it will look something like this104904
-Node: Trading Quality/Speed109333
-Node: Creating streams to be played from disk using Software players110559
-Node: SMP and distributed Encoding111382
-Node: Interoperability115024
+Node: Top136
+Node: Introduction787
+Node: Unsorted list of useful Hints2409
+Node: Some books we found usefull6783
+Node: Recording videos7492
+Node: lavrec examples7876
+Node: Other recording hints11425
+Node: Some information about the typical lavrec output while recording12957
+Node: Notes about "interlace field order - what can go wrong and how to fix it"14512
+Node: There are three bad things that can happen with fields15357
+Node: How can I recognize if I have one of these Problems ?17142
+Node: How can you fix it?18759
+Node: Hey what about NTSC movies ?22064
+Node: Creating videos from other sources23387
+Node: Creating videos from images23972
+Node: Decoding streams with mplayer27148
+Node: Decoding MPEG2 streams with mpeg2dec28429
+Node: Other things to know29483
+Node: Checking if recording was successful30079
+Node: Edit the video32343
+Node: Edit with glav32651
+Node: Unify videos34099
+Node: Separate sound34556
+Node: Separate images34983
+Node: Creating movie transitions35978
+Node: Converting the stream to MPEG or DIVx videos39699
+Node: Creating sound41439
+Node: Converting video43242
+Node: Scaling44802
+Node: Putting the streams together47074
+Node: Creating MPEG1 Videos49345
+Node: MPEG1 Audio creation Example50244
+Node: MPEG1 Video creation Example51051
+Node: MPEG1 Multiplexing Example55594
+Node: Creating MPEG2 Videos56467
+Node: MPEG2 Audio creation Example57522
+Node: MPEG2 Video creation Example58129
+Node: Which values should be used for VBR Encoding60570
+Node: Encoding destination TV (interlaced) or Monitor (progressive)62887
+Node: MPEG2 Multiplexing Example65443
+Node: Creating Video-CD's66261
+Node: VCD Audio creation Example67335
+Node: VCD Video creation Example67894
+Node: VCD Multiplexing Example69420
+Node: Creating the CD69786
+Node: Notes70347
+Node: Storing MPEGs71350
+Node: Creating SVCD72693
+Node: SVCD Audio creation Example73527
+Node: SVCD Video creation Example74509
+Node: SVCD Multiplexing Example76936
+Node: SVCD Creating the CD77483
+Node: Creating DVD's78171
+Node: DVD Audio creation Example79035
+Node: DVD Video creation Example79592
+Node: DVD Multiplexing Example80577
+Node: DVD creation Example81096
+Node: Creating DIVX Videos82081
+Node: lav2avi-sh82286
+Node: Optimizing the stream84894
+Node: Scaling and offset correction96102
+Node: Frame rate conversion98616
+Node: Transcoding of existing MPEG-2101471
+Node: If you want to do every step on your own it will look something like this104761
+Node: Trading Quality/Speed109190
+Node: Creating streams to be played from disk using Software players110416
+Node: SMP and distributed Encoding111239
+Node: Interoperability114881
 
 End Tag Table
