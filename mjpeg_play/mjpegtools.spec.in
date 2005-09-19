@@ -18,13 +18,13 @@ Source0:	http://prdownloads.sourceforge.net/mjpeg/mjpegtools-%{version}.tar.gz
 Source1:	http://prdownloads.sourceforge.net/mjpeg/jpeg-mmx-0.1.6.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-buildroot-%{version}-%{release}
 
-Requires:	XFree86 SDL
+Requires:	xorg-x11 SDL
 Requires:	libpng libjpeg
 Requires:	glib
 Requires:	libquicktime
 Requires:	libdv
 
-BuildRequires:  XFree86-devel SDL-devel
+BuildRequires:  xorg-x11-devel SDL-devel
 BuildRequires:  libpng-devel libjpeg-devel
 BuildRequires:  glib-devel gtk+-devel
 BuildRequires:  gcc-c++
@@ -43,8 +43,6 @@ encoded into mpeg1/2 or divx video.
 
 %prep
 %setup -q -n %{name}-%{version} -a 1
-
-mv jpeg-mmx-* jpeg-mmx
 
 mkdir usr
 
