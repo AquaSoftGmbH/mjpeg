@@ -38,7 +38,6 @@ libmjpegutils_la_SOURCES = \
 	cpu_accel.c
 
 noinst_HEADERS = \
-	attributes.h \
 	cpu_accel.h \
 	fastintfns.h \
 	mmx.h \

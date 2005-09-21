@@ -346,7 +346,6 @@ void y4m_fi_set_spatial(y4m_frame_info_t *fi, int sampling);
 y4m_xtag_list_t *y4m_fi_xtags(y4m_frame_info_t *fi);
 
 
-
 /************************************************************************
  *  blocking read and write functions
  *
@@ -364,6 +363,34 @@ ssize_t y4m_read(int fd, void *buf, size_t len);
 /* write len bytes from fd into buf */
 ssize_t y4m_write(int fd, const void *buf, size_t len);
 
+/************************************************************************
+ *  callback based read and write
+ *
+ *  The structures y4m_cb_reader_t and y4m_cb_writer_t must be
+ *  set up by the caller before and of the *_read_*_cb() or
+ *  *_write_*_cb() functions are called. Te return values of
+ *  the read() and write() members have the same meaning as for
+ *  y4m_read() and y4m_write()
+ *
+ ************************************************************************/
+
+typedef struct y4m_cb_reader_s
+  {
+  void * data;
+  ssize_t (*read)(void * data, void *buf, size_t len);
+  } y4m_cb_reader_t;
+
+typedef struct y4m_cb_writer_s
+  {
+  void * data;
+  ssize_t (*write)(void * data, const void *buf, size_t len);
+  } y4m_cb_writer_t;
+
+/* read len bytes from fd into buf */
+ssize_t y4m_read_cb(y4m_cb_reader_t * fd, void *buf, size_t len);
+
+/* write len bytes from fd into buf */
+ssize_t y4m_write_cb(y4m_cb_writer_t * fd, const void *buf, size_t len);
 
 
 /************************************************************************
@@ -382,9 +409,15 @@ int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i);
    (the current contents of stream_info are erased first) */
 int y4m_read_stream_header(int fd, y4m_stream_info_t *i);
 
+/* read a stream header with a callback reader
+   (the current contents of stream_info are erased first) */
+int y4m_read_stream_header_cb(y4m_cb_reader_t * fd, y4m_stream_info_t *i);
+
 /* write a stream header to file descriptor fd */
 int y4m_write_stream_header(int fd, const y4m_stream_info_t *i);
 
+/* write a stream header with a callback writer */
+int y4m_write_stream_header_cb(y4m_cb_writer_t * fd, const y4m_stream_info_t *i);
 
 
 /************************************************************************
@@ -401,14 +434,23 @@ int y4m_write_frame_header(int fd,
 			   const y4m_stream_info_t *si,
 			   const y4m_frame_info_t *fi);
 
-/* write a complete frame (header + data)
+/* write a frame header with a callback writer fd */
+int y4m_write_frame_header_cb(y4m_cb_writer_t * fd,
+			   const y4m_stream_info_t *si,
+			   const y4m_frame_info_t *fi);
+
+/* write a complete frame (header + data) to file descriptor fd
    o planes[] points to 1-4 buffers, one each for image plane */
 int y4m_write_frame(int fd, const y4m_stream_info_t *si, 
 		    const y4m_frame_info_t *fi, uint8_t * const *planes);
 
+/* write a complete frame (header + data) with a callback writer fd
+   o planes[] points to 1-4 buffers, one each for image plane */
+int y4m_write_frame_cb(y4m_cb_writer_t * fd, const y4m_stream_info_t *si, 
+                       const y4m_frame_info_t *fi, uint8_t * const *planes);
 
-/* write a complete frame (header + data), but interleave fields
-    from two separate buffers
+/* write a complete frame (header + data), to file descriptor fd
+    but interleave fields from two separate buffers
    o upper_field[] same as planes[] above, but for upper field only
    o lower_field[] same as planes[] above, but for lower field only
 */
@@ -417,6 +459,15 @@ int y4m_write_fields(int fd, const y4m_stream_info_t *si,
 		     uint8_t * const *upper_field, 
 		     uint8_t * const *lower_field);
 
+/* write a complete frame (header + data), with a callback writer fd
+    but interleave fields from two separate buffers
+   o upper_field[] same as planes[] above, but for upper field only
+   o lower_field[] same as planes[] above, but for lower field only
+*/
+int y4m_write_fields_cb(y4m_cb_writer_t * fd, const y4m_stream_info_t *si, 
+                        const y4m_frame_info_t *fi,
+                        uint8_t * const *upper_field, 
+                        uint8_t * const *lower_field);
 
 /* read a frame header from file descriptor fd 
    (the current contents of frame_info are erased first) */
@@ -424,12 +475,26 @@ int y4m_read_frame_header(int fd,
 			  const y4m_stream_info_t *si,
 			  y4m_frame_info_t *fi);
 
-/* read frame data [to be called after y4m_read_frame_header()]
+/* read a frame header with callback reader fd
+   (the current contents of frame_info are erased first) */
+int y4m_read_frame_header_cb(y4m_cb_reader_t * fd,
+                             const y4m_stream_info_t *si,
+                             y4m_frame_info_t *fi);
+
+/* read frame data from file descriptor fd
+   [to be called after y4m_read_frame_header()]
    o planes[] points to 1-4 buffers, one each for image plane */
 int y4m_read_frame_data(int fd, const y4m_stream_info_t *si, 
                         y4m_frame_info_t *fi, uint8_t * const *planes);
 
-/* read frame data, but de-interleave fields into two separate buffers
+/* read frame data with callback reader fd
+   [to be called after y4m_read_frame_header_cb()]
+   o planes[] points to 1-4 buffers, one each for image plane */
+int y4m_read_frame_data_cb(y4m_cb_reader_t * fd, const y4m_stream_info_t *si, 
+                           y4m_frame_info_t *fi, uint8_t * const *planes);
+
+/* read frame data from file descriptor fd,
+   but de-interleave fields into two separate buffers
     [to be called after y4m_read_frame_header()]
    o upper_field[] same as planes[] above, but for upper field only
    o lower_field[] same as planes[] above, but for lower field only
@@ -439,13 +504,30 @@ int y4m_read_fields_data(int fd, const y4m_stream_info_t *si,
                          uint8_t * const *upper_field, 
                          uint8_t * const *lower_field);
 
-/* read a complete frame (header + data)
+/* read frame data with callback reader fd,
+   but de-interleave fields into two separate buffers
+    [to be called after y4m_read_frame_header_cb()]
+   o upper_field[] same as planes[] above, but for upper field only
+   o lower_field[] same as planes[] above, but for lower field only
+*/
+int y4m_read_fields_data_cb(y4m_cb_reader_t * fd,
+                            const y4m_stream_info_t *si, 
+                            y4m_frame_info_t *fi,
+                            uint8_t * const *upper_field, 
+                            uint8_t * const *lower_field);
+
+/* read a complete frame (header + data) from file descriptor fd,
    o planes[] points to 1-4 buffers, one each for image plane */
 int y4m_read_frame(int fd, const y4m_stream_info_t *si, 
 		   y4m_frame_info_t *fi, uint8_t * const *planes);
 
-/* read a complete frame (header + data), but de-interleave fields
-    into two separate buffers
+/* read a complete frame (header + data) from callback reader fd,
+   o planes[] points to 1-4 buffers, one each for image plane */
+int y4m_read_frame_cb(y4m_cb_reader_t * fd, const y4m_stream_info_t *si, 
+                      y4m_frame_info_t *fi, uint8_t * const *planes);
+
+/* read a complete frame (header + data) from file descriptor fd,
+   but de-interleave fields into two separate buffers
    o upper_field[] same as planes[] above, but for upper field only
    o lower_field[] same as planes[] above, but for lower field only
 */
@@ -454,6 +536,15 @@ int y4m_read_fields(int fd, const y4m_stream_info_t *si,
 		    uint8_t * const *upper_field, 
 		    uint8_t * const *lower_field);
 
+/* read a complete frame (header + data) from callback_reader fd,
+   but de-interleave fields into two separate buffers
+   o upper_field[] same as planes[] above, but for upper field only
+   o lower_field[] same as planes[] above, but for lower field only
+*/
+int y4m_read_fields_cb(y4m_cb_reader_t * fd, const y4m_stream_info_t *si, 
+                       y4m_frame_info_t *fi,
+                       uint8_t * const *upper_field, 
+                       uint8_t * const *lower_field);
 
 /************************************************************************
  *  miscellaneous functions

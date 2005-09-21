@@ -25,7 +25,6 @@
 #include <math.h>
 #include "mjpeg_types.h"
 #include "mjpeg_logging.h"
-#include "attributes.h"
 #include "mmx.h"
 #include "simd.h"
 

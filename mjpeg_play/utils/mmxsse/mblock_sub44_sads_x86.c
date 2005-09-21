@@ -36,7 +36,6 @@
 
 #include <config.h>
 #include "mjpeg_types.h"
-#include "attributes.h"
 #include "mmx.h"
 #include "fastintfns.h"
 #include "motionsearch.h"

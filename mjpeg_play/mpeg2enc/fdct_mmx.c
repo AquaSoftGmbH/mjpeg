@@ -32,7 +32,6 @@
 
 #include <config.h>
 #include "mjpeg_types.h"
-#include "attributes.h"
 #include "mmx.h"
 
 

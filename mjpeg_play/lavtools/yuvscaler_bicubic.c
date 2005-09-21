@@ -36,7 +36,6 @@
 #include "yuv4mpeg.h"
 #include "mjpeg_types.h"
 #include "yuvscaler.h"
-#include "attributes.h"
 #include "../utils/mmx.h"
 
 extern unsigned int output_active_width;

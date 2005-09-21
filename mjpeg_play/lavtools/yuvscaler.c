@@ -67,7 +67,6 @@
 #include "mjpeg_types.h"
 #include "yuvscaler.h"
 #include "mpegconsts.h"
-#include "attributes.h"
 
 #ifdef HAVE_ASM_MMX
 #include <fcntl.h>

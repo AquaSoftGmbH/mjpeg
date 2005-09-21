@@ -107,7 +107,45 @@ ssize_t y4m_write(int fd, const void *buf, size_t len)
    return 0;
 }
 
+/* read len bytes from fd into buf */
+ssize_t y4m_read_cb(y4m_cb_reader_t * fd, void *buf, size_t len)
+  {
+  return fd->read(fd->data, buf, len);
+  }
 
+/* write len bytes from fd into buf */
+ssize_t y4m_write_cb(y4m_cb_writer_t * fd, const void *buf, size_t len)
+  {
+  return fd->write(fd->data, buf, len);
+  }
+
+/* Functions to use the callback interface from plain filedescriptors */
+
+/* read len bytes from fd into buf */
+ssize_t y4m_read_fd(void * data, void *buf, size_t len)
+  {
+  int * f = (int*)data;
+  return y4m_read(*f, buf, len);
+  }
+
+/* write len bytes from fd into buf */
+ssize_t y4m_write_fd(void * data, const void *buf, size_t len)
+  {
+  int * f = (int*)data;
+  return y4m_write(*f, buf, len);
+  }
+
+static void set_cb_reader_from_fd(y4m_cb_reader_t * ret, int * fd)
+  {
+  ret->read = y4m_read_fd;
+  ret->data = fd;
+  }
+
+static void set_cb_writer_from_fd(y4m_cb_writer_t * ret, int * fd)
+  {
+  ret->write = y4m_write_fd;
+  ret->data = fd;
+  }
 
 
 /*************************************************************************
@@ -767,7 +805,7 @@ static int y4m_parse_frame_tags(char *s, const y4m_stream_info_t *si,
  *************************************************************************/
 
 
-int y4m_read_stream_header(int fd, y4m_stream_info_t *i)
+int y4m_read_stream_header_cb(y4m_cb_reader_t * fd, y4m_stream_info_t *i)
 {
    char line[Y4M_LINE_MAX];
    char *p;
@@ -778,7 +816,7 @@ int y4m_read_stream_header(int fd, y4m_stream_info_t *i)
   y4m_clear_stream_info(i);
    /* read the header line */
    for (n = 0, p = line; n < Y4M_LINE_MAX; n++, p++) {
-     if (read(fd, p, 1) < 1) 
+     if (y4m_read_cb(fd, p, 1)) 
        return Y4M_ERR_SYSTEM;
      if (*p == '\n') {
        *p = '\0';           /* Replace linefeed by end of string */
@@ -796,9 +834,14 @@ int y4m_read_stream_header(int fd, y4m_stream_info_t *i)
    return Y4M_OK;
 }
 
+int y4m_read_stream_header(int fd, y4m_stream_info_t *i)
+{
+  y4m_cb_reader_t r;
+  set_cb_reader_from_fd(&r, &fd);
+  return y4m_read_stream_header_cb(&r, i);
+}
 
-
-int y4m_write_stream_header(int fd, const y4m_stream_info_t *i)
+int y4m_write_stream_header_cb(y4m_cb_writer_t * fd, const y4m_stream_info_t *i)
 {
   char s[Y4M_LINE_MAX+1];
   int n;
@@ -836,9 +879,15 @@ int y4m_write_stream_header(int fd, const y4m_stream_info_t *i)
       != Y4M_OK) 
     return err;
   /* non-zero on error */
-  return (y4m_write(fd, s, strlen(s)) ? Y4M_ERR_SYSTEM : Y4M_OK);
+  return (y4m_write_cb(fd, s, strlen(s)) ? Y4M_ERR_SYSTEM : Y4M_OK);
 }
 
+int y4m_write_stream_header(int fd, const y4m_stream_info_t *i)
+{
+  y4m_cb_writer_t w;
+  set_cb_writer_from_fd(&w, &fd);
+  return y4m_write_stream_header_cb(&w, i);
+}
 
 
 
@@ -849,7 +898,7 @@ int y4m_write_stream_header(int fd, const y4m_stream_info_t *i)
  *
  *************************************************************************/
 
-int y4m_read_frame_header(int fd,
+int y4m_read_frame_header_cb(y4m_cb_reader_t * fd,
 			  const y4m_stream_info_t *si,
 			  y4m_frame_info_t *fi)
 {
@@ -864,7 +913,7 @@ int y4m_read_frame_header(int fd,
      Try to read "FRAME\n" all at once, and don't try to parse
      if nothing else is there...
   */
-  remain = y4m_read(fd, line, sizeof(Y4M_FRAME_MAGIC)-1+1); /* -'\0', +'\n' */
+  remain = y4m_read_cb(fd, line, sizeof(Y4M_FRAME_MAGIC)-1+1); /* -'\0', +'\n' */
   if (remain < 0) return Y4M_ERR_SYSTEM;
   if (remain > 0) {
     /* A clean EOF should end exactly at a frame-boundary */
@@ -884,7 +933,7 @@ int y4m_read_frame_header(int fd,
 
   /* proceed to get the tags... (overwrite the magic) */
   for (n = 0, p = line; n < Y4M_LINE_MAX; n++, p++) {
-    if (y4m_read(fd, p, 1))
+    if (y4m_read_cb(fd, p, 1))
       return Y4M_ERR_SYSTEM;
     if (*p == '\n') {
       *p = '\0';           /* Replace linefeed by end of string */
@@ -896,8 +945,17 @@ int y4m_read_frame_header(int fd,
   return y4m_parse_frame_tags(line, si, fi);
 }
 
+int y4m_read_frame_header(int fd,
+			  const y4m_stream_info_t *si,
+			  y4m_frame_info_t *fi)
+  {
+  y4m_cb_reader_t r;
+  set_cb_reader_from_fd(&r, &fd);
+  return y4m_read_frame_header_cb(&r, si, fi);
+  }
 
-int y4m_write_frame_header(int fd,
+
+int y4m_write_frame_header_cb(y4m_cb_writer_t * fd,
 			   const y4m_stream_info_t *si,
 			   const y4m_frame_info_t *fi)
 {
@@ -931,10 +989,17 @@ int y4m_write_frame_header(int fd,
       != Y4M_OK) 
     return err;
   /* non-zero on error */
-  return (y4m_write(fd, s, strlen(s)) ? Y4M_ERR_SYSTEM : Y4M_OK);
+  return (y4m_write_cb(fd, s, strlen(s)) ? Y4M_ERR_SYSTEM : Y4M_OK);
 }
 
-
+int y4m_write_frame_header(int fd,
+			   const y4m_stream_info_t *si,
+			   const y4m_frame_info_t *fi)
+{
+  y4m_cb_writer_t w;
+  set_cb_writer_from_fd(&w, &fd);
+  return y4m_write_frame_header_cb(&w, si, fi);
+}
 
 /*************************************************************************
  *
@@ -942,7 +1007,7 @@ int y4m_write_frame_header(int fd,
  *
  *************************************************************************/
 
-int y4m_read_frame_data(int fd, const y4m_stream_info_t *si, 
+int y4m_read_frame_data_cb(y4m_cb_reader_t * fd, const y4m_stream_info_t *si, 
                         y4m_frame_info_t *fi, uint8_t * const *frame)
 {
   int planes = y4m_si_get_plane_count(si);
@@ -952,45 +1017,64 @@ int y4m_read_frame_data(int fd, const y4m_stream_info_t *si,
   for (p = 0; p < planes; p++) {
     int w = y4m_si_get_plane_width(si, p);
     int h = y4m_si_get_plane_height(si, p);
-    if (y4m_read(fd, frame[p], w*h)) return Y4M_ERR_SYSTEM;
+    if (y4m_read_cb(fd, frame[p], w*h)) return Y4M_ERR_SYSTEM;
   }
   return Y4M_OK;
 }
 
+int y4m_read_frame_data(int fd, const y4m_stream_info_t *si, 
+                        y4m_frame_info_t *fi, uint8_t * const *frame)
+{
+  y4m_cb_reader_t r;
+  set_cb_reader_from_fd(&r, &fd);
+  return y4m_read_frame_data_cb(&r, si, fi, frame);
+}
 
-
-int y4m_read_frame(int fd, const y4m_stream_info_t *si, 
+int y4m_read_frame_cb(y4m_cb_reader_t * fd, const y4m_stream_info_t *si, 
 		   y4m_frame_info_t *fi, uint8_t * const *frame)
 {
   int err;
   
   /* Read frame header */
-  if ((err = y4m_read_frame_header(fd, si, fi)) != Y4M_OK) return err;
+  if ((err = y4m_read_frame_header_cb(fd, si, fi)) != Y4M_OK) return err;
   /* Read date */
-  return y4m_read_frame_data(fd, si, fi, frame);
+  return y4m_read_frame_data_cb(fd, si, fi, frame);
+}
+
+int y4m_read_frame(int fd, const y4m_stream_info_t *si, 
+		   y4m_frame_info_t *fi, uint8_t * const *frame)
+{
+  y4m_cb_reader_t r;
+  set_cb_reader_from_fd(&r, &fd);
+  return y4m_read_frame_cb(&r, si, fi, frame);
 }
 
 
 
-
-int y4m_write_frame(int fd, const y4m_stream_info_t *si, 
+int y4m_write_frame_cb(y4m_cb_writer_t * fd, const y4m_stream_info_t *si, 
 		    const y4m_frame_info_t *fi, uint8_t * const *frame)
 {
   int planes = y4m_si_get_plane_count(si);
   int err, p;
 
   /* Write frame header */
-  if ((err = y4m_write_frame_header(fd, si, fi)) != Y4M_OK) return err;
+  if ((err = y4m_write_frame_header_cb(fd, si, fi)) != Y4M_OK) return err;
   /* Write each plane */
   for (p = 0; p < planes; p++) {
     int w = y4m_si_get_plane_width(si, p);
     int h = y4m_si_get_plane_height(si, p);
-    if (y4m_write(fd, frame[p], w*h)) return Y4M_ERR_SYSTEM;
+    if (y4m_write_cb(fd, frame[p], w*h)) return Y4M_ERR_SYSTEM;
   }
   return Y4M_OK;
 }
 
-
+int y4m_write_frame(int fd, const y4m_stream_info_t *si, 
+		    const y4m_frame_info_t *fi, uint8_t * const *frame)
+{
+  y4m_cb_writer_t w;
+  set_cb_writer_from_fd(&w, &fd);
+  return y4m_write_frame_cb(&w, si, fi, frame);
+}
 
 /*************************************************************************
  *
@@ -999,7 +1083,7 @@ int y4m_write_frame(int fd, const y4m_stream_info_t *si,
  *************************************************************************/
 
 
-int y4m_read_fields_data(int fd, const y4m_stream_info_t *si,
+int y4m_read_fields_data_cb(y4m_cb_reader_t * fd, const y4m_stream_info_t *si,
                          y4m_frame_info_t *fi,
                          uint8_t * const *upper_field, 
                          uint8_t * const *lower_field)
@@ -1020,14 +1104,14 @@ int y4m_read_fields_data(int fd, const y4m_stream_info_t *si,
     /* alternately read one line into each field */
     for (y = 0; y < height; y += 2) {
       if( width*2 >= maxrbuf ) {
-        if (y4m_read(fd, dsttop, width)) goto y4merr;
-        if (y4m_read(fd, dstbot, width)) goto y4merr;
+        if (y4m_read_cb(fd, dsttop, width)) goto y4merr;
+        if (y4m_read_cb(fd, dstbot, width)) goto y4merr;
       } else {
         if( rbufpos==rbuflen ) {
           rbuflen=(height-y)*width;
           if( rbuflen>maxrbuf )
             rbuflen=maxrbuf-maxrbuf%(2*width);
-          if( y4m_read(fd,rbuf,rbuflen) )
+          if( y4m_read_cb(fd,rbuf,rbuflen) )
             goto y4merr;
           rbufpos=0;
         }
@@ -1047,21 +1131,38 @@ int y4m_read_fields_data(int fd, const y4m_stream_info_t *si,
   return Y4M_ERR_SYSTEM;
 }
 
+int y4m_read_fields_data(int fd, const y4m_stream_info_t *si,
+                         y4m_frame_info_t *fi,
+                         uint8_t * const *upper_field, 
+                         uint8_t * const *lower_field)
+{
+  y4m_cb_reader_t r;
+  set_cb_reader_from_fd(&r, &fd);
+  return y4m_read_fields_data_cb(&r, si, fi, upper_field, lower_field);
+}
+
+
+int y4m_read_fields_cb(y4m_cb_reader_t * fd, const y4m_stream_info_t *si, y4m_frame_info_t *fi,
+                       uint8_t * const *upper_field, 
+                       uint8_t * const *lower_field)
+{
+  int err;
+  /* Read frame header */
+  if ((err = y4m_read_frame_header_cb(fd, si, fi)) != Y4M_OK) return err;
+  /* Read data */
+  return y4m_read_fields_data_cb(fd, si, fi, upper_field, lower_field);
+}
 
 int y4m_read_fields(int fd, const y4m_stream_info_t *si, y4m_frame_info_t *fi,
                     uint8_t * const *upper_field, 
                     uint8_t * const *lower_field)
 {
-  int err;
-  /* Read frame header */
-  if ((err = y4m_read_frame_header(fd, si, fi)) != Y4M_OK) return err;
-  /* Read data */
-  return y4m_read_fields_data(fd, si, fi, upper_field, lower_field);
+  y4m_cb_reader_t r;
+  set_cb_reader_from_fd(&r, &fd);
+  return y4m_read_fields_cb(&r, si, fi, upper_field, lower_field);
 }
 
-
-
-int y4m_write_fields(int fd, const y4m_stream_info_t *si,
+int y4m_write_fields_cb(y4m_cb_writer_t * fd, const y4m_stream_info_t *si,
 		     const y4m_frame_info_t *fi,
 		     uint8_t * const *upper_field, 
 		     uint8_t * const *lower_field)
@@ -1073,7 +1174,7 @@ int y4m_write_fields(int fd, const y4m_stream_info_t *si,
   uint8_t *wbuf;
   
   /* Write frame header */
-  if ((err = y4m_write_frame_header(fd, si, fi)) != Y4M_OK) return err;
+  if ((err = y4m_write_frame_header_cb(fd, si, fi)) != Y4M_OK) return err;
   /* Write each plane */
   wbuf=_y4m_alloc(maxwbuf);
   for (p = 0; p < planes; p++) {
@@ -1085,11 +1186,11 @@ int y4m_write_fields(int fd, const y4m_stream_info_t *si,
     /* alternately write one line from each field */
     for (y = 0; y < height; y += 2) {
       if( width*2 >= maxwbuf ) {
-        if (y4m_write(fd, srctop, width)) goto y4merr;
-        if (y4m_write(fd, srcbot, width)) goto y4merr;
+        if (y4m_write_cb(fd, srctop, width)) goto y4merr;
+        if (y4m_write_cb(fd, srcbot, width)) goto y4merr;
       } else {
         if (numwbuf + 2 * width > maxwbuf) {
-          if(y4m_write(fd, wbuf, numwbuf)) goto y4merr;
+          if(y4m_write_cb(fd, wbuf, numwbuf)) goto y4merr;
           numwbuf=0;
         }
 
@@ -1101,7 +1202,7 @@ int y4m_write_fields(int fd, const y4m_stream_info_t *si,
     }
   }
   if( numwbuf )
-    if( y4m_write(fd, wbuf, numwbuf) )
+    if( y4m_write_cb(fd, wbuf, numwbuf) )
       goto y4merr;
   _y4m_free(wbuf);
   return Y4M_OK;
@@ -1111,6 +1212,15 @@ int y4m_write_fields(int fd, const y4m_stream_info_t *si,
   return Y4M_ERR_SYSTEM;
 }
 
+int y4m_write_fields(int fd, const y4m_stream_info_t *si,
+                     const y4m_frame_info_t *fi,
+                     uint8_t * const *upper_field, 
+                     uint8_t * const *lower_field)
+{
+  y4m_cb_writer_t w;
+  set_cb_writer_from_fd(&w, &fd);
+  return y4m_write_fields_cb(&w, si, fi, upper_field, lower_field);
+}
 
 /*************************************************************************
  *
