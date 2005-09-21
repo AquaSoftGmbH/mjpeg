@@ -91,7 +91,8 @@ extern int freq_out;
 extern int chans_in;
 extern int chans_out;
 extern int audio_bits;
-extern unsigned long audio_bytes;
+extern int32_t audio_bytes;
+extern int raw_in;
 
 static unsigned long nseconds = 0;
 static int num_out = -1;
@@ -135,7 +136,7 @@ static void read_and_resample(void)
       for(n=0;n<num_in*chans_in;n++)
          buf1[n] = (in_buff[n]-128)<<8;
    }
-   else if(big_endian)
+   else if(big_endian && !raw_in)
    {
       swab(in_buff,buf1,num_in*nbps);
    }

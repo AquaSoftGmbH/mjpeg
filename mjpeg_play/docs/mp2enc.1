@@ -14,6 +14,8 @@ mp2enc \- Simple MPEG-1 layer-II audio encoder
 .IR bitrate_kbps ]
 .RB [ -r
 .IR output_sampling_rate_hz ]
+.RB [ -R
+.IR rate,chans,bits ]
 .RB [ -s
 ]
 .RB [ -m
@@ -51,6 +53,14 @@ the file generated (see printf(3)).
 Set verbosity level to num.  0 = warnings and errors only, 1 = information as well, 2=really verbose.
 .B -?
 Display a synopsis of the command syntax.
+
+.TP
+.BI -R \ rate,chans,bits
+Indicate, that the input is raw PCM without header. You must specify 3
+numbers: rate is the samplerate in Hz, chans is the number of channels
+(1 or 2) and bits is the number of bits per sample. 8 bits are unsigned,
+16 bits are signed in machine native byte order.
+
 .br
 .SH "FUNCTION LETTERS CONTROLLING OUTPUT STREAM STRUCTURE"
 .TP

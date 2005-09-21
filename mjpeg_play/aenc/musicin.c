@@ -134,22 +134,27 @@ int chans_in=0;
 int chans_out=0;
 int audio_bits=0;
 int32_t audio_bytes=0;
+int raw_in=0;
 
 static void Usage(char *str)
 {
   printf("Usage: %s [params] < input.wav\n",str);
   printf("   where possible params are:\n");
-  printf( "  -v num  Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n");
-  printf("   -b num     Bitrate in KBit/sec (default: 224 KBit/s)\n");
-  printf("   -l num     Layer number 1 or 2 (default: 2)\n");
-  printf("   -o name    Outputfile name (REQUIRED)\n");
-  printf("   -r num     Force output sampling rate to be num Hz (default: 48000)\n");
-  printf("              num must be one of 32000, 44100, 48000\n");
-  printf("   -s         Force stereo output (default)\n");
-  printf("   -m         Force mono output\n");
-  printf("   -e         Use CRC error protection\n");
-  printf("   -V         Force VCD sampling rate (-r 44100) and perform bitrate/channel validity checks\n");
-  printf("   -?         Print this lot out\n");
+  printf( "  -v num             Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n");
+  printf("   -b num             Bitrate in KBit/sec (default: 224 KBit/s)\n");
+  printf("   -l num             Layer number 1 or 2 (default: 2)\n");
+  printf("   -o name            Outputfile name (REQUIRED)\n");
+  printf("   -r num             Force output sampling rate to be num Hz (default: 48000)\n");
+  printf("                      num must be one of 32000, 44100, 48000\n");
+  printf("   -s                 Force stereo output (default)\n");
+  printf("   -m                 Force mono output\n");
+  printf("   -R rate,chans,bits Input are raw samples without a wav header. rate is the\n");
+  printf("                      samplerate of the input, chans is the number of channels,\n");
+  printf("                      bits are the bits per sample (can be 8 or 16). All 3 numbers\n");
+  printf("                      MUST be given\n");
+  printf("   -e                 Use CRC error protection\n");
+  printf("   -V                 Force VCD sampling rate (-r 44100) and perform bitrate/channel validity checks\n");
+  printf("   -?                 Print this lot out\n");
   exit(0);
 }
 
@@ -163,6 +168,7 @@ int             *psy;
 unsigned long   *num_samples;
 char            **encoded_file_name;
 {
+    char * pos, *end;
     layer *info = fr_ps->header;
     int brt=224;
     char *outfilename = 0;
@@ -185,7 +191,7 @@ char            **encoded_file_name;
     *psy = 2;
     *num_samples = MAX_U_32_NUM; /* Unlimited */
 
-    while( (n=getopt(argc,argv,"b:o:l:r:smeVv:")) != EOF)
+    while( (n=getopt(argc,argv,"b:o:l:r:R:smeVv:")) != EOF)
     {
         switch(n) {
 
@@ -199,6 +205,30 @@ char            **encoded_file_name;
 			freq_out = atoi(optarg);
     			if (freq_out!=32000 && freq_out!=44100 && freq_out!=48000)
        			mjpeg_error_exit1("-r requires one of 32000 44100 48000!");
+			break;
+                case 'R':
+                        pos = optarg;
+                        /* Frequency */
+                        freq_in = strtol(pos, &end, 10);
+                        if(pos == end)
+                        mjpeg_error_exit1("-R requires rate,chans,bits!");
+                        pos = end;
+                        if(*pos != ',')
+                        mjpeg_error_exit1("-R requires rate,chans,bits!");
+                        pos++;
+                        /* Channels */
+                        chans_in = strtol(pos, &end, 10);
+                        if(pos == end)
+                        mjpeg_error_exit1("-R requires rate,chans,bits!");
+                        pos = end;
+                        if(*pos != ',')
+                        mjpeg_error_exit1("-R requires rate,chans,bits!");
+                        pos++;
+                        /* Bits */
+                        audio_bits = strtol(pos, &end, 10);
+                        if(pos == end)
+                        mjpeg_error_exit1("-R requires rate,chans,bits!");
+                        raw_in = 1;
 			break;
 		case 'l':
 			info->lay = atoi(optarg);
@@ -247,17 +277,23 @@ char            **encoded_file_name;
        mjpeg_error_exit1("can not malloc %d bytes", strlen(outfilename));
 
     /* Read the WAV file header, make sanity checks */
+    if(!raw_in)
+    {
+        if(wav_read_header(stdin,&freq_in,&chans_in,&audio_bits,
+                           &audio_format,&audio_bytes))
+            mjpeg_error_exit1("failure reading WAV file");
 
-    if(wav_read_header(stdin,&freq_in,&chans_in,&audio_bits,
-                       &audio_format,&audio_bytes))
-        mjpeg_error_exit1("failure reading WAV file");
-
-    mjpeg_info("Opened WAV file, freq = %d Hz, channels = %d, bits = %d",
-           freq_in, chans_in, audio_bits);
-    mjpeg_info("format = 0x%x, audio length = %d bytes",audio_format,audio_bytes);
-
-    if(audio_format!=1)
-       mjpeg_error_exit1("WAV file is not in PCM format");
+        mjpeg_info("Opened WAV file, freq = %d Hz, channels = %d, bits = %d",
+               freq_in, chans_in, audio_bits);
+        mjpeg_info("format = 0x%x, audio length = %d bytes",audio_format,audio_bytes);
+        if(audio_format!=1)
+           mjpeg_error_exit1("WAV file is not in PCM format");
+    }
+    else
+    {
+        mjpeg_info("Raw PCM input, freq = %d Hz, channels = %d, bits = %d",
+               freq_in, chans_in, audio_bits);
+    }
 
     if(audio_bits!=8 && audio_bits!=16)
        mjpeg_error_exit1("audio samples must have 8 or 16 bits");
