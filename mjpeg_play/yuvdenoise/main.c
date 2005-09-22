@@ -319,14 +319,16 @@ main (int argc, char *argv[])
   int fd_in = 0;
   int fd_out = 1;
   int errno = 0;
+  char *msg = NULL;
+  y4m_ratio_t rx, ry;
   y4m_frame_info_t iframeinfo;
   y4m_stream_info_t istreaminfo;
   y4m_frame_info_t oframeinfo;
   y4m_stream_info_t ostreaminfo;
 
-  mjpeg_log (LOG_INFO, "--------------------------------------------------------------------------");
+  mjpeg_log (LOG_INFO, "-----------------------------------------------------");
   mjpeg_log (LOG_INFO, "mjpeg-tools yuvdenoise version %s",VERSION);
-  mjpeg_log (LOG_INFO, "--------------------------------------------------------------------------");
+  mjpeg_log (LOG_INFO, "-----------------------------------------------------");
 
   while ((c = getopt (argc, argv, "hvs:t:g:")) != -1)
     {
@@ -406,81 +408,37 @@ main (int argc, char *argv[])
   height = y4m_si_get_height (&istreaminfo);
   input_chroma_subsampling = y4m_si_get_chroma (&istreaminfo);
   input_interlaced = y4m_si_get_interlace (&istreaminfo);
-  mjpeg_log (LOG_INFO, "Y4M-Stream is flagged to be %ix%i(%s)",
+  mjpeg_log (LOG_INFO, "Y4M-Stream %ix%i(%s)",
 	     width,
 	     height,
-	     input_chroma_subsampling == Y4M_CHROMA_420JPEG ? "4:2:0 MPEG1" :
-	     input_chroma_subsampling == Y4M_CHROMA_420MPEG2 ? "4:2:0 MPEG2" :
-	     input_chroma_subsampling ==
-	     Y4M_CHROMA_420PALDV ? "4:2:0 PAL-DV" : input_chroma_subsampling
-	     == Y4M_CHROMA_444 ? "4:4:4" : input_chroma_subsampling ==
-	     Y4M_CHROMA_422 ? "4:2:2" : input_chroma_subsampling ==
-	     Y4M_CHROMA_411 ? "4:1:1 NTSC-DV" : input_chroma_subsampling ==
-	     Y4M_CHROMA_MONO ? "MONOCHROME" : input_chroma_subsampling ==
-	     Y4M_CHROMA_444ALPHA ? "4:4:4:4 ALPHA" : "unknown");
-  mjpeg_log (LOG_INFO, " ");
+	     y4m_chroma_description(input_chroma_subsampling));
+
+  lwidth = width;
+  lheight = height;
 
   // Setup the denoiser to use the appropriate chroma processing
   if (input_chroma_subsampling == Y4M_CHROMA_420JPEG   ||
       input_chroma_subsampling == Y4M_CHROMA_420MPEG2  ||
       input_chroma_subsampling == Y4M_CHROMA_420PALDV  )
-    {
-    lwidth = width;
-    lheight = height;
-    cwidth = width/2;
-    cheight = height/2;
-    
-    mjpeg_log (LOG_INFO,"Processing Mode : 4:2:0 %s", 
+    msg = "Processing Mode : 4:2:0";
+  else if ( input_chroma_subsampling == Y4M_CHROMA_411 )
+    msg = "Processing Mode : 4:1:1";
+  else if ( input_chroma_subsampling == Y4M_CHROMA_422 )
+    msg = "Processing Mode : 4:2:2";
+  else if ( input_chroma_subsampling == Y4M_CHROMA_444 )
+    msg = "Processing Mode : 4:4:4";
+  else
+     mjpeg_error_exit1 (" ### Unsupported Y4M Chroma sampling ### ");
+
+  rx = y4m_chroma_ss_x_ratio(input_chroma_subsampling);
+  ry = y4m_chroma_ss_y_ratio(input_chroma_subsampling);
+  cwidth = width / rx.d;
+  cheight = height / ry.d;
+
+  mjpeg_log (LOG_INFO,"%s %s", msg,
                (input_interlaced==Y4M_ILACE_NONE)? "progressive":"interlaced");
-    mjpeg_log (LOG_INFO,"Luma-Plane      : %ix%i pixels",lwidth,lheight);
-    mjpeg_log (LOG_INFO,"Chroma-Plane    : %ix%i pixels",cwidth,cheight);
-    }
-    else
-  if ( input_chroma_subsampling == Y4M_CHROMA_411 )
-    {
-    lwidth = width;
-    lheight = height;
-    cwidth = width/4;
-    cheight = height;
-    
-    mjpeg_log (LOG_INFO,"Processing Mode : 4:1:1 %s", 
-               (input_interlaced==Y4M_ILACE_NONE)? "progressive":"interlaced");
-    mjpeg_log (LOG_INFO,"Luma-Plane      : %ix%i pixels",lwidth,lheight);
-    mjpeg_log (LOG_INFO,"Chroma-Plane    : %ix%i pixels",cwidth,cheight);
-    }
-    else
-  if ( input_chroma_subsampling == Y4M_CHROMA_422 )
-    {
-    lwidth = width;
-    lheight = height;
-    cwidth = width/2;
-    cheight = height;
-    
-    mjpeg_log (LOG_INFO,"Processing Mode : 4:2:2 %s", 
-               (input_interlaced==Y4M_ILACE_NONE)? "progressive":"interlaced");
-    mjpeg_log (LOG_INFO,"Luma-Plane      : %ix%i pixels",lwidth,lheight);
-    mjpeg_log (LOG_INFO,"Chroma-Plane    : %ix%i pixels",cwidth,cheight);
-    }
-    else
-  if ( input_chroma_subsampling == Y4M_CHROMA_444 )
-    {
-    lwidth = width;
-    lheight = height;
-    cwidth = width;
-    cheight = height;
-    
-    mjpeg_log (LOG_INFO,"Processing Mode : 4:4:4 %s", 
-               (input_interlaced==Y4M_ILACE_NONE)? "progressive":"interlaced");
-    mjpeg_log (LOG_INFO,"Luma-Plane      : %ix%i pixels",lwidth,lheight);
-    mjpeg_log (LOG_INFO,"Chroma-Plane    : %ix%i pixels",cwidth,cheight);
-    }
-    else
-        {
-    mjpeg_log (LOG_INFO," ");
-    mjpeg_log (LOG_INFO," ### This is an unsupported Y4M-Video-Mode ### ");
-    mjpeg_log (LOG_INFO," ");
-        exit(-1);
-        }
+  mjpeg_log (LOG_INFO,"Luma-Plane      : %ix%i pixels",lwidth,lheight);
+  mjpeg_log (LOG_INFO,"Chroma-Plane    : %ix%i pixels",cwidth,cheight);
 
     if(input_interlaced != Y4M_ILACE_NONE)
         {
