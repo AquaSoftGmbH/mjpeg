@@ -141,8 +141,8 @@ private:
     DCTblock *dctblocks;
     DCTblock *qdctblocks;
 
-    unsigned int lum_mean;
-    unsigned int lum_variance;
+    uint32_t lum_mean;
+    uint32_t lum_variance;
 
     /* Old public struct information...
        TODO: This will gradually disappear as C++-ification continues
