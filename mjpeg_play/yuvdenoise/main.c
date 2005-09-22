@@ -449,7 +449,6 @@ main (int argc, char *argv[])
         cheight /= 2;
         }
     
-  /* the output is progressive 4:2:0 MPEG 1 */
   y4m_si_set_interlace (&ostreaminfo, y4m_si_get_interlace (&istreaminfo));
   y4m_si_set_chroma (&ostreaminfo, y4m_si_get_chroma (&istreaminfo));
   y4m_si_set_width (&ostreaminfo, width);
