@@ -39,7 +39,6 @@ static void *(*_y4m_alloc)(size_t bytes) = malloc;
 static void (*_y4m_free)(void *ptr) = free;
 
 
-
 int y4m_allow_unknown_tags(int yn)
 {
   int old = _y4mparam_allow_unknown_tags;
@@ -48,7 +47,6 @@ int y4m_allow_unknown_tags(int yn)
   return old;
 }
 
-
 int y4m_accept_extensions(int level)
 {
   int old = _y4mparam_feature_level;
@@ -56,7 +54,6 @@ int y4m_accept_extensions(int level)
     _y4mparam_feature_level = level;
   return old;
 }
-
 
 
 /*************************************************************************
@@ -70,7 +67,6 @@ int y4m_accept_extensions(int level)
  *               -(# of rem. bytes) on error (and ERRNO should be set)
  *     
  *************************************************************************/
-
 
 ssize_t y4m_read(int fd, void *buf, size_t len)
 {
@@ -91,7 +87,6 @@ ssize_t y4m_read(int fd, void *buf, size_t len)
    }
    return 0;
 }
-
 
 ssize_t y4m_write(int fd, const void *buf, size_t len)
 {
@@ -154,12 +149,10 @@ static void set_cb_writer_from_fd(y4m_cb_writer_t * ret, int * fd)
  *
  *************************************************************************/
 
-
 static char *y4m_new_xtag(void)
 {
   return _y4m_alloc(Y4M_MAX_XTAG_SIZE * sizeof(char));
 }
-
 
 void y4m_init_xtag_list(y4m_xtag_list_t *xtags)
 {
@@ -169,7 +162,6 @@ void y4m_init_xtag_list(y4m_xtag_list_t *xtags)
     xtags->tags[i] = NULL;
   }
 }
-
 
 void y4m_fini_xtag_list(y4m_xtag_list_t *xtags)
 {
@@ -183,7 +175,6 @@ void y4m_fini_xtag_list(y4m_xtag_list_t *xtags)
   xtags->count = 0;
 }
 
-
 void y4m_copy_xtag_list(y4m_xtag_list_t *dest, const y4m_xtag_list_t *src)
 {
   int i;
@@ -194,8 +185,6 @@ void y4m_copy_xtag_list(y4m_xtag_list_t *dest, const y4m_xtag_list_t *src)
   }
   dest->count = src->count;
 }
-
-
 
 static int y4m_snprint_xtags(char *s, int maxn, const y4m_xtag_list_t *xtags)
 {
@@ -212,12 +201,10 @@ static int y4m_snprint_xtags(char *s, int maxn, const y4m_xtag_list_t *xtags)
   return Y4M_OK;
 }
 
-
 int y4m_xtag_count(const y4m_xtag_list_t *xtags)
 {
   return xtags->count;
 }
-
 
 const char *y4m_xtag_get(const y4m_xtag_list_t *xtags, int n)
 {
@@ -226,7 +213,6 @@ const char *y4m_xtag_get(const y4m_xtag_list_t *xtags, int n)
   else
     return xtags->tags[n];
 }
-
 
 int y4m_xtag_add(y4m_xtag_list_t *xtags, const char *tag)
 {
@@ -237,7 +223,6 @@ int y4m_xtag_add(y4m_xtag_list_t *xtags, const char *tag)
   (xtags->count)++;
   return Y4M_OK;
 }
-
 
 int y4m_xtag_remove(y4m_xtag_list_t *xtags, int n)
 {
@@ -253,13 +238,11 @@ int y4m_xtag_remove(y4m_xtag_list_t *xtags, int n)
   return Y4M_OK;
 }
 
-
 int y4m_xtag_clearlist(y4m_xtag_list_t *xtags)
 {
   xtags->count = 0;
   return Y4M_OK;
 }
-
 
 int y4m_xtag_addlist(y4m_xtag_list_t *dest, const y4m_xtag_list_t *src)
 {
@@ -284,7 +267,6 @@ int y4m_xtag_addlist(y4m_xtag_list_t *dest, const y4m_xtag_list_t *src)
  *
  *************************************************************************/
 
-
 void y4m_init_stream_info(y4m_stream_info_t *info)
 {
   if (info == NULL) return;
@@ -293,7 +275,6 @@ void y4m_init_stream_info(y4m_stream_info_t *info)
   /* set defaults */
   y4m_clear_stream_info(info);
 }
-
 
 void y4m_clear_stream_info(y4m_stream_info_t *info)
 {
@@ -312,7 +293,6 @@ void y4m_clear_stream_info(y4m_stream_info_t *info)
   y4m_xtag_clearlist(&(info->x_tags));
 }
 
-
 void y4m_copy_stream_info(y4m_stream_info_t *dest,
 			  const y4m_stream_info_t *src)
 {
@@ -327,13 +307,11 @@ void y4m_copy_stream_info(y4m_stream_info_t *dest,
   y4m_copy_xtag_list(&(dest->x_tags), &(src->x_tags));
 }
 
-
 void y4m_fini_stream_info(y4m_stream_info_t *info)
 {
   if (info == NULL) return;
   y4m_fini_xtag_list(&(info->x_tags));
 }
-
 
 void y4m_si_set_width(y4m_stream_info_t *si, int width)
 {
@@ -484,10 +462,8 @@ int y4m_si_get_framelength(const y4m_stream_info_t *si)
   return total;
 }
 
-
 y4m_xtag_list_t *y4m_si_xtags(y4m_stream_info_t *si)
 { return &(si->x_tags); }
-
 
 
 void y4m_init_frame_info(y4m_frame_info_t *info)
@@ -499,7 +475,6 @@ void y4m_init_frame_info(y4m_frame_info_t *info)
   y4m_clear_frame_info(info);
 }
 
-
 void y4m_clear_frame_info(y4m_frame_info_t *info)
 {
   if (info == NULL) return;
@@ -509,7 +484,6 @@ void y4m_clear_frame_info(y4m_frame_info_t *info)
   info->presentation = Y4M_UNKNOWN;
   y4m_xtag_clearlist(&(info->x_tags));
 }
-
 
 void y4m_copy_frame_info(y4m_frame_info_t *dest, const y4m_frame_info_t *src)
 {
@@ -526,7 +500,6 @@ void y4m_fini_frame_info(y4m_frame_info_t *info)
   if (info == NULL) return;
   y4m_fini_xtag_list(&(info->x_tags));
 }
-
 
 void y4m_fi_set_presentation(y4m_frame_info_t *fi, int pres)
 { fi->presentation = pres; }
@@ -546,8 +519,6 @@ void y4m_fi_set_spatial(y4m_frame_info_t *fi, int sampling)
 int y4m_fi_get_spatial(const y4m_frame_info_t *fi)
 { return fi->spatial; }
 
-
-
 y4m_xtag_list_t *y4m_fi_xtags(y4m_frame_info_t *fi)
 { return &(fi->x_tags); }
 
@@ -557,42 +528,6 @@ y4m_xtag_list_t *y4m_fi_xtags(y4m_frame_info_t *fi)
  * Tag parsing 
  *
  *************************************************************************/
-
-
-/* Parse (the first) old, unofficial X-tag chroma specification,
-   and then remove that tag from the X-tag list. */
-static int
-handle_old_chroma_xtag(y4m_stream_info_t *si)
-{
-  y4m_xtag_list_t *xtags = y4m_si_xtags(si);
-  const char *tag = NULL;
-  int n, chroma;
-
-  for (n = y4m_xtag_count(xtags) - 1; n >= 0; n--) {
-    tag = y4m_xtag_get(xtags, n);
-    if (!strncmp("XYSCSS=", tag, 7)) break;
-  }
-  if ((tag == NULL) || (n < 0)) return Y4M_UNKNOWN;
-  mjpeg_warn("Deprecated X-tag for chroma found in a stream header...");
-  mjpeg_warn("...pester someone to upgrade the source's program!");
-  /* parse the tag */
-  tag += 7;
-  if (!strcmp("411", tag))           chroma = Y4M_CHROMA_411;
-  else if (!strcmp(tag, "420"))      chroma = Y4M_CHROMA_420JPEG;
-  else if (!strcmp(tag, "420MPEG2")) chroma = Y4M_CHROMA_420MPEG2;
-  else if (!strcmp(tag, "420PALDV")) chroma = Y4M_CHROMA_420PALDV;
-  else if (!strcmp(tag, "420JPEG"))  chroma = Y4M_CHROMA_420JPEG;
-  else if (!strcmp(tag, "444"))      chroma = Y4M_CHROMA_444;
-  else chroma = Y4M_UNKNOWN;
-  /* Remove the 'X' tag so that no one has to worry about it any more. */
-  y4m_xtag_remove(xtags, n);
-  /* Hmm... what if there are more XYSCSS tags?  Broken is as broken does;
-     thank goodness this is temporary code. */
-  return chroma;
-}
-
-
-
 
 int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i)
 {
@@ -657,18 +592,6 @@ int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i)
       }
       break;
     }
-  }
-
-  /* If feature_level > 0, then handle and/or remove any old-style XYSCSS
-     chroma tags.  The new-style 'C' tag takes precedence, however. */
-  if (_y4mparam_feature_level > 0) {
-    int xt_chroma = handle_old_chroma_xtag(i);
-
-    if (i->chroma == Y4M_UNKNOWN)
-      i->chroma = xt_chroma;
-    else if ((xt_chroma != Y4M_UNKNOWN) &&
-             (xt_chroma != i->chroma))
-      mjpeg_warn("Old chroma X-tag (ignored) does not match new chroma tag.");
   }
 
   /* Without 'C' tag or any other chroma spec, default to 420jpeg */
@@ -1390,8 +1313,6 @@ y4m_ratio_t y4m_chroma_ss_y_offset(int chroma_mode, int field, int plane);
 }
 #endif
 
-
-
 int y4m_chroma_parse_keyword(const char *s)
 {
   if (!strcasecmp("420jpeg", s))
@@ -1414,7 +1335,6 @@ int y4m_chroma_parse_keyword(const char *s)
     return Y4M_UNKNOWN;
 }
 
-
 const char *y4m_chroma_keyword(int chroma_mode)
 {
   switch (chroma_mode) {
@@ -1430,7 +1350,6 @@ const char *y4m_chroma_keyword(int chroma_mode)
     return NULL;
   }
 }  
-
 
 const char *y4m_chroma_description(int chroma_mode)
 {           
