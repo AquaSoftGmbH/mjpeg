@@ -4,6 +4,7 @@ bin_SCRIPTS = \
 	anytovcd.sh \
 	lav2avi.sh \
 	lav2mpeg \
+	lavtc.sh \
 	mpegtranscode
 
 EXTRA_DIST = \
