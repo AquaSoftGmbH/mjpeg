@@ -72,11 +72,16 @@ int non_interleaved_fields = 0;
 int use_film_fx = 0;
 
 uint8_t *inframe[3];
-uint8_t *outframe[3];
 uint8_t *frame1[3];
 uint8_t *frame2[3];
 uint8_t *frame3[3];
-uint8_t *reconstructed[3];
+uint8_t *frame4[3];
+uint8_t *frame5[3];
+uint8_t *frame6[3];
+uint8_t *frame7[3];
+uint8_t *frame8[3];
+uint8_t *r0[3];
+uint8_t *r1[3];
 
 int buff_offset;
 int buff_size;
@@ -213,7 +218,7 @@ main (int argc, char *argv[])
 	     y4m_chroma_keyword(input_chroma_subsampling));
 
   /* if chroma-subsampling isn't supported bail out ... */
-  if (input_chroma_subsampling != Y4M_CHROMA_420JPEG)
+  if (input_chroma_subsampling != Y4M_CHROMA_420JPEG && input_chroma_subsampling != Y4M_CHROMA_420PALDV)
     {
       mjpeg_log (LOG_ERROR,
 		 "Y4M-Stream is not 4:2:0. Other chroma-modes currently not allowed. Sorry.");
@@ -286,10 +291,6 @@ main (int argc, char *argv[])
     inframe[1] = buff_offset + (uint8_t *) malloc (buff_size);
     inframe[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    reconstructed[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    reconstructed[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    reconstructed[2] = buff_offset + (uint8_t *) malloc (buff_size);
-
     frame1[0] = buff_offset + (uint8_t *) malloc (buff_size);
     frame1[1] = buff_offset + (uint8_t *) malloc (buff_size);
     frame1[2] = buff_offset + (uint8_t *) malloc (buff_size);
@@ -302,6 +303,34 @@ main (int argc, char *argv[])
     frame3[1] = buff_offset + (uint8_t *) malloc (buff_size);
     frame3[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
+    frame4[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame4[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame4[2] = buff_offset + (uint8_t *) malloc (buff_size);
+
+    frame5[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame5[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame5[2] = buff_offset + (uint8_t *) malloc (buff_size);
+
+    frame6[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame6[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame6[2] = buff_offset + (uint8_t *) malloc (buff_size);
+
+    frame7[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame7[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame7[2] = buff_offset + (uint8_t *) malloc (buff_size);
+
+    frame8[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame8[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame8[2] = buff_offset + (uint8_t *) malloc (buff_size);
+
+    r0[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    r0[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    r0[2] = buff_offset + (uint8_t *) malloc (buff_size);
+
+    r1[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    r1[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    r1[2] = buff_offset + (uint8_t *) malloc (buff_size);
+
     mjpeg_log (LOG_INFO, "Buffers allocated.");
   }
 
@@ -313,57 +342,50 @@ main (int argc, char *argv[])
 					    &istreaminfo,
 					    &iframeinfo, inframe)))
     {
+      static uint32_t framenr=0;
 
-      /* store one field behind in a ringbuffer */
+      { // bottom field first
+      memcpy(frame3[0],frame1[0],width*height);
+      memcpy(frame4[0],frame2[0],width*height);
 
-      memcpy (frame3[0], frame1[0], width * height);
-      memcpy (frame3[1], frame1[1], width * height / 4);
-      memcpy (frame3[2], frame1[2], width * height / 4);
+      memcpy(frame3[1],frame1[1],width*height);
+      memcpy(frame4[1],frame2[1],width*height);
+      memcpy(frame3[2],frame1[2],width*height);
+      memcpy(frame4[2],frame2[2],width*height);
 
-      /* interpolate the missing field in the frame by 
-       * bandlimited sinx/x interpolation 
-       *
-       * field-order-flag has the following meaning:
-       * 0 == interpolate top field    
-       * 1 == interpolate bottom field 
-       */
-      sinc_interpolation (frame1[0], inframe[0], 1 - field_order);
-      sinc_interpolation (frame2[0], inframe[0], field_order);
+      sinc_interpolation ( frame1[0],inframe[0],1 );
+      sinc_interpolation ( frame2[0],inframe[0],0 );
+      motion_compensate ( r0[0], frame4[0], frame3[0], frame2[0], 1 );
+      motion_compensate ( r1[0], frame3[0], frame2[0], frame1[0], 0 );
 
-      /* for the chroma-planes the function remains the same
-       * just the dimension of the processed frame differs
-       * so we temporarily adjust width and height
-       */
-      width >>= 1;
-      height >>= 1;
-      sinc_interpolation (frame1[1], inframe[1], 1 - field_order);
-      sinc_interpolation (frame1[2], inframe[2], 1 - field_order);
-      sinc_interpolation (frame2[1], inframe[1], field_order);
-      sinc_interpolation (frame2[2], inframe[2], field_order);
-      width <<= 1;
-      height <<= 1;
-      /* at this stage we have three buffers containing the following
-       * sequence of fields:
-       *
-       * frame3
-       * frame2 current field (to be reconstructed frame)
-       * frame1
-       *
-       * So we motion-compensate frame3 and frame1 against frame2 and
-       * try to interpolate frame2 by blending the artificially generated
-       * frame into frame2 ...
-       */
-      motion_compensate_field ();
-      blend_fields (reconstructed, frame2);
-      if (use_film_fx)
+      width /= 2;
+      height /= 2;
+
+      sinc_interpolation ( frame1[1],inframe[1],1 );
+      sinc_interpolation ( frame2[1],inframe[1],0 );
+      motion_compensate ( r0[1], frame4[1], frame3[1], frame2[1], 1 );
+      motion_compensate ( r1[1], frame3[1], frame2[1], frame1[1], 0 );
+
+      sinc_interpolation ( frame1[2],inframe[2],1 );
+      sinc_interpolation ( frame2[2],inframe[2],0 );
+      motion_compensate ( r0[2], frame4[2], frame3[2], frame2[2], 1 );
+      motion_compensate ( r1[2], frame3[2], frame2[2], frame1[2], 0 );
+
+      width *= 2;
+      height *= 2;
+
+      if (framenr>0)
 	{
-	  film_fx ();
+		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r0);
+		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r1);
 	}
-      /* all left is to write out the reconstructed frame
-       */
-      y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, reconstructed);
-//      y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame2);
-//      y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);
+	else
+	{
+		framenr++;
+		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame2);
+		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);
+	}
+      }
     }
 
   /* free allocated buffers */
@@ -371,10 +393,6 @@ main (int argc, char *argv[])
     free (inframe[0] - buff_offset);
     free (inframe[1] - buff_offset);
     free (inframe[2] - buff_offset);
-
-    free (reconstructed[0] - buff_offset);
-    free (reconstructed[1] - buff_offset);
-    free (reconstructed[2] - buff_offset);
 
     free (frame1[0] - buff_offset);
     free (frame1[1] - buff_offset);
@@ -388,6 +406,34 @@ main (int argc, char *argv[])
     free (frame3[1] - buff_offset);
     free (frame3[2] - buff_offset);
 
+    free (frame4[0] - buff_offset);
+    free (frame4[1] - buff_offset);
+    free (frame4[2] - buff_offset);
+
+    free (frame5[0] - buff_offset);
+    free (frame5[1] - buff_offset);
+    free (frame5[2] - buff_offset);
+
+    free (frame6[0] - buff_offset);
+    free (frame6[1] - buff_offset);
+    free (frame6[2] - buff_offset);
+
+    free (frame7[0] - buff_offset);
+    free (frame7[1] - buff_offset);
+    free (frame7[2] - buff_offset);
+
+    free (frame8[0] - buff_offset);
+    free (frame8[1] - buff_offset);
+    free (frame8[2] - buff_offset);
+
+    free (r0[0] - buff_offset);
+    free (r0[1] - buff_offset);
+    free (r0[2] - buff_offset);
+
+    free (r1[0] - buff_offset);
+    free (r1[1] - buff_offset);
+    free (r1[2] - buff_offset);
+
     mjpeg_log (LOG_INFO, "Buffers freed.");
   }
 
@@ -399,136 +445,118 @@ main (int argc, char *argv[])
   return (0);
 }
 
-/*****************************************************************************
- * miniDV CCD-Cameras suffer mainly from two things, when compared to "real" *
- * film-cameras: 1. they're normaly too cool (meaning a slight shift towards *
- * blue and 2. the chroma is far to saturated. Real film instead very often  *
- * is tinted a very little inbetween yellow and red. Real film does not have *
- * such an oversaturated color. Despite these two differences the graduation *
- * if film is somewhat completely different in the middle-shadows and middle-*
- * highlights. So this is what the tables below try to mimik...              *
- * BTW: if you have good other tables, feel free to send them. I'll build 'em*
- * in. What about having some film-material presets?                         *
- *****************************************************************************/
 
-void
-film_fx (void)
+#if 0
 {
-  static int LUT_Y[256] = { 0, 0, 2, 3, 5, 6, 8, 9,
-    11, 12, 14, 15, 17, 18, 20, 20,
-    22, 23, 25, 26, 28, 28, 30, 31,
-    33, 34, 35, 36, 38, 38, 40, 41,
-    43, 43, 45, 46, 47, 48, 50, 50,
-    52, 53, 54, 55, 56, 57, 59, 59,
-    61, 61, 63, 63, 65, 65, 67, 67,
-    69, 69, 71, 71, 73, 73, 75, 75,
-    77, 77, 79, 79, 80, 81, 82, 83,
-    84, 84, 86, 86, 88, 88, 89, 90,
-    91, 91, 93, 93, 94, 95, 96, 96,
-    98, 98, 99, 100, 101, 101, 102, 103,
-    104, 104, 106, 106, 107, 107, 109, 109,
-    110, 110, 112, 112, 113, 113, 115, 115,
-    116, 116, 117, 118, 119, 119, 120, 121,
-    122, 122, 123, 123, 125, 125, 126, 126,
-    128, 128, 129, 129, 130, 131, 132, 132,
-    133, 133, 135, 135, 136, 136, 138, 138,
-    139, 139, 140, 141, 142, 142, 143, 144,
-    145, 145, 146, 147, 148, 148, 149, 150,
-    151, 151, 153, 153, 154, 154, 156, 156,
-    157, 158, 159, 159, 161, 161, 162, 163,
-    164, 164, 166, 166, 167, 168, 169, 170,
-    171, 171, 173, 173, 175, 175, 176, 177,
-    178, 179, 180, 181, 182, 183, 184, 185,
-    186, 187, 188, 189, 190, 191, 192, 193,
-    194, 195, 196, 197, 199, 199, 201, 201,
-    203, 204, 205, 206, 208, 208, 210, 211,
-    212, 213, 215, 216, 217, 218, 220, 220,
-    222, 223, 225, 226, 227, 228, 230, 231,
-    233, 234, 235, 236, 238, 239, 241, 242,
-    244, 245, 247, 248, 250, 251, 253, 254,
-  };
+	int x,y;
+	int a,b,c,d,e,m;
 
-  static int LUT_Cr[256] = { 0, 0, 0, 0, 0, 1, 3, 4,
-    6, 8, 9, 11, 12, 14, 16, 17,
-    19, 20, 22, 23, 25, 26, 28, 29,
-    30, 32, 33, 35, 36, 37, 39, 40,
-    41, 42, 44, 45, 46, 48, 49, 50,
-    51, 52, 54, 55, 56, 57, 58, 59,
-    60, 61, 62, 64, 65, 66, 67, 68,
-    69, 70, 71, 72, 73, 74, 75, 75,
-    76, 77, 78, 79, 80, 81, 82, 83,
-    83, 84, 85, 86, 87, 87, 88, 89,
-    90, 91, 91, 92, 93, 94, 94, 95,
-    96, 96, 97, 98, 99, 99, 100, 101,
-    101, 102, 103, 103, 104, 104, 105, 106,
-    106, 107, 108, 108, 109, 109, 110, 111,
-    111, 112, 112, 113, 114, 114, 115, 115,
-    116, 116, 117, 118, 118, 119, 119, 120,
-    121, 121, 122, 122, 123, 123, 124, 125,
-    125, 126, 126, 127, 127, 128, 129, 129,
-    130, 130, 131, 132, 132, 133, 133, 134,
-    135, 135, 136, 137, 137, 138, 138, 139,
-    140, 140, 141, 142, 142, 143, 144, 145,
-    145, 146, 147, 147, 148, 149, 150, 150,
-    151, 152, 153, 154, 154, 155, 156, 157,
-    158, 158, 159, 160, 161, 162, 163, 164,
-    165, 166, 166, 167, 168, 169, 170, 171,
-    172, 173, 174, 175, 176, 177, 179, 180,
-    181, 182, 183, 184, 185, 186, 187, 189,
-    190, 191, 192, 193, 195, 196, 197, 199,
-    200, 201, 202, 204, 205, 206, 208, 209,
-    211, 212, 213, 215, 216, 218, 219, 221,
-    222, 224, 225, 227, 229, 230, 232, 233,
-    235, 237, 238, 240, 242, 243, 245, 247,
-  };
-  static int LUT_Cb[256] = { 6, 8, 10, 12, 13, 15, 17, 18,
-    20, 22, 23, 25, 26, 28, 30, 31,
-    33, 34, 36, 37, 39, 40, 42, 43,
-    44, 46, 47, 49, 50, 51, 53, 54,
-    55, 56, 58, 59, 60, 62, 63, 64,
-    65, 66, 68, 69, 70, 71, 72, 73,
-    74, 75, 76, 78, 79, 80, 81, 82,
-    83, 84, 85, 86, 87, 88, 89, 89,
-    90, 91, 92, 93, 94, 95, 96, 97,
-    97, 98, 99, 100, 101, 101, 102, 103,
-    104, 105, 105, 106, 107, 108, 108, 109,
-    110, 110, 111, 112, 113, 113, 114, 115,
-    115, 116, 117, 117, 118, 118, 119, 120,
-    120, 121, 122, 122, 123, 123, 124, 125,
-    125, 126, 126, 127, 128, 128, 129, 129,
-    130, 130, 131, 132, 132, 133, 133, 134,
-    135, 135, 136, 136, 137, 137, 138, 139,
-    139, 140, 140, 141, 141, 142, 143, 143,
-    144, 144, 145, 146, 146, 147, 147, 148,
-    149, 149, 150, 151, 151, 152, 152, 153,
-    154, 154, 155, 156, 156, 157, 158, 159,
-    159, 160, 161, 161, 162, 163, 164, 164,
-    165, 166, 167, 168, 168, 169, 170, 171,
-    172, 172, 173, 174, 175, 176, 177, 178,
-    179, 180, 180, 181, 182, 183, 184, 185,
-    186, 187, 188, 189, 190, 191, 193, 194,
-    195, 196, 197, 198, 199, 200, 201, 203,
-    204, 205, 206, 207, 209, 210, 211, 213,
-    214, 215, 216, 218, 219, 220, 222, 223,
-    225, 226, 227, 229, 230, 232, 233, 235,
-    236, 238, 239, 241, 243, 244, 246, 247,
-    248, 249, 250, 251, 252, 253, 254, 265,
-  };
-  int x, y, z;
+	// try to reconstruct the missing scanlines as close as possible 
+        // by using a spatio-temporal-linear filter
+	for(y=1;y<height;y+=2)
+	  for(x=0;x<width;x++)
+	    {
+	    // highpass-filter previous field
+	    a  = *(frame2[0]+x+(y-10)*width)*  1;
+	    a += *(frame2[0]+x+(y- 8)*width)* -4;
+	    a += *(frame2[0]+x+(y- 6)*width)* 16;
+	    a += *(frame2[0]+x+(y- 4)*width)*-64;
+	    a += *(frame2[0]+x+(y- 2)*width)*256;
+	    a -= *(frame2[0]+x+(y   )*width)*410;
+	    a += *(frame2[0]+x+(y+ 2)*width)*256;
+	    a += *(frame2[0]+x+(y+ 4)*width)*-64;
+	    a += *(frame2[0]+x+(y+ 6)*width)* 16;
+	    a += *(frame2[0]+x+(y+ 8)*width)* -4;
+	    a += *(frame2[0]+x+(y+10)*width)*  1;
 
-  z = 0;
-  for (y = 0; y < height; y++)
-    for (x = 0; x < width; x++)
-      {
-	*(reconstructed[0] + z) = LUT_Y[*(reconstructed[0] + z)];
-	z++;
-      }
-  z = 0;
-  for (y = 0; y < height / 2; y++)
-    for (x = 0; x < width / 2; x++)
-      {				// -120:+90 
-	*(reconstructed[1] + z) = LUT_Cr[*(reconstructed[1] + z)];
-	*(reconstructed[2] + z) = LUT_Cb[*(reconstructed[2] + z)];
-	z++;
-      }
+	    // highpass-filter next field
+	    a += *(frame1[0]+x+(y-10)*width)*  1;
+	    a += *(frame1[0]+x+(y- 8)*width)* -4;
+	    a += *(frame1[0]+x+(y- 6)*width)* 16;
+	    a += *(frame1[0]+x+(y- 4)*width)*-64;
+	    a += *(frame1[0]+x+(y- 2)*width)*256;
+	    a -= *(frame1[0]+x+(y   )*width)*410;
+	    a += *(frame1[0]+x+(y+ 2)*width)*256;
+	    a += *(frame1[0]+x+(y+ 4)*width)*-64;
+	    a += *(frame1[0]+x+(y+ 6)*width)* 16;
+	    a += *(frame1[0]+x+(y+ 8)*width)* -4;
+	    a += *(frame1[0]+x+(y+10)*width)*  1;
+
+	    // lowpass-filter current field;
+	    b  = *(frame2[0]+x+(y-9)*width)*  1;
+	    b += *(frame2[0]+x+(y-7)*width)* -4;
+	    b += *(frame2[0]+x+(y-5)*width)* 16;
+	    b += *(frame2[0]+x+(y-3)*width)*-64;
+	    b += *(frame2[0]+x+(y-1)*width)*256;
+	    b += *(frame2[0]+x+(y+1)*width)*256;
+	    b += *(frame2[0]+x+(y+3)*width)*-64;
+	    b += *(frame2[0]+x+(y+5)*width)* 16;
+	    b += *(frame2[0]+x+(y+7)*width)* -4;
+	    b += *(frame2[0]+x+(y+9)*width)*  1;
+
+	    a /= 820*2;
+            b /= 410;
+
+	    m = b-a;
+
+	    m = m>255? 255:m;
+	    m = m<0  ?   0:m;
+
+	    *(frame4[0]+x+(y  )*width)=m;
+	    *(frame4[0]+x+(y-1)*width)=*(frame2[0]+x+(y-1)*width);
+	    }
+
+	for(y=0;y<height;y+=2)
+	  for(x=0;x<width;x++)
+	    {
+	    // bandpass-filter previous field
+	    a  = *(frame1[0]+x+(y-10)*width)*  1;
+	    a += *(frame1[0]+x+(y- 8)*width)* -4;
+	    a += *(frame1[0]+x+(y- 6)*width)* 16;
+	    a += *(frame1[0]+x+(y- 4)*width)*-64;
+	    a += *(frame1[0]+x+(y- 2)*width)*256;
+	    a -= *(frame1[0]+x+(y   )*width)*410;
+	    a += *(frame1[0]+x+(y+ 2)*width)*256;
+	    a += *(frame1[0]+x+(y+ 4)*width)*-64;
+	    a += *(frame1[0]+x+(y+ 6)*width)* 16;
+	    a += *(frame1[0]+x+(y+ 8)*width)* -4;
+	    a += *(frame1[0]+x+(y+10)*width)*  1;
+
+	    // bandpass-filter next field
+	    a += *(frame2[0]+x+(y-10)*width)*  1;
+	    a += *(frame2[0]+x+(y- 8)*width)* -4;
+	    a += *(frame2[0]+x+(y- 6)*width)* 16;
+	    a += *(frame2[0]+x+(y- 4)*width)*-64;
+	    a += *(frame2[0]+x+(y- 2)*width)*256;
+	    a -= *(frame2[0]+x+(y   )*width)*410;
+	    a += *(frame2[0]+x+(y+ 2)*width)*256;
+	    a += *(frame2[0]+x+(y+ 4)*width)*-64;
+	    a += *(frame2[0]+x+(y+ 6)*width)* 16;
+	    a += *(frame2[0]+x+(y+ 8)*width)* -4;
+	    a += *(frame2[0]+x+(y+10)*width)*  1;
+
+	    // lowpass-filter current field;
+	    b  = *(frame1[0]+x+(y-9)*width)*  1;
+	    b += *(frame1[0]+x+(y-7)*width)* -4;
+	    b += *(frame1[0]+x+(y-5)*width)* 16;
+	    b += *(frame1[0]+x+(y-3)*width)*-64;
+	    b += *(frame1[0]+x+(y-1)*width)*256;
+	    b += *(frame1[0]+x+(y+1)*width)*256;
+	    b += *(frame1[0]+x+(y+3)*width)*-64;
+	    b += *(frame1[0]+x+(y+5)*width)* 16;
+	    b += *(frame1[0]+x+(y+7)*width)* -4;
+	    b += *(frame1[0]+x+(y+9)*width)*  1;
+
+	    a /= 820*2;
+            b /= 410;
+
+	    m = b-a;
+
+	    m = m>255? 255:m;
+	    m = m<0  ?   0:m;
+
+	    *(frame3[0]+x+(y  )*width)=m;
+	    *(frame3[0]+x+(y-1)*width)=*(frame1[0]+x+(y-1)*width);
+	    }
 }
+#endif

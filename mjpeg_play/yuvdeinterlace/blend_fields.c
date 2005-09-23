@@ -16,6 +16,7 @@
 #include "mjpeg_types.h"
 #include "blend_fields.h"
 #include <stdio.h>
+#include <math.h>
 
 extern int width;
 extern int height;
@@ -23,25 +24,14 @@ extern int height;
 void
 blend_fields_non_accel (uint8_t * dst[3], uint8_t * src[3] )
 {
-	int i;
-	int offs = width*height;
+	int x,y;
+	int w = width;
 
-	for (i = 0; i < offs; i++)
+	for(y=0;y<height;y+=2)
+		for(x=0;x<w;x++)
 		{
-			*(dst[0]) = ( *(src[0])+*(dst[0]) )/2;
-			*(dst[1]) = ( *(src[1])+*(dst[1]) )/2;
-			*(dst[2]) = ( *(src[2])+*(dst[2]) )/2;
-			dst[0]++;
-			dst[1]++;
-			dst[2]++;
-			src[0]++;
-			src[1]++;
-			src[2]++;
+//			*(dst[0]+x+y*w) = (*(dst[0]+x+y*w)+*(src[0]+x+y*w))/2;
+			*(dst[0]+x+y*w) = *(src[0]+x+y*w);
+//			*(dst[0]+x+y*w+w) = *(src[0]+x+y*w);
 		}
-	dst[0]  -= offs;
-	src[0] -= offs;
-	dst[1]  -= offs;
-	src[1] -= offs;
-	dst[2]  -= offs;
-	src[2] -= offs;
 }

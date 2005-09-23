@@ -16,70 +16,180 @@
 #include "mjpeg_types.h"
 #include "sinc_interpolation.h"
 #include "motionsearch.h"
+#include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 extern int width;
 extern int height;
+
+extern uint8_t *frame3[3];
 
 void
 sinc_interpolation (uint8_t * frame, uint8_t * inframe, int field)
 {
   int x, y, v;
-  int t1, t2, t3, t4, t5, t6, t7, t8;
-  uint8_t *ip;
-  uint8_t *op;
+  int a,b,c,d,e,f,g;
 
-  t1 = -7 * width;
-  t2 = -5 * width;
-  t3 = -3 * width;
-  t4 = -1 * width;
-  t5 = +1 * width;
-  t6 = +3 * width;
-  t7 = +5 * width;
-  t8 = +7 * width;
-
-  memcpy (frame, inframe, width * height);
-
-  /* fill up top-/bottom-out-of-range lines to avoid ringing */
-  for (y = -7; y < 0; y ++)
-    memcpy (frame+width*y,frame,width);
-  for (y = height; y < (height+7); y ++)
-    memcpy (frame+width*y,frame+(height-1)*width,width);
-
-  ip = frame + (field) * width;
-  op = frame + (field) * width;
+  memcpy (frame,inframe,width*height);
 
   /* interpolate missing lines */ 
-  for (y = 0; y < height ; y += 2)
+  for (y = field; y < height ; y += 2)
     {
       for (x = 0; x < width; x++)
 	{
-	  v = -9 * *(ip + t1);
-	  v += 21 * *(ip + t2);
-	  v += -47 * *(ip + t3);
-	  v += 163 * *(ip + t4);
-	  v += 163 * *(ip + t5);
-	  v += -47 * *(ip + t6);
-	  v += 21 * *(ip + t7);
-	  v += -9 * *(ip + t8);
-	  v >>= 8;
+		a = *(frame+(x-1)+(y-1)*width);
+		b = *(frame+(x  )+(y-1)*width);
+		c = *(frame+(x+1)+(y-1)*width);
 
-	  /* Limit output */
-      /* No, Matto, this is _not_ a bug. It's intentional. As I now know,
-       * that 'limits' on YUV are to avoid a signal wich cannot be retrans-
-       * formed to RGB 'without loss'... But on YCr'Cb' they're perfectly
-       * legal...
-       */
-	  v = v > 255 ? 255 : v;
-	  v = v < 0 ? 0 : v;
-	  *(op) = v;
+		d = *(frame+(x-1)+(y+1)*width);
+		e = *(frame+(x  )+(y+1)*width);
+		f = *(frame+(x+1)+(y+1)*width);
 
-	  /* step one pixel */
-	  ip++;
-	  op++;
+		g = *(frame+(x  )+(y  )*width); 
+
+		v = ( 
+			*(frame+x+(y-5)*width)*+1 +
+			*(frame+x+(y-3)*width)*-4 +
+			*(frame+x+(y-1)*width)*16 + 
+			*(frame+x+(y+1)*width)*16 +
+			*(frame+x+(y+3)*width)*-4 +
+			*(frame+x+(y+5)*width)*+1   )/26;
+
+		v= v>255? 255:v;
+		v= v<0? 0:v;
+
+		if(a<=g && g<=f) v=(g+v)/2;
+		if(a>=g && g>=f) v=(g+v)/2;
+
+		if(c<=g && g<=d) v=(g+v)/2;
+		if(c>=g && g>=d) v=(g+v)/2;
+
+		if(b<=g && g<=e) v=g;
+		if(b>=g && g>=e) v=g;
+
+		*(frame+x+y*width)=(b+e)/2;
 	}
-      /* step one line */
-      ip += width;
-      op += width;
+    }
+}
+
+uint32_t SQD8 ( uint8_t * p0, uint8_t * p1 )
+{
+uint32_t sumsq=0;
+uint32_t delta=0;
+int r;
+
+int length=1;
+
+p0 -= length;
+p1 -= length;
+
+for(r=-length;r<=+length;r++)
+  {
+	delta = *(p0)-*(p1);
+	sumsq += delta*delta;
+	p0++;
+	p1++;
+  }
+
+return (sumsq/(2*length+1));
+}
+
+void
+edge_interpolation ( uint8_t * frame, uint8_t * inframe, int field)
+{
+  int x, y;
+  int vx,vx1,vx0, dx,v,d;
+  int a,b,c,e,m;
+  uint32_t f;
+  uint32_t min,min0,max;
+  int mean;
+  int diff;
+
+  memcpy (frame,inframe,width*height);
+
+  for (y = field; y < height ; y += 2)
+    {
+      for (x = 0; x < width; x++)
+	{
+        min=65536;
+	vx=0;
+
+	m  = *(inframe+(x-1)+(y-1)*width);
+	m += *(inframe+(x  )+(y-1)*width)*4;
+	m += *(inframe+(x+1)+(y-1)*width);
+
+	m += *(inframe+(x-1)+(y+1)*width);
+	m += *(inframe+(x  )+(y+1)*width)*4;
+	m += *(inframe+(x+1)+(y+1)*width);
+
+	m /= 12;
+
+	m = ( 
+		*(inframe+x+(y-5)*width) * +1 +
+		*(inframe+x+(y-3)*width) * -6 +
+		*(inframe+x+(y-1)*width) * 36 + 
+		*(inframe+x+(y+1)*width) * 36 +
+		*(inframe+x+(y+3)*width) * -6 +
+		*(inframe+x+(y+5)*width) * +1   )/62;
+
+	m= m<0? 0:m;
+	m= m>255? 255:m;
+
+	a = *(inframe+(x)+(y-1)*width);
+	c = *(inframe+(x)+(y+1)*width);
+
+	//if(abs(a-c)>16)
+	for(dx=0;dx<=12;dx++)
+        { 
+	d  = *(inframe+(x-dx-1)+(y-1)*width)-*(inframe+(x+dx-1)+(y+1)*width);
+	e = d*d;
+//	d  = *(inframe+(x-dx  )+(y-1)*width)-*(inframe+(x+dx  )+(y+1)*width);
+//	e += d*d;
+//	d  = *(inframe+(x-dx+1)+(y-1)*width)-*(inframe+(x+dx+1)+(y+1)*width);
+//	e += d*d;
+//	e /= 3;
+
+	d = m-(*(inframe+(x-dx)+(y-1)*width)+*(inframe+(x+dx)+(y+1)*width))/2;
+	e += d*d;
+
+	if(e<min)
+		{
+		vx=dx;
+		min=e;
+		}
+
+	d  = *(inframe+(x+dx-1)+(y-1)*width)-*(inframe+(x-dx-1)+(y+1)*width);
+	e = d*d;
+//	d  = *(inframe+(x+dx  )+(y-1)*width)-*(inframe+(x-dx  )+(y+1)*width);
+//	e += d*d;
+//	d  = *(inframe+(x+dx+1)+(y-1)*width)-*(inframe+(x-dx+1)+(y+1)*width);
+//	e += d*d;
+//	e /= 3;
+
+	d = m-(*(inframe+(x+dx)+(y-1)*width)+*(inframe+(x-dx)+(y+1)*width))/2;
+	e += d*d;
+
+	if(e<min)
+		{
+		vx=-dx;
+		min=e;
+		}
+
+	}
+
+	b = ( 
+		*(inframe+x+(y-5)*width-vx*5) * +1 +
+		*(inframe+x+(y-3)*width-vx*3) * -6 +
+		*(inframe+x+(y-1)*width-vx  ) * 36 + 
+		*(inframe+x+(y+1)*width+vx  ) * 36 +
+		*(inframe+x+(y+3)*width+vx*3) * -6 +
+		*(inframe+x+(y+5)*width+vx*5) * +1   )/62;
+
+	b= b<0? 0:b;
+	b= b>255? 255:b;
+
+	*(frame+x+y*width) = (2*b+m)/3;
+	}
     }
 }
