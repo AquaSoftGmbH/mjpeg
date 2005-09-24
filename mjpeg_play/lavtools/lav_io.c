@@ -222,7 +222,6 @@ static int scan_jpeg(unsigned char * jpegdata, long jpeglen, int header_only)
 
    jpeg_padded_len = p;
    return 0;
-
 }
 
 /* The query routines about the format */
@@ -268,6 +267,7 @@ int lav_query_polarity(char format)
       default:  return LAV_INTER_TOP_FIRST;
    }
 }
+
 lav_file_t *lav_open_output_file(char *filename, char format,
                     int width, int height, int interlaced, double fps,
                     int asize, int achans, long arate)
@@ -530,7 +530,6 @@ int lav_write_frame(lav_file_t *lav_file, uint8_t *buff, long size, long count)
       }
       if (res) break;
    }
-
    return res;
 }
 
@@ -678,7 +677,7 @@ int lav_audio_channels(lav_file_t *lav_file)
    if(!lav_file->has_audio) return 0;
    video_format = lav_file->format; internal_error = 0; /* for error messages */
    switch(lav_file->format)
-   {
+      {
       case 'a':
       case 'A':
          return AVI_audio_channels(lav_file->avi_fd);
@@ -686,7 +685,7 @@ int lav_audio_channels(lav_file_t *lav_file)
       case 'q':
          return quicktime_track_channels(lav_file->qt_fd,0);
 #endif
-   }
+      }
    return -1;
 }
 
@@ -695,7 +694,7 @@ int lav_audio_bits(lav_file_t *lav_file)
    if(!lav_file->has_audio) return 0;
    video_format = lav_file->format; internal_error = 0; /* for error messages */
    switch(lav_file->format)
-   {
+      {
       case 'a':
       case 'A':
          return AVI_audio_bits(lav_file->avi_fd);
@@ -703,7 +702,7 @@ int lav_audio_bits(lav_file_t *lav_file)
       case 'q':
          return quicktime_audio_bits(lav_file->qt_fd,0);
 #endif
-   }
+      }
    return -1;
 }
 
@@ -986,7 +985,12 @@ lav_file_t *lav_open_input_file(char *filename)
    lav_fd->bps = (lav_audio_channels(lav_fd)*lav_audio_bits(lav_fd)+7)/8;
    if(lav_fd->bps==0) lav_fd->bps=1; /* make it save since we will divide by that value */
 
-   /* Check compressor, no further action if not Motion JPEG */
+/*
+ * Check compressor.  If not Motion JPEG then check for DV and YUV.  The YUV
+ * code appears incomplete since it does not check for 'yuv2' (the routine
+ * el_video_frame_data_format() DOES check).  My hunch is that folks are only
+ * using DV and MJPG so the YUV inconsistencies aren't being noticed.
+*/
 
    ierr  = 0;
 
@@ -1008,24 +1012,38 @@ lav_file_t *lav_open_input_file(char *filename)
 #endif /* HAVE_LIBDV */
 
    if (strncasecmp(video_comp,"yuv",3)==0 || strncasecmp(video_comp, "yv12",4)==0)
-      {
       lav_fd->chroma = CHROMA420;
-      if (ierr) goto ERREXIT;
-      }
+/* What about 4:2:2 formats (2vuy for example)?  Maybe someday */
    return lav_fd;
    }
 
-   /* Make some checks on the video source, we read the first frame for that */
+/*
+ * From here on down is MJPG only code - the yuv and dv cases have been handled
+ * above.
+ *
+ * Make some checks on the video source, we read the first frame for that
+*/
 
    frame = NULL;
-   if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
-   if ( (len = lav_frame_size(lav_fd,0)) <=0 ) goto ERREXIT;
-   if ( (frame = (unsigned char*) malloc(len)) == 0 ) { ierr=ERROR_MALLOC; goto ERREXIT; }
-
-   if ( lav_read_frame(lav_fd,frame) <= 0 ) goto ERREXIT;
+   if (lav_set_video_position(lav_fd,0))
+      goto ERREXIT;
+   if ((len = lav_frame_size(lav_fd,0)) <=0)
+      goto ERREXIT;
+   if ((frame = (unsigned char*) malloc(len)) == 0)
+      {
+      ierr=ERROR_MALLOC;
+      goto ERREXIT;
+      }
+   if (lav_read_frame(lav_fd,frame) <= 0)
+      goto ERREXIT;
    /* reset video position to 0 */
-   if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
-   if( scan_jpeg(frame, len, 1) ) { ierr=ERROR_JPEG; goto ERREXIT; }
+   if (lav_set_video_position(lav_fd,0))
+      goto ERREXIT;
+   if (scan_jpeg(frame, len, 1))
+      {
+      ierr=ERROR_JPEG;
+      goto ERREXIT;
+      }
 
    /* We have to look to the JPEG SOF marker for further information
       The SOF marker has the following format:
@@ -1078,7 +1096,6 @@ lav_file_t *lav_open_input_file(char *filename)
    }
 
    /* Check if video is interlaced */
-
    /* height and width are encoded in the JPEG SOF marker at offsets 5 and 7 */
 
    jpg_height = get_int2(frame + jpeg_image_offset + 5);
@@ -1097,7 +1114,6 @@ lav_file_t *lav_open_input_file(char *filename)
       switch(lav_fd->format)
       {
          case 'a':
-
             /* Check the APP0 Marker, if present */
 
             if(jpeg_app0_offset && 
@@ -1117,7 +1133,6 @@ lav_file_t *lav_open_input_file(char *filename)
             }
             lav_fd->format = lav_fd->interlacing == LAV_INTER_BOTTOM_FIRST ? 'A' : 'a';
             break;
-
          case 'q':
             lav_fd->interlacing = LAV_INTER_TOP_FIRST;
 	    break;
@@ -1367,7 +1382,6 @@ int lav_fileno(lav_file_t *lav_file)
       default:
          res = -1;
    }
-
    return res;
 }
 
@@ -1378,7 +1392,7 @@ uint32_t reorder_32(uint32_t todo, int big_endian)
   unsigned long reversed; 
 
   if( big_endian )
-  {
+    {
     b0 = (todo & 0x000000FF);
     b1 = (todo & 0x0000FF00) >> 8;
     b2 = (todo & 0x00FF0000) >> 16;
@@ -1386,12 +1400,8 @@ uint32_t reorder_32(uint32_t todo, int big_endian)
 
     reversed = (b0 << 24) + (b1 << 16) + (b2 << 8) +b3;
     return reversed;
-  }
-  else
-  {
-    return todo;
-  }
-
+    }
+  return todo;
 }
 
 int lav_detect_endian (void)
@@ -1409,4 +1419,3 @@ int lav_detect_endian (void)
   else
       return -1;
 }
-
