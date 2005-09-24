@@ -191,8 +191,8 @@ int main(int argc, char ** argv)
    if (outfile != 0 && format == 0) {
       if ((dotptr = strrchr(outfile, '.'))) {
 #ifdef HAVE_LIBQUICKTIME
-            if (!strcasecmp(dotptr+1, "mov") || !strcasecmp(dotptr+1, "qt")
-               || !strcasecmp(dotptr+1, "moov")) format = 'q';
+            if (!strcasecmp(dotptr+1, "mov"))
+               format = 'q';
 #endif
             if (!strcasecmp(dotptr+1, "avi")) format = 'a';
             if (!strcasecmp(dotptr+1, "wav")) format = 'w';

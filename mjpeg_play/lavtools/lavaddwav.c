@@ -304,9 +304,7 @@ int main(int argc, char **argv)
   /* Check the output file format makes sense */
   if( (dotptr = strrchr(argv[3], '.')) )
   {
-    if( !strcasecmp(dotptr+1, "mov") ||
-        !strcasecmp(dotptr+1, "qt")  ||
-        !strcasecmp(dotptr+1, "moov") )
+    if ( !strcasecmp(dotptr+1, "mov"))
     {
       if( vp[0]->format != 113 )
       {

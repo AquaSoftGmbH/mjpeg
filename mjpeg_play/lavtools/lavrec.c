@@ -960,10 +960,10 @@ static void check_command_line_options(int argc, char *argv[])
         if(info->video_format == '\0') {
             if((dotptr = strrchr(argv[optind], '.'))) {
 #ifdef HAVE_LIBQUICKTIME
-                if(!strcasecmp(dotptr+1, "mov") || !strcasecmp(dotptr+1, "qt")
-                    || !strcasecmp(dotptr+1, "moov")) info->video_format = 'q';
+                if (!strcasecmp(dotptr+1, "mov"))
+                    info->video_format = 'q';
 #endif
-                if(!strcasecmp(dotptr+1, "avi")) info->video_format = 'a';
+                if (!strcasecmp(dotptr+1, "avi")) info->video_format = 'a';
             }
             if(info->video_format == '\0') info->video_format = 'a';
         }
