@@ -298,8 +298,7 @@ lav_file_t *lav_open_output_file(char *filename, char format,
             }
           break;
         case 'q':
-          if (strcasecmp(extension,  "qt") &&
-              strcasecmp(extension, "mov") && strcasecmp(extension,"moov"))
+          if (strcasecmp(extension, "mov"))
             {
              internal_error = ERROR_FORMAT;
              return 0;
