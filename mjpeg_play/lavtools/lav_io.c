@@ -237,7 +237,6 @@ int lav_query_APP_marker(char format)
       case 'A': return 0;
       case 'j': return 0;
       case 'q': return 1;
-      case 'm': return 0;
       default:  return 0;
    }
 }
@@ -252,7 +251,6 @@ int lav_query_APP_length(char format)
       case 'A': return 14;
       case 'j': return 14;
       case 'q': return 40;
-      case 'm': return 0;
       default:  return 0;
    }
 }
@@ -267,7 +265,6 @@ int lav_query_polarity(char format)
       case 'A': return LAV_INTER_BOTTOM_FIRST;
       case 'j': return LAV_INTER_TOP_FIRST;
       case 'q': return LAV_INTER_TOP_FIRST;
-      case 'm': return LAV_INTER_TOP_FIRST;
       default:  return LAV_INTER_TOP_FIRST;
    }
 }
@@ -1124,9 +1121,7 @@ lav_file_t *lav_open_input_file(char *filename)
 
          case 'q':
             lav_fd->interlacing = LAV_INTER_TOP_FIRST;
-
-         case 'm':
-            lav_fd->interlacing = LAV_INTER_TOP_FIRST;
+	    break;
       }
    }
    else

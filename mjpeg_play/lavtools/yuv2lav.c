@@ -200,8 +200,7 @@ int main(int argc, char *argv[])
       usage ();
       exit (1);
    }
-   if (param_interlace == 2 &&
-       (param_format == 'q' || param_format == 'm')) {
+   if (param_interlace == 2 && param_format == 'q') {
       mjpeg_error("cannot use -I 2 with -f %c", param_format);
       usage ();
       exit (1);
