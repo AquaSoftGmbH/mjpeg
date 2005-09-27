@@ -38,6 +38,7 @@
 #include "lav_common.h"
 #include "jpegutils.h"
 #include "mpegconsts.h"
+#include "cpu_accel.h"
 
 static uint8_t jpeg_data[MAX_JPEG_LEN];
 
@@ -227,29 +228,6 @@ int luminance_mean(uint8_t *frame[], int w, int h )
 	return sum / count;
 }
 
-
-/*
-	Wrapper for malloc that allocates pbuffers aligned to the 
-	specified byte boundary and checks for failure.
-	N.b.  don't try to free the resulting pointers, eh...
-	BUG: 	Of course this won't work if a char * won't fit in an int....
-*/
-
-static uint8_t *bufalloc(size_t size)
-{
-   char *buf = malloc(size + BUFFER_ALIGN);
-   int adjust;
-   if (buf == NULL) {
-      perror("malloc failed\n");
-   }
-   adjust = BUFFER_ALIGN - ((unsigned long) buf) % BUFFER_ALIGN;
-   if (adjust == BUFFER_ALIGN)
-      adjust = 0;
-   return (uint8_t *) (buf + adjust);
-}
-
-
-
 void init(LavParam *param, uint8_t *buffer[])
 {
    param->luma_size = param->output_width * param->output_height;
@@ -272,17 +250,16 @@ void init(LavParam *param, uint8_t *buffer[])
    }
    param->chroma_size = param->chroma_height * param->chroma_width;
 
-   buffer[0] = bufalloc(param->luma_size);
-   buffer[1] = bufalloc(param->chroma_size);
-   buffer[2] = bufalloc(param->chroma_size);
+   buffer[0] = (uint8_t *)bufalloc(param->luma_size);
+   buffer[1] = (uint8_t *)bufalloc(param->chroma_size);
+   buffer[2] = (uint8_t *)bufalloc(param->chroma_size);
    
 #ifdef HAVE_LIBDV
-   dv_frame[0] = bufalloc(3 * param->output_width * param->output_height);
+   dv_frame[0] = (uint8_t *)bufalloc(3 * param->output_width * param->output_height);
    dv_frame[1] = buffer[1];
    dv_frame[2] = buffer[2];
 #endif
 }
-
 
 /*
  * readframe - read jpeg or dv frame into yuv buffer
