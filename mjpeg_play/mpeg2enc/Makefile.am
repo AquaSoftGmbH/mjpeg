@@ -17,7 +17,7 @@ mpeg2encpp_MMXSSE_INLINE = \
 	quantize_x86.c \
 	transfrm_x86.c
 
-EXTRA_DIST = NOTES
+EXTRA_DIST = NOTES README TODO INSTALL ChangeLog
 
 MAINTAINERCLEANFILES = Makefile.in
 
