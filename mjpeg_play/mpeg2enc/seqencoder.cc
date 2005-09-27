@@ -500,9 +500,6 @@ void SeqEncoder::Pass1EncodeFrame()
 
     if( cur_picture->end_seq )
         mjpeg_info( "Sequence end inserted");
-#ifdef DEBUG
-    writeframe(cur_picture->temp_ref+ss.gop_start_frame,cur_picture->rec_img);
-#endif
  
     // Hard-wired simple 1-pass encoder!!!
     //cur_picture->Commit();

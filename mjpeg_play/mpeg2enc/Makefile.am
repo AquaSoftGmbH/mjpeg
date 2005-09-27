@@ -71,7 +71,6 @@ libmpeg2encpp_la_SOURCES = \
 	synchrolib.cc \
 	tables.c  \
 	transfrm.cc \
-	writepic.cc \
 	$(mpeg2enc_REF) \
 	$(SIMD_INLINE)
 
