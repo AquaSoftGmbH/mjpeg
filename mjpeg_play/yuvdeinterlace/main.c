@@ -66,6 +66,10 @@ int fast_mode = 0;
 int field_order = -1;
 int width = 0;
 int height = 0;
+int lwidth =0;
+int lheight = 0;
+int cwidth = 0;
+int cheight = 0;
 int input_chroma_subsampling = 0;
 int output_chroma_subsampling = 0;
 int non_interleaved_fields = 0;
@@ -82,6 +86,7 @@ uint8_t *frame7[3];
 uint8_t *frame8[3];
 uint8_t *r0[3];
 uint8_t *r1[3];
+uint8_t *sr[3];
 
 int buff_offset;
 int buff_size;
@@ -224,6 +229,13 @@ main (int argc, char *argv[])
 		 "Y4M-Stream is not 4:2:0. Other chroma-modes currently not allowed. Sorry.");
       exit (-1);
     }
+  else
+	{
+	lwidth=width;
+	lheight=height;
+	cwidth=width/2;
+	cheight=height/2;
+	}
 
   /* the output is progressive 4:2:0 MPEG 1 */
   y4m_si_set_interlace (&ostreaminfo, Y4M_ILACE_NONE);
@@ -331,6 +343,10 @@ main (int argc, char *argv[])
     r1[1] = buff_offset + (uint8_t *) malloc (buff_size);
     r1[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
+    sr[0] = buff_offset + (uint8_t *) malloc (buff_size*4);
+    sr[1] = buff_offset + (uint8_t *) malloc (buff_size*4);
+    sr[2] = buff_offset + (uint8_t *) malloc (buff_size*4);
+
     mjpeg_log (LOG_INFO, "Buffers allocated.");
   }
 
@@ -345,45 +361,49 @@ main (int argc, char *argv[])
       static uint32_t framenr=0;
 
       { // bottom field first
-      memcpy(frame3[0],frame1[0],width*height);
-      memcpy(frame4[0],frame2[0],width*height);
 
-      memcpy(frame3[1],frame1[1],width*height);
-      memcpy(frame4[1],frame2[1],width*height);
-      memcpy(frame3[2],frame1[2],width*height);
-      memcpy(frame4[2],frame2[2],width*height);
+      memcpy(frame3[0],frame1[0],lwidth*lheight);
+      memcpy(frame4[0],frame2[0],lwidth*lheight);
+
+      memcpy(frame3[1],frame1[1],cwidth*cheight);
+      memcpy(frame4[1],frame2[1],cwidth*cheight);
+      memcpy(frame3[2],frame1[2],cwidth*cheight);
+      memcpy(frame4[2],frame2[2],cwidth*cheight);
+
+      width = lwidth;
+      height = lheight;
 
       sinc_interpolation ( frame1[0],inframe[0],1 );
       sinc_interpolation ( frame2[0],inframe[0],0 );
-      motion_compensate ( r0[0], frame4[0], frame3[0], frame2[0], 1 );
-      motion_compensate ( r1[0], frame3[0], frame2[0], frame1[0], 0 );
 
-      width /= 2;
-      height /= 2;
+      motion_compensate ( r0[0], frame4[0], frame3[0], frame2[0], 1 );
+      //motion_compensate ( r1[0], frame3[0], frame2[0], frame1[0], 0 );
+      smooth_isophotes ( r0[0], 1);
+      //smooth_isophotes ( r1[0], 0);
+
+      width = cwidth;
+      height = cheight;
 
       sinc_interpolation ( frame1[1],inframe[1],1 );
       sinc_interpolation ( frame2[1],inframe[1],0 );
       motion_compensate ( r0[1], frame4[1], frame3[1], frame2[1], 1 );
-      motion_compensate ( r1[1], frame3[1], frame2[1], frame1[1], 0 );
+      //motion_compensate ( r1[1], frame3[1], frame2[1], frame1[1], 0 );
 
       sinc_interpolation ( frame1[2],inframe[2],1 );
       sinc_interpolation ( frame2[2],inframe[2],0 );
       motion_compensate ( r0[2], frame4[2], frame3[2], frame2[2], 1 );
-      motion_compensate ( r1[2], frame3[2], frame2[2], frame1[2], 0 );
-
-      width *= 2;
-      height *= 2;
+      //motion_compensate ( r1[2], frame3[2], frame2[2], frame1[2], 0 );
 
       if (framenr>0)
 	{
 		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r0);
-		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r1);
+		//y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r1);
 	}
 	else
 	{
 		framenr++;
 		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame2);
-		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);
+		//y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);
 	}
       }
     }
@@ -433,6 +453,10 @@ main (int argc, char *argv[])
     free (r1[0] - buff_offset);
     free (r1[1] - buff_offset);
     free (r1[2] - buff_offset);
+
+    free (sr[0] - buff_offset);
+    free (sr[1] - buff_offset);
+    free (sr[2] - buff_offset);
 
     mjpeg_log (LOG_INFO, "Buffers freed.");
   }

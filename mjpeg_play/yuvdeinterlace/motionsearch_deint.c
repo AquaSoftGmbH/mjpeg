@@ -237,9 +237,24 @@ motion_compensate ( uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2, int f
 int a,b,c,d,e,m;
 int min;
 
-  for (y = 0; y < height; y += 4)
+  // fill top out-off-range lines to avoid ringing
+for(y=1;y<10;y++)
+{
+  memcpy (f0-width*y,f0,width);
+  memcpy (f1-width*y,f0,width);
+  memcpy (f2-width*y,f0,width);
+}
+  // fill bottom out-off-range lines to avoid ringing
+for(y=0;y<10;y++)
+{
+  memcpy (f0+width*(height+y),f0+width*(height-1),width);
+  memcpy (f1+width*(height+y),f0+width*(height-1),width);
+  memcpy (f2+width*(height+y),f0+width*(height-1),width);
+}
+
+  for (y = 0; y < height; y += 8)
     {
-      for (x = 0; x < width; x += 4)
+      for (x = 0; x < width; x += 8)
 	{
 	    fmin = 0.8 * psad_00
 			(f1 + (x   -6) + (y   -6) * width,
@@ -316,43 +331,57 @@ int min;
 	if( (x+bx)>width ) bx=0;
 	if( (y+by)>height ) by=0;
 
-           for(dy=0;dy<4;dy++)
-              for(dx=0;dx<4;dx++)
+           for(dy=0;dy<8;dy++)
+              for(dx=0;dx<8;dx++)
 		{
+	 	    // lowpass-filter current field;
+		    b  = *(f1+(x+dx)+(y+dy-9)*width)*  1;
+		    b += *(f1+(x+dx)+(y+dy-7)*width)* -4;
+		    b += *(f1+(x+dx)+(y+dy-5)*width)* 16;
+		    b += *(f1+(x+dx)+(y+dy-3)*width)*-64;
+		    b += *(f1+(x+dx)+(y+dy-1)*width)*256;
+		    b += *(f1+(x+dx)+(y+dy+1)*width)*256;
+		    b += *(f1+(x+dx)+(y+dy+3)*width)*-64;
+		    b += *(f1+(x+dx)+(y+dy+5)*width)* 16;
+		    b += *(f1+(x+dx)+(y+dy+7)*width)* -4;
+		    b += *(f1+(x+dx)+(y+dy+9)*width)*  1;
+        	    b /= 410;
 
-	    b  = *(f1+(x+dx   )+((y+dy   )-1)*width);
-	    b += *(f1+(x+dx   )+((y+dy   )+1)*width);
-	    b /= 2;
+	 	    // highpass-filter previous field;
+		    a  = *(f0+(x+dx+fx)+(y+dy+fy-10)*width)*  1;
+		    a += *(f0+(x+dx+fx)+(y+dy+fy- 8)*width)* -4;
+		    a += *(f0+(x+dx+fx)+(y+dy+fy- 6)*width)* 16;
+		    a += *(f0+(x+dx+fx)+(y+dy+fy- 4)*width)*-64;
+		    a += *(f0+(x+dx+fx)+(y+dy+fy- 2)*width)*256;
+		    a -= *(f0+(x+dx+fx)+(y+dy+fy   )*width)*410;
+		    a += *(f0+(x+dx+fx)+(y+dy+fy+ 2)*width)*256;
+		    a += *(f0+(x+dx+fx)+(y+dy+fy+ 4)*width)*-64;
+		    a += *(f0+(x+dx+fx)+(y+dy+fy+ 6)*width)* 16;
+		    a += *(f0+(x+dx+fx)+(y+dy+fy+ 8)*width)* -4;
+		    a += *(f0+(x+dx+fx)+(y+dy+fy+10)*width)*  1;
+        	    a /= 410;
 
-	    a  = *(f0+(x+dx+fx)+((y+dy+fy)-2)*width);
-	    a -= *(f0+(x+dx+fx)+((y+dy+fy)  )*width)*2;
-	    a += *(f0+(x+dx+fx)+((y+dy+fy)+2)*width);
-	    a += *(f2+(x+dx+bx)+((y+dy+by)-2)*width);
-	    a -= *(f2+(x+dx+bx)+((y+dy+by)  )*width)*2;
-	    a += *(f2+(x+dx+bx)+((y+dy+by)+2)*width);
-	    a /= 8;
+	 	    // highpass-filter next field;
+		    c  = *(f2+(x+dx+bx)+(y+dy+by-10)*width)*  1;
+		    c += *(f2+(x+dx+bx)+(y+dy+by- 8)*width)* -4;
+		    c += *(f2+(x+dx+bx)+(y+dy+by- 6)*width)* 16;
+		    c += *(f2+(x+dx+bx)+(y+dy+by- 4)*width)*-64;
+		    c += *(f2+(x+dx+bx)+(y+dy+by- 2)*width)*256;
+		    c -= *(f2+(x+dx+bx)+(y+dy+by   )*width)*410;
+		    c += *(f2+(x+dx+bx)+(y+dy+by+ 2)*width)*256;
+		    c += *(f2+(x+dx+bx)+(y+dy+by+ 4)*width)*-64;
+		    c += *(f2+(x+dx+bx)+(y+dy+by+ 6)*width)* 16;
+		    c += *(f2+(x+dx+bx)+(y+dy+by+ 8)*width)* -4;
+		    c += *(f2+(x+dx+bx)+(y+dy+by+10)*width)*  1;
+        	    c /= 410;
 
-	    c  = *(f0+(x+dx+fx)+((y+dy+fy)  )*width);
-	    c += *(f2+(x+dx+bx)+((y+dy+by)  )*width);
-	    c /= 2;
+		    c = b-(a+c)/8;
 
-	    d  = *(f1+(x+dx   )+((y+dy   )-1)*width);
-	    e  = *(f1+(x+dx   )+((y+dy   )+1)*width);
-
-	    m = b-a/2;
-
-	   if( abs( *(f0+(x+dx+fx)+((y+dy+fy)  )*width)-*(f2+(x+dx+bx)+((y+dy+by)  )*width) )<16);
-	   {
-	   if(d<=(c+8) && (c-8)<=e) m=c;
-	   if(d>=(c-8) && (c+8)>=e) m=c;
-	   if(bmin<6144 && fmin<6144 ) m=c;
-	   }
-
-	    m = m>255? 255:m;
-	    m = m<0  ?   0:m;
+	    c = c>255? 255:c;
+	    c = c<0  ?   0:c;
 
 	    if(((dy+y)&1)== field)
-               *(r+(x+dx)+(y+dy)*width) = m;
+               *(r+(x+dx)+(y+dy)*width) = c;
 	    else
                *(r+(x+dx)+(y+dy)*width) = *(f1+(x+dx)+(y+dy)*width);
 
@@ -360,28 +389,30 @@ int min;
 	}
     }
 
+}
+
+void smooth_isophotes ( uint8_t * r, int field )
+{
+	int x,y;
+	int min;
+	int m,e,d,dx,fx;
+	int a;
+
     // smooth isophotes out ... "antialias"
-    for(y=field;y<height;y++)
+    for(y=field;y<height;y+=2)
 	for(x=0;x<width;x++)
 	{
-		m  = *(r+(x-1)+(y-1)*width);
-		m += *(r+(x  )+(y-1)*width);
-		m += *(r+(x+1)+(y-1)*width);
-		m += *(r+(x-1)+(y  )*width);
-		m += *(r+(x  )+(y  )*width);
-		m += *(r+(x+1)+(y  )*width);
-		m += *(r+(x-1)+(y+1)*width);
-		m += *(r+(x  )+(y+1)*width);
-		m += *(r+(x+1)+(y+1)*width);
-		m /= 9;
+		m = *(r+(x  )+(y  )*width);
 
-		min  = 0x00ff;
+		min  = 0x00ffff;
 		fx = 0;
 
-		for(dx=0;dx<8;dx++)
+		for(dx=0;dx<16;dx++)
 		{
-		d  = abs ( m - *(r+(x-dx)+y*width-width) );
-		d += abs ( m - *(r+(x+dx)+y*width+width) );
+		e = *(r+(x-dx  )+y*width-width) - *(r+(x+dx  )+y*width+width) ;
+		d = e*e;
+		e = m-(*(r+(x-dx)+y*width-width) + *(r+(x+dx)+y*width+width))/2;
+		d += e*e;
 
 		if(d<min)
 		{
@@ -389,8 +420,10 @@ int min;
 			fx = dx;
 		}
 
-		d  = abs ( m - *(r+(x+dx)+y*width-width) );
-		d += abs ( m - *(r+(x-dx)+y*width+width) );
+		e = *(r+(x+dx  )+y*width-width) - *(r+(x-dx  )+y*width+width) ;
+		d = e*e;
+		e = m-(*(r+(x+dx)+y*width-width) + *(r+(x-dx)+y*width+width))/2;
+		d += e*e;
 
 		if(d<min)
 		{
@@ -399,14 +432,7 @@ int min;
 		}
 
 		}
-		// only smooth if not a pure vertical edge
-		if(fx!=0)
-			*(r+x+y*width) = ( 2 * *(r+x+y*width)+*(r+(x-fx)+y*width-width)+*(r+(x+fx)+y*width+width) )/4;
-	}
-    // smooth the reconstructed plane just a very little (human eye and the mpegencoder likes this... really)
-    for(y=field;y<height;y++)
-	for(x=0;x<width;x++)
-	{
-	*(r+x+y*width) = ( 4 * *(r+x+y*width)+*(r+x+y*width-width)+*(r+x+y*width+width) )/6;	
+
+		*(r+x+y*width) = ( *(r+x+y*width)+*(r+(x-fx)+y*width-width)+*(r+(x+fx)+y*width+width) )/3;
 	}
 }

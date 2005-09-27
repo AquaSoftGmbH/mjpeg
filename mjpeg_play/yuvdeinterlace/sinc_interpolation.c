@@ -33,21 +33,25 @@ sinc_interpolation (uint8_t * frame, uint8_t * inframe, int field)
 
   memcpy (frame,inframe,width*height);
 
+  // fill top out-off-range lines to avoid ringing
+  memcpy (frame-width*1,inframe,width);
+  memcpy (frame-width*2,inframe,width);
+  memcpy (frame-width*3,inframe,width);
+  memcpy (frame-width*4,inframe,width);
+  memcpy (frame-width*5,inframe,width);
+
+  // fill bottom out-off-range lines to avoid ringing
+  memcpy (frame+width*(height+0),inframe+width*(height-2),width);
+  memcpy (frame+width*(height+1),inframe+width*(height-2),width);
+  memcpy (frame+width*(height+2),inframe+width*(height-2),width);
+  memcpy (frame+width*(height+3),inframe+width*(height-2),width);
+  memcpy (frame+width*(height+4),inframe+width*(height-2),width);
+
   /* interpolate missing lines */ 
   for (y = field; y < height ; y += 2)
     {
       for (x = 0; x < width; x++)
 	{
-		a = *(frame+(x-1)+(y-1)*width);
-		b = *(frame+(x  )+(y-1)*width);
-		c = *(frame+(x+1)+(y-1)*width);
-
-		d = *(frame+(x-1)+(y+1)*width);
-		e = *(frame+(x  )+(y+1)*width);
-		f = *(frame+(x+1)+(y+1)*width);
-
-		g = *(frame+(x  )+(y  )*width); 
-
 		v = ( 
 			*(frame+x+(y-5)*width)*+1 +
 			*(frame+x+(y-3)*width)*-4 +
@@ -59,16 +63,7 @@ sinc_interpolation (uint8_t * frame, uint8_t * inframe, int field)
 		v= v>255? 255:v;
 		v= v<0? 0:v;
 
-		if(a<=g && g<=f) v=(g+v)/2;
-		if(a>=g && g>=f) v=(g+v)/2;
-
-		if(c<=g && g<=d) v=(g+v)/2;
-		if(c>=g && g>=d) v=(g+v)/2;
-
-		if(b<=g && g<=e) v=g;
-		if(b>=g && g>=e) v=g;
-
-		*(frame+x+y*width)=(b+e)/2;
+		*(frame+x+y*width)=v;
 	}
     }
 }
