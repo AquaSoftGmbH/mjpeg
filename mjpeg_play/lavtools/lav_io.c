@@ -986,42 +986,57 @@ lav_file_t *lav_open_input_file(char *filename)
    if(lav_fd->bps==0) lav_fd->bps=1; /* make it save since we will divide by that value */
 
 /*
- * Check compressor.  If not Motion JPEG then check for DV and YUV.  The YUV
- * code appears incomplete since it does not check for 'yuv2' (the routine
- * el_video_frame_data_format() DOES check).  My hunch is that folks are only
- * using DV and MJPG so the YUV inconsistencies aren't being noticed.
+ * Check compressor.  The YUV checks are not right (the support code appears 
+ * incorrect and/or incomplete).  In particular yuv2 is a packed format not
+ * planar and YV12 has the U and V planes reversed from IYUV (which is what
+ * the support code appears to think is YUV420).  My hunch is that folks are 
+ * only using DV and MJPG so the YUV bugs aren't being triggered. 
+ *
+ * But at least now the checks are consolidated in 1 place instead of being
+ * duplicated in two places (editlist.c and this file).
 */
 
    ierr  = 0;
 
-   if(strncasecmp(video_comp,"mjpg",4)!=0 &&
-      strncasecmp(video_comp,"mjpa",4)!=0 &&
-      strncasecmp(video_comp,"jpeg",4)!=0 )
-   {
+   if (strncasecmp(video_comp, "yv12", 3) == 0)
+      {
+      lav_fd->dataformat = DATAFORMAT_YUV420;
+      lav_fd->chroma = CHROMA420;
+      }
+   else if (strncasecmp(video_comp, "yuv2", 4) == 0)
+      {
+      lav_fd->dataformat = DATAFORMAT_YUV422;
+      lav_fd->chroma = CHROMA422;
+      }
+   else if (strncasecmp(video_comp, "dv", 2) == 0)
+      {
+      lav_fd->dataformat = DATAFORMAT_DV2;
+      lav_fd->interlacing = LAV_INTER_BOTTOM_FIRST;
+      }
+   else if (strncasecmp(video_comp, "mjp", 3) == 0 ||
+            strncasecmp(video_comp, "jpeg", 4) == 0)
+      lav_fd->dataformat = DATAFORMAT_MJPG;
+   else
+      {
+      internal_error = ERROR_FORMAT;
+      goto ERREXIT;
+      }
+
 #ifdef HAVE_LIBDV
-   if(strncasecmp(video_comp,"dvsd",4)==0
-#ifdef HAVE_LIBQUICKTIME
-      || strncasecmp(video_comp,QUICKTIME_DV,4)==0
-#endif
-      || strncasecmp(video_comp,"dv",2)==0) {
-       ierr = check_DV2_input(lav_fd);
-       if (ierr) goto ERREXIT;
-       /* DV is always interlaced, bottom first */
-       lav_fd->interlacing = LAV_INTER_BOTTOM_FIRST; 
-   }
+   if (lav_fd->dataformat == DATAFORMAT_DV2)
+      {
+      ierr = check_DV2_input(lav_fd);
+      if (ierr)
+	 goto ERREXIT;
+      }
 #endif /* HAVE_LIBDV */
 
-   if (strncasecmp(video_comp,"yuv",3)==0 || strncasecmp(video_comp, "yv12",4)==0)
-      lav_fd->chroma = CHROMA420;
-/* What about 4:2:2 formats (2vuy for example)?  Maybe someday */
-   return lav_fd;
-   }
+   if (lav_fd->dataformat != DATAFORMAT_MJPG)
+      return lav_fd;
 
 /*
  * From here on down is MJPG only code - the yuv and dv cases have been handled
- * above.
- *
- * Make some checks on the video source, we read the first frame for that
+ * above.  Make some checks on the video source.  Read the first frame for this.
 */
 
    frame = NULL;

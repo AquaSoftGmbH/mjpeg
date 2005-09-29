@@ -496,18 +496,10 @@ int el_get_audio_data(uint8_t *abuff, long nframe, EditList *el, int mute)
 int el_video_frame_data_format(long nframe, EditList *el)
 {
    int n;
-   const char *comp;
 
    if(el->video_frames<=0) return DATAFORMAT_MJPG; /* empty editlist, return default */
    if(nframe<0) nframe = 0;
    if(nframe>el->video_frames) nframe = el->video_frames;
    n = N_EL_FILE(el->frame_list[nframe]);
-   comp = lav_video_compressor(el->lav_fd[n]);
-
-   if      (strncasecmp(comp,"yv12",4)==0) return DATAFORMAT_YUV420;
-   else if (strncasecmp(comp,"yuv2",4)==0) return DATAFORMAT_YUV422;
-   else if (strncasecmp(comp,"dv",2)==0) return DATAFORMAT_DV2;
-   else if (strncasecmp(comp,"mjp",3)==0 || strncasecmp(comp,"jpeg",4)==0)
-       return DATAFORMAT_MJPG;
-   else return -1;
+   return(el->lav_fd[n]->dataformat);
 }

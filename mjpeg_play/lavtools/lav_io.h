@@ -46,17 +46,18 @@ typedef void avi_t;
 
 typedef struct
 {
-   avi_t       *avi_fd;
-   int         jpeg_fd;
-   char        *jpeg_filename;
-   void        *qt_fd;
-   int         format;
-   int         interlacing;
-   int         sar_w;  /* "sample aspect ratio" width  */
-   int         sar_h;  /* "sample aspect ratio" height */
-   int         has_audio;
-   int         bps;
-   int         chroma;
+   avi_t *avi_fd;
+   int	jpeg_fd;
+   char	*jpeg_filename;
+   void	*qt_fd;
+   int	format;
+   int	interlacing;
+   int	sar_w;  /* "sample aspect ratio" width  */
+   int	sar_h;  /* "sample aspect ratio" height */
+   int	has_audio;
+   int	bps;
+   int	chroma;
+   int	dataformat;
 } lav_file_t;
 
 #ifdef HAVE_LIBDV
