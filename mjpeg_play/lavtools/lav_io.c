@@ -948,20 +948,36 @@ lav_file_t *lav_open_input_file(char *filename)
 #ifdef HAVE_LIBQUICKTIME
       else
 	{
+	quicktime_pasp_t pasp;
+
 	  /* It is a quicktime file */
-	  lav_fd->qt_fd = quicktime_open(filename,1,0);
-	  video_format = 'q'; /* for error messages */
-	  if(!lav_fd->qt_fd) { free(lav_fd); return 0; }
-	  lav_fd->avi_fd = 0;
+	 lav_fd->qt_fd = quicktime_open(filename,1,0);
+	 video_format = 'q'; /* for error messages */
+	 if (!lav_fd->qt_fd)
+	    {
+	    free(lav_fd);
+	    return 0;
+	    }
+	  lav_fd->avi_fd = NULL;
 	  lav_fd->format = 'q';
 	  video_comp = quicktime_video_compressor(lav_fd->qt_fd,0);
 	  /* We want at least one video track */
-	  if(quicktime_video_tracks(lav_fd->qt_fd) < 1)
-	    {
-	      lav_close(lav_fd);
-	      internal_error = ERROR_FORMAT;
-	      return 0;
-	    }
+	  if (quicktime_video_tracks(lav_fd->qt_fd) < 1)
+	     {
+	     lav_close(lav_fd);
+	     internal_error = ERROR_FORMAT;
+	     return 0;
+	     }
+/*
+ * If the quicktime file has the sample aspect atom then use it to set
+ * the sar values in the lav_fd structure.  Hardwired (like everywhere else)
+ * to only look at track 0.
+*/
+	  if (lqt_get_pasp(lav_fd->qt_fd, 0, &pasp) != 0)
+	     {
+	     lav_fd->sar_w = pasp.hSpacing;
+	     lav_fd->sar_h = pasp.vSpacing;
+	     }
 	  /* Check for audio tracks */
 	  lav_fd->has_audio = 0;
 	  if (quicktime_audio_tracks(lav_fd->qt_fd))
@@ -969,7 +985,7 @@ lav_file_t *lav_open_input_file(char *filename)
 	     audio_comp = quicktime_audio_compressor(lav_fd->qt_fd,0);
 	     if (strncasecmp(audio_comp, QUICKTIME_TWOS,4)==0)
 		lav_fd->has_audio = 1;
-	      }
+	     }
 	 }
 #endif
    }
@@ -1282,9 +1298,8 @@ static int check_DV2_input(lav_file_t *lav_fd)
 				} 
 			break;
 		default:
-			lav_fd->sar_w = 0; /* ??? -> unknown */
-			lav_fd->sar_h = 0;
-			break;
+			ierr = ERROR_FORMAT; /* Neither 525 or 625 system */
+			goto ERREXIT;	     /* declare a format error! */
 		}
 
 	switch(decoder->sampling) {
