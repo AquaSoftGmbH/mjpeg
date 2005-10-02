@@ -308,7 +308,6 @@ int main(argc, argv)
 
 	(void)mjpeg_default_handler_verbosity(verbose);
 
-
 	/* Open editlist */
 
 	read_video_files(argv + optind, argc - optind, &el,0);
@@ -316,16 +315,16 @@ int main(argc, argv)
 	param.output_width = el.video_width;
 	param.output_height = el.video_height;
 	if(exchange_fields) {
-	  if(el.video_inter==LAV_INTER_BOTTOM_FIRST) {
+	  if(el.video_inter == Y4M_ILACE_BOTTOM_FIRST) {
 		mjpeg_info("Exchange from BOTTOM_FIRST to TOP_FIRST");
-	  	el.video_inter=LAV_INTER_TOP_FIRST;
+	  	el.video_inter = Y4M_ILACE_TOP_FIRST;
 	  }
-	  else if(el.video_inter==LAV_INTER_TOP_FIRST) {
+	  else if(el.video_inter == Y4M_ILACE_TOP_FIRST) {
 		mjpeg_info("Exchange from TOP_FIRST to BOTTOM_FIRST");
-	  	el.video_inter=LAV_INTER_BOTTOM_FIRST;
+	  	el.video_inter = Y4M_ILACE_BOTTOM_FIRST;
 	  }
 	  else {
-		mjpeg_warn("Video IS NOT INTERLACED!! Could not exchange fields");
+		mjpeg_warn("Video NOT INTERLACED! Could not exchange fields");
 	  }
 	}
 

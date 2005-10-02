@@ -1830,7 +1830,7 @@ static int lavplay_init(lavplay_t *info)
 #endif
    
    /* Set field polarity for interlaced video */
-   bp.odd_even = (editlist->video_inter==LAV_INTER_TOP_FIRST);
+   bp.odd_even = (editlist->video_inter == Y4M_ILACE_TOP_FIRST);
    /*if (info->exchange_fields) bp.odd_even = !bp.odd_even; */
    /*this is already done by the open_files() function */
 
@@ -2704,11 +2704,11 @@ int lavplay_open(lavplay_t *info, char **files, int num_files)
    {
       switch (info->editlist->video_inter)
       {
-         case LAV_INTER_BOTTOM_FIRST:
-            info->editlist->video_inter = LAV_INTER_TOP_FIRST;
+         case Y4M_ILACE_BOTTOM_FIRST:
+            info->editlist->video_inter = Y4M_ILACE_TOP_FIRST;
             break;
-         case LAV_INTER_TOP_FIRST:
-            info->editlist->video_inter = LAV_INTER_BOTTOM_FIRST;
+         case Y4M_ILACE_TOP_FIRST:
+            info->editlist->video_inter = Y4M_ILACE_BOTTOM_FIRST;
             break;
          default:
             lavplay_msg(LAVPLAY_MSG_WARNING, info,

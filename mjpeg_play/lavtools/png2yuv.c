@@ -553,7 +553,7 @@ static int generate_YUV4MPEG(parameters_t *param)
 		  mjpeg_info("Processing interlaced, top-first %s", pngname);
 #if 0 
 		  decode_jpeg_raw(jpegdata, jpegsize,
-				  Y4M_ILACE_TOP_FIRST, /* gz: was: LAV_INTER_TOP_FIRST */
+				  Y4M_ILACE_TOP_FIRST,
 				  420, param->width, param->height,
 				  yuv[0], yuv[1], yuv[2]);
 #endif
@@ -562,7 +562,7 @@ static int generate_YUV4MPEG(parameters_t *param)
 		  mjpeg_info("Processing interlaced, bottom-first %s", pngname);
 #if 0 
 		  decode_jpeg_raw(jpegdata, jpegsize,
-				  Y4M_ILACE_BOTTOM_FIRST, /* gz: was: LAV_INTER_TOP_FIRST */
+				  Y4M_ILACE_BOTTOM_FIRST,
 				  420, param->width, param->height,
 				  yuv[0], yuv[1], yuv[2]);
 #endif

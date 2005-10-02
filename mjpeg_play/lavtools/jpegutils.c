@@ -606,10 +606,10 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
 
       if (numfields == 2) {
          switch (itype) {
-         case LAV_INTER_TOP_FIRST:
+         case Y4M_ILACE_TOP_FIRST:
             yl = yc = field;
             break;
-         case LAV_INTER_BOTTOM_FIRST:
+         case Y4M_ILACE_BOTTOM_FIRST:
             yl = yc = (1 - field);
             break;
          default:
@@ -884,10 +884,10 @@ int decode_jpeg_gray_raw (unsigned char *jpeg_data, int len,
 
       if (numfields == 2) {
          switch (itype) {
-         case LAV_INTER_TOP_FIRST:
+         case Y4M_ILACE_TOP_FIRST:
             yl = yc = field;
             break;
-         case LAV_INTER_BOTTOM_FIRST:
+         case Y4M_ILACE_BOTTOM_FIRST:
             yl = yc = (1 - field);
             break;
          default:
@@ -1099,8 +1099,8 @@ int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
    }
    cinfo.image_width = width;
    switch (itype) {
-   case LAV_INTER_TOP_FIRST:
-   case LAV_INTER_BOTTOM_FIRST: /* interlaced */
+   case Y4M_ILACE_TOP_FIRST:
+   case Y4M_ILACE_BOTTOM_FIRST: /* interlaced */
       numfields = 2;
       break;
    default:
@@ -1125,10 +1125,10 @@ int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
 	 jpeg_write_marker(&cinfo, JPEG_APP0+1, marker0, 40);
 
          switch (itype) {
-         case LAV_INTER_TOP_FIRST: /* top field first */
+         case Y4M_ILACE_TOP_FIRST: /* top field first */
             yl = yc = field;
             break;
-         case LAV_INTER_BOTTOM_FIRST: /* bottom field first */
+         case Y4M_ILACE_BOTTOM_FIRST: /* bottom field first */
             yl = yc = (1 - field);
             break;
          default:

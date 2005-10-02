@@ -1099,14 +1099,14 @@ static int lavrec_software_init(lavrec_t *info)
    settings->mm.format = VIDEO_PALETTE_YUV422P;
 
    if (info->geometry->h > (info->video_norm==1?320:384))
-      settings->interlaced = LAV_INTER_TOP_FIRST; /* all interlaced BT8x8 capture seems top-first ?? */
+      settings->interlaced = Y4M_ILACE_TOP_FIRST; /* all interlaced BT8x8 capture seems top-first ?? */
    else
-      settings->interlaced = LAV_NOT_INTERLACED;
+      settings->interlaced = Y4M_ILACE_NONE;
 
    lavrec_msg(LAVREC_MSG_INFO, info,
       "Image size will be %dx%d, %d field(s) per buffer",
       info->geometry->w, info->geometry->h,
-      (settings->interlaced==LAV_NOT_INTERLACED)?1:2);
+      (settings->interlaced == Y4M_ILACE_NONE)?1:2);
 
    /* request buffer info */
    if (ioctl(settings->video_fd, VIDIOCGMBUF, &(settings->softreq)) < 0)
@@ -1305,7 +1305,7 @@ static int lavrec_hardware_init(lavrec_t *info)
 
       /* There seems to be some confusion about what is the even and odd field ... */
       /* madmac: 20010810: According to Ronald, this is wrong - changed now to EVEN */
-      bparm.odd_even = lav_query_polarity(info->video_format) == LAV_INTER_TOP_FIRST;
+      bparm.odd_even = lav_query_polarity(info->video_format) == Y4M_ILACE_TOP_FIRST;
       for(n=0; n<bparm.APP_len && n<60; n++) bparm.APP_data[n] = 0;
    }
 

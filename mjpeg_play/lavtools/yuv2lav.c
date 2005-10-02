@@ -250,9 +250,9 @@ int main(int argc, char *argv[])
    if (param_interlace < 0) {
        param_interlace = y4m_si_get_interlace(&streaminfo);
     }
-   if (param_interlace == LAV_INTER_TOP_FIRST  && param_format == 'A')
+   if (param_interlace == Y4M_ILACE_TOP_FIRST  && param_format == 'A')
       param_format = 'a';
-   else if (param_interlace == LAV_INTER_BOTTOM_FIRST && param_format == 'a')
+   else if (param_interlace == Y4M_ILACE_BOTTOM_FIRST && param_format == 'a')
       param_format = 'A';
    fps = Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo));
 

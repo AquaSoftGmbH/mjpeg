@@ -100,13 +100,13 @@ int open_video_file(char *filename, EditList *el, int preserve_pathname)
 	   const char *int_msg;
 	   switch(  lav_video_interlacing(el->lav_fd[n]))
 	   {
-	   case LAV_NOT_INTERLACED :
+	   case Y4M_ILACE_NONE :
 		   int_msg = "not interlaced";
 		   break;
-	   case LAV_INTER_TOP_FIRST :
+	   case Y4M_ILACE_TOP_FIRST :
 		   int_msg = "top field first";	 
 		   break;
-	   case LAV_INTER_BOTTOM_FIRST :
+	   case Y4M_ILACE_BOTTOM_FIRST :
 		   int_msg = "bottom field first";
 		   break;
 	   default:

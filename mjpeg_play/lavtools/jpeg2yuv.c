@@ -435,12 +435,12 @@ static int generate_YUV4MPEG(parameters_t *param)
                         jpegname, jpegsize);
 	     if (param->colorspace == JCS_GRAYSCALE)
 	       decode_jpeg_gray_raw(jpegdata, jpegsize,
-				    LAV_INTER_TOP_FIRST, 
+				    Y4M_ILACE_TOP_FIRST, 
 				    420, param->width, param->height,
 				    yuv[0], yuv[1], yuv[2]);
 	     else
 	       decode_jpeg_raw(jpegdata, jpegsize,
-			       LAV_INTER_TOP_FIRST,
+			       Y4M_ILACE_TOP_FIRST,
 			       420, param->width, param->height,
 			       yuv[0], yuv[1], yuv[2]);
              break;
@@ -449,12 +449,12 @@ static int generate_YUV4MPEG(parameters_t *param)
                         jpegname, jpegsize);
 	     if (param->colorspace == JCS_GRAYSCALE)
 	       decode_jpeg_gray_raw(jpegdata, jpegsize,
-				    LAV_INTER_BOTTOM_FIRST, 
+				    Y4M_ILACE_BOTTOM_FIRST, 
 				    420, param->width, param->height,
 				    yuv[0], yuv[1], yuv[2]);
 	     else
 	       decode_jpeg_raw(jpegdata, jpegsize,
-			       LAV_INTER_BOTTOM_FIRST,
+			       Y4M_ILACE_BOTTOM_FIRST,
 			       420, param->width, param->height,
 			       yuv[0], yuv[1], yuv[2]);
              break;

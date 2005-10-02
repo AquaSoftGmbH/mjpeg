@@ -28,9 +28,9 @@
  /*
  * jpeg_data:       buffer with input / output jpeg
  * len:             Length of jpeg buffer
- * itype:           LAV_INTER_NONE: Not interlaced
- *                  LAV_INTER_TOP_FIRST: Interlaced, top-field-first
- *                  LAV_INTER_BOTTOM_FIRST: Interlaced, bottom-field-first
+ * itype:           Y4M_ILACE_NONE: Not interlaced
+ *                  Y4M_ILACE_TOP_FIRST: Interlaced, top-field-first
+ *                  Y4M_ILACE_BOTTOM_FIRST: Interlaced, bottom-field-first
  * ctype            Chroma format for decompression.
  *                  Currently always 420 and hence ignored.
  * raw0             buffer with input / output raw Y channel

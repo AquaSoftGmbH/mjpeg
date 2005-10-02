@@ -26,12 +26,6 @@ typedef void avi_t;
 
 #include <yuv4mpeg.h>
 
-#define LAV_INTER_UNKNOWN       Y4M_UNKNOWN
-#define LAV_NOT_INTERLACED      Y4M_ILACE_NONE
-#define LAV_INTER_TOP_FIRST     Y4M_ILACE_TOP_FIRST
-#define LAV_INTER_BOTTOM_FIRST  Y4M_ILACE_BOTTOM_FIRST
-
-
 /* chroma_format */
 #define CHROMAUNKNOWN 0
 #define CHROMA420 1

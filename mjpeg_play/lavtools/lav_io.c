@@ -260,11 +260,11 @@ int lav_query_polarity(char format)
 
    switch(format)
    {
-      case 'a': return LAV_INTER_TOP_FIRST;
-      case 'A': return LAV_INTER_BOTTOM_FIRST;
-      case 'j': return LAV_INTER_TOP_FIRST;
-      case 'q': return LAV_INTER_TOP_FIRST;
-      default:  return LAV_INTER_TOP_FIRST;
+      case 'a': return Y4M_ILACE_TOP_FIRST;
+      case 'A': return Y4M_ILACE_BOTTOM_FIRST;
+      case 'j': return Y4M_ILACE_TOP_FIRST;
+      case 'q': return Y4M_ILACE_TOP_FIRST;
+      default:  return Y4M_ILACE_TOP_FIRST;
    }
 }
 
@@ -314,7 +314,7 @@ lav_file_t *lav_open_output_file(char *filename, char format,
         }
    }
    lav_fd->interlacing = interlaced ? lav_query_polarity(format) :
-                                      LAV_NOT_INTERLACED;
+                                      Y4M_ILACE_NONE;
    lav_fd->has_audio   = (asize>0 && achans>0);
    lav_fd->bps         = (asize*achans+7)/8;
    lav_fd->chroma = CHROMAUNKNOWN;
@@ -421,7 +421,7 @@ int lav_write_frame(lav_file_t *lav_file, uint8_t *buff, long size, long count)
 
    /* For interlaced video insert the apropriate APPn markers */
 
-   if(lav_file->interlacing!=LAV_NOT_INTERLACED)
+   if(lav_file->interlacing != Y4M_ILACE_NONE)
    {
       switch(lav_file->format)
       {
@@ -906,7 +906,7 @@ lav_file_t *lav_open_input_file(char *filename)
    lav_fd->avi_fd      = 0;
    lav_fd->qt_fd       = 0;
    lav_fd->format      = 0;
-   lav_fd->interlacing = LAV_INTER_UNKNOWN;
+   lav_fd->interlacing = Y4M_UNKNOWN;
    lav_fd->sar_w       = 1; /* unknown - assume square pixels */
    lav_fd->sar_h       = 1; 
    lav_fd->has_audio   = 0;
@@ -949,6 +949,7 @@ lav_file_t *lav_open_input_file(char *filename)
       else
 	{
 	quicktime_pasp_t pasp;
+	int nfields, detail;
 
 	  /* It is a quicktime file */
 	 lav_fd->qt_fd = quicktime_open(filename,1,0);
@@ -977,6 +978,24 @@ lav_file_t *lav_open_input_file(char *filename)
 	     {
 	     lav_fd->sar_w = pasp.hSpacing;
 	     lav_fd->sar_h = pasp.vSpacing;
+	     }
+/*
+ * If a 'fiel' atom is present (not guaranteed) then use it to set the
+ * interlacing type.
+*/
+	  if (lqt_get_fiel(lav_fd->qt_fd, 0, &nfields, &detail) != 0)
+	     {
+	     if (nfields == 2)
+	        {
+		if (detail == 14 || detail == 6)
+		   lav_fd->interlacing = Y4M_ILACE_BOTTOM_FIRST;
+		else if (detail == 9 || detail == 1)
+		   lav_fd->interlacing = Y4M_ILACE_TOP_FIRST;
+		else
+		   mjpeg_warn("unknown 'detail' in 'fiel' atom: %d", detail);
+	        }
+	     else
+	        lav_fd->interlacing = Y4M_ILACE_NONE;
 	     }
 	  /* Check for audio tracks */
 	  lav_fd->has_audio = 0;
@@ -1027,7 +1046,7 @@ lav_file_t *lav_open_input_file(char *filename)
    else if (strncasecmp(video_comp, "dv", 2) == 0)
       {
       lav_fd->dataformat = DATAFORMAT_DV2;
-      lav_fd->interlacing = LAV_INTER_BOTTOM_FIRST;
+      lav_fd->interlacing = Y4M_ILACE_BOTTOM_FIRST;
       }
    else if (strncasecmp(video_comp, "mjp", 3) == 0 ||
             strncasecmp(video_comp, "jpeg", 4) == 0)
@@ -1135,9 +1154,7 @@ lav_file_t *lav_open_input_file(char *filename)
    /* check height */
 
    if( jpg_height == lav_video_height(lav_fd))
-   {
-      lav_fd->interlacing = LAV_NOT_INTERLACED;
-   }
+      lav_fd->interlacing = Y4M_ILACE_NONE;
    else if ( jpg_height == lav_video_height(lav_fd)/2 )
    {
       /* Video is interlaced */
@@ -1152,20 +1169,20 @@ lav_file_t *lav_open_input_file(char *filename)
                strncasecmp((char*)(frame + jpeg_app0_offset + 4),"AVI1",4)==0 )
             {
                 if (frame[jpeg_app0_offset+8]==1)
-                   lav_fd->interlacing = LAV_INTER_TOP_FIRST;
+                   lav_fd->interlacing = Y4M_ILACE_TOP_FIRST;
                 else
-                   lav_fd->interlacing = LAV_INTER_BOTTOM_FIRST;
+                   lav_fd->interlacing = Y4M_ILACE_BOTTOM_FIRST;
             }
             else
             {
                /* There is no default, it really depends on the
                   application which produced the AVI */
-               lav_fd->interlacing = LAV_INTER_TOP_FIRST;
+               lav_fd->interlacing = Y4M_ILACE_TOP_FIRST;
             }
-            lav_fd->format = lav_fd->interlacing == LAV_INTER_BOTTOM_FIRST ? 'A' : 'a';
+            lav_fd->format = lav_fd->interlacing == Y4M_ILACE_BOTTOM_FIRST ? 'A' : 'a';
             break;
          case 'q':
-            lav_fd->interlacing = LAV_INTER_TOP_FIRST;
+            lav_fd->interlacing = Y4M_ILACE_TOP_FIRST;
 	    break;
       }
    }

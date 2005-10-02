@@ -212,9 +212,9 @@ int main(int argc, char ** argv)
    read_video_files(argv + optind, argc - optind, &el,0);
 
 
-   if (format == 'a' && el.video_inter == LAV_INTER_BOTTOM_FIRST) format = 'A';
+   if (format == 'a' && el.video_inter == Y4M_ILACE_BOTTOM_FIRST) format = 'A';
 
-   if ((format == 'q') && el.video_inter == LAV_INTER_BOTTOM_FIRST)
+   if ((format == 'q') && el.video_inter == Y4M_ILACE_BOTTOM_FIRST)
    {
       mjpeg_error_exit1("Output is Quicktime - wrong interlacing order");
    }
