@@ -78,12 +78,12 @@ int open_video_file(char *filename, EditList *el, int preserve_pathname)
    {
       mjpeg_error_exit1("Error opening %s",filename);
    }
-   if(lav_video_chroma(el->lav_fd[n]) != CHROMA422 &&
-	   lav_video_chroma(el->lav_fd[n]) != CHROMA420)
+   if(lav_video_chroma(el->lav_fd[n]) != Y4M_CHROMA_422 &&
+	   lav_video_chroma(el->lav_fd[n]) != Y4M_CHROMA_420JPEG)
    {
       mjpeg_warn("Input file %s is not in  JPEG 4:2:2 or 4:2:0 format",
 				 filename);
-      el->chroma = CHROMAUNKNOWN;
+      el->chroma = Y4M_UNKNOWN;
    }
    el->num_frames[n] = lav_video_frames(el->lav_fd[n]);
 
@@ -240,7 +240,7 @@ void read_video_files(char **filename, int num_files, EditList *el,
 
    memset(el,0,sizeof(EditList));
 
-   el->chroma = CHROMA422; /* will be reset if not the case for all files */
+   el->chroma = Y4M_CHROMA_422; /* default, individual file will override */
 
    /* Check if a norm parameter is present */
 

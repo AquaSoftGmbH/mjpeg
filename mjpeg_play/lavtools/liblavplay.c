@@ -731,7 +731,7 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
    case DATAFORMAT_MJPG:
       decode_jpeg_raw(jpeg_buffer, buf_len,
 		      editlist->video_inter>0&&info->exchange_fields?(editlist->video_inter+1)%2+1:editlist->video_inter,
-		      CHROMA422,
+		      Y4M_CHROMA_422,
 		      editlist->video_width, editlist->video_height,
 		      settings->yuvbuff[0],
 		      settings->yuvbuff[1],

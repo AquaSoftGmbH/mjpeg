@@ -46,7 +46,7 @@
  *                  1: Interlaced, Top field first
  *                  2: Interlaced, Bottom field first
  * ctype            Chroma format for decompression.
- *                  Currently only CHROMA420 and CHROMA422 are available
+ *                  Currently only Y4M_CHROMA_{420JPEG,422}  are available
  * raw0             buffer with input / output raw Y channel
  * raw1             buffer with input / output raw U/Cb channel
  * raw2             buffer with input / output raw V/Cr channel
@@ -447,7 +447,7 @@ static void guarantee_huff_tables(j_decompress_ptr dinfo)
  *                  1: Interlaced, Top field first
  *                  2: Interlaced, Bottom field first
  * ctype            Chroma format for decompression.
- *                  Currently only CHROMA420 and CHROMA422 are available
+ *                  Currently only Y4M_CHROMA_{420JPEG,422} are available
  * returns:
  *	-1 on fatal error
  *	0 on success
@@ -677,7 +677,7 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
 	 /* Vertical resampling of chroma */
 
 	 switch (ctype) {
-	 case CHROMA422:
+	 case Y4M_CHROMA_422:
 	   if (vsf[0] == 1) {
 	     /* Just copy */
 	     for (y = 0; y < 8 /*&& yc < height */; y++, yc += numfields) {
@@ -706,7 +706,11 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
 	   }
 	   break;
 	 default:
-	 /* should be case CHROMA420: but use default: for compatibility of liblavjpeg.so */
+/*
+ * should be case Y4M_CHROMA_420JPEG: but use default: for compatibility. Some
+ * pass things like '420' in with the expectation that anything other than
+ * Y4M_CHROMA_422 will default to 420JPEG.
+*/
 	   if (vsf[0] == 1) {
 	     /* Really downsample */
 	     for (y = 0; y < 8 /*&& yc < height/2*/; y += 2, yc += numfields) {
@@ -765,7 +769,7 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
  *                  1: Interlaced, Top field first
  *                  2: Interlaced, Bottom field first
  * ctype            Chroma format for decompression.
- *                  Currently only CHROMA420 and CHROMA422 are available
+ *                  Currently only Y4M_CHROMA_{420JPEG,422} are available
  */
 
 
@@ -946,7 +950,7 @@ int decode_jpeg_gray_raw (unsigned char *jpeg_data, int len,
          //mjpeg_info("/* Vertical downsampling of chroma, line %d, max %d */", dinfo.output_scanline, dinfo.output_height);
 
 	 switch (ctype) {
-	 case CHROMA422:
+	 case Y4M_CHROMA_422:
 	   if (vsf[0] == 1) {
 	     /* Just copy */
 	     for (y = 0; y < 8 /*&& yc < height */; y++, yc += numfields) {
@@ -974,8 +978,12 @@ int decode_jpeg_gray_raw (unsigned char *jpeg_data, int len,
 	     }
 	   }
 	   break;
+/*
+ * should be case Y4M_CHROMA_420JPEG: but use default: for compatibility. Some
+ * pass things like '420' in with the expectation that anything other than
+ * Y4M_CHROMA_422 will default to 420JPEG.
+*/
 	 default:
-	 /* should be case CHROMA420: but use default: for compatibility of liblavjpeg.so */
 	   if (vsf[0] == 1) {
 	     /* Really downsample */
 	     for (y = 0; y < 8; y += 2, yc += numfields) {
@@ -1028,7 +1036,7 @@ int decode_jpeg_gray_raw (unsigned char *jpeg_data, int len,
  *                  1: Interlaced, Top field first
  *                  2: Interlaced, Bottom field first
  * ctype            Chroma format for decompression.
- *                  Currently only CHROMA420 and CHROMA422 are available
+ *                  Currently only Y4M_CHROMA_{420JPEG,422} are available
  */
 
 int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
@@ -1148,7 +1156,7 @@ int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
          for (y = 0; y < 8; y++) {
             row1[y] = &raw1[yc * width / 2];
             row2[y] = &raw2[yc * width / 2];
-            if ((ctype == CHROMA422) || (y%2))
+            if ((ctype == Y4M_CHROMA_422) || (y%2))
                yc += numfields;
          }
 

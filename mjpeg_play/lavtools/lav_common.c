@@ -366,8 +366,7 @@ int readframe(int numframe,
   default:
     mjpeg_debug("MJPEG frame %d   len %d",numframe,len);
     res = decode_jpeg_raw(jpeg_data, len, el.video_inter,
-			  ((param->chroma == Y4M_CHROMA_422)? CHROMA422:
-			   CHROMA420),
+			  param->chroma,
 			  param->output_width, param->output_height,
 			  frame[0], frame[1], frame[2]);
   }
@@ -497,7 +496,7 @@ void writeoutYUV4MPEGheader(int out_fd,
      break;
 
    case DATAFORMAT_MJPG:
-     if (param->chroma != Y4M_CHROMA_422 && el.chroma == CHROMA422)
+     if (param->chroma != Y4M_CHROMA_422 && el.chroma == Y4M_CHROMA_422)
        mjpeg_info("chroma '422' recommended with this input");
      switch (param->chroma) {
      case Y4M_CHROMA_420MPEG2:
@@ -517,9 +516,6 @@ void writeoutYUV4MPEGheader(int out_fd,
    if (n != Y4M_OK)
       mjpeg_error("Failed to write stream header: %s", y4m_strerr(n));
 }
-
-
-
 
 #ifdef HAVE_LIBDV
 void lav_init_dv_decoder()

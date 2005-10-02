@@ -378,8 +378,7 @@ int main(int argc, char *argv[])
       fflush (stdout);
       jpegsize = encode_jpeg_raw (jpeg, param_bufsize, param_quality,
                                   param_interlace,
-				  ((y4m_si_get_chroma(&streaminfo) == Y4M_CHROMA_422)? CHROMA422:
-				   CHROMA420),
+				  y4m_si_get_chroma(&streaminfo),
                                   y4m_si_get_width(&streaminfo),
 				  y4m_si_get_height(&streaminfo),
                                   yuv[0], yuv[1], yuv[2]);

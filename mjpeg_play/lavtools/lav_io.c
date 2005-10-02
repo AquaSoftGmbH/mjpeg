@@ -317,7 +317,7 @@ lav_file_t *lav_open_output_file(char *filename, char format,
                                       Y4M_ILACE_NONE;
    lav_fd->has_audio   = (asize>0 && achans>0);
    lav_fd->bps         = (asize*achans+7)/8;
-   lav_fd->chroma = CHROMAUNKNOWN;
+   lav_fd->chroma = Y4M_UNKNOWN;
 
    switch(format)
    {
@@ -911,7 +911,7 @@ lav_file_t *lav_open_input_file(char *filename)
    lav_fd->sar_h       = 1; 
    lav_fd->has_audio   = 0;
    lav_fd->bps         = 0;
-   lav_fd->chroma = CHROMAUNKNOWN;
+   lav_fd->chroma = Y4M_UNKNOWN;
 
    /* open video file, try AVI first */
 
@@ -1036,12 +1036,16 @@ lav_file_t *lav_open_input_file(char *filename)
    if (strncasecmp(video_comp, "yv12", 3) == 0)
       {
       lav_fd->dataformat = DATAFORMAT_YUV420;
-      lav_fd->chroma = CHROMA420;
+/*
+ * This is probably not correct.  But since 'yv12' isn't really supported it
+ * doesn't matter ;)
+*/
+      lav_fd->chroma = Y4M_CHROMA_420JPEG;
       }
    else if (strncasecmp(video_comp, "yuv2", 4) == 0)
       {
       lav_fd->dataformat = DATAFORMAT_YUV422;
-      lav_fd->chroma = CHROMA422;
+      lav_fd->chroma = Y4M_CHROMA_422;
       }
    else if (strncasecmp(video_comp, "dv", 2) == 0)
       {
@@ -1134,15 +1138,15 @@ lav_file_t *lav_open_input_file(char *filename)
 	  {
 		 if( vf[0] == vf[1] && vf[0] == vf[2] )
 		 {
-			 lav_fd->chroma = CHROMA422;
+			 lav_fd->chroma = Y4M_CHROMA_422;
 		 }
 		 else if( vf[0] == 2*vf[1] && vf[0] == 2*vf[2] )
-			 lav_fd->chroma = CHROMA420;
+			 lav_fd->chroma = Y4M_CHROMA_420JPEG;
 		 else		
-			 lav_fd->chroma = CHROMAUNKNOWN;
+			 lav_fd->chroma = Y4M_UNKNOWN;
 	  }
 	  else
-		  lav_fd->chroma = CHROMAUNKNOWN;
+		  lav_fd->chroma = Y4M_UNKNOWN;
    }
 
    /* Check if video is interlaced */
@@ -1358,11 +1362,11 @@ static int check_DV2_input(lav_file_t *lav_fd)
 	      if (output[1][0]==0   && output[1][1]==255 &&
 		  output[2][0]==255 && output[2][1]==0) {
 		libdv_pal_yv12 = 0;
-		lav_fd->chroma = CHROMA422;
+		lav_fd->chroma = Y4M_CHROMA_422;
 		mjpeg_info("Detected libdv PAL output YUY2 (4:2:2)");
 	      } else {
 		libdv_pal_yv12 = 1;
-		lav_fd->chroma = CHROMA420;
+		lav_fd->chroma = Y4M_CHROMA_420PALDV;
 		mjpeg_info("Detected libdv PAL output YV12 (4:2:0)");
 	      }
 	      free(output[0]);
@@ -1370,9 +1374,9 @@ static int check_DV2_input(lav_file_t *lav_fd)
 	    }
 	  } else {
 	    if(libdv_pal_yv12 == 0)
-	      lav_fd->chroma = CHROMA422;
+	      lav_fd->chroma = Y4M_CHROMA_422;
 	    else
-	      lav_fd->chroma = CHROMA420;
+	      lav_fd->chroma = Y4M_CHROMA_420PALDV;
 	  }
 	  break;
 	case e_dv_sample_411:
@@ -1383,7 +1387,7 @@ static int check_DV2_input(lav_file_t *lav_fd)
 	    * transformed to planar 420 (YV12 or 4CC 0x32315659).
 	    * For NTSC DV this transformation is lossy.
 	    */
-	   lav_fd->chroma = CHROMA422;
+	   lav_fd->chroma = Y4M_CHROMA_422;
 	   break;
 	case e_dv_sample_none:
 	   /* FIXME */

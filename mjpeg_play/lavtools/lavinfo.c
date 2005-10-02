@@ -67,20 +67,9 @@ int main(int argc, char *argv[])
    printf("video_sar_width=%i\n",el.video_sar_width);
    printf("video_sar_height=%i\n",el.video_sar_height);
    printf("max_frame_size=%li\n",el.max_frame_size);
-   switch (el.chroma) {
-   case CHROMA420:
-     p = y4m_chroma_keyword(Y4M_CHROMA_420JPEG);
-     break;
-   case CHROMA422:
-     p = y4m_chroma_keyword(Y4M_CHROMA_422);
-     break;
-   case CHROMA444:
-     p = y4m_chroma_keyword(Y4M_CHROMA_444);
-     break;
-   default:
-     p = "***BOGUS/UNKNOWN*** chroma";
-     break;
-   }
+   p = y4m_chroma_keyword(el.chroma);
+   if (p == NULL)
+      p = "Bogus/unknown chroma sampling";
    printf("chroma=%s\n", p);
    /* Audio */
    printf("has_audio=%i\n",el.has_audio);

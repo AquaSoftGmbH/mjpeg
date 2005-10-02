@@ -26,12 +26,6 @@ typedef void avi_t;
 
 #include <yuv4mpeg.h>
 
-/* chroma_format */
-#define CHROMAUNKNOWN 0
-#define CHROMA420 1
-#define CHROMA422 2
-#define CHROMA444 3
-
 /* raw data format of a single frame */
 #define DATAFORMAT_MJPG     0
 #define DATAFORMAT_DV2      1

@@ -946,7 +946,7 @@ static void *lavrec_encoding_thread(void* arg)
 
          jpegsize = encode_jpeg_raw((unsigned char*)(settings->MJPG_buff+current_frame*settings->breq.size),
             settings->breq.size, info->quality, settings->interlaced,
-            CHROMA422, info->geometry->w, info->geometry->h,
+            Y4M_CHROMA_422, info->geometry->w, info->geometry->h,
             settings->YUV_buff+settings->softreq.offsets[current_frame],
             settings->YUV_buff+settings->softreq.offsets[current_frame]+(info->geometry->w*info->geometry->h),
             settings->YUV_buff+settings->softreq.offsets[current_frame]+(info->geometry->w*info->geometry->h*3/2));
