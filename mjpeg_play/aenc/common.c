@@ -1,78 +1,79 @@
-/**********************************************************************
-Copyright (c) 1991 MPEG/audio software simulation group, All Rights Reserved
-common.c
-**********************************************************************/
-/**********************************************************************
- * MPEG/audio coding/decoding software, work in progress              *
- *   NOT for public distribution until verified and approved by the   *
- *   MPEG/audio committee.  For further information, please contact   *
- *   Davis Pan, 508-493-2241, e-mail: pan@3d.enet.dec.com             *
- *                                                                    *
- * VERSION 4.0                                                        *
- *   changes made since last update:                                  *
- *   date   programmers         comment                               *
- * 2/25/91  Doulas Wong,        start of version 1.0 records          *
- *          Davis Pan                                                 *
- * 5/10/91  W. Joseph Carter    Created this file for all common      *
- *                              functions and global variables.       *
- *                              Ported to Macintosh and Unix.         *
- *                              Added Jean-Georges Fritsch's          *
- *                              "bitstream.c" package.                *
- *                              Added routines to handle AIFF PCM     *
- *                              sound files.                          *
- *                              Added "mem_alloc()" and "mem_free()"  *
- *                              routines for memory allocation        *
- *                              portability.                          *
- *                              Added routines to convert between     *
- *                              Apple SANE extended floating point    *
- *                              format and IEEE double precision      *
- *                              floating point format.  For AIFF.     *
- * 02jul91 dpwe (Aware Inc)     Moved allocation table input here;    *
- *                              Tables read from subdir TABLES_PATH.  *
- *                              Added some debug printout fns (Write*)*
- * 7/10/91 Earle Jennings       replacement of the one float by FLOAT *
- *                              port to MsDos from MacIntosh version  *
- * 8/ 5/91 Jean-Georges Fritsch fixed bug in open_bit_stream_r()      *
- *10/ 1/91 S.I. Sudharsanan,    Ported to IBM AIX platform.           *
- *         Don H. Lee,                                                *
- *         Peter W. Farrett                                           *
- *10/3/91  Don H. Lee           implemented CRC-16 error protection   *
- *                              newly introduced functions are        *
- *                              I_CRC_calc, II_CRC_calc and           *
- *                              update_CRC. Additions and revisions   *
- *                              are marked with dhl for clarity       *
- *10/18/91 Jean-Georges Fritsch fixed bug in update_CRC(),            *
- *                              II_CRC_calc() and I_CRC_calc()        *
- * 2/11/92  W. Joseph Carter    Ported new code to Macintosh.  Most   *
- *                              important fixes involved changing     *
- *                              16-bit ints to long or unsigned in    *
- *                              bit alloc routines for quant of 65535 *
- *                              and passing proper function args.     *
- *                              Removed "Other Joint Stereo" option   *
- *                              and made bitrate be total channel     *
- *                              bitrate, irrespective of the mode.    *
- *                              Fixed many small bugs & reorganized.  *
- * 3/20/92 Jean-Georges Fritsch  fixed bug in start-of-frame search   *
- * 6/15/92 Juan Pineda          added refill_buffer(bs) "n"           *
- *                              initialization                        *
- * 7/08/92 Susanne Ritscher     MS-DOS, MSC6.0 port fixes             *
- * 7/27/92 Mike Li               (re-)Port to MS-DOS                  *
- * 8/19/92 Soren H. Nielsen     Fixed bug in I_CRC_calc and in        *
- *                              II_CRC_calc.  Added function: new_ext *
- *                              for better MS-DOS compatability       *
- * 3/10/93 Kevin Peterson       changed aiff_read_headers to handle   *
- *                              chunks in any order.  now returns     *
- *                              position of sound data in file.       *
- * 3/31/93 Jens Spille          changed IFF_* string compares to use  *
- *                              strcmp()                              *
- * 5/30/93 Masahiro Iwadare	?? the previous modification does not *
- *				  work. recovered to the original. ?? *
- * 8/27/93 Seymour Shlien,      Fixes in Unix and MSDOS ports,        *
- *         Daniel Lauzon, and                                         *
- *         Bill Truerniet                                             *
- * 2004/7/29 Steven Schultz     Cleanup & modernize.  Remove unused   *
- *                              (unreferenced) code.                  *
- **********************************************************************/
+/*
+ * Copyright (c) 1991 MPEG/audio software simulation group, All Rights Reserved
+ *
+ * common.c
+ *
+ * MPEG/audio coding/decoding software, work in progress
+ *   NOT for public distribution until verified and approved by the
+ *   MPEG/audio committee.  For further information, please contact
+ *   Davis Pan, 508-493-2241, e-mail: pan@3d.enet.dec.com
+ *
+ * VERSION 4.0
+ *   changes made since last update:
+ *   date   programmers         comment
+ * 2/25/91  Doulas Wong,        start of version 1.0 records
+ *          Davis Pa
+ * 5/10/91  W. Joseph Carter    Created this file for all common
+ *                              functions and global variables.
+ *                              Ported to Macintosh and Unix.
+ *                              Added Jean-Georges Fritsch's
+ *                              "bitstream.c" package.
+ *                              Added routines to handle AIFF PCM
+ *                              sound files.
+ *                              Added "mem_alloc()" and "mem_free()"
+ *                              routines for memory allocation
+ *                              portability.
+ *                              Added routines to convert between
+ *                              Apple SANE extended floating point
+ *                              format and IEEE double precision
+ *                              floating point format.  For AIFF.
+ * 02jul91 dpwe (Aware Inc)     Moved allocation table input here;
+ *                              Tables read from subdir TABLES_PATH.
+ *                              Added some debug printout fns (Write*)
+ * 7/10/91 Earle Jennings       replacement of the one float by FLOAT
+ *                              port to MsDos from MacIntosh version
+ * 8/ 5/91 Jean-Georges Fritsch fixed bug in open_bit_stream_r()
+ *10/ 1/91 S.I. Sudharsanan,    Ported to IBM AIX platform.
+ *         Don H. Lee,
+ *         Peter W. Farrett
+ *10/3/91  Don H. Lee           implemented CRC-16 error protection
+ *                              newly introduced functions are
+ *                              I_CRC_calc, II_CRC_calc and
+ *                              update_CRC. Additions and revisions
+ *                              are marked with dhl for clarity
+ *10/18/91 Jean-Georges Fritsch fixed bug in update_CRC(),
+ *                              II_CRC_calc() and I_CRC_calc()
+ * 2/11/92  W. Joseph Carter    Ported new code to Macintosh.  Most
+ *                              important fixes involved changing
+ *                              16-bit ints to long or unsigned in
+ *                              bit alloc routines for quant of 65535
+ *                              and passing proper function args.
+ *                              Removed "Other Joint Stereo" option
+ *                              and made bitrate be total channel
+ *                              bitrate, irrespective of the mode.
+ *                              Fixed many small bugs & reorganized.
+ * 3/20/92 Jean-Georges Fritsch  fixed bug in start-of-frame search
+ * 6/15/92 Juan Pineda          added refill_buffer(bs) "n"
+ *                              initialization
+ * 7/08/92 Susanne Ritscher     MS-DOS, MSC6.0 port fixes
+ * 7/27/92 Mike Li               (re-)Port to MS-DOS
+ * 8/19/92 Soren H. Nielsen     Fixed bug in I_CRC_calc and in
+ *                              II_CRC_calc.  Added function: new_ext
+ *                              for better MS-DOS compatability
+ * 3/10/93 Kevin Peterson       changed aiff_read_headers to handle
+ *                              chunks in any order.  now returns
+ *                              position of sound data in file.
+ * 3/31/93 Jens Spille          changed IFF_* string compares to use
+ *                              strcmp()
+ * 5/30/93 Masahiro Iwadare	?? the previous modification does not
+ *				  work. recovered to the original. ??
+ * 8/27/93 Seymour Shlien,      Fixes in Unix and MSDOS ports,
+ *         Daniel Lauzon,
+ *         Bill Truerniet
+ * 2004/7/29 Steven Schultz     Cleanup & modernize.  Remove unused
+ *                              (unreferenced) code.
+ * 2005/10/4 Steven Schultz     Continuing cleanup.
+*/
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -118,12 +119,10 @@ double multiple[64] = {
 1E-20
 };
 
-/***********************************************************************
- *
+/*
  * Using the decoded info the appropriate possible quantization per
  * subband table is loaded
- *
- **********************************************************************/
+*/
 
 int pick_table(fr_ps)   /* choose table, load if necess, return # sb's */
 frame_params *fr_ps;
@@ -332,11 +331,9 @@ long sRate;             /* legal rates 32000, 44100, 48000 */
 
 #endif
 
-/*******************************************************************************
-*
-*  Allocate number of bytes of memory equal to "block".
-*
-*******************************************************************************/
+/*
+ *  Allocate number of bytes of memory equal to "block".
+*/
 
 void  *mem_alloc(block, item)
 unsigned long   block;
@@ -344,23 +341,16 @@ const char      *item;
 {
     void    *ptr;
 
-    ptr = (void *) malloc(block);
+    ptr = (void *) calloc(1, block);
 
-    if (ptr != NULL)
-        memset(ptr, 0, block);
-    else
-        {
-        printf("Unable to allocate %s\n", item);
-        exit(0);
-        }
+    if (ptr == NULL)
+        mjpeg_error_exit1("Unable to allocate %s\n", item);
     return(ptr);
 }
 
-/****************************************************************************
-*
-*  Free memory pointed to by "*ptr_addr".
-*
-*****************************************************************************/
+/*
+ *  Free memory pointed to by "*ptr_addr".
+*/
 
 void    mem_free(ptr_addr)
 void    **ptr_addr;
@@ -372,21 +362,19 @@ void    **ptr_addr;
     }
 }
 
-/*****************************************************************************
-*
-*  bit_stream.c package
-*  Author:  Jean-Georges Fritsch, C-Cube Microsystems
-*
-*****************************************************************************/
+/*
+ *  bit_stream.c package
+ *  Author:  Jean-Georges Fritsch, C-Cube Microsystems
+*/
 
-/********************************************************************
+/*/
   This package provides functions to write (exclusive or read)
   information from (exclusive or to) the bit stream.
 
   If the bit stream is opened in read mode only the get functions are
   available. If the bit stream is opened in write mode only the put
   functions are available.
-********************************************************************/
+*/
 
 /*open_bit_stream_w(); open the device to write the bit stream into it    */
 /*open_bit_stream_r(); open the device to read the bit stream from it     */
@@ -861,17 +849,10 @@ int N;          /* sync word length */
  if (end_bs(bs)) return(0);
  else return(1);
 }
-/*****************************************************************************
-*
-*  End of bit_stream.c package
-*
-*****************************************************************************/
 
-/*****************************************************************************
-*
-*  CRC error protection package
-*
-*****************************************************************************/
+/*
+ *  CRC error protection package
+*/
 
 void I_CRC_calc(fr_ps, bit_alloc, crc)
 frame_params *fr_ps;
@@ -947,9 +928,3 @@ unsigned int data, length, *crc;
         }
         *crc &= 0xffff;
 }
-
-/*****************************************************************************
-*
-*  End of CRC error protection package
-*
-*****************************************************************************/
