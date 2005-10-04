@@ -60,6 +60,10 @@
 #include "blend_fields.h"
 #include "motionsearch_deint.h"
 
+#define BOTTOM_FIRST 0
+#define TOP_FIRST 1
+
+int both_fields = 0;
 int search_radius = 32;
 int verbose = 0;
 int fast_mode = 0;
@@ -84,6 +88,9 @@ uint8_t *frame5[3];
 uint8_t *frame6[3];
 uint8_t *frame7[3];
 uint8_t *frame8[3];
+uint8_t *lp0;
+uint8_t *lp1;
+uint8_t *lp2;
 uint8_t *r0[3];
 uint8_t *r1[3];
 uint8_t *sr[3];
@@ -335,6 +342,10 @@ main (int argc, char *argv[])
     frame8[1] = buff_offset + (uint8_t *) malloc (buff_size);
     frame8[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
+    lp0 = buff_offset + (uint8_t *) malloc (buff_size);
+    lp1 = buff_offset + (uint8_t *) malloc (buff_size);
+    lp2 = buff_offset + (uint8_t *) malloc (buff_size);
+
     r0[0] = buff_offset + (uint8_t *) malloc (buff_size);
     r0[1] = buff_offset + (uint8_t *) malloc (buff_size);
     r0[2] = buff_offset + (uint8_t *) malloc (buff_size);
@@ -350,9 +361,6 @@ main (int argc, char *argv[])
     mjpeg_log (LOG_INFO, "Buffers allocated.");
   }
 
-  /* initialize motion-search-pattern */
-  init_search_pattern ();
-
   /* read every frame until the end of the input stream and process it */
   while (Y4M_OK == (errno = y4m_read_frame (fd_in,
 					    &istreaminfo,
@@ -360,7 +368,6 @@ main (int argc, char *argv[])
     {
       static uint32_t framenr=0;
 
-      { // bottom field first
 
       memcpy(frame3[0],frame1[0],lwidth*lheight);
       memcpy(frame4[0],frame2[0],lwidth*lheight);
@@ -370,42 +377,64 @@ main (int argc, char *argv[])
       memcpy(frame3[2],frame1[2],cwidth*cheight);
       memcpy(frame4[2],frame2[2],cwidth*cheight);
 
-      width = lwidth;
-      height = lheight;
+if(field_order == BOTTOM_FIRST )
+      { // bottom field first
+      sinc_interpolation ( frame1[0],inframe[0],lwidth,lheight,1 );
+      sinc_interpolation ( frame1[1],inframe[1],cwidth,cheight,1 );
+      sinc_interpolation ( frame1[2],inframe[2],cwidth,cheight,1 );
 
-      sinc_interpolation ( frame1[0],inframe[0],1 );
-      sinc_interpolation ( frame2[0],inframe[0],0 );
+      sinc_interpolation ( frame2[0],inframe[0],lwidth,lheight,0 );
+      sinc_interpolation ( frame2[1],inframe[1],cwidth,cheight,0 );
+      sinc_interpolation ( frame2[2],inframe[2],cwidth,cheight,0 );
 
-      motion_compensate ( r0[0], frame4[0], frame3[0], frame2[0], 1 );
-      //motion_compensate ( r1[0], frame3[0], frame2[0], frame1[0], 0 );
-      smooth_isophotes ( r0[0], 1);
-      //smooth_isophotes ( r1[0], 0);
+      motion_compensate ( r0[0], frame2[0], frame3[0], frame4[0], lwidth, lheight, 1 );
+      motion_compensate ( r0[1], frame2[1], frame3[1], frame4[1], cwidth, cheight, 1 );
+      motion_compensate ( r0[2], frame2[2], frame3[2], frame4[2], cwidth, cheight, 1 );
 
-      width = cwidth;
-      height = cheight;
+      if(both_fields)
+      {
+      motion_compensate ( r1[0], frame1[0], frame2[0], frame3[0], lwidth, lheight, 0 );
+      motion_compensate ( r1[1], frame1[1], frame2[1], frame3[1], cwidth, cheight, 0 );
+      motion_compensate ( r1[2], frame1[2], frame2[2], frame3[2], cwidth, cheight, 0 );
+      }
+}
+else
+      { // top field first
 
-      sinc_interpolation ( frame1[1],inframe[1],1 );
-      sinc_interpolation ( frame2[1],inframe[1],0 );
-      motion_compensate ( r0[1], frame4[1], frame3[1], frame2[1], 1 );
-      //motion_compensate ( r1[1], frame3[1], frame2[1], frame1[1], 0 );
+      sinc_interpolation ( frame1[0],inframe[0],lwidth,lheight,0 );
+      sinc_interpolation ( frame1[1],inframe[1],cwidth,cheight,0 );
+      sinc_interpolation ( frame1[2],inframe[2],cwidth,cheight,0 );
 
-      sinc_interpolation ( frame1[2],inframe[2],1 );
-      sinc_interpolation ( frame2[2],inframe[2],0 );
-      motion_compensate ( r0[2], frame4[2], frame3[2], frame2[2], 1 );
-      //motion_compensate ( r1[2], frame3[2], frame2[2], frame1[2], 0 );
+      sinc_interpolation ( frame2[0],inframe[0],lwidth,lheight,1 );
+      sinc_interpolation ( frame2[1],inframe[1],cwidth,cheight,1 );
+      sinc_interpolation ( frame2[2],inframe[2],cwidth,cheight,1 );
+
+      motion_compensate ( r0[0], frame2[0], frame3[0], frame4[0], lwidth, lheight, 0 );
+      motion_compensate ( r0[1], frame2[1], frame3[1], frame4[1], cwidth, cheight, 0 );
+      motion_compensate ( r0[2], frame2[2], frame3[2], frame4[2], cwidth, cheight, 0 );
+
+      if(both_fields)
+      {
+      motion_compensate ( r1[0], frame1[0], frame2[0], frame3[0], lwidth, lheight, 1 );
+      motion_compensate ( r1[1], frame1[1], frame2[1], frame3[1], cwidth, cheight, 1 );
+      motion_compensate ( r1[2], frame1[2], frame2[2], frame3[2], cwidth, cheight, 1 );
+      }
+      }
 
       if (framenr>0)
 	{
 		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r0);
-		//y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r1);
+	      if(both_fields)
+		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r1);
 	}
 	else
 	{
 		framenr++;
 		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame2);
-		//y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);
+	      if(both_fields)
+		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);
 	}
-      }
+
     }
 
   /* free allocated buffers */
@@ -445,6 +474,10 @@ main (int argc, char *argv[])
     free (frame8[0] - buff_offset);
     free (frame8[1] - buff_offset);
     free (frame8[2] - buff_offset);
+
+    free (lp0 - buff_offset);
+    free (lp1 - buff_offset);
+    free (lp2 - buff_offset);
 
     free (r0[0] - buff_offset);
     free (r0[1] - buff_offset);
