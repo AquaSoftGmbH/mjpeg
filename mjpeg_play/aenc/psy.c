@@ -1,27 +1,29 @@
-/**********************************************************************
-Copyright (c) 1991 MPEG/audio software simulation group, All Rights Reserved
-psy.c
-**********************************************************************/
-/**********************************************************************
- * MPEG/audio coding/decoding software, work in progress              *
- *   NOT for public distribution until verified and approved by the   *
- *   MPEG/audio committee.  For further information, please contact   *
- *   Davis Pan, 508-493-2241, e-mail: pan@3d.enet.dec.com             *
- *                                                                    *
- * VERSION 3.9                                                        *
- *   changes made since last update:                                  *
- *   date   programmers         comment                               *
- * 2/25/91  Davis Pan           start of version 1.0 records          *
- * 5/10/91  W. Joseph Carter    Ported to Macintosh and Unix.         *
- * 7/10/91  Earle Jennings      Ported to MsDos.                      *
- *                              replace of floats with FLOAT          *
- * 2/11/92  W. Joseph Carter    Fixed mem_alloc() arg for "absthr".   *
- * 7/24/92  M. Iwadare          HANN window coefficients modified.    *
- * 7/27/92  Masahiro Iwadare    Bug fix, FFT modification for Layer 3 *
- * 7/27/92  Masahiro Iwadare    Bug fix, "new", "old", and "oldest"   *
- *                              updates                               *
- * 8/07/92  Mike Coleman        Bug fix, read_absthr()                *
- **********************************************************************/
+/*
+ * Copyright (c) 1991 MPEG/audio software simulation group, All Rights Reserved
+ *
+ * psy.c
+ *
+ * MPEG/audio coding/decoding software, work in progress
+ *   NOT for public distribution until verified and approved by the
+ *   MPEG/audio committee.  For further information, please contact
+ *   Davis Pan, 508-493-2241, e-mail: pan@3d.enet.dec.com
+ *
+ * VERSION 3.9
+ *   changes made since last update:
+ *   date   programmers         comment
+ * 2/25/91  Davis Pan           start of version 1.0 records
+ * 5/10/91  W. Joseph Carter    Ported to Macintosh and Unix.
+ * 7/10/91  Earle Jennings      Ported to MsDos.
+ *                              replace of floats with FLOAT
+ * 2/11/92  W. Joseph Carter    Fixed mem_alloc() arg for "absthr".
+ * 7/24/92  M. Iwadare          HANN window coefficients modified.
+ * 7/27/92  Masahiro Iwadare    Bug fix, FFT modification for Layer 3
+ * 7/27/92  Masahiro Iwadare    Bug fix, "new", "old", and "oldest"
+ *                              updates
+ * 8/07/92  Mike Coleman        Bug fix, read_absthr()
+ * 10/4/2005 Steven Schultz	Speedup by avoiding the malloc/free simulation
+ *                              of automatic variables.
+*/
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -64,16 +66,18 @@ double sfreq;        /* to match prototype : float args are always double */
                              4.5,  4.5,  4.5,  4.5,  4.5,  4.5,  4.5,
                              4.5,  4.5,  4.5,  3.5,  3.5,  3.5};
 
-/* The following pointer variables point to large areas of memory         */
-/* dynamically allocated by the mem_alloc() function.  Dynamic memory     */
-/* allocation is used in order to avoid stack frame or data area          */
-/* overflow errors that otherwise would have occurred at compile time     */
-/* on the Macintosh computer.                                             */
+/*
+ * The following pointer variables point to large areas of memory
+ * dynamically allocated by the mem_alloc() function.  Dynamic memory
+ * allocation is used in order to avoid stack frame or data area
+ * overflow errors that otherwise would have occurred at compile time 
+ * on the Macintosh computer.  That may have been true in 1992 but in 2005? 
+*/
 
  static FLOAT          *grouped_c, *grouped_e, *nb, *cb, *ecb, *bc;
- FLOAT          *wsamp_r, *wsamp_i, *phi, *energy;
- FLOAT          *c, *fthr;
- F32            *snrtmp;
+ static FLOAT          *wsamp_r, *wsamp_i, *phi, *energy;
+ static FLOAT          *c, *fthr;
+ static F32            *snrtmp;
 
  static int     *numlines;
  static int     *partition;
@@ -85,25 +89,28 @@ double sfreq;        /* to match prototype : float args are always double */
  static FHBLK   *lthr;
  static F2HBLK  *r, *phi_sav;
 
-/* These dynamic memory allocations simulate "automatic" variables        */
-/* placed on the stack.  For each mem_alloc() call here, there must be    */
-/* a corresponding mem_free() call at the end of this function.           */
+ if (init==0) {
 
- grouped_c = (FLOAT *) mem_alloc(sizeof(FCB), "grouped_c");
- grouped_e = (FLOAT *) mem_alloc(sizeof(FCB), "grouped_e");
- nb = (FLOAT *) mem_alloc(sizeof(FCB), "nb");
- cb = (FLOAT *) mem_alloc(sizeof(FCB), "cb");
- ecb = (FLOAT *) mem_alloc(sizeof(FCB), "ecb");
- bc = (FLOAT *) mem_alloc(sizeof(FCB), "bc");
- wsamp_r = (FLOAT *) mem_alloc(sizeof(FBLK), "wsamp_r");
- wsamp_i = (FLOAT *) mem_alloc(sizeof(FBLK), "wsamp_i");
- phi = (FLOAT *) mem_alloc(sizeof(FBLK), "phi");
- energy = (FLOAT *) mem_alloc(sizeof(FBLK), "energy");
- c = (FLOAT *) mem_alloc(sizeof(FHBLK), "c");
- fthr = (FLOAT *) mem_alloc(sizeof(FHBLK), "fthr");
- snrtmp = (F32 *) mem_alloc(sizeof(F2_32), "snrtmp");
+/*
+ * These dynamic memory allocations simulate "automatic" variables
+ * placed on the stack.  The overhead of allocating and freeing the memory 
+ * can be obviated by making all (not just some) of the pointers static and 
+ * using the 'init' flag.
+*/
 
- if(init==0){
+     grouped_c = (FLOAT *) mem_alloc(sizeof(FCB), "grouped_c");
+     grouped_e = (FLOAT *) mem_alloc(sizeof(FCB), "grouped_e");
+     nb = (FLOAT *) mem_alloc(sizeof(FCB), "nb");
+     cb = (FLOAT *) mem_alloc(sizeof(FCB), "cb");
+     ecb = (FLOAT *) mem_alloc(sizeof(FCB), "ecb");
+     bc = (FLOAT *) mem_alloc(sizeof(FCB), "bc");
+     wsamp_r = (FLOAT *) mem_alloc(sizeof(FBLK), "wsamp_r");
+     wsamp_i = (FLOAT *) mem_alloc(sizeof(FBLK), "wsamp_i");
+     phi = (FLOAT *) mem_alloc(sizeof(FBLK), "phi");
+     energy = (FLOAT *) mem_alloc(sizeof(FBLK), "energy");
+     c = (FLOAT *) mem_alloc(sizeof(FHBLK), "c");
+     fthr = (FLOAT *) mem_alloc(sizeof(FHBLK), "fthr");
+     snrtmp = (F32 *) mem_alloc(sizeof(F2_32), "snrtmp");
 
 /* These dynamic memory allocations simulate "static" variables placed    */
 /* in the data space.  Each mem_alloc() call here occurs only once at     */
@@ -156,15 +163,16 @@ double sfreq;        /* to match prototype : float args are always double */
         lthr[0][i] = 60802371420160.0;
         lthr[1][i] = 60802371420160.0;
      }
-/*****************************************************************************
- * Initialization: Compute the following constants for use later             *
- *    partition[HBLKSIZE] = the partition number associated with each        *
- *                          frequency line                                   *
- *    cbval[CBANDS]       = the center (average) bark value of each          *
- *                          partition                                        *
- *    numlines[CBANDS]    = the number of frequency lines in each partition  *
- *    tmn[CBANDS]         = tone masking noise                               *
- *****************************************************************************/
+/*
+ * Initialization: Compute the following constants for use later
+ *    partition[HBLKSIZE] = the partition number associated with each
+ *                          frequency line
+ *    cbval[CBANDS]       = the center (average) bark value of each
+ *                          partition
+ *    numlines[CBANDS]    = the number of frequency lines in each partition
+ *    tmn[CBANDS]         = tone masking noise
+*/
+
 /* compute fft frequency multiplicand */
      freq_mult = sfreq/BLKSIZE;
  
@@ -198,10 +206,10 @@ double sfreq;        /* to match prototype : float args are always double */
      numlines[partition[i-1]] = temp2;
      cbval[partition[i-1]] = cbval[partition[i-1]]/temp2;
  
-/************************************************************************
- * Now compute the spreading function, s[j][i], the value of the spread-*
- * ing function, centered at band j, for band i, store for later use    *
- ************************************************************************/
+/*
+ * Now compute the spreading function, s[j][i], the value of the spread-
+ * ing function, centered at band j, for band i, store for later use
+*/
      for(j=0;j<CBANDS;j++){
         for(i=0;i<CBANDS;i++){
            temp1 = (cbval[i] - cbval[j])*1.05;
@@ -230,42 +238,44 @@ double sfreq;        /* to match prototype : float args are always double */
            rnorm[j] += s[j][i];
         }
      }
-     init++;
- }
+     init = 1;
+  }
  
-/************************* End of Initialization *****************************/
+/* End of Initialization */
+
  switch(lay) {
   case 1:
   case 2:
      for(i=0; i<lay; i++){
-/*****************************************************************************
- * Net offset is 480 samples (1056-576) for layer 2; this is because one must*
- * stagger input data by 256 samples to synchronize psychoacoustic model with*
- * filter bank outputs, then stagger so that center of 1024 FFT window lines *
- * up with center of 576 "new" audio samples.                                *
- *                                                                           *
- * For layer 1, the input data still needs to be staggered by 256 samples,   *
- * then it must be staggered again so that the 384 "new" samples are centered*
- * in the 1024 FFT window.  The net offset is then 576 and you need 448 "new"*
- * samples for each iteration to keep the 384 samples of interest centered   *
- *****************************************************************************/
+/*
+ * Net offset is 480 samples (1056-576) for layer 2; this is because one must
+ * stagger input data by 256 samples to synchronize psychoacoustic model with
+ * filter bank outputs, then stagger so that center of 1024 FFT window lines
+ * up with center of 576 "new" audio samples.
+ *
+ * For layer 1, the input data still needs to be staggered by 256 samples,
+ * then it must be staggered again so that the 384 "new" samples are centered
+ * in the 1024 FFT window.  The net offset is then 576 and you need 448 "new"
+ * samples for each iteration to keep the 384 samples of interest centered
+*/
         for(j=0; j<syncsize; j++){
            if(j<(sync_flush))savebuf[j] = savebuf[j+flush];
            else savebuf[j] = *buffer++;
            if(j<BLKSIZE){
-/**window data with HANN window***********************************************/
+/* window data with HANN window */
               wsamp_r[j] = window[j]*((FLOAT) savebuf[j]);
               wsamp_i[j] = 0;
            }
         }
-/**Compute FFT****************************************************************/
+/* Compute FFT*/
         fft(wsamp_r,wsamp_i,energy,phi,1024);
-/*****************************************************************************
- * calculate the unpredictability measure, given energy[f] and phi[f]        *
- *****************************************************************************/
-/*only update data "age" pointers after you are done with both channels      */
-/*for layer 1 computations, for the layer 2 double computations, the pointers*/
-/*are reset automatically on the second pass                                 */
+/*
+ * calculate the unpredictability measure, given energy[f] and phi[f]
+ *
+ * only update data "age" pointers after you are done with both channels
+ * for layer 1 computations, for the layer 2 double computations, the pointers
+ * are reset automatically on the second pass
+*/
          if(lay==2 || (lay==1 && chn==0) ){
            if(new==0){new = 1; oldest = 1;}
            else {new = 0; oldest = 0;}
@@ -282,10 +292,10 @@ temp2=r[chn][new][j] * sin((double) phi[j]) - r_prime * sin((double) phi_prime);
            if(temp3 != 0)c[j]=sqrt(temp1*temp1+temp2*temp2)/temp3;
            else c[j] = 0;
         }
-/*****************************************************************************
- * Calculate the grouped, energy-weighted, unpredictability measure,         *
- * grouped_c[], and the grouped energy. grouped_e[]                          *
- *****************************************************************************/
+/*
+ * Calculate the grouped, energy-weighted, unpredictability measure,
+ * grouped_c[], and the grouped energy. grouped_e[]
+*/
         for(j=1;j<CBANDS;j++){
            grouped_e[j] = 0;
            grouped_c[j] = 0;
@@ -296,10 +306,10 @@ temp2=r[chn][new][j] * sin((double) phi[j]) - r_prime * sin((double) phi_prime);
            grouped_e[partition[j]] += energy[j];
            grouped_c[partition[j]] += energy[j]*c[j];
         }
-/*****************************************************************************
- * convolve the grouped energy-weighted unpredictability measure             *
- * and the grouped energy with the spreading function, s[j][k]               *
- *****************************************************************************/
+/*
+ * convolve the grouped energy-weighted unpredictability measure
+ * and the grouped energy with the spreading function, s[j][k]
+*/
         for(j=0;j<CBANDS;j++){
            ecb[j] = 0;
            cb[j] = 0;
@@ -312,10 +322,10 @@ temp2=r[chn][new][j] * sin((double) phi[j]) - r_prime * sin((double) phi_prime);
            if(ecb[j] !=0)cb[j] = cb[j]/ecb[j];
            else cb[j] = 0;
         }
-/*****************************************************************************
- * Calculate the required SNR for each of the frequency partitions           *
- *         this whole section can be accomplished by a table lookup          *
- *****************************************************************************/
+/*
+ * Calculate the required SNR for each of the frequency partitions
+ *         this whole section can be accomplished by a table lookup
+*/
         for(j=0;j<CBANDS;j++){
            if(cb[j]<.05)cb[j]=0.05;
            else if(cb[j]>.5)cb[j]=0.5;
@@ -325,11 +335,11 @@ temp2=r[chn][new][j] * sin((double) phi[j]) - r_prime * sin((double) phi_prime);
            bc[j] = (bc[j] > bmax[k]) ? bc[j] : bmax[k];
            bc[j] = exp((double) -bc[j]*LN_TO_LOG10);
         }
-/*****************************************************************************
- * Calculate the permissible noise energy level in each of the frequency     *
- * partitions. Include absolute threshold and pre-echo controls              *
- *         this whole section can be accomplished by a table lookup          *
- *****************************************************************************/
+/*
+ * Calculate the permissible noise energy level in each of the frequency
+ * partitions. Include absolute threshold and pre-echo controls
+ *         this whole section can be accomplished by a table lookup
+*/
         for(j=0;j<CBANDS;j++)
 		{
 			nb[j] = rnorm[j]*numlines[j];
@@ -342,11 +352,13 @@ temp2=r[chn][new][j] * sin((double) phi[j]) - r_prime * sin((double) phi_prime);
            else nb[j] = 0;
 		*/
         for(j=0;j<HBLKSIZE;j++){
-/*temp1 is the preliminary threshold */
+/* temp1 is the preliminary threshold */
            temp1=nb[partition[j]];
            temp1=(temp1>absthr[j])?temp1:absthr[j];
-/*do not use pre-echo control for layer 2 because it may do bad things to the*/
-/*  MUSICAM bit allocation algorithm                                         */
+/*
+ * do not use pre-echo control for layer 2 because it may do bad things to the
+ *  MUSICAM bit allocation algorithm
+*/
            if(lay==1){
               fthr[j] = (temp1 < lthr[chn][j]) ? temp1 : lthr[chn][j];
               temp2 = temp1 * 0.00316;
@@ -355,9 +367,9 @@ temp2=r[chn][new][j] * sin((double) phi[j]) - r_prime * sin((double) phi_prime);
            else fthr[j] = temp1;
            lthr[chn][j] = LXMIN*temp1;
         }
-/*****************************************************************************
+/*
  * Translate the 512 threshold values to the 32 filter bands of the coder    *
- *****************************************************************************/
+*/
         for(j=0;j<193;j += 16){
            minthres = 60802371420160.0;
            sum_energy = 0.0;
@@ -378,9 +390,10 @@ temp2=r[chn][new][j] * sin((double) phi[j]) - r_prime * sin((double) phi_prime);
            snrtmp[i][j/16] = sum_energy/minthres;
            snrtmp[i][j/16] = 4.342944819 * log((double)snrtmp[i][j/16]);
         }
-/*****************************************************************************
- * End of Psychoacuostic calculation loop                                    *
- *****************************************************************************/
+/*
+ * End of Psychoacuostic calculation loop
+ *
+*/
      }
      for(i=0; i<32; i++){
         if(lay==2)
@@ -394,22 +407,4 @@ temp2=r[chn][new][j] * sin((double) phi[j]) - r_prime * sin((double) phi_prime);
   default:
 	  mjpeg_error_exit1("invalid MPEG/audio coding layer: %d",lay);
  }
-
-/* These mem_free() calls must correspond with the mem_alloc() calls     */
-/* used at the beginning of this function to simulate "automatic"        */
-/* variables placed on the stack.                                        */
-
- mem_free((void **) &grouped_c);
- mem_free((void **) &grouped_e);
- mem_free((void **) &nb);
- mem_free((void **) &cb);
- mem_free((void **) &ecb);
- mem_free((void **) &bc);
- mem_free((void **) &wsamp_r);
- mem_free((void **) &wsamp_i);
- mem_free((void **) &phi);
- mem_free((void **) &energy);
- mem_free((void **) &c);
- mem_free((void **) &fthr);
- mem_free((void **) &snrtmp);
 }
