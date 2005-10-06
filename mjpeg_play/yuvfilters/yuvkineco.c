@@ -537,7 +537,7 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 	    noise = yget;
 	  else if (256 - yget < noise)
 	    noise = 256 - yget;
-	  if ((d = ypre - yget) < 0) d = -d;
+	  d = abs(ypre - yget);
 	  h->framestat[b].diffdist[(d < NOISEMAX)? d: NOISEMAX]++;
 	  if (noise < d) {
 	    d -= noise;
@@ -547,29 +547,29 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 	    unsigned int ygte;
 	    ypre = fpre->data[((i - 1) * h->_.width) + j];
 	    ygte = fget->data[((i - 1) * h->_.width) + j];
-	    if ((d = yget - ygte) < 0) d = -d;
+	    d = abs(yget - ygte);
 	    if (noise < d) {
 	      d -= noise;
 	      h->framestat[b].eoediff -= (((d * d) + 16) >> 5);
 	    }
-	    if ((d = yget - ypre) < 0) d = -d;
+	    d = abs(yget - ypre);
 	    if (noise < d) {
 	      d -= noise;
 	      h->framestat[b].eoediff += (((d * d) + 16) >> 5);
 	    }
 	    ypre = fpre->data[((i + 1) * h->_.width) + j];
 	    ygte = fget->data[((i + 1) * h->_.width) + j];
-	    if ((d = yget - ygte) < 0) d = -d;
+	    d = abs(yget - ygte);
 	    if (noise < d) {
 	      d -= noise;
 	      h->framestat[b].eoediff -= (((d * d) + 16) >> 5);
 	    }
-	    if ((d = yget - ypre) < 0) d = -d;
+	    d = abs(yget - ypre);
 	    if (noise < d) {
 	      d -= noise;
 	      h->framestat[b].eoediff += (((d * d) + 16) >> 5);
 	    }
-	    if ((d = ypre - ygte) < 0) d = -d;
+	    d = abs(ypre - ygte);
 	    if (noise < d) {
 	      d -= noise;
 	      h->framestat[b].ediff += (((d * d) + 8) >> 4);
