@@ -328,7 +328,7 @@ lav_file_t *lav_open_output_file(char *filename, char format,
          lav_fd->avi_fd = AVI_open_output_file(filename);
          if(!lav_fd->avi_fd) { free(lav_fd); return 0; }
          AVI_set_video(lav_fd->avi_fd, width, height, fps, "MJPG");
-         if (asize) AVI_set_audio(lav_fd->avi_fd, achans, arate, asize, WAVE_FORMAT_PCM);
+         if (asize) AVI_set_audio(lav_fd->avi_fd, achans, arate, asize, WAVE_FORMAT_PCM, 0);
          return lav_fd;
 
       case 'j':
@@ -512,7 +512,7 @@ int lav_write_frame(lav_file_t *lav_file, uint8_t *buff, long size, long count)
          case 'a':
          case 'A':
             if(n==0)
-               res = AVI_write_frame( lav_file->avi_fd, buff, size );
+               res = AVI_write_frame( lav_file->avi_fd, buff, size, 0);
             else
                res = AVI_dup_frame( lav_file->avi_fd );
             break;
@@ -790,12 +790,14 @@ int lav_set_video_position(lav_file_t *lav_file, long frame)
 
 int lav_read_frame(lav_file_t *lav_file, uint8_t *vidbuf)
 {
+int keyframe;
+
    video_format = lav_file->format; internal_error = 0; /* for error messages */
    switch(lav_file->format)
    {
       case 'a':
       case 'A':
-         return AVI_read_frame(lav_file->avi_fd,vidbuf);
+         return AVI_read_frame(lav_file->avi_fd,vidbuf, &keyframe);
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
          return quicktime_read_frame(lav_file->qt_fd,vidbuf,0);
@@ -1423,7 +1425,7 @@ int lav_fileno(lav_file_t *lav_file)
    {
       case 'a':
       case 'A':
-         res = AVI_fileno( lav_file->avi_fd );
+         res = AVI_fileno(lav_file->avi_fd);
          break;
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
