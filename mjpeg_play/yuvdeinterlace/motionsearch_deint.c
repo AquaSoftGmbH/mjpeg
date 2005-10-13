@@ -14,7 +14,6 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <math.h>
 #include "config.h"
 #include "mjpeg_types.h"
 #include "motionsearch_deint.h"
@@ -228,7 +227,8 @@ lowpass_plane_1D (lp1,f1,w,h);
     {
       for (x = 0; x < w; x++)
 	{
-	d  = abs(*(lp1+x+y*w)-*(lp0+x+y*w));
+	d  = *(lp1+x+y*w)-*(lp0+x+y*w);
+	d = d<0? -d:d;
 
 	d  = d>32 ? 0:32-d;
 
