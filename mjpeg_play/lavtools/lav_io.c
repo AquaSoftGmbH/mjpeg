@@ -878,10 +878,9 @@ long lav_read_audio(lav_file_t *lav_file, uint8_t *audbuf, long samps)
             }
 out:
 	for (j = 0; j < channels; j++)
-            qt_audio[(channels*i) + j] = qt_audion[j][i];
-
-	 free(qt_audion);
-         return(res);
+            free(qt_audion[j]);
+	free(qt_audion);
+        return(res);
 #endif
    }
    return -1;
