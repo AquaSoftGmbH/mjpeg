@@ -230,23 +230,49 @@ main (int argc, char *argv[])
 	     y4m_chroma_keyword(input_chroma_subsampling));
 
   /* if chroma-subsampling isn't supported bail out ... */
-  if (input_chroma_subsampling != Y4M_CHROMA_420JPEG && input_chroma_subsampling != Y4M_CHROMA_420PALDV)
-    {
-      mjpeg_log (LOG_ERROR,
-		 "Y4M-Stream is not 4:2:0. Other chroma-modes currently not allowed. Sorry.");
-      exit (-1);
-    }
-  else
+  if (input_chroma_subsampling == Y4M_CHROMA_420JPEG  ||
+      input_chroma_subsampling == Y4M_CHROMA_420MPEG2 ||
+      input_chroma_subsampling == Y4M_CHROMA_420PALDV)
 	{
 	lwidth=width;
 	lheight=height;
 	cwidth=width/2;
 	cheight=height/2;
 	}
+  else
+	  if (input_chroma_subsampling == Y4M_CHROMA_444)
+		{
+		lwidth=width;
+		lheight=height;
+		cwidth=width;
+		cheight=height;
+		}
+	  else
+	  if (input_chroma_subsampling == Y4M_CHROMA_422)
+		{
+		lwidth=width;
+		lheight=height;
+		cwidth=width/2;
+		cheight=height;
+		}
+	  else
+	  if (input_chroma_subsampling == Y4M_CHROMA_411)
+		{
+		lwidth=width;
+		lheight=height;
+		cwidth=width/4;
+		cheight=height;
+		}
+	  else
+	    {
+	      mjpeg_log (LOG_ERROR,
+			 "Y4M-Stream is not in a supported chroma-format. Sorry.");
+	      exit (-1);
+	    }
 
   /* the output is progressive 4:2:0 MPEG 1 */
   y4m_si_set_interlace (&ostreaminfo, Y4M_ILACE_NONE);
-  y4m_si_set_chroma (&ostreaminfo, Y4M_CHROMA_420JPEG);
+  y4m_si_set_chroma (&ostreaminfo, input_chroma_subsampling);
   y4m_si_set_width (&ostreaminfo, width);
   y4m_si_set_height (&ostreaminfo, height);
   y4m_si_set_framerate (&ostreaminfo, y4m_si_get_framerate (&istreaminfo));

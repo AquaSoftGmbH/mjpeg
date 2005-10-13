@@ -46,18 +46,17 @@ sinc_interpolation (uint8_t * frame, uint8_t * inframe, int w, int h, int field)
     {
       for (x = 0; x < w; x++)
 	{
-		v = ( 
-			*(frame+x+(y-5)*w)*+1 +
-			*(frame+x+(y-3)*w)*-4 +
-			*(frame+x+(y-1)*w)*16 + 
-			*(frame+x+(y+1)*w)*16 +
-			*(frame+x+(y+3)*w)*-4 +
-			*(frame+x+(y+5)*w)*+1   )/26;
-
-		v= v>255? 255:v;
-		v= v<0? 0:v;
-
+			v = ( 
+				*(frame+(x)+(y-5)*w)*+1 +
+				*(frame+(x)+(y-3)*w)*-4 +
+				*(frame+(x)+(y-1)*w)*16 + 
+				*(frame+(x)+(y+1)*w)*16 +
+				*(frame+(x)+(y+3)*w)*-4 +
+				*(frame+(x)+(y+5)*w)*+1   )/26;
+			v= v>255? 255:v;
+			v= v<0? 0:v;
 		*(frame+x+y*w)=v;
 	}
     }
 }
+
