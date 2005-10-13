@@ -103,7 +103,7 @@ void LPCMStream::Init ( const int _stream_num)
         samples_per_second * channels * bits_per_sample / 8
         * ticks_per_frame_90kHz
         / 90000;
-    whole_unit = 2 * ((bits_per_sample == 20 || bits_per_sample == 24) ? 3 : 1) * channels;
+    whole_unit = (channels * bits_per_sample) / 4;
     frame_index = 0;
     dynamic_range_code = 0x80;
 
