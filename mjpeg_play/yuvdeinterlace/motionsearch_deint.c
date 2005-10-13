@@ -72,8 +72,7 @@ motion_compensate ( uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2, int w
   int bx,by;
   uint32_t sad;
   uint32_t fmin,bmin;
-int a,b,c,d,e,m;
-uint32_t min;
+int a,c,d;
 
   // fill top out-off-range lines to avoid ringing
 for(y=1;y<10;y++)

@@ -24,7 +24,6 @@ void
 sinc_interpolation (uint8_t * frame, uint8_t * inframe, int w, int h, int field)
 {
   int x, y, v;
-  int a,b,c,d,e,f,g;
 
   memcpy (frame,inframe,w*h);
 
@@ -62,4 +61,3 @@ sinc_interpolation (uint8_t * frame, uint8_t * inframe, int w, int h, int field)
 	}
     }
 }
-
