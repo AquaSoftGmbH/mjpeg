@@ -132,7 +132,7 @@ main (int argc, char *argv[])
   mjpeg_log (LOG_INFO, "       Motion-Compensating-Deinterlacer          ");
   mjpeg_log (LOG_INFO, "-------------------------------------------------");
 
-  while ((c = getopt (argc, argv, "fhvs:")) != -1)
+  while ((c = getopt (argc, argv, "vds:")) != -1)
     {
       switch (c)
 	{
@@ -140,26 +140,9 @@ main (int argc, char *argv[])
 	  {
 	    mjpeg_log (LOG_INFO, " Usage of the deinterlacer");
 	    mjpeg_log (LOG_INFO, " -------------------------");
-	    mjpeg_log (LOG_INFO,
-		      " You should use this program when you (as I do) prefer");
-	    mjpeg_log (LOG_INFO,
-		       " motion-compensation-artifacts over interlacing artifacts");
-	    mjpeg_log (LOG_INFO,
-		       " in your miniDV recordings. BTW, you can make them even");
-	    mjpeg_log (LOG_INFO,
-		       " more to apear like 35mm film recordings, when you lower");
-	    mjpeg_log (LOG_INFO,
-		       " the saturation a little (75%%-80%%) and raise the contrast");
-	    mjpeg_log (LOG_INFO,
-		       " of the luma-channel. You may (if you don't care of the");
-	    mjpeg_log (LOG_INFO, " bitrate) add some noise and blur the result with");
-	    mjpeg_log (LOG_INFO, " y4mspatialfilter (but not too much ...).\n");
-	    mjpeg_log (LOG_INFO, " y4mdeinterlace understands the following options:");
-	    mjpeg_log (LOG_INFO, " -v verbose/debug");
-	    mjpeg_log (LOG_INFO,
-		       " -f film-FX processing to give DV a more film-like-look...");
-	    mjpeg_log (LOG_INFO,
-		       " -s [n=0/1] forces field-order in case of misflagged streams");
+	    mjpeg_log (LOG_INFO, " -v be verbose");
+	    mjpeg_log (LOG_INFO, " -d output both fields");
+	    mjpeg_log (LOG_INFO, " -s [n=0/1] forces field-order in case of misflagged streams");
 	    mjpeg_log (LOG_INFO, "    -s0 is top-field-first");
 	    mjpeg_log (LOG_INFO, "    -s1 is bottom-field-first");
 	    exit (0);
@@ -170,11 +153,10 @@ main (int argc, char *argv[])
 	    verbose = 1;
 	    break;
 	  }
-	case 'f':
+	case 'd':
 	  {
-	    use_film_fx = 1;
-	    mjpeg_log (LOG_INFO,
-		       "Film-FX turned on ... love it or leave it ...");
+	    both_fields = 1;
+	    mjpeg_log (LOG_INFO,"Regenerating both fields. Please fix the Framerate.");
 	    break;
 	  }
 	case 's':
