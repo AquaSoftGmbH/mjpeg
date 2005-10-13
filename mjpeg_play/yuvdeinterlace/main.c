@@ -132,7 +132,7 @@ main (int argc, char *argv[])
   mjpeg_log (LOG_INFO, "       Motion-Compensating-Deinterlacer          ");
   mjpeg_log (LOG_INFO, "-------------------------------------------------");
 
-  while ((c = getopt (argc, argv, "vds:")) != -1)
+  while ((c = getopt (argc, argv, "hvds:")) != -1)
     {
       switch (c)
 	{
