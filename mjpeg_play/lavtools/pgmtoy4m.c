@@ -84,7 +84,7 @@ main(int argc, char **argv)
 	int	ss_h, ss_v, chroma_height, chroma_width;
 	int	chroma_mode = Y4M_UNKNOWN;
 	u_char	*yuv[3];
-	char	junkbuffer[16384];
+	u_char	junkbuffer[16384];
 	y4m_ratio_t	rate_ratio = y4m_fps_UNKNOWN;
 	y4m_ratio_t	aspect_ratio = y4m_sar_UNKNOWN;
 	char	ilace = Y4M_ILACE_TOP_FIRST;
