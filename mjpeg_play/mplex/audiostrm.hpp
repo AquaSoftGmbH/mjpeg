@@ -172,6 +172,7 @@ private:
     unsigned int samples_per_second;
     unsigned int channels;
     unsigned int bits_per_sample;
+    unsigned int whole_unit;
     unsigned int bytes_per_frame;
     unsigned int frame_index;
     unsigned int dynamic_range_code;

@@ -103,6 +103,7 @@ void LPCMStream::Init ( const int _stream_num)
         samples_per_second * channels * bits_per_sample / 8
         * ticks_per_frame_90kHz
         / 90000;
+    whole_unit = 2 * ((bits_per_sample == 20 || bits_per_sample == 24) ? 3 : 1) * channels;
     frame_index = 0;
     dynamic_range_code = 0x80;
 
@@ -212,8 +213,8 @@ LPCMStream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 {
     unsigned int header_size = LPCMStream::StreamHeaderSize();
     bitcount_t read_start = bs.GetBytePos();
-    unsigned int bytes_read = bs.GetBytes( dst+header_size, 
-                                           to_read-header_size );
+    unsigned int bytes_read = bs.GetBytes( dst + header_size, 
+      (( to_read - header_size ) / whole_unit ) * whole_unit );
     bs.Flush( read_start );
     
 	clockticks   decode_time;
