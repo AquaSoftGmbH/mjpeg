@@ -1,4 +1,4 @@
-# Makefile for lavtools
+# Makefile for yuvscaler
 
 MAINTAINERCLEANFILES = Makefile.in
 

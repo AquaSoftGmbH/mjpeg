@@ -569,6 +569,7 @@ AC_CONFIG_FILES([
      debian/control
      docs/Makefile
      lavtools/Makefile
+     yuvcorrect/Makefile
      yuvdenoise/Makefile
      yuvdeinterlace/Makefile
      yuvscaler/Makefile

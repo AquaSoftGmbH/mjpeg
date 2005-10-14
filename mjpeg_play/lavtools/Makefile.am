@@ -69,8 +69,6 @@ bin_PROGRAMS = \
 	matteblend.flt \
 	multiblend.flt \
 	lavpipe \
-	yuvcorrect \
-	yuvcorrect_tune \
 	jpeg2yuv \
 	ppmtoy4m \
 	pnmtoy4m \
@@ -113,8 +111,7 @@ noinst_HEADERS = \
 	pipelist.h \
 	subsample.h \
 	lav_common.h \
-	lav2wav.h \
-	yuvcorrect.h
+	lav2wav.h
 
 mjpeg_simd_helper_SOURCES = mjpeg_simd_helper.c
 mjpeg_simd_helper_LDADD = $(LIBMJPEGUTILS)
@@ -183,12 +180,6 @@ glav_CPPFLAGS = $(AM_CPPFLAGS) ${GTK_CFLAGS} -DG_LOG_DOMAIN=\"lavtools\"
 glav_LDADD = $(LIBMJPEGUTILS) ${GTK_LIBS}
 
 lavvideo_SOURCES = lavvideo.c frequencies.c
-
-yuvcorrect_SOURCES = yuvcorrect.c yuvcorrect_functions.c
-yuvcorrect_LDADD = $(LIBMJPEGUTILS) $(LIBM_LIBS)
-
-yuvcorrect_tune_SOURCES = yuvcorrect_tune.c yuvcorrect_functions.c
-yuvcorrect_tune_LDADD = $(LIBMJPEGUTILS) $(LIBM_LIBS)
 
 yuvplay_SOURCES = yuvplay.c
 yuvplay_LDADD = $(SDL_LIBS) $(LIBMJPEGUTILS)
