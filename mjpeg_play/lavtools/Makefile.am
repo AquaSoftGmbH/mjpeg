@@ -2,9 +2,7 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
-AM_CPPFLAGS = -I$(top_srcdir) -I$(includedir) -I$(top_srcdir)/utils \
-	-DLAVPLAY_VERSION=\"$(VERSION)\"
-
+AM_CPPFLAGS = -I$(top_srcdir) -I$(includedir) -I$(top_srcdir)/utils
 
 LIBMJPEGUTILS = $(top_builddir)/utils/libmjpegutils.la
 if HAVE_ALTIVEC
@@ -71,7 +69,6 @@ bin_PROGRAMS = \
 	matteblend.flt \
 	multiblend.flt \
 	lavpipe \
-	yuvscaler \
 	yuvcorrect \
 	yuvcorrect_tune \
 	jpeg2yuv \
@@ -117,7 +114,6 @@ noinst_HEADERS = \
 	subsample.h \
 	lav_common.h \
 	lav2wav.h \
-	yuvscaler.h \
 	yuvcorrect.h
 
 mjpeg_simd_helper_SOURCES = mjpeg_simd_helper.c
@@ -187,10 +183,6 @@ glav_CPPFLAGS = $(AM_CPPFLAGS) ${GTK_CFLAGS} -DG_LOG_DOMAIN=\"lavtools\"
 glav_LDADD = $(LIBMJPEGUTILS) ${GTK_LIBS}
 
 lavvideo_SOURCES = lavvideo.c frequencies.c
-
-yuvscaler_CFLAGS=@PROGRAM_NOPIC@
-yuvscaler_SOURCES = yuvscaler.c yuvscaler_resample.c yuvscaler_bicubic.c
-yuvscaler_LDADD = $(LIBMJPEGUTILS) $(LIBM_LIBS)
 
 yuvcorrect_SOURCES = yuvcorrect.c yuvcorrect_functions.c
 yuvcorrect_LDADD = $(LIBMJPEGUTILS) $(LIBM_LIBS)

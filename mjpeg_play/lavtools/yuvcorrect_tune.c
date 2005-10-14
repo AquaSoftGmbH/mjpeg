@@ -420,7 +420,7 @@ main (int argc, char *argv[])
   uint8_t *u_c_p, *image_frame;	//u_c_p = uint8_t pointer
 
   // Information output
-  mjpeg_info("yuvcorrect_tune "LAVPLAY_VERSION" ("yuvcorrect_tune_VERSION") is an interactive image correction utility for yuv frames");
+  mjpeg_info("yuvcorrect_tune "VERSION" ("yuvcorrect_tune_VERSION") is an interactive image correction utility for yuv frames");
   mjpeg_info
     ("(C) 2002 Xavier Biquard <xbiquard@free.fr>, yuvcorrect_tune -h for usage, or man yuvcorrect_tune");
 

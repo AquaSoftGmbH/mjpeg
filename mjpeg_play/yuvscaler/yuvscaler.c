@@ -59,9 +59,6 @@
 #include <string.h>
 #include <math.h>
 #include <signal.h>
-#include "lav_io.h"
-#include "editlist.h"
-// #include "jpegutils.c"
 #include "mjpeg_logging.h"
 #include "yuv4mpeg.h"
 #include "mjpeg_types.h"
@@ -1199,7 +1196,7 @@ main (int argc, char *argv[])
   y4m_ratio_t frame_rate = y4m_fps_UNKNOWN;
 
   // Information output
-  mjpeg_info ("yuvscaler "LAVPLAY_VERSION" ("yuvscaler_VERSION") is a general scaling utility for yuv frames");
+  mjpeg_info ("yuvscaler "VERSION" ("yuvscaler_VERSION") is a general scaling utility for yuv frames");
   mjpeg_info ("(C) 2001-2004 Xavier Biquard <xbiquard@free.fr>, yuvscaler -h for help, or man yuvscaler");
 
   // Initialisation of global variables that are independent of the input stream, input_file in particular

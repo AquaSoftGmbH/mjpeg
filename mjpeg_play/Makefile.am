@@ -16,6 +16,7 @@ SUBDIRS = \
 	mplex \
 	scripts \
 	docs \
+	yuvscaler \
 	yuvdenoise \
 	yuvfilters \
 	yuvdeinterlace \

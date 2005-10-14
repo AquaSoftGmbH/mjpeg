@@ -34,7 +34,7 @@
 #include <sys/time.h>
 
 #define PLAY_PROG "lavplay"
-#define LAVPLAY_VSTR "lavplay" LAVPLAY_VERSION /* Expected version info */
+#define LAVPLAY_VSTR "lavplay" VERSION /* Expected version info */
 
 static struct timeval time_when_pressed;
 static int number_of_skipped_frames;
@@ -672,7 +672,7 @@ static void create_child(const char **args)
    if(n!=vlen+1 || strncmp(version,LAVPLAY_VSTR,vlen)!=0)
    {
       fprintf(stderr,"%s did not send correct version info\n",PLAY_PROG);
-      fprintf(stderr,"Got: \"%s\" Expected: \"%s\"\n",version,LAVPLAY_VERSION);
+      fprintf(stderr,"Got: \"%s\" Expected: \"%s\"\n",version, VERSION);
       do_real_exit(0,0);
    }
 }

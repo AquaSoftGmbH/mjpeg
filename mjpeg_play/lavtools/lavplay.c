@@ -151,7 +151,7 @@
 #include <SDL/SDL.h>
 #endif
 
-#define LAVPLAY_VSTR "lavplay" LAVPLAY_VERSION  /* Expected version info */
+#define LAVPLAY_VSTR "lavplay" VERSION  /* Expected version info */
 
 static lavplay_t *info;
 static int verbose = 0;
