@@ -21,7 +21,6 @@ glib           : http://www.gtk.org/
 (g)cc/g++/c++  : http://gcc.gnu.org/ 
 libjpeg        : http://www.ijg.org/
 XFree86        : http://www.xfree86.org/
-(x86 only) nasm: http://nasm.2y.net/
 
 These are almost always included with every distribution by default.
 
@@ -29,7 +28,6 @@ However, with this, many of the tools and many features of the tools
 will not be compiled by default. The following software is advised
 for getting the extra features of the mjpegtools:
 
-Avifile        : http://avifile.sourceforge.net/
 Gtk+           : http://www.gtk.org/
 libDV          : http://libdv.sourceforge.net/
 SDL            : http://www.libsdl.org/
@@ -42,15 +40,11 @@ COMPILING SUPPORT LIBRARIES
 The following libraries are strongly recommended for compiling
 the mjpegtools:
 
-JPEG-MMX
-libquicktime
-
-You can download JPEG-MMX at http://sourceforge.net/projects/mjpeg/ and libquicktime from http://libquicktime.sourceforge.net
+JPEG-MMX       : http://sourceforge.net/projects/mjpeg/
+libquicktime   : http://libquicktime.sourceforge.net/
 
 The JPEG-MMX only compiles on a x86 architecture. If you have a Power PC or
-something else, you cannot use the JPEG-MMX compile will fail with a
-SIMD_ALIGN meassage ore something like this. You have to use the standard
-jpeg libary instead. 
+something else, you cannot use the JPEG-MMX.
 
 First, install JPEG-MMX, simply unpack, './configure' and 'make'.
 Do *not* run 'make install'! 
