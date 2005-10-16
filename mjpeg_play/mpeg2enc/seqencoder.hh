@@ -32,7 +32,7 @@ class EncoderParams;
 class MPEG2CodingBuf;
 class PictureReader;
 class Despatcher;
-
+class RateCtlState;
 
 class SeqEncoder
 {
@@ -94,7 +94,9 @@ private:
      *********************************/
      void Pass2EncodeFrame();
      
-     
+    
+
+
      /**********************************
      *
      * Perform Epilogue to encoding video stream
@@ -105,7 +107,11 @@ private:
    
     void StreamEnd();
 
-	void EncodePicture( Picture *picture );
+    
+    void EncodePicture(Picture *picture);
+    void Pass1EncodePicture( Picture *picture );
+    void Pass1ReEncodePicture( Picture *picture );
+
     
     uint64_t BitsAfterMux() const;
     
@@ -117,6 +123,11 @@ private:
     
     Despatcher &despatcher;
 	
+    // The state of the pass 1 rate controller before encoding.
+    // We need to restore this if we decide to re-encode it in
+    // pass-1
+    RateCtlState *pass1_rcstate;
+
     // Picture's (in decode order) that have been pass1 coded
     // but are not yet ready to be committed for pass 2 coding...
     std::deque<Picture *> pass1coded;

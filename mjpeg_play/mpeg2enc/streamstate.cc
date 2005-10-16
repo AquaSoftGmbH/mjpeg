@@ -112,6 +112,17 @@ void StreamState::Next(  int64_t bits_after_mux )   // Estimate of how much outp
      SetEndSeq();
 }
 
+/*
+	Switch stream state to force an I-Frame at current.  Basically: start a new GOP
+	and do the usual house-keeping.
+*/
+
+void StreamState::ForceIFrame()
+{
+	GopStart();
+	SetEndSeq();
+}
+
 void StreamState::SetEndSeq()
 {
    // Ensure we have read up to the frame we plan to processs / decide

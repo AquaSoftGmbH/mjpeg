@@ -86,13 +86,14 @@ public:
     void InitRateControl(RateCtl &ratecontrol);
 
     void MotionSubSampledLum();
-    void EncodeMacroBlocks();
+    void Encode();
     void ITransform();
     void IQuantize();
     void CalcSNR();
     void Stats();
     void Reconstruct();
-    void Commit();
+    void CommitCoding();
+   void DiscardCoding();
     
     void SetEncodingParams(  const StreamState &ss, int last_frame );
     void Adjust2ndField();

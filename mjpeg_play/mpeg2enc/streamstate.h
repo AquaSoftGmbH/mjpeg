@@ -41,7 +41,8 @@ public:
     StreamState( EncoderParams &encparams, PictureReader &reader );
     void Init( );
     void Next( int64_t bits_after_mux );
-    
+    void ForceIFrame();
+
     // Handle seperately - need to know input frame number (set by Next)
     inline int FrameInStream() const { return frame_num; }
     inline int FrameInSeq() const { return s_idx; }

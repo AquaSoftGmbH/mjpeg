@@ -387,8 +387,7 @@ void Picture::Adjust2ndField()
 
 
 
-
-void Picture::EncodeMacroBlocks()
+void Picture::Encode()
 { 
     vector<MacroBlock>::iterator mbi = mbinfo.begin();
 
@@ -709,9 +708,21 @@ double Picture::IntraCodedBlocks() const
  *
  * *********************/
  
- void Picture::Commit()
+ void Picture::CommitCoding()
  {
     coding->FlushBuffer();
+ }
+
+/* *********************
+ *
+ * DiscardCoding   -   Discard the current encoding of the frame
+ * set coder buffer empty discarding current contents.
+ *
+ * *********************/
+ 
+ void Picture::DiscardCoding()
+ {
+    coding->ResetBuffer();
  }
 
 /* 

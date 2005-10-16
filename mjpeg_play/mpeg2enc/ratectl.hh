@@ -29,18 +29,42 @@ class EncoderParams;
 class Picture;
 
 
-class RateCtl
+/*
+	Base class for state of rate-controller.
+	Factory allows us to generate appropriate state
+	objects for a given rate-controller object.
+
+	Set allow us to set set of a rate-controller from
+	a previously copied state...
+*/
+class RateCtlState
 {
 public:
-    RateCtl( EncoderParams &encoder );
-	virtual void InitSeq( bool reinit ) = 0;
-	virtual void InitGOP( int nb, int np ) = 0;
-	virtual void InitNewPict (Picture &picture) = 0;
-	virtual void InitKnownPict (Picture &picture) = 0;
-	virtual void UpdatePict (Picture &picture, int &padding_needed ) = 0;
+	virtual ~RateCtlState() {}
+	virtual RateCtlState *New() const = 0;
+	virtual void Set( const RateCtlState &state) = 0;
+	virtual const RateCtlState &Get() const = 0;
+};
+
+class RateCtl 
+{
+public:
+    RateCtl( EncoderParams &encoder, RateCtlState &state );
+    virtual void InitSeq( bool reinit ) = 0;
+    virtual void InitGOP( int nb, int np ) = 0;
+    virtual void InitNewPict (Picture &picture) = 0;
+    virtual void InitKnownPict (Picture &picture) = 0;
+    virtual void UpdatePict (Picture &picture, int &padding_needed ) = 0;
     virtual int MacroBlockQuant(  const MacroBlock &mb) = 0;
-	virtual int  InitialMacroBlockQuant(Picture &picture) = 0;
-	virtual void CalcVbvDelay (Picture &picture) = 0;
+    virtual int  InitialMacroBlockQuant(Picture &picture) = 0;
+    virtual void CalcVbvDelay (Picture &picture) = 0;
+    
+    inline RateCtlState *NewState() const { return state.New(); }
+    inline void SetState( const RateCtlState &toset) { state.Set( toset ); }
+    inline const RateCtlState &GetState() const { return state.Get(); }
+
+    // TODO DEBUG
+    virtual double SumAvgActivity() = 0;
 
     static double InvScaleQuant(  int q_scale_type, int raw_code );
     static int ScaleQuant( int q_scale_type, double quant );
@@ -48,38 +72,24 @@ protected:
 	virtual void VbvEndOfPict (Picture &picture) = 0;
     double ScaleQuantf( int q_scale_type, double quant );
     EncoderParams &encparams;
+    RateCtlState &state;
 };
 
-class OnTheFlyRateCtl : public RateCtl
+/*
+	The parts of of the rate-controller's state neededfor save/restore if backing off
+	a partial encoding
+*/
+
+class OnTheFlyRateCtlState :  public RateCtlState
 {
 public:
-	OnTheFlyRateCtl( EncoderParams &encoder );
-	virtual void InitSeq( bool reinit );
-	virtual void InitGOP( int nb, int np );
-	virtual void InitNewPict (Picture &picture);
-	virtual void InitKnownPict (Picture &picture);
-	virtual void UpdatePict ( Picture &picture, int &padding_needed );
-	virtual int  MacroBlockQuant( const MacroBlock &mb);
-	virtual int  InitialMacroBlockQuant(Picture &picture);
-	virtual void CalcVbvDelay (Picture &picture);
-private:
-	virtual void VbvEndOfPict (Picture &picture);
-
-    int     cur_mquant;
-    int     mquant_change_ctr;
-    
-	int32_t fb_gain;
-	
-	/* R - Remaining bits available in the next one second period.
-	   T - Target bits for current frame 
-	   d - Current virtual reciever buffer fullness for quantisation
-	   purposes updated using scaled difference of target bit usage
-	   and actual usage
-       d0[picture_type] - Virtual buffer for each frame type.
-	*/
+	virtual ~OnTheFlyRateCtlState() {}
+	virtual RateCtlState *New() const { return new OnTheFlyRateCtlState; }
+	virtual void Set( const RateCtlState &state ) { *this = static_cast<const OnTheFlyRateCtlState &>(state); }
+	virtual const RateCtlState &Get() const { return *this; }
 	int32_t target_bits; // target_bits
 	int32_t vbuf_fullness;
-    int32_t ratectl_vbuf[NUM_PICT_TYPES];
+    	int32_t ratectl_vbuf[NUM_PICT_TYPES];
 
 	int32_t per_pict_bits;
 	int     fields_in_gop;
@@ -172,6 +182,37 @@ private:
     // Some statistics for measuring if things are going well.
     double sum_size[NUM_PICT_TYPES];
     int pict_count[NUM_PICT_TYPES];
+
+};
+
+
+class OnTheFlyRateCtl :  public RateCtl,  public OnTheFlyRateCtlState
+{
+public:
+	OnTheFlyRateCtl( EncoderParams &encoder );
+	virtual void InitSeq( bool reinit );
+	virtual void InitGOP( int nb, int np );
+	virtual void InitNewPict (Picture &picture);
+	virtual void InitKnownPict (Picture &picture);
+	virtual void UpdatePict ( Picture &picture, int &padding_needed );
+	virtual int  MacroBlockQuant( const MacroBlock &mb);
+	virtual int  InitialMacroBlockQuant(Picture &picture);
+	virtual void CalcVbvDelay (Picture &picture);
+
+    double SumAvgActivity()  { return sum_avg_act; }
+private:
+	virtual void VbvEndOfPict (Picture &picture);
+
+   	 int     cur_mquant;
+    	int     mquant_change_ctr;
+    
+	// inverse feedback gain: its in weird units 
+	// The quantisation is porportionate to the
+	// buffer bit overshoot (virtual buffer fullness)
+	// *divided* by fb_gain  A 
+	int32_t fb_gain;		
+	
+
 
 	// VBV calculation data
 	double picture_delay;

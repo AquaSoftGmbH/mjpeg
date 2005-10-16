@@ -60,9 +60,12 @@
 #include "ratectl.hh"
 #include "quantize.hh"
 
-/* private prototypes */
 
-
+RateCtl::RateCtl( EncoderParams &_encparams, RateCtlState &_state ) :
+	encparams( _encparams ),
+    state( _state )
+{
+}
 
 double RateCtl::ScaleQuantf( int q_scale_type, double quant )
 {
@@ -154,10 +157,7 @@ double RateCtl::InvScaleQuant( int q_scale_type, int raw_code )
 		return ((double)raw_code);
 }
 
-RateCtl::RateCtl( EncoderParams &_encparams ) :
-	encparams( _encparams )
-{
-}
+
 
 /*****************************
  *
@@ -168,7 +168,7 @@ RateCtl::RateCtl( EncoderParams &_encparams ) :
  *
  ****************************/
 OnTheFlyRateCtl::OnTheFlyRateCtl(EncoderParams &encparams ) :
-	RateCtl(encparams)
+	RateCtl(encparams, *this)
 {
 	buffer_variation = 0;
 	bits_transported = 0;
