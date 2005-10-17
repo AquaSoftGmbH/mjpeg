@@ -22,16 +22,16 @@ extern int width;
 extern int height;
 
 void
-blend_fields_non_accel (uint8_t * dst[3], uint8_t * src[3] )
+blend_fields_non_accel (uint8_t * dst[3], uint8_t * src[3])
 {
-	int x,y;
-	int w = width;
+  int x, y;
+  int w = width;
 
-	for(y=0;y<height;y+=2)
-		for(x=0;x<w;x++)
-		{
-//			*(dst[0]+x+y*w) = (*(dst[0]+x+y*w)+*(src[0]+x+y*w))/2;
-			*(dst[0]+x+y*w) = *(src[0]+x+y*w);
-//			*(dst[0]+x+y*w+w) = *(src[0]+x+y*w);
-		}
+  for (y = 0; y < height; y += 2)
+    for (x = 0; x < w; x++)
+      {
+//                      *(dst[0]+x+y*w) = (*(dst[0]+x+y*w)+*(src[0]+x+y*w))/2;
+	*(dst[0] + x + y * w) = *(src[0] + x + y * w);
+//                      *(dst[0]+x+y*w+w) = *(src[0]+x+y*w);
+      }
 }

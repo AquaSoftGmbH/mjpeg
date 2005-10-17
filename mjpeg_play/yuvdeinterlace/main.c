@@ -70,7 +70,7 @@ int fast_mode = 0;
 int field_order = -1;
 int width = 0;
 int height = 0;
-int lwidth =0;
+int lwidth = 0;
 int lheight = 0;
 int cwidth = 0;
 int cheight = 0;
@@ -94,6 +94,7 @@ uint8_t *lp2;
 uint8_t *r0[3];
 uint8_t *r1[3];
 uint8_t *sr[3];
+uint8_t *out[3];
 
 int buff_offset;
 int buff_size;
@@ -103,7 +104,7 @@ int buff_size;
  ***********************************************************/
 
 void (*blend_fields) (uint8_t * dst[3], uint8_t * src[3]);
-void film_fx (void);
+void antialias (uint8_t * dst, uint8_t * src, int w, int h);
 
 /***********************************************************
  * Main Loop                                               *
@@ -142,7 +143,8 @@ main (int argc, char *argv[])
 	    mjpeg_log (LOG_INFO, " -------------------------");
 	    mjpeg_log (LOG_INFO, " -v be verbose");
 	    mjpeg_log (LOG_INFO, " -d output both fields");
-	    mjpeg_log (LOG_INFO, " -s [n=0/1] forces field-order in case of misflagged streams");
+	    mjpeg_log (LOG_INFO,
+		       " -s [n=0/1] forces field-order in case of misflagged streams");
 	    mjpeg_log (LOG_INFO, "    -s0 is top-field-first");
 	    mjpeg_log (LOG_INFO, "    -s1 is bottom-field-first");
 	    exit (0);
@@ -156,7 +158,8 @@ main (int argc, char *argv[])
 	case 'd':
 	  {
 	    both_fields = 1;
-	    mjpeg_log (LOG_INFO,"Regenerating both fields. Please fix the Framerate.");
+	    mjpeg_log (LOG_INFO,
+		       "Regenerating both fields. Please fix the Framerate.");
 	    break;
 	  }
 	case 's':
@@ -209,48 +212,45 @@ main (int argc, char *argv[])
   height = y4m_si_get_height (&istreaminfo);
   input_chroma_subsampling = y4m_si_get_chroma (&istreaminfo);
   mjpeg_log (LOG_INFO, "Y4M-Stream is %ix%i(%s)", width, height,
-	     y4m_chroma_keyword(input_chroma_subsampling));
+	     y4m_chroma_keyword (input_chroma_subsampling));
 
   /* if chroma-subsampling isn't supported bail out ... */
-  if (input_chroma_subsampling == Y4M_CHROMA_420JPEG  ||
+  if (input_chroma_subsampling == Y4M_CHROMA_420JPEG ||
       input_chroma_subsampling == Y4M_CHROMA_420MPEG2 ||
       input_chroma_subsampling == Y4M_CHROMA_420PALDV)
-	{
-	lwidth=width;
-	lheight=height;
-	cwidth=width/2;
-	cheight=height/2;
-	}
+    {
+      lwidth = width;
+      lheight = height;
+      cwidth = width / 2;
+      cheight = height / 2;
+    }
+  else if (input_chroma_subsampling == Y4M_CHROMA_444)
+    {
+      lwidth = width;
+      lheight = height;
+      cwidth = width;
+      cheight = height;
+    }
+  else if (input_chroma_subsampling == Y4M_CHROMA_422)
+    {
+      lwidth = width;
+      lheight = height;
+      cwidth = width / 2;
+      cheight = height;
+    }
+  else if (input_chroma_subsampling == Y4M_CHROMA_411)
+    {
+      lwidth = width;
+      lheight = height;
+      cwidth = width / 4;
+      cheight = height;
+    }
   else
-	  if (input_chroma_subsampling == Y4M_CHROMA_444)
-		{
-		lwidth=width;
-		lheight=height;
-		cwidth=width;
-		cheight=height;
-		}
-	  else
-	  if (input_chroma_subsampling == Y4M_CHROMA_422)
-		{
-		lwidth=width;
-		lheight=height;
-		cwidth=width/2;
-		cheight=height;
-		}
-	  else
-	  if (input_chroma_subsampling == Y4M_CHROMA_411)
-		{
-		lwidth=width;
-		lheight=height;
-		cwidth=width/4;
-		cheight=height;
-		}
-	  else
-	    {
-	      mjpeg_log (LOG_ERROR,
-			 "Y4M-Stream is not in a supported chroma-format. Sorry.");
-	      exit (-1);
-	    }
+    {
+      mjpeg_log (LOG_ERROR,
+		 "Y4M-Stream is not in a supported chroma-format. Sorry.");
+      exit (-1);
+    }
 
   /* the output is progressive 4:2:0 MPEG 1 */
   y4m_si_set_interlace (&ostreaminfo, Y4M_ILACE_NONE);
@@ -362,9 +362,9 @@ main (int argc, char *argv[])
     r1[1] = buff_offset + (uint8_t *) malloc (buff_size);
     r1[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    sr[0] = buff_offset + (uint8_t *) malloc (buff_size*4);
-    sr[1] = buff_offset + (uint8_t *) malloc (buff_size*4);
-    sr[2] = buff_offset + (uint8_t *) malloc (buff_size*4);
+    sr[0] = buff_offset + (uint8_t *) malloc (buff_size * 4);
+    sr[1] = buff_offset + (uint8_t *) malloc (buff_size * 4);
+    sr[2] = buff_offset + (uint8_t *) malloc (buff_size * 4);
 
     mjpeg_log (LOG_INFO, "Buffers allocated.");
   }
@@ -374,74 +374,91 @@ main (int argc, char *argv[])
 					    &istreaminfo,
 					    &iframeinfo, inframe)))
     {
-      static uint32_t framenr=0;
+      static uint32_t framenr = 0;
 
 
-      memcpy(frame3[0],frame1[0],lwidth*lheight);
-      memcpy(frame4[0],frame2[0],lwidth*lheight);
+      memcpy (frame3[0], frame1[0], lwidth * lheight);
+      memcpy (frame4[0], frame2[0], lwidth * lheight);
 
-      memcpy(frame3[1],frame1[1],cwidth*cheight);
-      memcpy(frame4[1],frame2[1],cwidth*cheight);
-      memcpy(frame3[2],frame1[2],cwidth*cheight);
-      memcpy(frame4[2],frame2[2],cwidth*cheight);
+      memcpy (frame3[1], frame1[1], cwidth * cheight);
+      memcpy (frame4[1], frame2[1], cwidth * cheight);
+      memcpy (frame3[2], frame1[2], cwidth * cheight);
+      memcpy (frame4[2], frame2[2], cwidth * cheight);
 
-if(field_order == BOTTOM_FIRST )
-      { // bottom field first
-      sinc_interpolation ( frame1[0],inframe[0],lwidth,lheight,1 );
-      sinc_interpolation ( frame1[1],inframe[1],cwidth,cheight,1 );
-      sinc_interpolation ( frame1[2],inframe[2],cwidth,cheight,1 );
+      if (field_order == BOTTOM_FIRST)
+	{			// bottom field first
+	  sinc_interpolation (frame1[0], inframe[0], lwidth, lheight, 1);
+	  sinc_interpolation (frame1[1], inframe[1], cwidth, cheight, 1);
+	  sinc_interpolation (frame1[2], inframe[2], cwidth, cheight, 1);
 
-      sinc_interpolation ( frame2[0],inframe[0],lwidth,lheight,0 );
-      sinc_interpolation ( frame2[1],inframe[1],cwidth,cheight,0 );
-      sinc_interpolation ( frame2[2],inframe[2],cwidth,cheight,0 );
+	  sinc_interpolation (frame2[0], inframe[0], lwidth, lheight, 0);
+	  sinc_interpolation (frame2[1], inframe[1], cwidth, cheight, 0);
+	  sinc_interpolation (frame2[2], inframe[2], cwidth, cheight, 0);
 
-      motion_compensate ( r0[0], frame2[0], frame3[0], frame4[0], lwidth, lheight, 1 );
-      motion_compensate ( r0[1], frame2[1], frame3[1], frame4[1], cwidth, cheight, 1 );
-      motion_compensate ( r0[2], frame2[2], frame3[2], frame4[2], cwidth, cheight, 1 );
+	  motion_compensate (r0[0], frame2[0], frame3[0], frame4[0], lwidth,
+			     lheight, 1);
+	  motion_compensate (r0[1], frame2[1], frame3[1], frame4[1], cwidth,
+			     cheight, 1);
+	  motion_compensate (r0[2], frame2[2], frame3[2], frame4[2], cwidth,
+			     cheight, 1);
 
-      if(both_fields)
-      {
-      motion_compensate ( r1[0], frame1[0], frame2[0], frame3[0], lwidth, lheight, 0 );
-      motion_compensate ( r1[1], frame1[1], frame2[1], frame3[1], cwidth, cheight, 0 );
-      motion_compensate ( r1[2], frame1[2], frame2[2], frame3[2], cwidth, cheight, 0 );
-      }
-}
-else
-      { // top field first
-
-      sinc_interpolation ( frame1[0],inframe[0],lwidth,lheight,0 );
-      sinc_interpolation ( frame1[1],inframe[1],cwidth,cheight,0 );
-      sinc_interpolation ( frame1[2],inframe[2],cwidth,cheight,0 );
-
-      sinc_interpolation ( frame2[0],inframe[0],lwidth,lheight,1 );
-      sinc_interpolation ( frame2[1],inframe[1],cwidth,cheight,1 );
-      sinc_interpolation ( frame2[2],inframe[2],cwidth,cheight,1 );
-
-      motion_compensate ( r0[0], frame2[0], frame3[0], frame4[0], lwidth, lheight, 0 );
-      motion_compensate ( r0[1], frame2[1], frame3[1], frame4[1], cwidth, cheight, 0 );
-      motion_compensate ( r0[2], frame2[2], frame3[2], frame4[2], cwidth, cheight, 0 );
-
-      if(both_fields)
-      {
-      motion_compensate ( r1[0], frame1[0], frame2[0], frame3[0], lwidth, lheight, 1 );
-      motion_compensate ( r1[1], frame1[1], frame2[1], frame3[1], cwidth, cheight, 1 );
-      motion_compensate ( r1[2], frame1[2], frame2[2], frame3[2], cwidth, cheight, 1 );
-      }
-      }
-
-      if (framenr>0)
-	{
-		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r0);
-	      if(both_fields)
-		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r1);
+	  if (both_fields)
+	    {
+	      motion_compensate (r1[0], frame1[0], frame2[0], frame3[0],
+				 lwidth, lheight, 0);
+	      motion_compensate (r1[1], frame1[1], frame2[1], frame3[1],
+				 cwidth, cheight, 0);
+	      motion_compensate (r1[2], frame1[2], frame2[2], frame3[2],
+				 cwidth, cheight, 0);
+	    }
 	}
-	else
-	{
-		framenr++;
-		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame2);
-	      if(both_fields)
-		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);
+      else
+	{			// top field first
+
+	  sinc_interpolation (frame1[0], inframe[0], lwidth, lheight, 0);
+	  sinc_interpolation (frame1[1], inframe[1], cwidth, cheight, 0);
+	  sinc_interpolation (frame1[2], inframe[2], cwidth, cheight, 0);
+
+	  sinc_interpolation (frame2[0], inframe[0], lwidth, lheight, 1);
+	  sinc_interpolation (frame2[1], inframe[1], cwidth, cheight, 1);
+	  sinc_interpolation (frame2[2], inframe[2], cwidth, cheight, 1);
+
+	  motion_compensate (r0[0], frame2[0], frame3[0], frame4[0], lwidth,
+			     lheight, 0);
+	  motion_compensate (r0[1], frame2[1], frame3[1], frame4[1], cwidth,
+			     cheight, 0);
+	  motion_compensate (r0[2], frame2[2], frame3[2], frame4[2], cwidth,
+			     cheight, 0);
+
+	  if (both_fields)
+	    {
+	      motion_compensate (r1[0], frame1[0], frame2[0], frame3[0],
+				 lwidth, lheight, 1);
+	      motion_compensate (r1[1], frame1[1], frame2[1], frame3[1],
+				 cwidth, cheight, 1);
+	      motion_compensate (r1[2], frame1[2], frame2[2], frame3[2],
+				 cwidth, cheight, 1);
+	    }
 	}
+#if 0
+      if (framenr > 0)
+	{
+	  y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r0);
+	  if (both_fields)
+	    y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r1);
+	}
+      else
+	{
+	  framenr++;
+	  y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame2);
+	  if (both_fields)
+	    y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);
+	}
+#endif
+      antialias (sr[0], r0[0], lwidth, lheight);
+      antialias (sr[1], r0[1], cwidth, cheight);
+      antialias (sr[2], r0[2], cwidth, cheight);
+      y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r0);
 
     }
 
@@ -510,118 +527,149 @@ else
   return (0);
 }
 
-
-#if 0
+void
+antialias (uint8_t * dst, uint8_t * src, int w, int h)
 {
-	int x,y;
-	int a,b,c,d,e,m;
+  int x, y;
+  int dx, dy;
+  int v, d, m;
+  int a, b, c;
 
-	// try to reconstruct the missing scanlines as close as possible 
-        // by using a spatio-temporal-linear filter
-	for(y=1;y<height;y+=2)
-	  for(x=0;x<width;x++)
-	    {
-	    // highpass-filter previous field
-	    a  = *(frame2[0]+x+(y-10)*width)*  1;
-	    a += *(frame2[0]+x+(y- 8)*width)* -4;
-	    a += *(frame2[0]+x+(y- 6)*width)* 16;
-	    a += *(frame2[0]+x+(y- 4)*width)*-64;
-	    a += *(frame2[0]+x+(y- 2)*width)*256;
-	    a -= *(frame2[0]+x+(y   )*width)*410;
-	    a += *(frame2[0]+x+(y+ 2)*width)*256;
-	    a += *(frame2[0]+x+(y+ 4)*width)*-64;
-	    a += *(frame2[0]+x+(y+ 6)*width)* 16;
-	    a += *(frame2[0]+x+(y+ 8)*width)* -4;
-	    a += *(frame2[0]+x+(y+10)*width)*  1;
+  for (y = 0; y <= h; y++)
+    for (x = 0; x <= w; x++)
+      {
+	*(dst + (x * 2) + (y * 2) * (w * 2)) = *(src + x + y * w);
+      }
 
-	    // highpass-filter next field
-	    a += *(frame1[0]+x+(y-10)*width)*  1;
-	    a += *(frame1[0]+x+(y- 8)*width)* -4;
-	    a += *(frame1[0]+x+(y- 6)*width)* 16;
-	    a += *(frame1[0]+x+(y- 4)*width)*-64;
-	    a += *(frame1[0]+x+(y- 2)*width)*256;
-	    a -= *(frame1[0]+x+(y   )*width)*410;
-	    a += *(frame1[0]+x+(y+ 2)*width)*256;
-	    a += *(frame1[0]+x+(y+ 4)*width)*-64;
-	    a += *(frame1[0]+x+(y+ 6)*width)* 16;
-	    a += *(frame1[0]+x+(y+ 8)*width)* -4;
-	    a += *(frame1[0]+x+(y+10)*width)*  1;
+  for (y = 0; y <= (h * 2); y += 2)
+    for (x = 0; x <= (w * 2); x += 2)
+      {
+	a = *(dst + (x) + (y + 0) * (w * 2));
+	b =
+	  (*(dst + (x) + (y + 0) * (w * 2)) +
+	   *(dst + (x) + (y + 2) * (w * 2))) / 2;
+	c = *(dst + (x) + (y + 2) * (w * 2));
 
-	    // lowpass-filter current field;
-	    b  = *(frame2[0]+x+(y-9)*width)*  1;
-	    b += *(frame2[0]+x+(y-7)*width)* -4;
-	    b += *(frame2[0]+x+(y-5)*width)* 16;
-	    b += *(frame2[0]+x+(y-3)*width)*-64;
-	    b += *(frame2[0]+x+(y-1)*width)*256;
-	    b += *(frame2[0]+x+(y+1)*width)*256;
-	    b += *(frame2[0]+x+(y+3)*width)*-64;
-	    b += *(frame2[0]+x+(y+5)*width)* 16;
-	    b += *(frame2[0]+x+(y+7)*width)* -4;
-	    b += *(frame2[0]+x+(y+9)*width)*  1;
+	v = b;
+	m = 255;
+	for (dx = 0; dx <= 8; dx += 2)
+	  {
+	    d =
+	      abs (*(dst + (x + dx) + (y + 0) * (w * 2)) -
+		   *(dst + (x - dx) + (y + 2) * (w * 2)));
+	    b =
+	      (*(dst + (x + dx) + (y + 0) * (w * 2)) +
+	       *(dst + (x - dx) + (y + 2) * (w * 2))) / 2;
+	    if (m > d && ((a < b && b < c) || (a > b && b > c)))
+	      {
+		m = d;
+		v = b;
+	      }
 
-	    a /= 820*2;
-            b /= 410;
+	    d =
+	      abs (*(dst + (x - dx) + (y + 0) * (w * 2)) -
+		   *(dst + (x + dx) + (y + 2) * (w * 2)));
+	    b =
+	      (*(dst + (x - dx) + (y + 0) * (w * 2)) +
+	       *(dst + (x + dx) + (y + 2) * (w * 2))) / 2;
+	    if (m > d && (a < b && b < c))
+	      {
+		m = d;
+		v = b;
+	      }
+	  }
+	*(dst + (x) + (y + 1) * (w * 2)) = v;
+      }
 
-	    m = b-a;
+  for (y = 0; y <= (h * 2); y += 1)
+    for (x = 1; x <= (w * 2); x += 2)
+      {
+	a = *(dst + (x - 1) + (y) * (w * 2));
+	b =
+	  (*(dst + (x - 1) + (y) * (w * 2)) +
+	   *(dst + (x + 1) + (y) * (w * 2))) / 2;
+	c = *(dst + (x + 1) + (y) * (w * 2));
 
-	    m = m>255? 255:m;
-	    m = m<0  ?   0:m;
+	v = b;
+	m = 255;
+	for (dy = 0; dy <= 8; dy++)
+	  {
+	    d =
+	      abs (*(dst + (x - 1) + (y + dy) * (w * 2)) -
+		   *(dst + (x + 1) + (y - dy) * (w * 2)));
+	    b =
+	      (*(dst + (x - 1) + (y + dy) * (w * 2)) +
+	       *(dst + (x + 1) + (y - dy) * (w * 2))) / 2;
+	    if (m > d && ((a < b && b < c) || (a > b && b > c)))
+	      {
+		m = d;
+		v = b;
+	      }
+	    d =
+	      abs (*(dst + (x - 1) + (y - dy) * (w * 2)) -
+		   *(dst + (x + 1) + (y + dy) * (w * 2)));
+	    b =
+	      (*(dst + (x - 1) + (y - dy) * (w * 2)) +
+	       *(dst + (x + 1) + (y + dy) * (w * 2))) / 2;
+	    if (m > d && ((a < b && b < c) || (a > b && b > c)))
+	      {
+		m = d;
+		v = b;
+	      }
+	  }
+	*(dst + (x) + (y) * (w * 2)) = v;
+      }
 
-	    *(frame4[0]+x+(y  )*width)=m;
-	    *(frame4[0]+x+(y-1)*width)=*(frame2[0]+x+(y-1)*width);
-	    }
+// lowpassfilter the super-resolution-image
+  for (a = 0; a < 2; a++)
+    {
+      for (y = 4; y <= (h * 2 - 4); y++)
+	for (x = 0; x <= (w * 2); x++)
+	  {
+	    v =
+	      (*(dst + (x - 4) + y * (w * 2)) * -8 +
+	       *(dst + (x - 3) + y * (w * 2)) * 16 +
+	       *(dst + (x - 2) + y * (w * 2)) * -32 +
+	       *(dst + (x - 1) + y * (w * 2)) * 64 +
+	       *(dst + (x) + y * (w * 2)) * 100 +
+	       *(dst + (x + 1) + y * (w * 2)) * 64 +
+	       *(dst + (x + 2) + y * (w * 2)) * -32 +
+	       *(dst + (x + 3) + y * (w * 2)) * 16 +
+	       *(dst + (x + 4) + y * (w * 2)) * -8) / 180;
+	    v = v > 255 ? 255 : v;
+	    v = v < 0 ? 0 : v;
+	    *(dst + x + y * (w * 2)) = v;
+	  }
 
-	for(y=0;y<height;y+=2)
-	  for(x=0;x<width;x++)
-	    {
-	    // bandpass-filter previous field
-	    a  = *(frame1[0]+x+(y-10)*width)*  1;
-	    a += *(frame1[0]+x+(y- 8)*width)* -4;
-	    a += *(frame1[0]+x+(y- 6)*width)* 16;
-	    a += *(frame1[0]+x+(y- 4)*width)*-64;
-	    a += *(frame1[0]+x+(y- 2)*width)*256;
-	    a -= *(frame1[0]+x+(y   )*width)*410;
-	    a += *(frame1[0]+x+(y+ 2)*width)*256;
-	    a += *(frame1[0]+x+(y+ 4)*width)*-64;
-	    a += *(frame1[0]+x+(y+ 6)*width)* 16;
-	    a += *(frame1[0]+x+(y+ 8)*width)* -4;
-	    a += *(frame1[0]+x+(y+10)*width)*  1;
+      for (y = 4; y <= (h * 2 - 4); y++)
+	for (x = 0; x <= (w * 2); x++)
+	  {
+	    v =
+	      (*(dst + x + (y - 4) * (w * 2)) * -8 +
+	       *(dst + x + (y - 3) * (w * 2)) * 16 +
+	       *(dst + x + (y - 2) * (w * 2)) * -32 +
+	       *(dst + x + (y - 1) * (w * 2)) * 64 +
+	       *(dst + x + (y) * (w * 2)) * 100 +
+	       *(dst + x + (y + 1) * (w * 2)) * 64 +
+	       *(dst + x + (y + 2) * (w * 2)) * -32 +
+	       *(dst + x + (y + 3) * (w * 2)) * 16 +
+	       *(dst + x + (y + 4) * (w * 2)) * -8) / 180;
+	    v = v > 255 ? 255 : v;
+	    v = v < 0 ? 0 : v;
+	    *(dst + x + y * (w * 2)) = v;
+	  }
+    }
+// downscale it and fill into SDTV-reconstruction. 
+// This should be quite sharp and quite alias-free...
+  for (y = 1; y <= (h - 1); y++)
+    for (x = 0; x <= (w); x++)
+      {
+	v =
+	  (*(dst + (x * 2) + (y * 2) * (w * 2)) +
+	   *(dst + (x * 2 + 1) + (y * 2) * (w * 2)) +
+	   *(dst + (x * 2) + (y * 2 + 1) * (w * 2)) +
+	   *(dst + (x * 2 + 1) + (y * 2 + 1) * (w * 2))) / 4;
+	*(src + x + y * w) = v;
+      }
 
-	    // bandpass-filter next field
-	    a += *(frame2[0]+x+(y-10)*width)*  1;
-	    a += *(frame2[0]+x+(y- 8)*width)* -4;
-	    a += *(frame2[0]+x+(y- 6)*width)* 16;
-	    a += *(frame2[0]+x+(y- 4)*width)*-64;
-	    a += *(frame2[0]+x+(y- 2)*width)*256;
-	    a -= *(frame2[0]+x+(y   )*width)*410;
-	    a += *(frame2[0]+x+(y+ 2)*width)*256;
-	    a += *(frame2[0]+x+(y+ 4)*width)*-64;
-	    a += *(frame2[0]+x+(y+ 6)*width)* 16;
-	    a += *(frame2[0]+x+(y+ 8)*width)* -4;
-	    a += *(frame2[0]+x+(y+10)*width)*  1;
-
-	    // lowpass-filter current field;
-	    b  = *(frame1[0]+x+(y-9)*width)*  1;
-	    b += *(frame1[0]+x+(y-7)*width)* -4;
-	    b += *(frame1[0]+x+(y-5)*width)* 16;
-	    b += *(frame1[0]+x+(y-3)*width)*-64;
-	    b += *(frame1[0]+x+(y-1)*width)*256;
-	    b += *(frame1[0]+x+(y+1)*width)*256;
-	    b += *(frame1[0]+x+(y+3)*width)*-64;
-	    b += *(frame1[0]+x+(y+5)*width)* 16;
-	    b += *(frame1[0]+x+(y+7)*width)* -4;
-	    b += *(frame1[0]+x+(y+9)*width)*  1;
-
-	    a /= 820*2;
-            b /= 410;
-
-	    m = b-a;
-
-	    m = m>255? 255:m;
-	    m = m<0  ?   0:m;
-
-	    *(frame3[0]+x+(y  )*width)=m;
-	    *(frame3[0]+x+(y-1)*width)=*(frame1[0]+x+(y-1)*width);
-	    }
 }
-#endif
