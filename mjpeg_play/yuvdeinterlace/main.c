@@ -374,9 +374,6 @@ main (int argc, char *argv[])
 					    &istreaminfo,
 					    &iframeinfo, inframe)))
     {
-      static uint32_t framenr = 0;
-
-
       memcpy (frame3[0], frame1[0], lwidth * lheight);
       memcpy (frame4[0], frame2[0], lwidth * lheight);
 
