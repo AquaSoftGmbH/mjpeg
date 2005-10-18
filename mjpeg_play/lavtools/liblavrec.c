@@ -1222,7 +1222,7 @@ static int lavrec_hardware_init(lavrec_t *info)
    /* Set decimation and image geometry params - only if we have weird options */
    if (info->geometry->x != VALUE_NOT_FILLED ||
       info->geometry->y != VALUE_NOT_FILLED ||
-      (info->geometry->h != 0 && info->geometry->h != info->video_norm==1 ? 480 : 576) ||
+      (info->geometry->h != 0 && info->geometry->h != (info->video_norm==1 ? 480 : 576)) ||
       (info->geometry->w != 0 && info->geometry->w != vc.maxwidth) ||
       info->horizontal_decimation != info->vertical_decimation)
    {
