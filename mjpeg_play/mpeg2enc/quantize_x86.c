@@ -180,7 +180,8 @@ static int quant_non_intra_mmx( struct QuantizerWorkSpace *wsp,
     int mquant = *nonsat_mquant;
     int   coeff_count = 64*BLOCK_COUNT;
     uint32_t nzflag, flags;
-    int16_t *psrc, *pdst, *pdiv, *pmul, *pdivbase, *pmulbase;
+    int16_t *psrc, *pdst, *pdiv, *pmul;
+    uint16_t *pdivbase, *pmulbase;
     int i;
     uint32_t tmp;
     uint64_t negone_q,satlim_q;
