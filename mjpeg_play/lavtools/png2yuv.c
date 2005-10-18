@@ -425,7 +425,7 @@ static int init_parse_files(parameters_t *param)
   if (decode_png(pngname, 0, param) == -1)
     mjpeg_error_exit1("Reading of %s failed.\n", pngname);
 
-  mjpeg_info("Image dimensions are %ldx%ld",
+  mjpeg_info("Image dimensions are %ux%u",
 	     param->width, param->height);
   
   mjpeg_info("Movie frame rate is:  %f frames/second",
@@ -455,7 +455,7 @@ static int init_parse_files(parameters_t *param)
       param->height *= 2;
       mjpeg_info("Non-interleaved fields (image height doubled)");
     }
-  mjpeg_info("Frame size:  %ld x %ld", param->width, param->height);
+  mjpeg_info("Frame size:  %u x %u", param->width, param->height);
 
   return 0;
 }
