@@ -436,21 +436,4 @@ int AVI_read_wave_header( int fd, struct wave_header * wave );
 int AVI_write_wave_header( int fd, const struct wave_header * wave );
 size_t AVI_read_wave_pcm_data( int fd, void * buffer, size_t buflen );
 size_t AVI_write_wave_pcm_data( int fd, const void * buffer, size_t buflen );
-
-
-struct AVIStreamHeader {
-  long  fccType;
-  long  fccHandler;
-  long  dwFlags;
-  long  dwPriority;
-  long  dwInitialFrames;
-  long  dwScale;
-  long  dwRate;
-  long  dwStart;
-  long  dwLength;
-  long  dwSuggestedBufferSize;
-  long  dwQuality;
-  long  dwSampleSize;
-};
-
 #endif
