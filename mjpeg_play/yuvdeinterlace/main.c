@@ -122,7 +122,8 @@ main (int argc, char *argv[])
   y4m_stream_info_t istreaminfo;
   y4m_frame_info_t oframeinfo;
   y4m_stream_info_t ostreaminfo;
-
+static uint32_t framenr;
+	
 #ifdef STATFILE
   statistics = fopen ("SAD-statistics.data", "w");
 #endif
@@ -392,13 +393,14 @@ main (int argc, char *argv[])
 	  sinc_interpolation (frame2[1], inframe[1], cwidth, cheight, 0);
 	  sinc_interpolation (frame2[2], inframe[2], cwidth, cheight, 0);
 
-	  motion_compensate (r0[0], frame2[0], frame3[0], frame4[0], lwidth,
+		motion_compensate (r0[0], frame2[0], frame3[0], frame4[0], lwidth,
 			     lheight, 1);
 	  motion_compensate (r0[1], frame2[1], frame3[1], frame4[1], cwidth,
 			     cheight, 1);
 	  motion_compensate (r0[2], frame2[2], frame3[2], frame4[2], cwidth,
 			     cheight, 1);
 
+		
 	  if (both_fields)
 	    {
 	      motion_compensate (r1[0], frame1[0], frame2[0], frame3[0],
@@ -437,7 +439,6 @@ main (int argc, char *argv[])
 				 cwidth, cheight, 1);
 	    }
 	}
-#if 0
       if (framenr > 0)
 	{
 	  y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r0);
@@ -451,12 +452,6 @@ main (int argc, char *argv[])
 	  if (both_fields)
 	    y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);
 	}
-#endif
-      antialias (sr[0], r0[0], lwidth, lheight);
-      antialias (sr[1], r0[1], cwidth, cheight);
-      antialias (sr[2], r0[2], cwidth, cheight);
-      y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r0);
-
     }
 
   /* free allocated buffers */
