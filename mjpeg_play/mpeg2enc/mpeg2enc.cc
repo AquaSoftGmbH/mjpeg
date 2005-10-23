@@ -606,7 +606,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
     int n;
     int nerr = 0;
     static const char	short_options[]=
-        "m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:A:Q:X:D:g:G:v:V:F:N:tpdsZHOcCPK:E:R:";
+        "a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:A:Q:X:D:g:G:v:V:F:N:tpdsZHOcCPK:E:R:";
 
 #ifdef HAVE_GETOPT_LONG
     static struct option long_options[]={
@@ -627,14 +627,14 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
         { "min-gop-size",      1, 0, 'g'},
         { "max-gop-size",      1, 0, 'G'},
         { "closed-gop",        0, 0, 'c'},
-        { "force-b-b-p", 0, &preserve_B, 1},
+        { "force-b-b-p",       0, 0, 'P'},
         { "ratecontroller", 1, 0, 'A' },
         { "quantisation-reduction", 1, 0, 'Q' },
         { "quant-reduction-max-var", 1, 0, 'X' },
         { "video-buffer",      1, 0, 'V' },
         { "video-norm",        1, 0, 'n' },
         { "sequence-length",   1, 0, 'S' },
-        { "3-2-pulldown",      0, &vid32_pulldown, 'p'},
+        { "3-2-pulldown",      0, 0, 'p'},
         { "keep-hf",           0, 0, 'H' },
         { "reduce-hf",         1, 0, 'N' },
         { "sequence-header-every-gop", 0, &seq_hdr_every_gop, 1},
