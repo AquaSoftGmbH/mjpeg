@@ -606,7 +606,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
     int n;
     int nerr = 0;
     static const char	short_options[]=
-        "a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:A:Q:X:D:g:G:v:V:F:N:tpdsZHOcCPK:E:R:";
+        "a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:A:Q:X:D:g:G:v:V:F:N:pdsZHOcCPK:E:R:";
 
 #ifdef HAVE_GETOPT_LONG
     static struct option long_options[]={
@@ -638,7 +638,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
         { "keep-hf",           0, 0, 'H' },
         { "reduce-hf",         1, 0, 'N' },
         { "sequence-header-every-gop", 0, &seq_hdr_every_gop, 1},
-        { "no-dummy-svcd-SOF", 0, &svcd_scan_data, 0 },
+        { "no-dummy-svcd-SOF", 0, 0, 'd' },
         { "correct-svcd-hds", 0, &hack_svcd_hds_bug, 0},
         { "no-constraints", 0, &ignore_constraints, 1},
         { "no-altscan-mpeg2", 0, &hack_altscan_bug, 1},
