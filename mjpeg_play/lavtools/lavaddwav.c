@@ -301,22 +301,6 @@ int main(int argc, char **argv)
   max_frame_size = find_max_frame_size(iLavFiles);
   mjpeg_debug("   Max frame size: %ld", max_frame_size);
 
-  /* Check the output file format makes sense */
-  if( (dotptr = strrchr(argv[3], '.')) )
-  {
-    if ( !strcasecmp(dotptr+1, "mov"))
-    {
-      if( vp[0]->format != 113 )
-      {
-        mjpeg_error("Output file looks like QT but input files are not QT");
-        mjpeg_error("Please choose another extension to avoid confusion");
-        free_audio_memory(iWavFiles);
-        free_video_memory(iLavFiles);
-        exit(1);
-      }
-    }
-  }
-
   /* Rough check for "%d" style output filename */
   if( strchr(argv[optind+2], 37) != NULL )
   {
