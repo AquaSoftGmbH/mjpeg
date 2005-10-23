@@ -637,7 +637,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
         { "3-2-pulldown",      0, 0, 'p'},
         { "keep-hf",           0, 0, 'H' },
         { "reduce-hf",         1, 0, 'N' },
-        { "sequence-header-every-gop", 0, &seq_hdr_every_gop, 1},
+        { "sequence-header-every-gop", 0, 0, 's'},
         { "no-dummy-svcd-SOF", 0, 0, 'd' },
         { "correct-svcd-hds", 0, 0, 'C'},
         { "no-constraints", 0, &ignore_constraints, 1},
