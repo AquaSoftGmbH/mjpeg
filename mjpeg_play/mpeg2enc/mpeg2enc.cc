@@ -606,7 +606,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
     int n;
     int nerr = 0;
     static const char	short_options[]=
-        "a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:A:Q:X:D:g:G:v:V:F:N:pdsZHOcCPK:E:R:";
+        "a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:A:Q:X:D:g:G:v:V:F:N:pdsHcCPK:E:R:";
 
 #ifdef HAVE_GETOPT_LONG
     static struct option long_options[]={
