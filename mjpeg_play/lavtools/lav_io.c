@@ -273,46 +273,13 @@ lav_file_t *lav_open_output_file(char *filename, char format,
                     int asize, int achans, long arate)
 {
    lav_file_t *lav_fd = (lav_file_t*) malloc(sizeof(lav_file_t));
-   char *extension, *tempfile;
+   char *tempfile;
 
    if (lav_fd == 0) { internal_error=ERROR_MALLOC; return 0; }
-
-   /* Set lav_fd */
 
    lav_fd->avi_fd      = 0;
    lav_fd->qt_fd       = 0;
    lav_fd->format      = format;
-   /* Sanity check: do not create a quicktime file that is named with .avi */
-   extension = rindex(filename, '.');
-   if (extension != NULL)
-   {
-      extension++;
-      switch(format)
-        {
-        case 'a':
-        case 'A':
-          if (strcasecmp(extension, "avi"))
-            {
-               internal_error = ERROR_FORMAT;
-               return 0;
-            }
-          break;
-        case 'q':
-          if (strcasecmp(extension, "mov"))
-            {
-             internal_error = ERROR_FORMAT;
-             return 0;
-            }
-          break;
-        case 'j':
-          if (strcasecmp(extension, "jpg") && strcasecmp(extension,"jpeg"))
-            {
-              internal_error = ERROR_FORMAT;
-              return 0;
-            }
-          break;
-        }
-   }
    lav_fd->interlacing = interlaced ? lav_query_polarity(format) :
                                       Y4M_ILACE_NONE;
    lav_fd->has_audio   = (asize>0 && achans>0);
