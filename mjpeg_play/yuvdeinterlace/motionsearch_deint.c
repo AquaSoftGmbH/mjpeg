@@ -130,7 +130,7 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 	     lp2 + (x + 16) + (y) * w, w, 32, 0x00ffffff);
 	  bmin *= 0.8;
 
-	  for (dy = -8; dy <= +8; dy += 2)
+	  for (dy = -8; dy <= +8; dy++)
 	    for (dx = -8; dx <= +8; dx++)
 	      {
 		sad = psad_00

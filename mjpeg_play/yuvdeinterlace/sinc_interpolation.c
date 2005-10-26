@@ -64,12 +64,9 @@ uint8_t * ptr = frame+field*w;
 	{
 	  a  = *(ptr - w1);
 		
-	  b  = *(ptr - w5);
-	  b -= *(ptr - w3) << 2;
-	  b += *(ptr - w1) << 4;
-	  b += *(ptr + w1) << 4;
-	  b -= *(ptr + w3) << 2;
-	  b += *(ptr + w5);
+	  b  = ( *(ptr - w5) + *(ptr + w5) ) ;     // *  1
+	  b -= ( *(ptr - w3) + *(ptr + w3) ) << 2; // * -4
+	  b += ( *(ptr - w1) + *(ptr + w1) ) << 4; // * 16
 	  b /= 26;
 		
 	  c  = *(ptr + w1);
@@ -79,6 +76,7 @@ uint8_t * ptr = frame+field*w;
 
 	  m = 0x00ffffff;
 	  v = b;
+		
 	  for (dx = 0; dx < 2; dx++)
 	    {
 		  dx1 = dx;
@@ -94,19 +92,27 @@ uint8_t * ptr = frame+field*w;
 	      e  = *(ptr - dx - w1 +1);
 		  e -= *(ptr + dx + w1 +1);
 		  d += e*e;	
+	      e  = *(ptr - dx - w1 -2);
+		  e -= *(ptr + dx + w1 -2);
+		  d += e*e;	
+	      e  = *(ptr - dx - w1 +2);
+		  e -= *(ptr + dx + w1 +2);
+		  d += e*e;	
 					
-		  b  = *(ptr - dx5 - w5);
-		  b -= *(ptr - dx3 - w3) << 2;
-		  b += *(ptr - dx1 - w1) << 4;
-		  b += *(ptr + dx1 + w1) << 4;
-		  b -= *(ptr + dx3 + w3) << 2;
-		  b += *(ptr + dx5 + w5);
-	  	  b /= 26;
 			
-	      if (m > d && ((a < b && b < c) || (a > b && b > c)))
+//	      if (m > d && ((a < b && b < c) || (a > b && b > c)))
+	      if (m > d )
 		{
 		  m = d;
-		  v = b;
+		  v  = *(ptr - dx5 - w5);
+		  v -= *(ptr - dx3 - w3) << 2;
+		  v += *(ptr - dx1 - w1) << 4;
+		  v += *(ptr + dx1 + w1) << 4;
+		  v -= *(ptr + dx3 + w3) << 2;
+		  v += *(ptr + dx5 + w5);
+	  	  v /= 26;
+	      v = v > 255 ? 255 : v;
+		  v = v < 0 ? 0 : v;
 		}
 
 		  dx1 = dx;
@@ -122,21 +128,30 @@ uint8_t * ptr = frame+field*w;
 	      e  = *(ptr + dx - w1 + 1);
 		  e -= *(ptr - dx + w1 + 1);
 		  d += e*e;	
+	      e  = *(ptr + dx - w1 - 2);
+		  e -= *(ptr - dx + w1 - 2);
+		  d += e*e;	
+	      e  = *(ptr + dx - w1 + 2);
+		  e -= *(ptr - dx + w1 + 2);
+		  d += e*e;	
 					
-		  b  = *(ptr + dx5 - w5);
-		  b -= *(ptr + dx3 - w3) << 2;
-		  b += *(ptr + dx1 - w1) << 4;
-		  b += *(ptr - dx1 + w1) << 4;
-		  b -= *(ptr - dx3 + w3) << 2;
-		  b += *(ptr - dx5 + w5);
-	  	  b /= 26;
 			
-	      if (m > d && ((a < b && b < c) || (a > b && b > c)))
+//	      if (m > d && ((a < b && b < c) || (a > b && b > c)))
+	      if (m > d )
 		{
 		  m = d;
-		  v = b;
+		  v  = *(ptr + dx5 - w5);
+		  v -= *(ptr + dx3 - w3) << 2;
+		  v += *(ptr + dx1 - w1) << 4;
+		  v += *(ptr - dx1 + w1) << 4;
+		  v -= *(ptr - dx3 + w3) << 2;
+		  v += *(ptr - dx5 + w5);
+	  	  v /= 26;
+	      v = v > 255 ? 255 : v;
+		  v = v < 0 ? 0 : v;
 		}
 	    }
+		
 		
 	  *(ptr) = v;
 	  ptr++;
