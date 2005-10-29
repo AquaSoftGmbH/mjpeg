@@ -325,6 +325,11 @@ static void quick_message(const char *message) {
 
 void dispatch_input(void)
 {
+char * token ;
+char * tokens[ 4] ;
+int i ;
+
+
    /* A line starting with '-' should be ignored */
 
    if(inpbuff[0]=='-') return;
@@ -334,7 +339,35 @@ void dispatch_input(void)
    if(inpbuff[0]=='@')
    {
       int slider_new_pos;
-      sscanf(inpbuff+1,"%lg/%d/%d/%d",&fps,&cur_pos,&total_frames,&cur_speed);
+
+  //    sscanf(inpbuff+1,"%lg/%d/%d/%d",&fps,&cur_pos,&total_frames,&cur_speed);
+      memset( tokens, 0, sizeof( tokens)) ;
+      tokens[ 0] = token = inpbuff + 1 ;
+      for( i = 1 ; (i < 4) && ( token != NULL) ; i++) {
+         token = strchr( token, '/') ;
+         if( token != NULL) {
+            *token = '\0' ;
+            token++ ;
+            tokens[ i] = token ;
+         }
+      }
+      token = tokens[ 0] ;
+      if( token != NULL) {
+         fps = atof( token) ;
+      }
+      token = tokens[ 1] ;
+      if( token != NULL) {
+         cur_pos = atoi( token) ;
+      }
+      token = tokens[ 2] ;
+      if( token != NULL) {
+         total_frames = atoi( token) ;
+      }
+      token = tokens[ 3] ;
+      if( token != NULL) {
+         cur_speed = atoi( token) ;
+      }
+
       calc_timecode(cur_pos,cur_speed==0);
       gtk_label_set_text(GTK_LABEL(gtk_xlav->Timer),timecode);
       /* fl_set_object_label(gtk_xlav->Timer,timecode); */
