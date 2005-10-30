@@ -31,6 +31,8 @@ Version 0.9.4 -> 0.9.5
 * fixes for big-endian machines (patch by Ben Capper
     <benandeve@optusnet.com.au>)
 * invalid memory access in bt819 driver
+* fixed dmesg flooding (because we sleep while holding a spinlock); harmless
+   but annoying
 
 Version 0.9.3 -> 0.9.4
 ----------------------
