@@ -531,10 +531,9 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
             max_GOP_size = 12;
         break;
     case 2:
-        if( min_GOP_size == -1 )
-            min_GOP_size = 9;
         if( max_GOP_size == -1 )
             max_GOP_size = (norm == 'n' ? 18 : 15);
+        min_GOP_size = max_GOP_size/2;
         break;
     }
 	if( svcd_scan_data == -1 )

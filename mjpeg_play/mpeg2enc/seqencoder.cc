@@ -296,7 +296,7 @@ void SeqEncoder::Pass1EncodePicture(Picture *picture)
     picture->MotionSubSampledLum();
 
     EncodePicture(picture);
-
+#ifdef TRACE_ACTIVITY
 	mjpeg_info("Frame %5d %5d %c q=%3.2f Sact=(%8.5f->%8.5f) %s [%.0f%%]",
                picture->decode, 
                picture->input,
@@ -307,6 +307,16 @@ void SeqEncoder::Pass1EncodePicture(Picture *picture)
                picture->pad ? "PAD" : "   ",
                picture->IntraCodedBlocks() * 100.0
         );
+#else
+    mjpeg_info("Frame %5d %5d %c q=%3.2f %s [%.0f%% Intra]",
+               picture->decode, 
+               picture->input,
+               pict_type_char[picture->pict_type],
+               picture->AQ,
+               picture->pad ? "PAD" : "   ",
+               picture->IntraCodedBlocks() * 100.0
+        );
+#endif
 			
 }
 
@@ -336,7 +346,7 @@ void SeqEncoder::Pass1ReEncodePicture(Picture *picture)
 
     EncodePicture(picture);
 
-
+#ifdef TRACE_ACTIVITY
     mjpeg_info("Reenc %5d %5d %c q=%3.2f Sact=(%8.5f->%8.5f) %s", 
                picture->decode, 
                picture->input,
@@ -345,6 +355,15 @@ void SeqEncoder::Pass1ReEncodePicture(Picture *picture)
                prev_sum_avg_act,
                picture->sum_avg_act,
                picture->pad ? "PAD" : "   ");
+#else
+    mjpeg_info("Reenc %5d %5d %c q=%3.2f %s", 
+               picture->decode, 
+               picture->input,
+               pict_type_char[picture->pict_type],
+               picture->AQ,
+               picture->pad ? "PAD" : "   ");
+#endif
+
 			
 }
 
@@ -575,7 +594,7 @@ void SeqEncoder::Pass1EncodeFrame()
     
         // Decide if a P frame really should have been an I-frame, and re-encoded
         // as such if necessary
-        if( cur_picture->IntraCodedBlocks() > 0.9 && ss.g_idx >= encparams.N_min )
+        if( cur_picture->IntraCodedBlocks() > 0.6 && ss.g_idx >= encparams.N_min )
         {
             mjpeg_info( "DEVEL: GOP split point found here... %.0f%% intra coded", 
                         cur_picture->IntraCodedBlocks() * 100.0 );
