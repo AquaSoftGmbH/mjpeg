@@ -115,8 +115,6 @@ static void usage(void)
   fprintf(stderr,"    the output filename so that lavaddwav creates several files.\n");
   fprintf(stderr,"    e.g. lavaddwav video.avi sound.wav output%%02d.avi\n");
 }
-/********************************************************************/
-
 
 void handle_args(int argc, char **argv)
 {
@@ -154,9 +152,11 @@ void handle_args(int argc, char **argv)
     param_maxfilesize = MAX_MBYTES_PER_FILE_32;
     fprintf(stderr,"Maximum size per file out of range - resetting to maximum\n");
   }
-
 }
-/********************************************************************/
+
+/*
+ * Main
+*/
 
 int main(int argc, char **argv)
 {
@@ -172,7 +172,7 @@ int main(int argc, char **argv)
   unsigned long ulOutputBytes;
   int iLavFiles, iWavFiles;
   int iTotBytes;
-  char chOutFile[128] = "\0";
+  char *chOutFile;
   int iOutNum = 1;
   int iCurLav = 0;
   int iCurWav = 0;
@@ -195,13 +195,9 @@ int main(int argc, char **argv)
   if( big_endian < 0 )
     exit(1);
 
-  /* Check for enough string space for output filename */
-  if( strlen(argv[optind+2]) > (sizeof(chOutFile)-2) )
-  {
-    mjpeg_error("Insufficient string space to create output filename");
-    exit(1);
-  }
-
+  chOutFile = malloc(strlen(argv[optind+2]) + 8 + 1);  /* Extra for safety */
+  if (chOutFile == NULL)
+     mjpeg_error_exit1("Could not malloc space for output filename");
 
   /* Process according to mode */
   if( list_mode )
@@ -303,15 +299,10 @@ int main(int argc, char **argv)
 
   /* Rough check for "%d" style output filename */
   if( strchr(argv[optind+2], 37) != NULL )
-  {
     imulti_out = 1;
-  }
   else
-  {
     /* Copy output filename for non-%d style names */
-    strncpy(chOutFile, argv[optind+2], sizeof(chOutFile)-1);
-    chOutFile[sizeof(chOutFile)-1] = 0;
-  }
+    strcpy(chOutFile, argv[optind+2]);
 
   /* Allocate video and audio buffers */
   vbuff = (uint8_t*) malloc(max_frame_size);
@@ -362,11 +353,9 @@ int main(int argc, char **argv)
   while( iCurLav < iLavFiles )
   {
     if( imulti_out )
-    {
       /* build output filename */
       sprintf(chOutFile, argv[optind+2], iOutNum++);
-    }
-      
+
     /* Create output file */
     lav_out = lav_open_output_file(chOutFile,
                                    vp[0]->format,
@@ -386,6 +375,7 @@ int main(int argc, char **argv)
       free(vbuff);
       free_audio_memory(iWavFiles);
       free_video_memory(iLavFiles);
+      free(chOutFile);
       exit(1);
     }
 
@@ -505,8 +495,6 @@ int main(int argc, char **argv)
 
         } /* end of while( iCurWav < iWavFiles ) */
 
-
-
         /* Increment video frame counter */
          i++;
 
@@ -610,6 +598,7 @@ int main(int argc, char **argv)
         free(vbuff);
         free_audio_memory(iWavFiles);
         free_video_memory(iLavFiles);
+        free(chOutFile);
         exit(1);
       }
     } /* end of if( lav_out == NULL ) */
@@ -738,6 +727,7 @@ int main(int argc, char **argv)
   free(vbuff);
   free_audio_memory(iWavFiles);
   free_video_memory(iLavFiles);
+  free(chOutFile);
 
   mjpeg_debug("   Total Video Duration:    %8.3f sec", total_video_duration);
   mjpeg_debug("   Total Audio Duration:    %8.3f sec", total_audio_duration);
@@ -745,18 +735,13 @@ int main(int argc, char **argv)
 
   /* Success */
   return 0;
-
-
 }
-/********************************************************************/
-
 
 int open_lav_file(lav_file_t **lav_fd, char *chLavFile, int ientry, int iscan)
 {
   long i;
   long max_frame_size = 0;
   lav_file_t *lav_tmp;
-
 
   *lav_fd = lav_open_input_file(chLavFile);
   if(!*lav_fd)
@@ -797,13 +782,9 @@ int open_lav_file(lav_file_t **lav_fd, char *chLavFile, int ientry, int iscan)
     vp[ientry]->max_frame_size = max_frame_size;
   }
 
-
   /* success */
   return 1;  
-  
 }
-/********************************************************************/
-
 
 int open_wav_file(int *wav_fd, char *chWavFile, int ientry, int iscan)
 {
@@ -916,10 +897,7 @@ int open_wav_file(int *wav_fd, char *chWavFile, int ientry, int iscan)
 
   /* success */
   return 1;
-
 }
-/********************************************************************/
-
 
 int count_list_entries(char *chFile)
 {
@@ -937,19 +915,14 @@ int count_list_entries(char *chFile)
     return 0;
   }
 
-  while( fscanf(fp, chformat, chtmp) == 1)
-  {
-   ientries++;
-  }
+  while (fscanf(fp, chformat, chtmp) == 1)
+        ientries++;
 
   fclose(fp);
 
   /* return the number of entries */
   return ientries;
-
 }
-/********************************************************************/
-
 
 int fill_video_list_entries(char *chFile)
 {
@@ -981,12 +954,8 @@ int fill_video_list_entries(char *chFile)
   }
 
   fclose(fp);
-
   return 1;
-
 }
-/********************************************************************/
-
 
 int fill_audio_list_entries(char *chFile)
 {
@@ -1018,12 +987,8 @@ int fill_audio_list_entries(char *chFile)
   }
 
   fclose(fp);
-
   return 1;
-
 }
-/********************************************************************/
-
 
 void display_video_params(int ientry)
 {
@@ -1039,8 +1004,6 @@ void display_video_params(int ientry)
    mjpeg_debug(" ");
 
 }
-/********************************************************************/
-
 
 void display_audio_params(int ientry)
 {
@@ -1053,8 +1016,6 @@ void display_audio_params(int ientry)
    mjpeg_debug(" ");
 
 }
-/********************************************************************/
-
 
 int allocate_video_memory(int ientries)
 {
@@ -1082,10 +1043,7 @@ int allocate_video_memory(int ientries)
   }
 
   return 1;
-
 }
-/********************************************************************/
-
 
 int allocate_audio_memory(int ientries)
 {
@@ -1114,9 +1072,7 @@ int allocate_audio_memory(int ientries)
   }
 
   return 1;
-
 }
-/********************************************************************/
 
 void free_video_memory(int ientries)
 {
@@ -1137,32 +1093,24 @@ void free_video_memory(int ientries)
 
   free(vp);
   vp = NULL;
-
 }
-/********************************************************************/
 
 void free_audio_memory(int ientries)
 {
   int i;
 
-  if( ap == NULL )
-  {
-    return;
-  }
+  if (ap == NULL)
+     return;
 
   for(i=0; i<ientries; i++)
   {
-    if( ap[i] != NULL )
-    {
-      free(ap[i]);
-    }
+    if (ap[i] != NULL)
+       free(ap[i]);
   }
 
   free(ap);
   ap = NULL;
-
 }
-/********************************************************************/
 
 int compare_input_files(int iVidEntries, int iAudEntries)
 {
@@ -1196,9 +1144,7 @@ int compare_input_files(int iVidEntries, int iAudEntries)
 
   /* file formats match */
   return 1;
-
 }
-/********************************************************************/
 
 long find_max_frame_size(int ientries)
 {
@@ -1214,6 +1160,4 @@ long find_max_frame_size(int ientries)
   }
 
   return max_frame_size;
-
 }
-/********************************************************************/
