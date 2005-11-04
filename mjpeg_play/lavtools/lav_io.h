@@ -25,6 +25,10 @@ typedef void avi_t;
 #endif
 
 #include <yuv4mpeg.h>
+#include <sys/types.h> /* off_t */
+
+#define MAX_MBYTES_PER_FILE_64 (4194304 - 1024)   /* 4TB-1GB should be enough */
+#define MAX_MBYTES_PER_FILE_32 (2048 - 4)         /* 2GB-4MB */
 
 /* raw data format of a single frame */
 #define DATAFORMAT_MJPG     0

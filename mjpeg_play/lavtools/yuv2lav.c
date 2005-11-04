@@ -34,22 +34,6 @@
 #include "jpegutils.h"
 #include "lav_io.h"
 
-
-/* max_file_size stuff */
-#define MAX_MBYTES_PER_FILE_64 ((0x3fffff) * 93/100)        /* 4Tb.  (Most filesystems have  */
-                                                            /* fundamental limitations around ~Tb) */
-#define MAX_MBYTES_PER_FILE_32 ((0x7fffffff >> 20) * 85/100)/* Is less than 2^31 and 2*10^9 */
-#if _FILE_OFFSET_BITS == 64
-#define MAX_MBYTES_PER_FILE MAX_MBYTES_PER_FILE_64
-#else
-#define MAX_MBYTES_PER_FILE MAX_MBYTES_PER_FILE_32
-                                  /* Maximum number of Mbytes per file.
-                                     We make a conservative guess since we
-                                     only count the number of bytes output
-                                     and don't know how big the control
-                                     information will be */
-#endif
-
 #define FOURCC(a,b,c,d) ( (d<<24) | ((c&0xff)<<16) | ((b&0xff)<<8) | (a&0xff) )
 
 #define FOURCC_RIFF     FOURCC ('R', 'I', 'F', 'F')
@@ -205,13 +189,14 @@ int main(int argc, char *argv[])
       usage ();
       exit (1);
    }
+
+/*
+ * If NO limit was explicitly specified (to limit files to 2GB or less) then
+ * allow unlimited (well, ok - 4TB ;)) size.  ODML extensions will handle the
+ * AVI files and Quicktime has had 64bit filesizes for a long time
+*/
    if (param_maxfilesize <= 0)
-   {
-      if (param_format=='a'||param_format=='A')
-         param_maxfilesize = MAX_MBYTES_PER_FILE_32;
-      else
-         param_maxfilesize = MAX_MBYTES_PER_FILE;
-   }
+      param_maxfilesize = MAX_MBYTES_PER_FILE_64;
 
    (void)mjpeg_default_handler_verbosity(verbose);   
    fd_in = 0;                   /* stdin */

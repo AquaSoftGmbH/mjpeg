@@ -89,19 +89,6 @@
 
 #define NUM_AUDIO_TRIES 500 /* makes 10 seconds with 20 ms pause beetween tries */
 
-#define MAX_MBYTES_PER_FILE_64 ((0x3fffff) * 93/100)        /* 4Tb.  (Most filesystems have  */
-                                                            /* fundamental limitations around ~Tb) */
-#define MAX_MBYTES_PER_FILE_32 ((0x7fffffff >> 20) * 85/100)/* Is less than 2^31 and 2*10^9 */
-#if _FILE_OFFSET_BITS == 64
-#define MAX_MBYTES_PER_FILE MAX_MBYTES_PER_FILE_64
-#else
-#define MAX_MBYTES_PER_FILE MAX_MBYTES_PER_FILE_32
-                                  /* Maximum number of Mbytes per file.
-                                     We make a conservative guess since we
-                                     only count the number of bytes output
-                                     and don't know how big the control
-                                     information will be */
-#endif
 #define MIN_MBYTES_FREE 10        /* Minimum number of Mbytes that should
                                      stay free on the file system, this is also
                                      only a guess */
@@ -110,7 +97,6 @@
 #define CHECK_INTERVAL 50         /* Interval for checking free space on file system */
 
 #define VALUE_NOT_FILLED -10000
-
 
 typedef struct {
    int    interlaced;                         /* is the video interlaced (even/odd-first)? */
@@ -521,10 +507,7 @@ static uint64_t lavrec_get_free_space(video_capture_setup *settings)
 
    /* check the disk space again */
    if (statfs(settings->stats->output_filename, &statfs_buf))
-   {
-      /* some error happened */
-      MBytes_fs_free = MAX_MBYTES_PER_FILE; /* some fake value */
-   }
+      MBytes_fs_free = 2047; /* some fake value */
    else
    {
       blocks_per_MB = (1024*1024) / statfs_buf.f_bsize;
@@ -1366,17 +1349,15 @@ static int lavrec_init(lavrec_t *info)
    /* are there files to capture to? */
    if (info->files) /* yes */
    {
-      /* Handle the limitations of AVI that can only do MAX 2G Byte files */
+/*
+ * If NO filesize limit was specifically given then allow unlimited size.
+ * ODML extensions will handle the AVI files and Quicktime has had 64bit
+ * filesizes for a long time
+*/
       if (info->max_file_size_mb < 0)
-      {
-         if( info->video_format == 'a' || info->video_format == 'A' )
-            info->max_file_size_mb = MAX_MBYTES_PER_FILE_32;
-         else
-            info->max_file_size_mb = MAX_MBYTES_PER_FILE;
-      }
+         info->max_file_size_mb = MAX_MBYTES_PER_FILE_64;
       lavrec_msg(LAVREC_MSG_DEBUG, info,
-         "Maximum size per file will be %d MB",
-         info->max_file_size_mb);
+         "Maximum size per file will be %d MB", info->max_file_size_mb);
 
       if (info->video_captured || info->audio_captured)
       {

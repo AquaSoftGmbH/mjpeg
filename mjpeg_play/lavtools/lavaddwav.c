@@ -43,7 +43,6 @@
 #define FOURCC_FMT      FOURCC ('f', 'm', 't', ' ')
 #define FOURCC_DATA     FOURCC ('d', 'a', 't', 'a')
 
-#define MAX_MBYTES_PER_FILE_32 ((0x7fffffff >> 20) * 85/100)/* Is less than 2^31 and 2*10^9 */
 #define MAX_FILE_NAME 127
 
 /* Structures */
