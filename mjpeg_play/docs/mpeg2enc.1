@@ -472,20 +472,37 @@ chroma artifacts may be generated when the MPEG stream is played back.
 .BR -G|--max-gop-size \ num
 .PP
 These flags set the minimum and maximum group-of-picture (GOP) size
-for the output MPEG stream.  By default both are set to 12 to suit VCD
-encoding.  If the two values are not identical mpeg2enc applies a
-simple scene-change detection procedure to try to select GOP sizes
-that ensure big changes of image coincide with the fully-encoded
-I-frame starting a new GOP.  This can help prevent transient
-"blockiness".  For VCD/SVCD/DVD the largest GOP size is 15 for PAL or 18 for
-NTSC.  Reasonable minimum GOP sizes are 6 or 9.  A larger GOP size can
-help reduce the bitrate required for a given quality.  However, this
-really only applies to high-quality source material with little noise
-(e.g. digital video).  For broadcast material there is little point
-setting GOP size much beyond 21 or 24.  Even with good source material
-diminishing returns set in quite rapidly.
-
-Note: Mpeg2enc is currently hard-wired to produce 2 B frames between
+for the output MPEG stream.  The default values depend on the output format.
+.sp
+For MPEG-1 (for example VCD) the default is a fixed GOP size of 12 (-g and -G
+are both set to 12).
+.sp
+For
+MPEG-2 the default value of -G (max) is set according to the video system: 
+-G 15 for 625 line (PAL) and 18 for 525 line (NTSC).
+If -g (min) has not been specified then the minimum GOP size is set to be
+one half of the maximum (-G).
+.sp
+To force a fixed GOP size specify both -g and -G with the same value.
+.sp
+If the minimum and maximum GOP sizes are \fBnot\fP identical then mpeg2enc
+will start a \fBnew\fP GOP if more than 60% of the macroblocks in a P or B
+frame are Intra encoded.
+This ensure big changes of image coincide with a fully-encoded
+I-frame by starting  a new GOP.  This can help prevent transient
+"blockiness".
+.sp
+Reasonable minimum GOP sizes are 6 or 9.  If a minimum is not specified but
+a maximum is given then the minimum will be set to one half the maximum.
+A larger GOP size can help reduce the bitrate required for a given quality.  
+However, this really only applies to \fBhigh-quality\fP source material with 
+\fBlittle noise\fP (e.g. digital video).  For broadcast material there is 
+little point setting GOP size much beyond 21 or 24.  Even with good 
+source material diminishing returns set in quite rapidly.  Also it must be
+noted that specific MPEG-2 formats (such as for DVD) are constrained 
+in the maximum allowable GOP size.
+.sp
+Note: mpeg2enc is currently hard-wired to produce 2 B frames between
 each I/P frame unless the GOP size forces less.  This is reasonable
 for medium to high bitrates (>= 1Mbps) but probably sub-optimal for
 low-bitrate encoding.
