@@ -5,9 +5,6 @@
  * written by Steven M. Schultz <sms@2BSD.COM>
  *
  * 2003/5/8 - added the ability to place a black border around the frame.
- *	The -b usage is the same as for yuvdenoise.   This is a useful 
- *	feature when yuvdenoise or other programs are not being used but a
- *	border is still desired.
  *
  * Simple program to shift the data an even number of pixels.   The shift count
  * is positive for shifting to the right and negative for a left shift.   
@@ -382,7 +379,6 @@ static void usage(void)
 	fprintf(stderr, "%s:\t\t0 does no vertical shift (is ignored)\n", __progname);
 	fprintf(stderr, "%s:\t\tpositive count shifts down\n", __progname);
 	fprintf(stderr, "%s:\t-b creates black border\n", __progname);
-	fprintf(stderr, "%s:\t\tusage is same as yuvdenoise.\n", __progname);
 	fprintf(stderr, "%s:\tShifting is done before border creation\n", __progname);
         fprintf(stderr, "%s:\t-v print input stream info\n", __progname);
         fprintf(stderr, "%s:\t-h print this usage summary\n", __progname);
