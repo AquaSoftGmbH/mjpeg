@@ -49,7 +49,7 @@ int param_weight_type = 0;	/* 0 = use param_weight, 1 = 8, 2 = 2.667,
 							   3 = 13.333, 4 = 24 */
 double param_weight = 8.0;
 #define	NUMAVG	1024
-int	avg_replace[NUMAVG];
+unsigned long avg_replace[NUMAVG];
 
 int	chroma_mode;
 int     SS_H = 2;
