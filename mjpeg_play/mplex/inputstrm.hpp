@@ -163,6 +163,8 @@ public:
 					  stream_kind kind
 					  );
     virtual ~ElementaryStream () { }
+    
+    inline stream_kind Kind() const { return kind; }
 	virtual void Close() = 0;
 
 	bool NextAU();

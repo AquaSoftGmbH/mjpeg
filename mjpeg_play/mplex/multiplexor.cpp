@@ -1360,9 +1360,8 @@ Multiplexor::WritePacket( unsigned int     max_packet_data_size,
                            bool 	 buffers,
                            clockticks   	 PTS,
                            clockticks   	 DTS,
-                           uint8_t 	 timestamps,
-                           int index_picttype
-	)
+                           uint8_t 	 timestamps
+	                     )
 {
     unsigned int written =
         psstrm->CreateSector ( pack_header_ptr,
@@ -1374,23 +1373,44 @@ Multiplexor::WritePacket( unsigned int     max_packet_data_size,
                                PTS,
                                DTS,
                                timestamps );
-    if( index_picttype != NOFRAME && vdr_index != 0 )
-    {
-        union _ibuf 
-        {
-                uint8_t bytes[sizeof(VDRtIndex)];
-                VDRtIndex istruct;     
-        } indexbuf;
-        
-        indexbuf.istruct.offset = (int)psstrm->LastPackStart();
-        indexbuf.istruct.type = index_picttype;
-        indexbuf.istruct.number = (int)psstrm->SegmentNum();
-        indexbuf.istruct.reserved = 0;
-        vdr_index->Write( indexbuf.bytes, sizeof(VDRtIndex) );
-        
-    }
     NextPosAndSCR();
     return written;
+}
+
+/***************************************************
+
+  IndexLastPacket 
+  - Generate the index data (if any) for the latest
+  packet generated in the specified stream.
+  N.b. should usually called immediately after WritePacket.
+  Its not part of WritePacket because it is not needed
+  for all stream types...
+***************************************************/
+void
+Multiplexor::IndexLastPacket( ElementaryStream &strm, int index_type )
+{
+    switch( strm.Kind() )
+    {
+        case ElementaryStream::video :
+            if( index_type != NOFRAME && vdr_index != 0 )
+            {
+                union _ibuf 
+                {
+                        uint8_t bytes[sizeof(VDRtIndex)];
+                        VDRtIndex istruct;     
+                } indexbuf;
+                
+                indexbuf.istruct.offset = (int)psstrm->LastPackStart();
+                indexbuf.istruct.type = index_type;
+                indexbuf.istruct.number = (int)psstrm->SegmentNum();
+                indexbuf.istruct.reserved = 0;
+                vdr_index->Write( indexbuf.bytes, sizeof(VDRtIndex) );
+                
+            }
+	break;
+        default :
+            abort(); // Currently only video indexing implemented
+    }
 }
 
 /***************************************************

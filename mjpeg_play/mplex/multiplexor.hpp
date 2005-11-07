@@ -28,10 +28,10 @@ public:
 							  bool 	 buffers,
 							  clockticks   	 PTS,
 							  clockticks   	 DTS,
-							  uint8_t 	 timestamps,
-                              int        index_picttype = NOFRAME
+							  uint8_t 	 timestamps
 		);
 
+    void IndexLastPacket( ElementaryStream &strm, int index_type );
 	bool AfterMaxPTS(clockticks &timestamp) 
 		{ return max_PTS != 0 && timestamp >= max_PTS; }
 
