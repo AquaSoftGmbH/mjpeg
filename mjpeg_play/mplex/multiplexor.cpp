@@ -45,7 +45,7 @@
  *
  ***************/
 
-Multiplexor::Multiplexor(MultiplexJob &job, OutputStream &output)
+Multiplexor::Multiplexor(MultiplexJob &job, OutputStream &output, OutputStream *index)
 {
     underrun_ignore = 0;
     underruns = 0;
@@ -54,7 +54,7 @@ Multiplexor::Multiplexor(MultiplexJob &job, OutputStream &output)
     InitInputStreams(job);
 
     psstrm = new PS_Stream(mpeg, sector_size, output, max_segment_size );
-
+    vdr_index = index;
 }
 
 
@@ -588,6 +588,8 @@ void Multiplexor::Init()
 	
 	mjpeg_info("SYSTEMS/PROGRAM stream:");
 	psstrm->Open();
+    if( vdr_index != 0 )
+        vdr_index->Open();
 	
     /* These are used to make (conservative) decisions
 	   about whether a packet should fit into the recieve buffers... 
@@ -1294,6 +1296,9 @@ void Multiplexor::Multiplex()
 	
 	OutputSuffix( );
 	psstrm->Close();
+    if( vdr_index != 0)
+        vdr_index->Close();
+        
 	mjpeg_info( "Multiplex completion at SCR=%lld.", current_SCR/300);
 	MuxStatus( LOG_INFO );
 	for( str = estreams.begin(); str < estreams.end(); ++str )
@@ -1347,13 +1352,16 @@ unsigned int Multiplexor::PacketPayload( MuxStream &strm, bool buffers,
 @param returns the written bytes/packets (?)
 ***************************************************/
 
+struct VDRtIndex { uint32_t offset; uint8_t type; uint8_t number; uint16_t reserved; };
+
 unsigned int 
 Multiplexor::WritePacket( unsigned int     max_packet_data_size,
                            MuxStream        &strm,
                            bool 	 buffers,
                            clockticks   	 PTS,
                            clockticks   	 DTS,
-                           uint8_t 	 timestamps
+                           uint8_t 	 timestamps,
+                           int index_picttype
 	)
 {
     unsigned int written =
@@ -1366,6 +1374,25 @@ Multiplexor::WritePacket( unsigned int     max_packet_data_size,
                                PTS,
                                DTS,
                                timestamps );
+    if( index_picttype != NOFRAME && vdr_index != 0 )
+    {
+        union _ibuf 
+        {
+                uint8_t bytes[8];
+                VDRtIndex istruct;     
+        } indexbuf;
+        
+        indexbuf.istruct.offset = (int)psstrm->LastPackStart();
+        indexbuf.istruct.type = index_picttype;
+        indexbuf.istruct.number = (int)psstrm->SegmentNum();
+        indexbuf.istruct.reserved = 0;
+        printf("Frame %d @ %08x/%d\n", 
+            indexbuf.istruct.type, indexbuf.istruct.offset, indexbuf.istruct.number
+                );
+        assert( sizeof(VDRtIndex) ==  8 );
+        vdr_index->Write( indexbuf.bytes, sizeof(VDRtIndex) );
+        
+    }
     NextPosAndSCR();
     return written;
 }

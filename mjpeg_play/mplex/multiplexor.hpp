@@ -13,7 +13,7 @@
 class Multiplexor
 {
 public:
-	Multiplexor(MultiplexJob &job, OutputStream &output);
+	Multiplexor(MultiplexJob &job, OutputStream &output, OutputStream *index);
 	void Multiplex ();
 
 
@@ -28,7 +28,8 @@ public:
 							  bool 	 buffers,
 							  clockticks   	 PTS,
 							  clockticks   	 DTS,
-							  uint8_t 	 timestamps
+							  uint8_t 	 timestamps,
+                              int        index_picttype = NOFRAME
 		);
 
 	bool AfterMaxPTS(clockticks &timestamp) 
@@ -107,7 +108,7 @@ private:
 	PS_Stream *psstrm;
 	bitcount_t bytes_output;
     clockticks ticks_per_sector;
-
+    OutputStream *vdr_index;
 public:
 	clockticks current_SCR;
 private:

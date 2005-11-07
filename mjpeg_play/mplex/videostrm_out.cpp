@@ -258,6 +258,7 @@ void VideoStream::OutputSector ( )
 	if (new_au_next_sec  )
 	{
         autype = AUType();
+        //printf( "AU %d len=%04x\n", au->dorder, au->length );
         //
         // Some types of output format (e.g. DVD) require special
         // control sectors before the sector starting a new GOP
@@ -279,10 +280,11 @@ void VideoStream::OutputSector ( )
         DTS = RequiredDTS();
 		actual_payload =
 			muxinto.WritePacket ( max_packet_payload,
-						*this,
-						NewAUBuffers(autype), 
-                                  		PTS, DTS,
-						NewAUTimestamps(autype) );
+        						*this,
+        						NewAUBuffers(autype), 
+                                PTS, DTS,
+        						NewAUTimestamps(autype),
+                                autype );
 
 	}
 
@@ -296,7 +298,8 @@ void VideoStream::OutputSector ( )
 			muxinto.WritePacket( au_unsent,
 							*this,
 							false, 0, 0,
-							TIMESTAMPBITS_NO );
+							TIMESTAMPBITS_NO,
+                            NOFRAME );
 	}
 
 	/* CASE: Packet begins with old access unit, a new one	*/
@@ -308,6 +311,9 @@ void VideoStream::OutputSector ( )
 		if( Lookahead() != 0 )
 		{
             autype = NextAUType();
+            AUnit *next = Lookahead();
+            //printf( "AU %d len=%04x\n", next->dorder, next->length );
+                    
 			if(  dtspts_for_all_au  && max_packet_payload == 0 )
 				max_packet_payload = au_unsent + Lookahead()->length;
 
@@ -316,10 +322,11 @@ void VideoStream::OutputSector ( )
 
 			actual_payload = 
 				muxinto.WritePacket ( max_packet_payload,
-						*this,
-						NewAUBuffers(autype), 
-                                      		PTS, DTS,
-						NewAUTimestamps(autype) );
+            						*this,
+            						NewAUBuffers(autype), 
+                                    PTS, DTS,
+            						NewAUTimestamps(autype),
+                                    autype );
 		} 
 		else
 		{

@@ -128,8 +128,8 @@ public:
         }
     inline void NextSegment() { output_strm.NextSegment(); }
     bool SegmentLimReached();
-
-
+    inline int SegmentNum() const { return output_strm.SegmentNum(); }
+    inline bitcount_t LastPackStart() const { return last_pack_start; }
 private:
     static void 
     BufferDtsPtsMpeg1ScrTimecode (clockticks    timecode,
@@ -145,6 +145,7 @@ private:
     unsigned int sector_size;
     off_t max_segment_size;
     uint8_t *sector_buf;
+    bitcount_t last_pack_start;
 };
 #endif // __SYSTEMS_HH__
 

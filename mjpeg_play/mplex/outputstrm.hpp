@@ -29,15 +29,18 @@ class OutputStream
 {
 public:
     OutputStream() :
-        segment_num( 1 )
+        segment_num( 1 ),
+        segment_len( 0 )
         {}
     virtual int  Open( ) = 0;
     virtual void Close() = 0;
-    virtual off_t SegmentSize( ) = 0;
+    virtual uint64_t SegmentSize( ) = 0;
     virtual void NextSegment() = 0;
     virtual void Write(uint8_t *data, unsigned int len) = 0;
+    int SegmentNum() const { return segment_num; }
 protected:
-    int segment_num;
+    int         segment_num;
+    uint64_t    segment_len;
 };
 
 #endif /* __OUTPUTSTRM_H__ */

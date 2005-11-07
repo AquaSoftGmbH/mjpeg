@@ -81,7 +81,8 @@ MultiplexJob::MultiplexJob()
 #ifdef ZALPHA
     z_alpha_tracks = 0;
 #endif
-
+    vdr_index_pathname = 0;
+    outfile_pattern = 0;
 }
 
 

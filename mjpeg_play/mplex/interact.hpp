@@ -64,7 +64,8 @@ public:
   bool stills;
   int verbose;
   int max_timeouts;
-  char *outfile_pattern;
+  const char *outfile_pattern;
+  const char *vdr_index_pathname;
   int max_segment_size;
   int min_pes_header_len;
   Workarounds workarounds;      // Special work-around flags that

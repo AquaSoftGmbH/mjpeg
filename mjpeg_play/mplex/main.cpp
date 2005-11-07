@@ -80,7 +80,7 @@ public:
     FileOutputStream( const char *filename_pat );
     virtual int  Open( );
     virtual void Close();
-    virtual off_t SegmentSize( );
+    virtual uint64_t SegmentSize( );
     virtual void NextSegment();
     virtual void Write(uint8_t *data, unsigned int len);
 
@@ -101,6 +101,7 @@ FileOutputStream::FileOutputStream( const char *name_pat )
       
 int FileOutputStream::Open()
 {
+    segment_len = 0;
 	strm = fopen( cur_filename, "wb" );
 	if( strm == NULL )
 	{
@@ -116,13 +117,23 @@ void FileOutputStream::Close()
 }
 
 
-off_t
+uint64_t
 FileOutputStream::SegmentSize()
 {
+#if 0
 	struct stat stb;
     fstat(fileno(strm), &stb);
 	off_t written = stb.st_size;
-    return written;
+    if( static_cast<uint64_t>(written) != segment_len )
+    {
+        printf( "Measured %lld and calculated %lld size don't match!\n",
+                static_cast<uint64_t>(written),
+                segment_len );
+    }
+    return static_cast<uint64_t>(written);
+#else
+    return segment_len;
+#endif
 }
 
 void 
@@ -144,6 +155,7 @@ FileOutputStream::NextSegment( )
 	{
 		mjpeg_error_exit1( "Could not open for writing: %s", cur_filename );
 	}
+    segment_len = 0;
 }
 
 void
@@ -153,6 +165,7 @@ FileOutputStream::Write( uint8_t *buf, unsigned int len )
     {
         mjpeg_error_exit1( "Failed write: %s", cur_filename );
     }
+    segment_len += static_cast<uint64_t>(len);
 }
 
 
@@ -262,7 +275,7 @@ private:
 };
 
 const char CmdLineMultiplexJob::short_options[] =
-    "o:b:r:O:v:f:l:s:S:p:W:L:VMh";
+    "o:i:b:r:O:v:f:l:s:S:p:W:L:VMh";
 #if defined(HAVE_GETOPT_LONG)
 struct option CmdLineMultiplexJob::long_options[] = 
 {
@@ -292,7 +305,7 @@ CmdLineMultiplexJob::CmdLineMultiplexJob(unsigned int argc, char *argv[]) :
 {
     int n;
     outfile_pattern = NULL;
-
+    
 #if defined(HAVE_GETOPT_LONG)
 	while( (n=getopt_long(argc,argv,short_options,long_options, NULL)) != -1 )
 #else
@@ -306,6 +319,9 @@ CmdLineMultiplexJob::CmdLineMultiplexJob(unsigned int argc, char *argv[]) :
 		case 'o' :
 			outfile_pattern = optarg;
 			break;
+        case 'i' :
+            vdr_index_pathname = optarg;
+            break;
 		case 'v' :
 			verbose = atoi(optarg);
 			if( verbose < 0 || verbose > 2 )
@@ -448,6 +464,8 @@ void CmdLineMultiplexJob::Usage(char *str)
 	"--ignore-seqend-markers|-M\n"
     "  Don't switch to a new output file if a  sequence end marker\n"
 	"  is encountered ithe input video.\n"
+    "--index|-i\n"
+    "  Generate a VDR index file with the output stream\n"
     "--workaround|-W workaround [, workaround ]\n"
 	"--help|-?\n"
     "  Print this lot out!\n", str);
@@ -613,9 +631,13 @@ int main (int argc, char* argv[])
 {
 	CmdLineMultiplexJob job(argc,argv);
 	FileOutputStream output( job.outfile_pattern );
-	Multiplexor mux(job, output);
+    FileOutputStream *index = job.vdr_index_pathname != 0 
+                             ? new FileOutputStream( job.vdr_index_pathname ) 
+                             : 0;
+	Multiplexor mux(job, output, index );
 	mux.Multiplex();
-
+    if( index != 0 )
+        delete index;
     return (0);	
 }
 

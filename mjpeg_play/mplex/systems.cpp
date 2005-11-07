@@ -440,6 +440,9 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 		sector_pack_area -= 4;
 
     BufferSectorHeader( index, pack, sys_header, index );
+    last_pack_start = output_strm.SegmentSize()
+                      + static_cast<bitcount_t>(index-sector_buf);
+    
     BufferPacketHeader( index, type, mpeg_version,
                         buffers, buffer_size, buffer_scale,
                         PTS, DTS, timestamps,
