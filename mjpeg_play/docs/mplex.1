@@ -7,6 +7,10 @@ mplex \- MPEG 1/2 program/system stream multiplexer
 .br 
 .SH "SYNOPSIS"
 .B mplex
+.RB [ -f|--format
+.IR format_code ]
+.RB [ -i|--vdr-index] 
+.IR index_pathname
 .RB [ -v|--verbose
 .IR num ]
 .RB [ -b|--video-buffer
@@ -21,8 +25,6 @@ mplex \- MPEG 1/2 program/system stream multiplexer
 .IR num ]
 .RB [ -O|--sync-offset
 .IR num[\fBms\fP|\fBs\fP|\fBpts\fP] ]
-.RB [ -f|--format
-.IR format_code ]
 .RB [ -V|--vbr]
 .RB [ -s|--sector-size
 .IR sector_size_B ]
@@ -32,8 +34,9 @@ mplex \- MPEG 1/2 program/system stream multiplexer
 .RB [ -S|--max-segment-size
 .IR output_filesize_limit_MB ]
 .RB [ -M|--split-segment]
+
 .RB [ -?|--help ]
-.BI -o|--output \ output_filename_pattern \ input_file...
+.BI -o|--output \ output_pathname_pattern \ input_file...
 
 .SH "DESCRIPTION"
 Mplex is a general-purpose audio/video multiplexer for MPEG-1/MPEG-2.
@@ -98,7 +101,12 @@ manually.
 .br
 A comma-seperated list of flags that set special work-arounds for what
 are suspected to be parser Bugs in widely used players. No workarounds are (currently) implemented but history suggests this may change quickly ;-)
-
+.BI -i|--vdr-index \ index_pathname
+This tells mplex to generate an index file for the output in the format
+used by the 'vdr' (video disk recorder package). Useful if you want to
+write output into vdr's recordings directory for playback on your
+video recorder PC. This probably only useful in combination
+with -f 9.
 .TP
 .BI -r|--mux-bitrate \ num
 The total (non VBR) / peak (VBR) bit-rate of the output stream in k
