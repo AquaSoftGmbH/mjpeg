@@ -1356,11 +1356,11 @@ struct VDRtIndex { uint32_t offset; uint8_t type; uint8_t number; uint16_t reser
 
 unsigned int 
 Multiplexor::WritePacket( unsigned int     max_packet_data_size,
-                           MuxStream        &strm,
-                           bool 	 buffers,
-                           clockticks   	 PTS,
-                           clockticks   	 DTS,
-                           uint8_t 	 timestamps
+                                    MuxStream        &strm,
+                                    bool 	 buffers,
+                                    clockticks   	 PTS,
+                                    clockticks   	 DTS,
+                                    uint8_t 	 timestamps
 	                     )
 {
     unsigned int written =

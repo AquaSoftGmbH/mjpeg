@@ -267,6 +267,7 @@ const char CmdLineMultiplexJob::short_options[] =
 struct option CmdLineMultiplexJob::long_options[] = 
 {
 	{ "verbose",           1, 0, 'v' },
+    { "vdr-index",         1, 0, 'i' },
 	{ "format",            1, 0, 'f' },
 	{ "mux-bitrate",       1, 0, 'r' },
 	{ "video-buffer",      1, 0, 'b' },
@@ -451,7 +452,7 @@ void CmdLineMultiplexJob::Usage(char *str)
 	"--ignore-seqend-markers|-M\n"
     "  Don't switch to a new output file if a  sequence end marker\n"
 	"  is encountered ithe input video.\n"
-    "--index|-i\n"
+    "--vdr-index|-i\n"
     "  Generate a VDR index file with the output stream\n"
     "--workaround|-W workaround [, workaround ]\n"
 	"--help|-?\n"
