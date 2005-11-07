@@ -1378,7 +1378,7 @@ Multiplexor::WritePacket( unsigned int     max_packet_data_size,
     {
         union _ibuf 
         {
-                uint8_t bytes[8];
+                uint8_t bytes[sizeof(VDRtIndex)];
                 VDRtIndex istruct;     
         } indexbuf;
         
@@ -1386,10 +1386,6 @@ Multiplexor::WritePacket( unsigned int     max_packet_data_size,
         indexbuf.istruct.type = index_picttype;
         indexbuf.istruct.number = (int)psstrm->SegmentNum();
         indexbuf.istruct.reserved = 0;
-        printf("Frame %d @ %08x/%d\n", 
-            indexbuf.istruct.type, indexbuf.istruct.offset, indexbuf.istruct.number
-                );
-        assert( sizeof(VDRtIndex) ==  8 );
         vdr_index->Write( indexbuf.bytes, sizeof(VDRtIndex) );
         
     }

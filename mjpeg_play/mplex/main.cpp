@@ -120,20 +120,7 @@ void FileOutputStream::Close()
 uint64_t
 FileOutputStream::SegmentSize()
 {
-#if 0
-	struct stat stb;
-    fstat(fileno(strm), &stb);
-	off_t written = stb.st_size;
-    if( static_cast<uint64_t>(written) != segment_len )
-    {
-        printf( "Measured %lld and calculated %lld size don't match!\n",
-                static_cast<uint64_t>(written),
-                segment_len );
-    }
-    return static_cast<uint64_t>(written);
-#else
     return segment_len;
-#endif
 }
 
 void 
