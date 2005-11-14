@@ -33,15 +33,15 @@ int cheight = 0;
 int input_chroma_subsampling = 0;
 int input_interlaced = 0;
 
-int temp_Y_thres = 8;
-int temp_U_thres = 12;
-int temp_V_thres = 12;
+int temp_Y_thres = 3;
+int temp_U_thres = 6;
+int temp_V_thres = 6;
 
-int spat_Y_thres = 4;
+int spat_Y_thres = 3;
 int spat_U_thres = 6;
 int spat_V_thres = 6;
 
-int gauss_Y = 128;
+int gauss_Y = 32;
 int gauss_U = 255;
 int gauss_V = 255;
 
@@ -75,7 +75,7 @@ uint8_t transform_G8[65536];
 // if we want any visualy correct threshold to be applied we need to linearize
 // the data. As YUV 8Bit is compressed in the shaddows, we would need to uncompress
 // this first by applying a gamma-correction of 2.8 for PAL and 2.2 for NTSC...
-// we instead actualy use 2.6 (which is incorrect for both but more real)
+// we instead actualy use 1.8 (which is incorrect for both but more "real")
 void
 init_gamma_transform_LUTs (void)
 {
@@ -83,17 +83,17 @@ init_gamma_transform_LUTs (void)
 
   for (i = 0; i < 256; i++)
     {
-      transform_L16[i] = pow ((float) i / 256.f, 1 / 2.6) * 65536.f;
+      transform_L16[i] = pow ((float) i / 256.f, 1 / 1.8) * 65536.f;
       //fprintf(stderr,"%i ",transform_L16[i]);
     }
 
   for (i = 0; i < 65536; i++)
     {
-      transform_G8[i] = pow ((float) i / 65536.f, 2.6) * 256.f;
+      transform_G8[i] = pow ((float) i / 65536.f, 1.8) * 256.f;
       //fprintf(stderr,"%i ",transform_G8[i]);
     }
 
-  mjpeg_log (LOG_INFO,"16-Bit gamma-transformations initialized...");
+  mjpeg_log (LOG_INFO, "16-Bit gamma-transformations initialized...");
 }
 
 // 3x3 gauss filter image-plane and overlay this with factor p (0...255) on the source
@@ -140,127 +140,99 @@ gauss_filter_plane (uint8_t * plane, int w, int h, int p)
 }
 
 void
-adaptive_filter_plane (uint8_t * ref, int w, int h, uint8_t t)
+adaptive_filter_plane (uint8_t * ref, int w, int h, uint16_t t)
 {
   uint8_t *ff = ref;		// reference buffer
 
-  int m0, m1, m2, m3, m4, m5, m6, m7, m;
-  int x, d, i, c;
-  int r;
+  uint32_t x, m;
+  int32_t d;
 
-  for (x = 0; x < (w * h); x++)
-    {
+  t *= 256;
 
-      r = *(ff - 1);
-      r += *(ff + 1);
-      r += *(ff - w);
-      r += *(ff + w);
-      r += *(ff) * 4;
-      r /= 8;
+  if (w == lwidth)
+    for (x = 0; x < (w * h); x++)
+      {
 
-      m0 = *(ff - 4);
-      m0 += *(ff - 3);
-      m0 += *(ff - 2);
-      m0 += *(ff - 1);
-      m0 /= 4;
+	m = transform_L16[*(ff - 2 - w * 2)];
+	m += transform_L16[*(ff - 1 - w * 2)];
+	m += transform_L16[*(ff - w * 2)];
+	m += transform_L16[*(ff + 1 - w * 2)];
+	m += transform_L16[*(ff + 2 - w * 2)];
+	m += transform_L16[*(ff - 2 - w)];
+	m += transform_L16[*(ff - 1 - w)];
+	m += transform_L16[*(ff - w)] * 2;
+	m += transform_L16[*(ff + 1 - w)];
+	m += transform_L16[*(ff + 2 - w)];
+	m += transform_L16[*(ff - 2)];
+	m += transform_L16[*(ff - 1)] * 2;
+	m += transform_L16[*(ff)] * 4;
+	m += transform_L16[*(ff + 1)] * 2;
+	m += transform_L16[*(ff + 2)];
+	m += transform_L16[*(ff - 2 + w)];
+	m += transform_L16[*(ff - 1 + w)];
+	m += transform_L16[*(ff + w)] * 2;
+	m += transform_L16[*(ff + 1 + w)];
+	m += transform_L16[*(ff + 2 + w)];
+	m += transform_L16[*(ff - 2 + w * 2)];
+	m += transform_L16[*(ff - 1 + w * 2)];
+	m += transform_L16[*(ff + w * 2)];
+	m += transform_L16[*(ff + 1 + w * 2)];
+	m += transform_L16[*(ff + 2 + w * 2)];
+	m /= 32;
 
-      m1 = *(ff - 4 - 4 * w);
-      m1 += *(ff - 3 - 3 * w);
-      m1 += *(ff - 2 - 2 * w);
-      m1 += *(ff - 1 - 1 * w);
-      m1 /= 4;
+	d = t - abs (transform_L16[*(ff)] - m);
+	d = d < 0 ? 0 : d;
 
-      m2 = *(ff - 4 * w);
-      m2 += *(ff - 3 * w);
-      m2 += *(ff - 2 * w);
-      m2 += *(ff - 1 * w);
-      m2 /= 4;
+	m *= d;
+	m += transform_L16[*(ff)];
+	m /= d + 1;
 
-      m3 = *(ff + 4 - 4 * w);
-      m3 += *(ff + 3 - 3 * w);
-      m3 += *(ff + 2 - 2 * w);
-      m3 += *(ff + 1 - 1 * w);
-      m3 /= 4;
+	*(ff) = transform_G8[m];
 
-      m4 = *(ff + 4);
-      m4 += *(ff + 3);
-      m4 += *(ff + 2);
-      m4 += *(ff + 1);
-      m4 /= 4;
+	ff++;
+      }
+  else
+    for (x = 0; x < (w * h); x++)
+      {
 
-      m5 = *(ff + 4 + 4 * w);
-      m5 += *(ff + 3 + 3 * w);
-      m5 += *(ff + 2 + 2 * w);
-      m5 += *(ff + 1 + 1 * w);
-      m5 /= 4;
+	m = 256 * *(ff - 2 - w * 2);
+	m += 256 * *(ff - 1 - w * 2);
+	m += 256 * *(ff - w * 2);
+	m += 256 * *(ff + 1 - w * 2);
+	m += 256 * *(ff + 2 - w * 2);
+	m += 256 * *(ff - 2 - w);
+	m += 256 * *(ff - 1 - w);
+	m += 256 * *(ff - w) * 2;
+	m += 256 * *(ff + 1 - w);
+	m += 256 * *(ff + 2 - w);
+	m += 256 * *(ff - 2);
+	m += 256 * *(ff - 1) * 2;
+	m += 256 * *(ff) * 4;
+	m += 256 * *(ff + 1) * 2;
+	m += 256 * *(ff + 2);
+	m += 256 * *(ff - 2 + w);
+	m += 256 * *(ff - 1 + w);
+	m += 256 * *(ff + w) * 2;
+	m += 256 * *(ff + 1 + w);
+	m += 256 * *(ff + 2 + w);
+	m += 256 * *(ff - 2 + w * 2);
+	m += 256 * *(ff - 1 + w * 2);
+	m += 256 * *(ff + w * 2);
+	m += 256 * *(ff + 1 + w * 2);
+	m += 256 * *(ff + 2 + w * 2);
+	m /= 32;
+#if 1
+	d = t - abs ((256 * *(ff)) - m);
+	d = d < 0 ? 0 : d;
 
-      m6 = *(ff + 4 * w);
-      m6 += *(ff + 3 * w);
-      m6 += *(ff + 2 * w);
-      m6 += *(ff + 1 * w);
-      m6 /= 4;
+	m = m * d;
+	m += *(ff) * 256;
+	m /= (d + 1);
+#endif
+	*(ff) = m / 256;
 
-      m7 = *(ff - 4 + 4 * w);
-      m7 += *(ff - 3 + 3 * w);
-      m7 += *(ff - 2 + 2 * w);
-      m7 += *(ff - 1 + 1 * w);
-      m7 /= 4;
-
-      i = *(ff);
-      c = 1;
-
-      d = abs (r - m0);
-      d = (d < t) ? t - d : 0;
-      i = i + m0 * d;
-      c = c + d;
-
-      d = abs (r - m1);
-      d = (d < t) ? t - d : 0;
-      i = i + m1 * d;
-      c = c + d;
-
-      d = abs (r - m2);
-      d = (d < t) ? t - d : 0;
-      i = i + m2 * d;
-      c = c + d;
-
-      d = abs (r - m3);
-      d = (d < t) ? t - d : 0;
-      i = i + m3 * d;
-      c = c + d;
-
-      d = abs (r - m4);
-      d = (d < t) ? t - d : 0;
-      i = i + m4 * d;
-      c = c + d;
-
-      d = abs (r - m5);
-      d = (d < t) ? t - d : 0;
-      i = i + m5 * d;
-      c = c + d;
-
-      d = abs (r - m6);
-      d = (d < t) ? t - d : 0;
-      i = i + m6 * d;
-      c = c + d;
-
-      d = abs (r - m7);
-      d = (d < t) ? t - d : 0;
-      i = i + m7 * d;
-      c = c + d;
-
-      m7 = (m0 + m1 + m2 + m3 + m4 + m5 + m6 + m7) / 8;
-
-      d = abs (*(ff) - m7);
-      d = (d < t) ? t - d : 0;
-      i = i + m7 * d * 4;
-      c = c + d * 4;
-
-      m = (i / c) + 1;		// The "+1" is a needed correction as its allways rounded down here ...
-      m = m > 255 ? 255 : m;
-      *(ff) = m;
-      ff++;
-    }
+	ff++;
+      }
 }
 
 void
