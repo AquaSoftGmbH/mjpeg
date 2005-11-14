@@ -259,8 +259,8 @@ void temporal_filter_planes ( int idx, int w, int h, int t )
 			r += *(f4+1+w);
 			r /= 9;
 
-			i=*(f4)*t;
-			c=t;
+			i=*(f4)*(t+1);
+			c=(t+1);
 
 			d = t - abs(r-*(f1));
 			d = d<0? 0:d;
