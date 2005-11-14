@@ -65,9 +65,34 @@ uint8_t *outframe[3];
 int buff_offset;
 int buff_size;
 
+uint16_t transform_L16[256];
+uint8_t  transform_G8[65536];
+
 /***********************************************************
  * helper-functions                                        *
  ***********************************************************/
+
+// if we want any visualy correct threshold to be applied we need to linearize
+// the data. As YUV 8Bit is compressed in the shaddows, we would need to uncompress
+// this first by applying a gamma-correction of 2.8 for PAL and 2.2 for NTSC...
+// we instead actualy use 2.6 (which is incorrect for both but more real)
+void init_gamma_transform_LUTs ( void )
+{
+int i;
+
+	for(i=0;i<256;i++)
+	{
+	transform_L16[i] = pow ( (float)i/256.f, 1/2.6 )*65536.f;
+	//fprintf(stderr,"%i ",transform_L16[i]);
+	}
+
+	for(i=0;i<65536;i++)
+	{
+	transform_G8[i] = pow ( (float)i/65536.f, 2.6 )*256.f;
+	//fprintf(stderr,"%i ",transform_G8[i]);
+	}
+
+}
 
 // 3x3 gauss filter image-plane and overlay this with factor p (0...255) on the source
 // p=0       use source-pixels unfiltered
@@ -79,6 +104,7 @@ int x,y;
 int g;
 uint8_t * src = plane;
 uint8_t * dst = frame8[0];
+
 
 // If the gaussian filter is disabled why go thru all the data copying - just
 // return early and speed things up.
@@ -235,7 +261,10 @@ void adaptive_filter_plane( uint8_t * ref, int w, int h, uint8_t t)
 
 void temporal_filter_planes ( int idx, int w, int h, int t )
 {
-	int x,c,d,i,r,m;
+	uint32_t r,i,c;
+	uint16_t m;
+	int32_t d;
+	int x;
 
 	uint8_t * f1 = frame1[idx];
 	uint8_t * f2 = frame2[idx];
@@ -246,6 +275,76 @@ void temporal_filter_planes ( int idx, int w, int h, int t )
 	uint8_t * f7 = frame7[idx];
 	uint8_t * of = outframe[idx];
 
+	if (t==0) // shortcircuit filter if t = 0...
+	{
+		memcpy ( of,f4,w*h );
+		return;
+	}
+
+	if( w==lwidth ) /* we process the luma-plane */
+{
+t *= 256;
+	for(x=0;x<(w*h);x++)
+		{
+			r  = transform_L16[*(f4-1-w)];
+			r += transform_L16[*(f4  -w)];
+			r += transform_L16[*(f4+1-w)];
+			r += transform_L16[*(f4-1  )];
+			r += transform_L16[*(f4    )];
+			r += transform_L16[*(f4+1  )];
+			r += transform_L16[*(f4-1+w)];
+			r += transform_L16[*(f4  +w)];
+			r += transform_L16[*(f4+1+w)];
+			r /= 9;
+
+			i=transform_L16[*(f4)]*(t+1);
+			c=(t+1);
+
+			d = t - abs(r-transform_L16[*(f1)]);
+			d = d<0? 0:d;
+			c = c+d;
+			i = i + d * transform_L16[*(f1)];
+
+			d = t - abs(r-transform_L16[*(f2)]);
+			d = d<0? 0:d;
+			c = c+d;
+			i = i + d * transform_L16[*(f2)];
+
+			d = t - abs(r-transform_L16[*(f3)]);
+			d = d<0? 0:d;
+			c = c+d;
+			i = i + d * transform_L16[*(f3)];
+
+			d = t - abs(r-transform_L16[*(f5)]);
+			d = d<0? 0:d;
+			c = c+d;
+			i = i + d * transform_L16[*(f5)];
+
+			d = t - abs(r-transform_L16[*(f6)]);
+			d = d<0? 0:d;
+			c = c+d;
+			i = i + d * transform_L16[*(f6)];
+
+			d = t - abs(r-transform_L16[*(f7)]);
+			d = d<0? 0:d;
+			c = c+d;
+			i = i + d * transform_L16[*(f7)];
+
+			m = (i/c)+1; // The "+1" is a needed correction as its allways rounded down here ...
+			m = m>65535? 65535:m;
+			*(of)=transform_G8[m];
+
+			f1++;
+			f2++;
+			f3++;
+			f4++;
+			f5++;
+			f6++;
+			f7++;
+			of++;
+		}
+}
+	else /* we process one of the chroma-planes */
 	for(x=0;x<(w*h);x++)
 		{
 			r  = *(f4-1-w);
@@ -538,6 +637,9 @@ main (int argc, char *argv[])
 
   /* initialize motion_library */
   init_motion_search ();
+
+	/* init gamma transfer functions */
+	init_gamma_transform_LUTs ();
 
   /* read every frame until the end of the input stream and process it */
   while (Y4M_OK == (errno = y4m_read_frame (fd_in,
