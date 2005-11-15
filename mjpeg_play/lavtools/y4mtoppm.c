@@ -51,17 +51,17 @@ typedef struct _cl_info {
 static
 void usage(const char *progname)
 {
-  fprintf(stdout, "\n");
-  fprintf(stdout, "usage:  %s [options]\n", progname);
-  fprintf(stdout, "\n");
-  fprintf(stdout, "Reads YUV4MPEG2 stream from stdin and produces RAW PPM image(s) on stdout.\n");
-  fprintf(stdout, "Converts digital video Y'CbCr colorspace to computer graphics R'G'B',\n");
-  fprintf(stdout, " and performs chroma supersampling.\n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, " options:  (defaults specified in [])\n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, "  -L       interleave fields into single PPM image\n");
-  fprintf(stdout, "  -v n     verbosity (0,1,2) [1]\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "usage:  %s [options]\n", progname);
+  fprintf(stderr, "\n");
+  fprintf(stderr, "Reads YUV4MPEG2 stream from stdin and produces RAW PPM image(s) on stdout.\n");
+  fprintf(stderr, "Converts digital video Y'CbCr colorspace to computer graphics R'G'B',\n");
+  fprintf(stderr, " and performs chroma supersampling.\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, " options:  (defaults specified in [])\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "  -L       interleave fields into single PPM image\n");
+  fprintf(stderr, "  -v n     verbosity (0,1,2) [1]\n");
 }
 
 

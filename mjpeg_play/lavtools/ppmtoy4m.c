@@ -72,43 +72,43 @@ typedef struct _ppm_info {
 static
 void usage(const char *progname)
 {
-  fprintf(stdout, "\n");
-  fprintf(stdout, "usage:  %s [options] [ppm-file]\n", progname);
-  fprintf(stdout, "\n");
-  fprintf(stdout, "Reads RAW PPM image(s), and produces YUV4MPEG2 stream on stdout.\n");
-  fprintf(stdout, "Converts computer graphics R'G'B' colorspace to digital video Y'CbCr,\n");
-  fprintf(stdout, " and performs chroma subsampling.\n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, "If 'ppm-file' is not specified, reads from stdin.\n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, " options:  (defaults specified in [])\n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, "  -o n     frame offset (skip n input frames) [0]\n");
-  fprintf(stdout, "  -n n     frame count (output n frames; 0 == all of them) [0]\n");
-  fprintf(stdout, "  -F n:d   framerate [30000:1001 = NTSC]\n");
-  fprintf(stdout, "  -A w:h   pixel aspect ratio [1:1]\n");
-  fprintf(stdout, "  -I x     interlacing [p]\n");
-  fprintf(stdout, "             p = none/progressive\n");
-  fprintf(stdout, "             t = top-field-first\n");
-  fprintf(stdout, "             b = bottom-field-first\n");
-  fprintf(stdout, "  -L       treat PPM images as 2-field interleaved\n");
-  fprintf(stdout, "  -r       repeat last input frame\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "usage:  %s [options] [ppm-file]\n", progname);
+  fprintf(stderr, "\n");
+  fprintf(stderr, "Reads RAW PPM image(s), and produces YUV4MPEG2 stream on stdout.\n");
+  fprintf(stderr, "Converts computer graphics R'G'B' colorspace to digital video Y'CbCr,\n");
+  fprintf(stderr, " and performs chroma subsampling.\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "If 'ppm-file' is not specified, reads from stdin.\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, " options:  (defaults specified in [])\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "  -o n     frame offset (skip n input frames) [0]\n");
+  fprintf(stderr, "  -n n     frame count (output n frames; 0 == all of them) [0]\n");
+  fprintf(stderr, "  -F n:d   framerate [30000:1001 = NTSC]\n");
+  fprintf(stderr, "  -A w:h   pixel aspect ratio [1:1]\n");
+  fprintf(stderr, "  -I x     interlacing [p]\n");
+  fprintf(stderr, "             p = none/progressive\n");
+  fprintf(stderr, "             t = top-field-first\n");
+  fprintf(stderr, "             b = bottom-field-first\n");
+  fprintf(stderr, "  -L       treat PPM images as 2-field interleaved\n");
+  fprintf(stderr, "  -r       repeat last input frame\n");
   {
     int m;
     const char *keyword;
 
-    fprintf(stdout, "  -S mode  chroma subsampling mode [%s]\n",
+    fprintf(stderr, "  -S mode  chroma subsampling mode [%s]\n",
 	    y4m_chroma_keyword(DEFAULT_CHROMA_MODE));
     for (m = 0;
 	 (keyword = y4m_chroma_keyword(m)) != NULL;
 	 m++)
       if (chroma_sub_implemented(m))
-	fprintf(stdout, "            '%s' -> %s\n",
+	fprintf(stderr, "            '%s' -> %s\n",
 		keyword, y4m_chroma_description(m));
   }
-  /*  fprintf(stdout, "  -R type  subsampling filter type\n");*/
-  fprintf(stdout, "  -v n     verbosity (0,1,2) [1]\n");
-  fprintf(stdout, "  -B       PPM image is packed with BGR pixels [RGB]\n");
+  /*  fprintf(stderr, "  -R type  subsampling filter type\n");*/
+  fprintf(stderr, "  -v n     verbosity (0,1,2) [1]\n");
+  fprintf(stderr, "  -B       PPM image is packed with BGR pixels [RGB]\n");
 }
 
 
@@ -128,7 +128,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
   cl->ss_mode = DEFAULT_CHROMA_MODE;
   cl->verbosity = 1;
   cl->bgr = 0;
-  cl->fdin = 0; /* default to stdin */
+  cl->fdin = fileno(stdin); /* default to stdin */
 
   while ((c = getopt(argc, argv, "BA:F:I:Lo:n:rS:v:h")) != -1) {
     switch (c) {

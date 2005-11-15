@@ -65,30 +65,30 @@ typedef struct _cl_info {
 static
 void usage(const char *progname)
 {
-  fprintf(stdout, "\n");
-  fprintf(stdout, "usage:  %s [options] [pnm-file]\n", progname);
-  fprintf(stdout, "\n");
-  fprintf(stdout, "Reads RAW PNM/PAM image(s), and produces YUV4MPEG2 stream on stdout.\n");
-  fprintf(stdout, "Converts computer graphics R'G'B' colorspace to digital video Y'CbCr.\n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, "If 'pnm-file' is not specified, reads from stdin.\n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, " options:  (defaults specified in [])\n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, "  -o n     frame offset (skip n input frames) [0]\n");
-  fprintf(stdout, "  -n n     frame count (output n frames; 0 == all of them) [0]\n");
-  fprintf(stdout, "  -r       repeat last input frame\n");
-  fprintf(stdout, "  -D x     treat PNM images as de-interleaved fields, with:\n");
-  fprintf(stdout, "             t = first-image-is-top-field\n");
-  fprintf(stdout, "             b = first-image-is-bottom-field\n");
-  fprintf(stdout, "  -F n:d   output framerate [30000:1001 = NTSC]\n");
-  fprintf(stdout, "  -A w:h   output pixel aspect ratio [1:1]\n");
-  fprintf(stdout, "  -I x     output interlacing [from -D, or p]\n");
-  fprintf(stdout, "             p = none/progressive\n");
-  fprintf(stdout, "             t = top-field-first\n");
-  fprintf(stdout, "             b = bottom-field-first\n");
-  fprintf(stdout, "  -v n     verbosity (0,1,2) [1]\n");
-  fprintf(stdout, "  -B       pixels are packed in BGR(A) format [RGB(A)]\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "usage:  %s [options] [pnm-file]\n", progname);
+  fprintf(stderr, "\n");
+  fprintf(stderr, "Reads RAW PNM/PAM image(s), and produces YUV4MPEG2 stream on stdout.\n");
+  fprintf(stderr, "Converts computer graphics R'G'B' colorspace to digital video Y'CbCr.\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "If 'pnm-file' is not specified, reads from stdin.\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, " options:  (defaults specified in [])\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "  -o n     frame offset (skip n input frames) [0]\n");
+  fprintf(stderr, "  -n n     frame count (output n frames; 0 == all of them) [0]\n");
+  fprintf(stderr, "  -r       repeat last input frame\n");
+  fprintf(stderr, "  -D x     treat PNM images as de-interleaved fields, with:\n");
+  fprintf(stderr, "             t = first-image-is-top-field\n");
+  fprintf(stderr, "             b = first-image-is-bottom-field\n");
+  fprintf(stderr, "  -F n:d   output framerate [30000:1001 = NTSC]\n");
+  fprintf(stderr, "  -A w:h   output pixel aspect ratio [1:1]\n");
+  fprintf(stderr, "  -I x     output interlacing [from -D, or p]\n");
+  fprintf(stderr, "             p = none/progressive\n");
+  fprintf(stderr, "             t = top-field-first\n");
+  fprintf(stderr, "             b = bottom-field-first\n");
+  fprintf(stderr, "  -v n     verbosity (0,1,2) [1]\n");
+  fprintf(stderr, "  -B       pixels are packed in BGR(A) format [RGB(A)]\n");
 }
 
 
@@ -107,7 +107,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
   cl->input_interlace = Y4M_ILACE_NONE;
   cl->repeatlast = 0;
   cl->verbosity = 1;
-  cl->fdin = 0; /* default to stdin */
+  cl->fdin = fileno(stdin); /* default to stdin */
   cl->bgr = 0;
 
   while ((c = getopt(argc, argv, "A:F:I:D:o:n:rv:Bh")) != -1) {
@@ -806,7 +806,7 @@ int main(int argc, char **argv)
   pnm_info_t pnm;
   int field_height;
 
-  int fdout = 1; /* stdout */
+  int fdout = fileno(stdout);
   int err, i, count, repeating_last;
 
   y4m_accept_extensions(1);

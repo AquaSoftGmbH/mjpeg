@@ -53,21 +53,21 @@ typedef struct _cl_info {
 static
 void usage(const char *progname)
 {
-  fprintf(stdout, "\n");
-  fprintf(stdout, "usage:  %s [options]\n", progname);
-  fprintf(stdout, "\n");
-  fprintf(stdout, "Reads YUV4MPEG2 stream from stdin and produces RAW PPM, PGM\n");
-  fprintf(stdout, " or PAM image(s) on stdout.  Converts digital video Y'CbCr colorspace\n");
-  fprintf(stdout, " to computer graphics R'G'B'.\n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, " options:  (defaults specified in [])\n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, "  -P    produce PAM output instead of PPM/PGM\n");
-  fprintf(stdout, "  -D    de-interleave fields into two PNM images\n");
-  fprintf(stdout, "  -f    'flatten' multiplane frames/fields in raw composite grayscale images\n");
-  fprintf(stdout, "          (for stream debugging, see manpage for details)\n");
-  fprintf(stdout, "  -v n  verbosity (0,1,2) [1]\n");
-  fprintf(stdout, "  -h    print this help message\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "usage:  %s [options]\n", progname);
+  fprintf(stderr, "\n");
+  fprintf(stderr, "Reads YUV4MPEG2 stream from stdin and produces RAW PPM, PGM\n");
+  fprintf(stderr, " or PAM image(s) on stdout.  Converts digital video Y'CbCr colorspace\n");
+  fprintf(stderr, " to computer graphics R'G'B'.\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, " options:  (defaults specified in [])\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "  -P    produce PAM output instead of PPM/PGM\n");
+  fprintf(stderr, "  -D    de-interleave fields into two PNM images\n");
+  fprintf(stderr, "  -f    'flatten' multiplane frames/fields in raw composite grayscale images\n");
+  fprintf(stderr, "          (for stream debugging, see manpage for details)\n");
+  fprintf(stderr, "  -v n  verbosity (0,1,2) [1]\n");
+  fprintf(stderr, "  -h    print this help message\n");
 }
 
 
