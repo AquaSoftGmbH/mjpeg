@@ -60,43 +60,43 @@ typedef struct _cl_info {
 static
 void usage(const char *progname)
 {
-  fprintf(stdout, "usage: %s [options]\n", progname);
-  fprintf(stdout, "\n");
-  fprintf(stdout, "Creates a YUV4MPEG2 stream consisting of frames containing a standard\n");
-  fprintf(stdout, " colorbar test pattern (SMPTE, 75%%).\n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, "Options:  (defaults specified in [])\n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, "  -n n     frame count (output n frames) [1]\n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, "  -W w     frame width [720]\n");
-  fprintf(stdout, "  -H h     frame height [480]\n");
-  fprintf(stdout, "  -F n:d   framerate (as ratio) [30000:1001]\n");
-  fprintf(stdout, "  -A w:h   pixel aspect ratio [10:11]\n");
-  fprintf(stdout, "  -I x     interlacing [p]\n");
-  fprintf(stdout, "             p = none/progressive\n");
-  fprintf(stdout, "             t = top-field-first\n");
-  fprintf(stdout, "             b = bottom-field-first\n");
-  fprintf(stdout, "  -Q n     content of -I/Q areas:  [0]\n");
-  fprintf(stdout, "             0 = 20%% -I,+Q\n");
-  fprintf(stdout, "             1 = 50%% -I,+Q\n");
-  fprintf(stdout, "             2 = 100%% +Cb,+Cr\n");
-  fprintf(stdout, "\n");
+  fprintf(stderr, "usage: %s [options]\n", progname);
+  fprintf(stderr, "\n");
+  fprintf(stderr, "Creates a YUV4MPEG2 stream consisting of frames containing a standard\n");
+  fprintf(stderr, " colorbar test pattern (SMPTE, 75%%).\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "Options:  (defaults specified in [])\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "  -n n     frame count (output n frames) [1]\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "  -W w     frame width [720]\n");
+  fprintf(stderr, "  -H h     frame height [480]\n");
+  fprintf(stderr, "  -F n:d   framerate (as ratio) [30000:1001]\n");
+  fprintf(stderr, "  -A w:h   pixel aspect ratio [10:11]\n");
+  fprintf(stderr, "  -I x     interlacing [p]\n");
+  fprintf(stderr, "             p = none/progressive\n");
+  fprintf(stderr, "             t = top-field-first\n");
+  fprintf(stderr, "             b = bottom-field-first\n");
+  fprintf(stderr, "  -Q n     content of -I/Q areas:  [0]\n");
+  fprintf(stderr, "             0 = 20%% -I,+Q\n");
+  fprintf(stderr, "             1 = 50%% -I,+Q\n");
+  fprintf(stderr, "             2 = 100%% +Cb,+Cr\n");
+  fprintf(stderr, "\n");
   {
     int m;
     const char *keyword;
 
-    fprintf(stdout, "  -S mode  chroma subsampling mode [%s]\n",
+    fprintf(stderr, "  -S mode  chroma subsampling mode [%s]\n",
 	    y4m_chroma_keyword(DEFAULT_CHROMA_MODE));
     for (m = 0;
 	 (keyword = y4m_chroma_keyword(m)) != NULL;
 	 m++)
       if (chroma_sub_implemented(m))
-	fprintf(stdout, "            '%s' -> %s\n",
+	fprintf(stderr, "            '%s' -> %s\n",
 		keyword, y4m_chroma_description(m));
   }
-  fprintf(stdout, "\n");
-  fprintf(stdout, "  -v n     verbosity (0,1,2) [1]\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "  -v n     verbosity (0,1,2) [1]\n");
 }
 
 
@@ -502,7 +502,7 @@ int main(int argc, char **argv)
   y4m_stream_info_t sinfo;
   y4m_frame_info_t finfo;
   uint8_t *planes[Y4M_MAX_NUM_PLANES];  /* Y'CbCr frame buffer */
-  int fdout = 1;  /* stdout file descriptor */
+  int fdout = fileno(stdout);
   int i;
   int err;
 
