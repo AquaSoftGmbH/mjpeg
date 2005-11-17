@@ -50,7 +50,7 @@ YUVFPS="yuvfps"
 YUVMEDIANFILTER="yuvmedianfilter"
 
 SCRIPT_NAME="anytovcd.sh"
-SCRIPT_VERSION="11"
+SCRIPT_VERSION="12"
 
 
 # custom quant. matrices
@@ -93,50 +93,45 @@ range_check ()
 
 show_help ()
 {
-    echo "----------------------------------"
-    echo "-a    audio track number (1)      "
-    echo "-A    force input pixel aspect ratio (X:Y)"
-    echo "-b    blind mode (no video)       "
-    echo "-c    enable audio pass-through   "
-    echo "-d    video decoder tool          "
-    echo "      avail. : ffmpeg (default) or mpeg2dec"
-    echo "-D    deinterlace video (ffmpeg decoder only)"
-    echo "-e    video encoder tool          "
-    echo "      avail. : mpeg2enc (default) "
-    echo "      or ffmpeg (experimental)    "
-    echo "-i    input file                  "
-    echo "-I    force input ilace flag      "
-    echo "      avail. : none, top_first and"
-    echo "               bottom_first       "
-    echo "-J    force output ilace flag (if possible)"
-    echo "      avail. : none, top_first and bottom_first"
-    echo "-f filter1[:filter1_level][,filter2:[filter2_level]]..."
-    echo "      avail. filters :"
-    echo "      - hqdenoise (y4mdenoise)"
-    echo "      - mean      (yuvmedianfilter -f)"
-    echo "      - median    (yuvmedianfilter)"
-    echo "      - spatial   (y4mspatialfilter)"
-    echo "      - temporal  (yuvdenoise)"
-    echo "      - unsharp   (y4munsharp)"
-    echo "      avail. levels :"
-    echo "      - light     (for low noise source)"
-    echo "      - medium    (for middle noise)"
-    echo "      - heavy     (for high noise)"
-    echo "-m    mute mode (no audio)        "
-    echo "-n    output norm in case of input"
-    echo "      with non-standard framerate "
-    echo "      pal (default), ntsc or ntsc_film"
-    echo "-o    output files prefix (default = \"out\")"
-    echo "-p    output type (default = dvd) "
-    echo "      avail. : cvd, cvd_wide, dvd, dvd_wide, mvcd,"
-    echo "               svcd and vcd       "
-    echo "-q    quality (default = best)    "
-    echo "      avail. : best, good, fair   "
-    echo "-r    enable two passes encoding mode"
-    echo "-R    force input framerate (X:Y) "
-    echo "-T    force input length (minutes)"
-    echo "-v    script version              "
-    echo "-V    number of volumes (1)       "
+    echo "-a audio_track  audio track number (default = \"1\")"
+    echo "-A N:D          force input pixel aspect ratio"
+    echo "-b              blind mode (no video)"
+    echo "-c              enable audio pass-through"
+    echo "-d tool_name    video decoder tool"
+    echo "                  avail. : ffmpeg (default) or mpeg2dec"
+    echo "-D              deinterlace video (ffmpeg decoder only)"
+    echo "-e tool_name    video encoder tool"
+    echo "                  avail. : mpeg2enc (default) or ffmpeg (experimental)"
+    echo "-i filename     input file"
+    echo "-I flag_name    force input ilace flag"
+    echo "                  avail. : none, top_first and bottom_first"
+    echo "-J flag_name    force output ilace flag (if possible)"
+    echo "                  avail. : none, top_first and bottom_first"
+    echo "-f filter1[:filter1_level][,filter2:[filter2_level]]...  video filter(s)"
+    echo "                  avail. filters :"
+    echo "                  - hqdenoise (y4mdenoise)"
+    echo "                  - mean      (yuvmedianfilter -f)"
+    echo "                  - median    (yuvmedianfilter)"
+    echo "                  - spatial   (y4mspatialfilter)"
+    echo "                  - temporal  (yuvdenoise)"
+    echo "                  - unsharp   (y4munsharp)"
+    echo "                  avail. levels :"
+    echo "                  - light     (for low noise source)"
+    echo "                  - medium    (for middle noise)"
+    echo "                  - heavy     (for high noise)"
+    echo "-m              mute mode (no audio)        "
+    echo "-n norm         output norm in case of input with non-standard framerate "
+    echo "                  avail. norms : pal (default), ntsc or ntsc_film"
+    echo "-o filename     output files prefix (default = \"out\")"
+    echo "-p preset_name  output type (default = dvd)"
+    echo "                  avail. : cvd, cvd_wide, dvd, dvd_wide, mvcd, svcd and vcd"
+    echo "-q level        quality (default = best)"
+    echo "                  avail. : best, good, fair"
+    echo "-r              enable two passes encoding mode"
+    echo "-R N:D          force input framerate"
+    echo "-T length       force input length (minutes)"
+    echo "-v              show script version"
+    echo "-V              number of volumes (default = \"1\")"
 }
 
 show_error ()
@@ -389,7 +384,6 @@ elif test "${VCD_TYPE}" = "cvd_wide"; then
     VOL_SIZE="4700"
 
     MPLEX_FLAGS="${MPLEX_FLAGS} -f 8"
-    Y4MSCALER_FLAGS="${Y4MSCALER_FLAGS} -O sar=${VID_SAR_OUT} -O size=${VID_SIZE_OUT}"
 
 elif test "${VCD_TYPE}" = "dvd"; then
 
@@ -583,6 +577,13 @@ else
 
     VID_SAR_OUT="${VID_SAR_525_OUT}"
     VID_SIZE_OUT="${VID_SIZE_525_OUT}"
+
+fi
+
+# cvd_wide "preset" for y4mscaler
+if test "${VCD_TYPE}" = "cvd_wide"; then
+
+    Y4MSCALER="${Y4MSCALER} -O sar=${VID_SAR_OUT} -O size=${VID_SIZE_OUT}"
 
 fi
 
