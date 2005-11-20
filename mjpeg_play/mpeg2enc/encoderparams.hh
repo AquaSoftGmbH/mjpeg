@@ -256,12 +256,6 @@ public:
     int encoding_parallelism; /* Maximum number of concurrent worker threads
                                  to be used for encoding  */
 
-    int max_active_ref_frames;
-    int max_active_b_frames;
-
-    bool parallel_read; /* Does the input reader / bufferer
-                               run as a seperate thread?
-                            */
     int unit_coeff_elim;	/* Threshold of unit coefficient
                                    density below which unit
                                    coefficient blocks should be

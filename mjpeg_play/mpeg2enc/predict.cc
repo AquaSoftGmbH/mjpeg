@@ -53,6 +53,7 @@
 #include "mpeg2syntaxcodes.h"
 #include "picture.hh"
 #include "macroblock.hh"
+#include "imageplanes.hh"
 #include "predict_ref.h"
 
 
@@ -176,243 +177,243 @@ void calc_DMV( const Picture &picture, /*int pict_struct,  int topfirst,*/
 
 void MacroBlock::Predict()
 {
-	const Picture &picture = ParentPicture();
-	const int bx = TopleftX();
-	const int by = TopleftY();
-	uint8_t **fwd_rec = picture.fwd_rec;	// Forward prediction
-	uint8_t **bwd_rec = picture.bwd_rec;	// Backward prediction
-	uint8_t **cur = picture.pred;      // Frame to predict
-	int lx = picture.encparams.phy_width;
-	int lx2 = picture.encparams.phy_width;
-
-	bool addflag;
-	int currentfield;
-	uint8_t **predframe;
-	MotionVector DMV[Parity::dim /*pred*/];
-
-	if (final_me.mb_type&MB_INTRA)
-	{
-		clearblock( cur,bx,by, 
-					picture.pict_struct==BOTTOM_FIELD ? lx : 0,
-					lx2);
-		return;
-	}
-
-	addflag = false; /* first prediction is stored, second is added and averaged */
-
-	if ((final_me.mb_type & MB_FORWARD) || (picture.pict_type==P_TYPE))
-	{
-		/* forward prediction, including zero MV in P pictures */
-
-		if (picture.pict_struct==FRAME_PICTURE)
-		{
-			/* frame picture */
-
-			if ( (final_me.motion_type==MC_FRAME) 
-				 || !(final_me.mb_type & MB_FORWARD))
-			{
-				/* frame-based prediction in frame picture */
-				pred( fwd_rec,0,cur,0,
-					 lx,16,16,bx,by,final_me.MV[0][0][0],final_me.MV[0][0][1],false);
-			}
-			else if (final_me.motion_type==MC_FIELD)
-			{
-				/* field-based prediction in frame picture
-				 *
-				 * note scaling of the vertical coordinates (by, MV[][0][1])
-				 * from frame to field!
-				 */
-
-				/* top field prediction */
-				pred(fwd_rec,final_me.field_sel[0][0],cur,0,
-					 lx<<1,16,8,bx,by>>1,
-					 final_me.MV[0][0][0],final_me.MV[0][0][1]>>1,false);
-
-				/* bottom field prediction */
-				pred(fwd_rec,final_me.field_sel[1][0],cur,1,
-					 lx<<1,16,8,bx,by>>1,
-					 final_me.MV[1][0][0],final_me.MV[1][0][1]>>1,false);
-			}
-			else if (final_me.motion_type==MC_DMV)
-			{
-				/* dual prime prediction calculate derived motion vectors */
-				calc_DMV(picture,
-						 DMV,
-						 final_me.dualprimeMV,
-						 final_me.MV[0][0][0],
-						 final_me.MV[0][0][1]>>1);
-
-
-				/* predict top field from top field */
-				pred(fwd_rec,0,cur,0,
-					 lx<<1,16,8,bx,by>>1,
-					 final_me.MV[0][0][0],final_me.MV[0][0][1]>>1,false);
-      
-				/* predict bottom field from bottom field */
-				pred(fwd_rec,1,cur,1,
-					 lx<<1,16,8,bx,by>>1,
-					 final_me.MV[0][0][0],final_me.MV[0][0][1]>>1,false);
-
-				/* predict and add to top field from bottom field */
-				pred(fwd_rec,1,cur,0,
-					 lx<<1,16,8,bx,by>>1,
-					 DMV[0][0],DMV[0][1],true);
-
-
-				/* predict and add to bottom field from top field */
-				pred(fwd_rec,0,cur,1,
-					 lx<<1,16,8,bx,by>>1,
-					 DMV[1][0],DMV[1][1],true);
-			}
-			else
-			{
-				/* invalid motion_type in frame picture */
-				mjpeg_error_exit1("Internal: invalid motion_type");
-			}
-		}
-		else /* TOP_FIELD or BOTTOM_FIELD */
-		{
-			/* field picture */
-
-			currentfield = (picture.pict_struct==BOTTOM_FIELD);
-
-			/* determine which frame to use for prediction */
-			if ((picture.pict_type==P_TYPE) && picture.secondfield
-				&& (currentfield!=final_me.field_sel[0][0]))
-				predframe = bwd_rec; /* same frame */
-			else
-				predframe = fwd_rec; /* previous frame */
-
-			if ( final_me.motion_type==MC_FIELD
-				 || !(final_me.mb_type & MB_FORWARD))
-			{
-				/* field-based prediction in field picture */
-				pred(predframe,final_me.field_sel[0][0],cur,currentfield,
-					 lx<<1,16,16,bx,by,
-					 final_me.MV[0][0][0],final_me.MV[0][0][1],false);
-			}
-			else if (final_me.motion_type==MC_16X8)
-			{
-				/* 16 x 8 motion compensation in field picture */
-
-				/* upper half */
-				pred(predframe,final_me.field_sel[0][0],cur,currentfield,
-					 lx<<1,16,8,bx,by,
-					 final_me.MV[0][0][0],final_me.MV[0][0][1],false);
-
-				/* determine which frame to use for lower half prediction */
-				if ((picture.pict_type==P_TYPE) && picture.secondfield
-					&& (currentfield!=final_me.field_sel[1][0]))
-					predframe = bwd_rec; /* same frame */
-				else
-					predframe = fwd_rec; /* previous frame */
-
-				/* lower half */
-				pred(predframe,final_me.field_sel[1][0],cur,currentfield,
-					 lx<<1,16,8,bx,by+8,
-					 final_me.MV[1][0][0],final_me.MV[1][0][1],false);
-			}
-			else if (final_me.motion_type==MC_DMV)
-			{
-				/* dual prime prediction */
-
-				/* determine which frame to use for prediction */
-				if (picture.secondfield)
-					predframe = bwd_rec; /* same frame */
-				else
-					predframe = fwd_rec; /* previous frame */
-
-				/* calculate derived motion vectors */
-				calc_DMV(picture,
-						 DMV,final_me.dualprimeMV,
-						 final_me.MV[0][0][0],
-						 final_me.MV[0][0][1]);
-
-				/* predict from field of same parity */
-				pred(fwd_rec,currentfield,cur,currentfield,
-					 lx<<1,16,16,bx,by,
-					 final_me.MV[0][0][0],final_me.MV[0][0][1],false);
-
-				/* predict from field of opposite parity */
-				pred(predframe,!currentfield,cur,currentfield,
-					 lx<<1,16,16,bx,by,
-					 DMV[0][0],DMV[0][1],true);
-			}
-			else
-			{
-				/* invalid motion_type in field picture */
-				mjpeg_error_exit1("Internal: invalid motion_type");
-			}
-		}
-		addflag = true; /* next prediction (if any) will be averaged with this one */
-	}
-
-	if (final_me.mb_type & MB_BACKWARD)
-	{
-		/* backward prediction */
-
-		if (picture.pict_struct==FRAME_PICTURE)
-		{
-			/* frame picture */
-
-			if (final_me.motion_type==MC_FRAME)
-			{
-				/* frame-based prediction in frame picture */
-				pred(bwd_rec,0,cur,0,
-					 lx,16,16,bx,by,
-					 final_me.MV[0][1][0],final_me.MV[0][1][1],addflag);
-			}
-			else
-			{
-				/* field-based prediction in frame picture
-				 *
-				 * note scaling of the vertical coordinates (by, MV[][1][1])
-				 * from frame to field!
-				 */
-
-				/* top field prediction */
-				pred(bwd_rec,final_me.field_sel[0][1],cur,0,
-					 lx<<1,16,8,bx,by>>1,
-					 final_me.MV[0][1][0],final_me.MV[0][1][1]>>1,addflag);
-
-				/* bottom field prediction */
-				pred(bwd_rec,final_me.field_sel[1][1],cur,1,
-					 lx<<1,16,8,bx,by>>1,
-					 final_me.MV[1][1][0],final_me.MV[1][1][1]>>1,addflag);
-			}
-		}
-		else /* TOP_FIELD or BOTTOM_FIELD */
-		{
-			/* field picture */
-
-			currentfield = (picture.pict_struct==BOTTOM_FIELD);
-
-			if (final_me.motion_type==MC_FIELD)
-			{
-				/* field-based prediction in field picture */
-				pred(bwd_rec,final_me.field_sel[0][1],cur,currentfield,
-					 lx<<1,16,16,bx,by,
-					 final_me.MV[0][1][0],final_me.MV[0][1][1],addflag);
-			}
-			else if (final_me.motion_type==MC_16X8)
-			{
-				/* 16 x 8 motion compensation in field picture */
-
-				/* upper half */
-				pred(bwd_rec,final_me.field_sel[0][1],cur,currentfield,
-					 lx<<1,16,8,bx,by,
-					 final_me.MV[0][1][0],final_me.MV[0][1][1],addflag);
-
-				/* lower half */
-				pred(bwd_rec,final_me.field_sel[1][1],cur,currentfield,
-					 lx<<1,16,8,bx,by+8,
-					 final_me.MV[1][1][0],final_me.MV[1][1][1],addflag);
-			}
-			else
-			{
-				/* invalid motion_type in field picture */
-				mjpeg_error_exit1("Internal: invalid motion_type");
-			}
-		}
-	}
+    const Picture &picture = ParentPicture();
+    const int bx = TopleftX();
+    const int by = TopleftY();
+    uint8_t **fwd_rec = picture.fwd_rec->Planes();   // Forward prediction
+    uint8_t **bwd_rec = picture.bwd_rec->Planes();   // Backward prediction
+    uint8_t **cur = picture.pred->Planes();      // Frame to predict
+    int lx = picture.encparams.phy_width;
+    int lx2 = picture.encparams.phy_width;
+    
+    bool addflag;
+    int currentfield;
+    uint8_t **predframe;
+    MotionVector DMV[Parity::dim /*pred*/];
+    
+    if (final_me.mb_type&MB_INTRA)
+    {
+        clearblock( cur,bx,by,
+                    picture.pict_struct==BOTTOM_FIELD ? lx : 0,
+                    lx2);
+        return;
+    }
+    
+    addflag = false; /* first prediction is stored, second is added and averaged */
+    
+    if ((final_me.mb_type & MB_FORWARD) || (picture.pict_type==P_TYPE))
+    {
+        /* forward prediction, including zero MV in P pictures */
+    
+        if (picture.pict_struct==FRAME_PICTURE)
+        {
+            /* frame picture */
+    
+            if ( (final_me.motion_type==MC_FRAME)
+                    || !(final_me.mb_type & MB_FORWARD))
+            {
+                /* frame-based prediction in frame picture */
+                pred( fwd_rec,0,cur,0,
+                    lx,16,16,bx,by,final_me.MV[0][0][0],final_me.MV[0][0][1],false);
+            }
+            else if (final_me.motion_type==MC_FIELD)
+            {
+                /* field-based prediction in frame picture
+                *
+                * note scaling of the vertical coordinates (by, MV[][0][1])
+                * from frame to field!
+                */
+    
+                /* top field prediction */
+                pred(fwd_rec,final_me.field_sel[0][0],cur,0,
+                    lx<<1,16,8,bx,by>>1,
+                    final_me.MV[0][0][0],final_me.MV[0][0][1]>>1,false);
+    
+                /* bottom field prediction */
+                pred(fwd_rec,final_me.field_sel[1][0],cur,1,
+                    lx<<1,16,8,bx,by>>1,
+                    final_me.MV[1][0][0],final_me.MV[1][0][1]>>1,false);
+            }
+            else if (final_me.motion_type==MC_DMV)
+            {
+                /* dual prime prediction calculate derived motion vectors */
+                calc_DMV(picture,
+                        DMV,
+                        final_me.dualprimeMV,
+                        final_me.MV[0][0][0],
+                        final_me.MV[0][0][1]>>1);
+    
+    
+                /* predict top field from top field */
+                pred(fwd_rec,0,cur,0,
+                    lx<<1,16,8,bx,by>>1,
+                    final_me.MV[0][0][0],final_me.MV[0][0][1]>>1,false);
+    
+                /* predict bottom field from bottom field */
+                pred(fwd_rec,1,cur,1,
+                    lx<<1,16,8,bx,by>>1,
+                    final_me.MV[0][0][0],final_me.MV[0][0][1]>>1,false);
+    
+                /* predict and add to top field from bottom field */
+                pred(fwd_rec,1,cur,0,
+                    lx<<1,16,8,bx,by>>1,
+                    DMV[0][0],DMV[0][1],true);
+    
+    
+                /* predict and add to bottom field from top field */
+                pred(fwd_rec,0,cur,1,
+                    lx<<1,16,8,bx,by>>1,
+                    DMV[1][0],DMV[1][1],true);
+            }
+            else
+            {
+                /* invalid motion_type in frame picture */
+                mjpeg_error_exit1("Internal: invalid motion_type");
+            }
+        }
+        else /* TOP_FIELD or BOTTOM_FIELD */
+        {
+            /* field picture */
+    
+            currentfield = (picture.pict_struct==BOTTOM_FIELD);
+    
+            /* determine which frame to use for prediction */
+            if ((picture.pict_type==P_TYPE) && picture.secondfield
+                    && (currentfield!=final_me.field_sel[0][0]))
+                predframe = bwd_rec; /* same frame */
+            else
+                predframe = fwd_rec; /* previous frame */
+    
+            if ( final_me.motion_type==MC_FIELD
+                    || !(final_me.mb_type & MB_FORWARD))
+            {
+                /* field-based prediction in field picture */
+                pred(predframe,final_me.field_sel[0][0],cur,currentfield,
+                    lx<<1,16,16,bx,by,
+                    final_me.MV[0][0][0],final_me.MV[0][0][1],false);
+            }
+            else if (final_me.motion_type==MC_16X8)
+            {
+                /* 16 x 8 motion compensation in field picture */
+    
+                /* upper half */
+                pred(predframe,final_me.field_sel[0][0],cur,currentfield,
+                    lx<<1,16,8,bx,by,
+                    final_me.MV[0][0][0],final_me.MV[0][0][1],false);
+    
+                /* determine which frame to use for lower half prediction */
+                if ((picture.pict_type==P_TYPE) && picture.secondfield
+                        && (currentfield!=final_me.field_sel[1][0]))
+                    predframe = bwd_rec; /* same frame */
+                else
+                    predframe = fwd_rec; /* previous frame */
+    
+                /* lower half */
+                pred(predframe,final_me.field_sel[1][0],cur,currentfield,
+                    lx<<1,16,8,bx,by+8,
+                    final_me.MV[1][0][0],final_me.MV[1][0][1],false);
+            }
+            else if (final_me.motion_type==MC_DMV)
+            {
+                /* dual prime prediction */
+    
+                /* determine which frame to use for prediction */
+                if (picture.secondfield)
+                    predframe = bwd_rec; /* same frame */
+                else
+                    predframe = fwd_rec; /* previous frame */
+    
+                /* calculate derived motion vectors */
+                calc_DMV(picture,
+                        DMV,final_me.dualprimeMV,
+                        final_me.MV[0][0][0],
+                        final_me.MV[0][0][1]);
+    
+                /* predict from field of same parity */
+                pred(fwd_rec,currentfield,cur,currentfield,
+                    lx<<1,16,16,bx,by,
+                    final_me.MV[0][0][0],final_me.MV[0][0][1],false);
+    
+                /* predict from field of opposite parity */
+                pred(predframe,!currentfield,cur,currentfield,
+                    lx<<1,16,16,bx,by,
+                    DMV[0][0],DMV[0][1],true);
+            }
+            else
+            {
+                /* invalid motion_type in field picture */
+                mjpeg_error_exit1("Internal: invalid motion_type");
+            }
+        }
+        addflag = true; /* next prediction (if any) will be averaged with this one */
+    }
+    
+    if (final_me.mb_type & MB_BACKWARD)
+    {
+        /* backward prediction */
+    
+        if (picture.pict_struct==FRAME_PICTURE)
+        {
+            /* frame picture */
+    
+            if (final_me.motion_type==MC_FRAME)
+            {
+                /* frame-based prediction in frame picture */
+                pred(bwd_rec,0,cur,0,
+                    lx,16,16,bx,by,
+                    final_me.MV[0][1][0],final_me.MV[0][1][1],addflag);
+            }
+            else
+            {
+                /* field-based prediction in frame picture
+                *
+                * note scaling of the vertical coordinates (by, MV[][1][1])
+                * from frame to field!
+                */
+    
+                /* top field prediction */
+                pred(bwd_rec,final_me.field_sel[0][1],cur,0,
+                    lx<<1,16,8,bx,by>>1,
+                    final_me.MV[0][1][0],final_me.MV[0][1][1]>>1,addflag);
+    
+                /* bottom field prediction */
+                pred(bwd_rec,final_me.field_sel[1][1],cur,1,
+                    lx<<1,16,8,bx,by>>1,
+                    final_me.MV[1][1][0],final_me.MV[1][1][1]>>1,addflag);
+            }
+        }
+        else /* TOP_FIELD or BOTTOM_FIELD */
+        {
+            /* field picture */
+    
+            currentfield = (picture.pict_struct==BOTTOM_FIELD);
+    
+            if (final_me.motion_type==MC_FIELD)
+            {
+                /* field-based prediction in field picture */
+                pred(bwd_rec,final_me.field_sel[0][1],cur,currentfield,
+                    lx<<1,16,16,bx,by,
+                    final_me.MV[0][1][0],final_me.MV[0][1][1],addflag);
+            }
+            else if (final_me.motion_type==MC_16X8)
+            {
+                /* 16 x 8 motion compensation in field picture */
+    
+                /* upper half */
+                pred(bwd_rec,final_me.field_sel[0][1],cur,currentfield,
+                    lx<<1,16,8,bx,by,
+                    final_me.MV[0][1][0],final_me.MV[0][1][1],addflag);
+    
+                /* lower half */
+                pred(bwd_rec,final_me.field_sel[1][1],cur,currentfield,
+                    lx<<1,16,8,bx,by+8,
+                    final_me.MV[1][1][0],final_me.MV[1][1][1],addflag);
+            }
+            else
+            {
+                /* invalid motion_type in field picture */
+                mjpeg_error_exit1("Internal: invalid motion_type");
+            }
+        }
+    }
 }

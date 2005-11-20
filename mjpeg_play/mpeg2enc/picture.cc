@@ -57,6 +57,8 @@
 #include "seqencoder.hh"
 #include "ratectl.hh"
 #include "tables.h"
+#include "imageplanes.hh"
+
 
 Picture::Picture( EncoderParams &_encparams, 
                   ElemStrmWriter &writer, 
@@ -86,19 +88,11 @@ Picture::Picture( EncoderParams &_encparams,
     }
 
 
-	rec_img = new uint8_t *[5];
-	org_img = new uint8_t *[5];
-	pred   = new uint8_t *[5];
-
-	for( i = 0 ; i<3; i++)
-	{
-		int size =  (i==0) ? encparams.lum_buffer_size : encparams.chrom_buffer_size;
-		rec_img[i] = static_cast<uint8_t *>(bufalloc(size));
-		org_img[i] = 0;
-		pred[i]   = static_cast<uint8_t *>(bufalloc(size));
-	}
+    rec_img = new ImagePlanes( encparams );
+    pred   = new ImagePlanes( encparams );
 
     // Initialise the reference image pointers to NULL to ensure errors show
+    org_img = 0;
     fwd_rec = fwd_org = 0;
     bwd_rec = bwd_org = 0;
 }
@@ -106,13 +100,7 @@ Picture::Picture( EncoderParams &_encparams,
 Picture::~Picture()
 {
     int i;
-	for( i = 0 ; i<3; i++)
-	{
-		free( rec_img[i] );
-		free( pred[i] );
-	}
     delete rec_img;
-    delete org_img;
     delete pred;
     delete coding;
 }
@@ -498,10 +486,11 @@ void Picture::MotionSubSampledLum( )
 		linestride = 2*eparams.phy_width;
 	}
 
-	psubsample_image( org_img[0], 
-					 linestride,
-					 org_img[0]+eparams.fsubsample_offset, 
-					 org_img[0]+eparams.qsubsample_offset );
+    uint8_t *org_Y = org_img->Plane(0);
+    psubsample_image( org_Y, 
+                                 linestride,
+                                 org_Y+eparams.fsubsample_offset, 
+                                 org_Y+eparams.qsubsample_offset );
 }
 
 

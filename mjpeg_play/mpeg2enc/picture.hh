@@ -21,7 +21,6 @@
 
 #ifndef _PICTURE_HH
 #define _PICTURE_HH
-/* picture.hh picture class... */
 
 #include "config.h"
 #include "mjpeg_types.h"
@@ -68,11 +67,7 @@ class Quantizer;
 class StreamState;
 class ElemStrmWriter;
 class MPEG2CodingBuf;
-
-// TODO: Nasty hack to keep interface to some old routines the same
-// Allocation should be done with ImagePlaneArray
-typedef uint8_t **ImagePlanes;
-typedef uint8_t *ImagePlaneArray[5];
+class ImagePlanes;
 
 class Picture : public CodingPredictors
 {
@@ -184,14 +179,14 @@ public:
     Picture *bwd_ref_frame;     // 0 if Not B_TYPE
     
 	/* picture encoding source data  */
-	ImagePlanes fwd_org, bwd_org;	// Original Images of fwd and bwd
+	ImagePlanes *fwd_org, *bwd_org;	// Original Images of fwd and bwd
                                     // reference pictures
-	ImagePlanes fwd_rec, bwd_rec;	// Reconstructed  Images for fwd and 
+	ImagePlanes *fwd_rec, *bwd_rec;	// Reconstructed  Images for fwd and 
                                     // bwd references pictures
-	ImagePlanes org_img, rec_img;	// Images for current pict: orginal
-                                // and reconstructed.  Reconstructed
-                                // 0 for B planes except when debugging
-	ImagePlanes pred;
+	ImagePlanes *org_img, *rec_img;	// Images for current pict: orginal
+                                                        // and reconstructed.  Reconstructed
+                                                        // 0 for B planes except when debugging
+	ImagePlanes *pred;
 	int sxf, syf, sxb, syb;		/* MC search limits. */
 	bool secondfield;			/* Second field of field frame */
 	bool ipflag;				/* P pict in IP frame (FIELD pics only)*/

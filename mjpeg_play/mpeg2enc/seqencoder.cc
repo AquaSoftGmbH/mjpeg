@@ -275,6 +275,33 @@ SeqEncoder::~SeqEncoder()
     delete &despatcher;
 }
 
+
+/*********************
+ *
+ * Init - Setup encoder once parameters have been set
+ *
+ ********************/
+ 
+void SeqEncoder::Init()
+{
+
+    //
+    // Setup the parallel job despatcher...
+    //
+    despatcher.Init( encparams.mb_width, 
+                     encparams.mb_height2, 
+                     encparams.encoding_parallelism );
+
+    ratecontroller.InitSeq(false);
+    ss.Init(  );
+    old_ref_picture = 0;
+
+    // Lots of routines assume (for speed) that
+    // a dummy ref picture is provided even if it is not needed
+    // because the picture being encoded is  INTRA
+    new_ref_picture = GetPicture();
+    free_pictures.push_back( new_ref_picture );
+}
 /*
 	Encode a picture from scratch: motion estimate relative to the reference
 	frames (if any), encode the resulting macro  block image data
@@ -384,7 +411,7 @@ void SeqEncoder::EncodePicture(Picture *picture)
                    picture->pict_struct
             );
 
-    if( encparams.encoding_parallelism > 0 )
+    if( encparams.encoding_parallelism > 1 )
     {
         despatcher.Despatch( picture, &MacroBlock::Encode );
         despatcher.WaitForCompletion();
@@ -406,7 +433,7 @@ void SeqEncoder::EncodePicture(Picture *picture)
                    picture->pict_struct
             );
 
-        if( encparams.encoding_parallelism > 0 )
+        if( encparams.encoding_parallelism > 1 )
         {
             despatcher.Despatch( picture, &MacroBlock::Encode );
             despatcher.WaitForCompletion();
@@ -420,39 +447,6 @@ void SeqEncoder::EncodePicture(Picture *picture)
     }
 }
 
-/*********************
- *
- * Init - Setup worker threads an set internal encoding state for
- * beginning of stream = beginning of first sequence.  Do no actual
- * encoding or I/O.... 
- *  N.b. It is *critical* that the reference and b
- * picture buffers are at least two larger than the number of encoding
- * worker threads.  The despatcher thread *must* have to halt to wait
- * for free worker threads *before* it re-uses the record for the
- * Picture record for the oldest frame that could still be needed by
- * active worker threads.
- * 
- *  Buffers sizes are given by encparams.max_active_ref_frames and
- *  encparams.max_active_b_frames
- *
- ********************/
- 
-void SeqEncoder::Init()
-{
-
-    //
-    // Setup the parallel job despatcher...
-    //
-    despatcher.Init( encparams.mb_width, 
-                     encparams.mb_height2, 
-                     encparams.encoding_parallelism );
-
-	old_ref_picture = 0;
-    new_ref_picture = GetPicture();
-	ReleasePicture( new_ref_picture );
-	ratecontroller.InitSeq(false);
-    ss.Init(  );
-}
 
 
 /*********************
@@ -497,15 +491,17 @@ void SeqEncoder::EncodeStream()
         {
             Pass2EncodeFrame();
         }
-        else
+        else if( ss.FrameInStream() < reader.NumberOfFrames() )
         {
             Pass1EncodeFrame();
-            ss.Next( BitsAfterMux() ); 
+            ss.Next( BitsAfterMux() );
         }
-    } while( pass2queue.size() != 0 ||  ss.FrameInStream() < reader.NumberOfFrames() );
-
-    assert( pass2queue.size() == 0 );
-    assert( pass1coded.size() == 0 );
+        else // Run-out at end of stream
+        {
+            pass2queue.push_back( pass1coded.front() );
+            pass1coded.pop_front(); 
+        }
+    } while( pass2queue.size() > 0 || pass1coded.size() > 0 );
 
     StreamEnd();
 }
@@ -525,8 +521,10 @@ Picture *SeqEncoder::GetPicture()
 
 void SeqEncoder::ReleasePicture( Picture *picture )
 {
+    reader.ReleaseFrame( picture->input );
     free_pictures.push_back( picture );
 }
+
 /*********************
  *
  * Pass1EncodeFrame - Do a unit of work in building up a queue of
@@ -569,15 +567,13 @@ void SeqEncoder::Pass1EncodeFrame()
     }
 
     cur_picture->SetEncodingParams(ss, reader.NumberOfFrames() );
-    reader.ReadFrame( cur_picture->input, cur_picture->org_img );
+    cur_picture->org_img = reader.ReadFrame( cur_picture->input );
 
     Pass1EncodePicture( cur_picture );
 
     if( cur_picture->end_seq )
         mjpeg_info( "Sequence end inserted");
  
-    // Hard-wired simple 1-pass encoder!!!
-
     pass1coded.push_back( cur_picture );
     
     // Figure out how many pictures can be queued on to pass 2 encoding

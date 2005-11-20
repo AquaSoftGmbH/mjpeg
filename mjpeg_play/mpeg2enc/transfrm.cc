@@ -24,19 +24,18 @@
 
 
 #include <config.h>
-#include <stdio.h>
-#include <math.h>
 #include "mpeg2syntaxcodes.h"
 #include "macroblock.hh"
 #include "picture.hh"
 #include "encoderparams.hh"
+#include "imageplanes.hh"
 #include "transfrm_ref.h"
 
 
 void MacroBlock::Transform()
 {
-	uint8_t **cur = picture->org_img;
-	uint8_t **pred = picture->pred;
+    uint8_t **cur = picture->org_img->Planes();
+    uint8_t **pred = picture->pred->Planes();
 	// assert( dctblocks == &blocks[k*block_count]);
 	int i = TopleftX();
 	int j = TopleftY();
@@ -121,8 +120,8 @@ void transform(	Picture *picture )
 
 void MacroBlock::ITransform()
 {
-	uint8_t **cur = picture->rec_img;
-	uint8_t **pred = picture->pred;
+    uint8_t **cur = picture->rec_img->Planes();
+    uint8_t **pred = picture->pred->Planes();
 
 	int i1, j1, n, cc, offs, lx;
 	int i = TopleftX();

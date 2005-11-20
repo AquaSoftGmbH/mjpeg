@@ -60,6 +60,7 @@
 #include "mpeg2encoptions.hh"
 #include "encoderparams.hh"
 #include "picturereader.hh"
+#include "imageplanes.hh"
 #include "elemstrmwriter.hh"
 #include "quantize.hh"
 #include "ratectl.hh"
@@ -139,7 +140,7 @@ public:
 
     void StreamPictureParams( MPEG2EncInVidParams &strm );
 protected:
-    bool LoadFrame( );
+    bool LoadFrame( ImagePlanes &image );
 private:
     int PipeRead(  uint8_t *buf, int len);
 
@@ -218,10 +219,9 @@ void Y4MPipeReader::StreamPictureParams( MPEG2EncInVidParams &strm )
  *
  ****************************/
 
-bool Y4MPipeReader::LoadFrame( )
+bool Y4MPipeReader::LoadFrame( ImagePlanes &image )
 {
    int h,v,y;
-   int buffer_slot = frames_read % input_imgs_buf_size;
 
 
    if ((y = y4m_read_frame_header (pipe_fd, &_si, &_fi)) != Y4M_OK) 
@@ -239,20 +239,20 @@ bool Y4MPipeReader::LoadFrame( )
    int i;
    for(i=0;i<v;i++)
    {
-       if( PipeRead(input_imgs_buf[buffer_slot][0]+i*encparams.phy_width,h)!=h)
+       if( PipeRead(image.Plane(0)+i*encparams.phy_width,h)!=h)
            return true;
    }
-   lum_mean[buffer_slot] = LumMean(input_imgs_buf[buffer_slot][0] );
+
    v = encparams.vertical_size/2;
    h = encparams.horizontal_size/2;
    for(i=0;i<v;i++)
    {
-       if(PipeRead(input_imgs_buf[buffer_slot][1]+i*encparams.phy_chrom_width,h)!=h)
+       if(PipeRead(image.Plane(1)+i*encparams.phy_chrom_width,h)!=h)
            return true;
    }
    for(i=0;i<v;i++)
    {
-       if(PipeRead(input_imgs_buf[buffer_slot][2]+i*encparams.phy_chrom_width,h)!=h)
+       if(PipeRead(image.Plane(2)+i*encparams.phy_chrom_width,h)!=h)
            return true;
    }
    return false;
@@ -1031,7 +1031,6 @@ int main( int argc,	char *argv[] )
 	mjpeg_default_handler_verbosity(options.verbose);
 
     YUV4MPEGEncoder encoder( options );
-
     encoder.Encode();
 
 #ifdef OUTPUT_STAT
