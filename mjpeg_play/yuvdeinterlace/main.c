@@ -385,21 +385,20 @@ static uint32_t framenr;
 
       if (field_order == BOTTOM_FIRST)
 	{			// bottom field first
-	  sinc_interpolation (frame1[0], inframe[0], lwidth, lheight, 1);
-	  sinc_interpolation (frame1[1], inframe[1], cwidth, cheight, 1);
-	  sinc_interpolation (frame1[2], inframe[2], cwidth, cheight, 1);
+	  sinc_interpolation (frame1[0], inframe[0], lwidth, lheight, 0);
+	  sinc_interpolation (frame1[1], inframe[1], cwidth, cheight, 0);
+	  sinc_interpolation (frame1[2], inframe[2], cwidth, cheight, 0);
 
-	  sinc_interpolation (frame2[0], inframe[0], lwidth, lheight, 0);
-	  sinc_interpolation (frame2[1], inframe[1], cwidth, cheight, 0);
-	  sinc_interpolation (frame2[2], inframe[2], cwidth, cheight, 0);
-
-		motion_compensate (r0[0], frame2[0], frame3[0], frame4[0], lwidth,
+	  sinc_interpolation (frame2[0], inframe[0], lwidth, lheight, 1);
+	  sinc_interpolation (frame2[1], inframe[1], cwidth, cheight, 1);
+	  sinc_interpolation (frame2[2], inframe[2], cwidth, cheight, 1);
+#if 1
+	  motion_compensate (r0[0], frame2[0], frame3[0], frame4[0], lwidth,
 			     lheight, 1);
 	  motion_compensate (r0[1], frame2[1], frame3[1], frame4[1], cwidth,
 			     cheight, 1);
 	  motion_compensate (r0[2], frame2[2], frame3[2], frame4[2], cwidth,
 			     cheight, 1);
-
 		
 	  if (both_fields)
 	    {
@@ -410,25 +409,25 @@ static uint32_t framenr;
 	      motion_compensate (r1[2], frame1[2], frame2[2], frame3[2],
 				 cwidth, cheight, 0);
 	    }
+#endif
 	}
       else
 	{			// top field first
 
-	  sinc_interpolation (frame1[0], inframe[0], lwidth, lheight, 0);
-	  sinc_interpolation (frame1[1], inframe[1], cwidth, cheight, 0);
-	  sinc_interpolation (frame1[2], inframe[2], cwidth, cheight, 0);
+	  sinc_interpolation (frame1[0], inframe[0], lwidth, lheight, 1);
+	  sinc_interpolation (frame1[1], inframe[1], cwidth, cheight, 1);
+	  sinc_interpolation (frame1[2], inframe[2], cwidth, cheight, 1);
 
-	  sinc_interpolation (frame2[0], inframe[0], lwidth, lheight, 1);
-	  sinc_interpolation (frame2[1], inframe[1], cwidth, cheight, 1);
-	  sinc_interpolation (frame2[2], inframe[2], cwidth, cheight, 1);
-
+	  sinc_interpolation (frame2[0], inframe[0], lwidth, lheight, 0);
+	  sinc_interpolation (frame2[1], inframe[1], cwidth, cheight, 0);
+	  sinc_interpolation (frame2[2], inframe[2], cwidth, cheight, 0);
+#if 0
 	  motion_compensate (r0[0], frame2[0], frame3[0], frame4[0], lwidth,
 			     lheight, 0);
 	  motion_compensate (r0[1], frame2[1], frame3[1], frame4[1], cwidth,
 			     cheight, 0);
 	  motion_compensate (r0[2], frame2[2], frame3[2], frame4[2], cwidth,
 			     cheight, 0);
-
 	  if (both_fields)
 	    {
 	      motion_compensate (r1[0], frame1[0], frame2[0], frame3[0],
@@ -438,6 +437,7 @@ static uint32_t framenr;
 	      motion_compensate (r1[2], frame1[2], frame2[2], frame3[2],
 				 cwidth, cheight, 1);
 	    }
+#endif
 	}
       if (framenr > 0)
 	{

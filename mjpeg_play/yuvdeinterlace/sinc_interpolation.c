@@ -21,141 +21,152 @@
 #include <stdlib.h>
 #include <math.h>
 
+extern uint8_t *lp0;
+extern uint8_t *lp1;
+extern uint8_t *lp2;
+
 void
 sinc_interpolation (uint8_t * frame, uint8_t * inframe, int w, int h,
 		    int field)
 {
   int x, y, v;
-  int dx, d,e, m, a, b, c;
+  int dx, d, e, m, a, b, c, i;
 
-int w1 = w*1;
-int w2 = w*2;
-int w3 = w*3;
-int w4 = w*4;
-int w5 = w*5;
-
-	int dx1;
-	int dx3;
-	int dx5;
-	
-uint8_t * ptr = frame+field*w;
-	
-  // fill destination image with source image...
-  memcpy (frame, inframe, w * h);
-
-  // fill top out-off-range lines to avoid ringing
-  memcpy (frame - w1, inframe, w);
-  memcpy (frame - w2, inframe, w);
-  memcpy (frame - w3, inframe, w);
-  memcpy (frame - w4, inframe, w);
-  memcpy (frame - w5, inframe, w);
-
-  // fill bottom out-off-range lines to avoid ringing
-  memcpy (frame + w * (h + 0), inframe + w * (h - 1), w);
-  memcpy (frame + w * (h + 1), inframe + w * (h - 1), w);
-  memcpy (frame + w * (h + 2), inframe + w * (h - 1), w);
-  memcpy (frame + w * (h + 3), inframe + w * (h - 1), w);
-  memcpy (frame + w * (h + 4), inframe + w * (h - 1), w);
-
-  /* interpolate missing lines */
-  for (y = 0; y < h; y += 2)
-    {
-      for (x = 0; x < w; x++)
+  for(y=field;y<h;y+=2)
+	for(x=0;x<w;x++)
 	{
-	  a  = *(ptr - w1);
-		
-	  b  = ( *(ptr - w5) + *(ptr + w5) ) ;     // *  1
-	  b -= ( *(ptr - w3) + *(ptr + w3) ) << 2; // * -4
-	  b += ( *(ptr - w1) + *(ptr + w1) ) << 4; // * 16
-	  b /= 26;
-		
-	  c  = *(ptr + w1);
-
-      b = b > 255 ? 255 : b;
-	  b = b < 0 ? 0 : b;
-
-	  m = 0x00ffffff;
-	  v = b;
-		
-	  for (dx = 0; dx < 2; dx++)
-	    {
-		  dx1 = dx;
-		  dx3 = dx*3;
-		  dx5 = dx*5;
-			
-	      e  = *(ptr - dx - w1);
-		  e -= *(ptr + dx + w1);
-		  d  = e*e;	
-	      e  = *(ptr - dx - w1 -1);
-		  e -= *(ptr + dx + w1 -1);
-		  d += e*e;	
-	      e  = *(ptr - dx - w1 +1);
-		  e -= *(ptr + dx + w1 +1);
-		  d += e*e;	
-	      e  = *(ptr - dx - w1 -2);
-		  e -= *(ptr + dx + w1 -2);
-		  d += e*e;	
-	      e  = *(ptr - dx - w1 +2);
-		  e -= *(ptr + dx + w1 +2);
-		  d += e*e;	
-					
-			
-//	      if (m > d && ((a < b && b < c) || (a > b && b > c)))
-	      if (m > d )
-		{
-		  m = d;
-		  v  = *(ptr - dx5 - w5);
-		  v -= *(ptr - dx3 - w3) << 2;
-		  v += *(ptr - dx1 - w1) << 4;
-		  v += *(ptr + dx1 + w1) << 4;
-		  v -= *(ptr + dx3 + w3) << 2;
-		  v += *(ptr + dx5 + w5);
-	  	  v /= 26;
-	      v = v > 255 ? 255 : v;
-		  v = v < 0 ? 0 : v;
-		}
-
-		  dx1 = dx;
-		  dx3 = dx*3;
-		  dx5 = dx*5;
-			
-	      e  = *(ptr + dx - w1);
-		  e -= *(ptr - dx + w1);
-		  d  = e*e;	
-	      e  = *(ptr + dx - w1 - 1);
-		  e -= *(ptr - dx + w1 - 1);
-		  d += e*e;	
-	      e  = *(ptr + dx - w1 + 1);
-		  e -= *(ptr - dx + w1 + 1);
-		  d += e*e;	
-	      e  = *(ptr + dx - w1 - 2);
-		  e -= *(ptr - dx + w1 - 2);
-		  d += e*e;	
-	      e  = *(ptr + dx - w1 + 2);
-		  e -= *(ptr - dx + w1 + 2);
-		  d += e*e;	
-					
-			
-//	      if (m > d && ((a < b && b < c) || (a > b && b > c)))
-	      if (m > d )
-		{
-		  m = d;
-		  v  = *(ptr + dx5 - w5);
-		  v -= *(ptr + dx3 - w3) << 2;
-		  v += *(ptr + dx1 - w1) << 4;
-		  v += *(ptr - dx1 + w1) << 4;
-		  v -= *(ptr - dx3 + w3) << 2;
-		  v += *(ptr - dx5 + w5);
-	  	  v /= 26;
-	      v = v > 255 ? 255 : v;
-		  v = v < 0 ? 0 : v;
-		}
-	    }
-		
-		
-	  *(ptr) = v;
-	  ptr++;
+	*(frame+x+(y/2)*w) = *(inframe+x+y*w);
 	}
-	ptr += w;
-    }
+
+  if(field==0)
+	{
+  for(y=0;y<(h/2);y++)
+	for(x=0;x<w;x++)
+	{
+	v  = *(frame+x+y*w-w*2) * 0.08;
+	v += *(frame+x+y*w-w*1) * -.13;
+	v += *(frame+x+y*w    ) * 0.30;
+        v += *(frame+x+y*w+w*1) * 0.90;
+        v += *(frame+x+y*w+w*2) * -.18;
+        v += *(frame+x+y*w+w*3) * 0.10;
+	v = v<0? 0:v;
+	v = v>255? 255:v;
+	*(frame+x+(h/2+y)*w) = v;
+	}
+	}
+	else
+	{
+  for(y=0;y<(h/2);y++)
+	for(x=0;x<w;x++)
+	{
+	v  = *(frame+x+y*w-w*2) * 0.10;
+	v += *(frame+x+y*w-w*1) * -.18;
+	v += *(frame+x+y*w    ) * 0.90;
+        v += *(frame+x+y*w+w*1) * 0.30;
+        v += *(frame+x+y*w+w*2) * -.13;
+        v += *(frame+x+y*w+w*3) * 0.08;
+	v = v<0? 0:v;
+	v = v>255? 255:v;
+	*(frame+x+(h/2+y)*w) = v;
+	}
+	}
+
+#if 0
+  for(y=field;y<h;y+=2)
+	for(x=0;x<w;x++)
+	{
+	*(lp0+x+y*w)=*(lp0+x+y*w+w)= (*(inframe+x+y*w)-*(inframe+x+y*w+w+w))/2+128;
+	}
+  for(y=field;y<h;y+=2)
+	for(x=0;x<w;x++)
+	{
+	*(lp1+x+y*w) =*(lp1+x+y*w+w) = (*(lp0+x+y*w-8)+
+					*(lp0+x+y*w-7)+
+					*(lp0+x+y*w-6)+
+					*(lp0+x+y*w-5)+
+					*(lp0+x+y*w-4)+
+					*(lp0+x+y*w-3)+
+					*(lp0+x+y*w-2)+
+					*(lp0+x+y*w-1)+
+					*(lp0+x+y*w  )+
+					*(lp0+x+y*w+1)+
+					*(lp0+x+y*w+2)+
+					*(lp0+x+y*w+3)+
+					*(lp0+x+y*w+4)+
+					*(lp0+x+y*w+5)+
+					*(lp0+x+y*w+6)+
+					*(lp0+x+y*w+7)+
+					*(lp0+x+y*w+8))/17;
+	}
+  for(y=field;y<h;y+=2)
+	for(x=0;x<w;x++)
+	{
+	*(lp2+x+y*w) =*(lp2+x+y*w+w) = (*(inframe+x+y*w-8)+
+					*(inframe+x+y*w-7)+
+					*(inframe+x+y*w-6)+
+					*(inframe+x+y*w-5)+
+					*(inframe+x+y*w-4)+
+					*(inframe+x+y*w-3)+
+					*(inframe+x+y*w-2)+
+					*(inframe+x+y*w-1)+
+					*(inframe+x+y*w  )+
+					*(inframe+x+y*w+1)+
+					*(inframe+x+y*w+2)+
+					*(inframe+x+y*w+3)+
+					*(inframe+x+y*w+4)+
+					*(inframe+x+y*w+5)+
+					*(inframe+x+y*w+6)+
+					*(inframe+x+y*w+7)+
+					*(inframe+x+y*w+8))/17;
+	}
+
+  for(y=field;y<h;y+=2)
+	for(x=0;x<w;x++)
+	{
+	i  = *(inframe+x+y*w-w) + *(inframe+x+y*w+w);
+	i /= 2;
+	m = 65535;
+	for(dx=0;dx<8;dx++)
+		{
+		d = i-(*(inframe+x+dx+y*w-w) + *(inframe+x-dx+y*w+w))/2;
+		e = d<0? -d:d;
+
+		d = *(inframe+x+dx+y*w-w) - *(inframe+x-dx+y*w+w);
+		e += d<0? -d:d;
+
+		d = *(inframe+x+dx*0+y*w-w) - *(inframe+x-dx*2+y*w+w);
+		e += d<0? -d:d;
+
+		d = *(inframe+x+dx*2+y*w-w) - *(inframe+x-dx*0+y*w+w);
+		e += d<0? -d:d;
+
+		if(e<m)
+			{
+				m  = e/2;
+				v =(*(inframe+x+dx+y*w-w) + *(inframe+x-dx+y*w+w))/2;
+			}
+
+		d = i-(*(inframe+x-dx+y*w-w) + *(inframe+x+dx+y*w+w))/2;
+		e = d<0? -d:d;
+
+		d = *(inframe+x-dx+y*w-w) - *(inframe+x+dx+y*w+w);
+		e += d<0? -d:d;
+
+		d = *(inframe+x-dx*0+y*w-w) - *(inframe+x+dx*2+y*w+w);
+		e += d<0? -d:d;
+
+		d = *(inframe+x-dx*2+y*w-w) - *(inframe+x+dx*0+y*w+w);
+		e += d<0? -d:d;
+
+		if(e<m)
+			{
+				m  = e/2;
+				v =(*(inframe+x-dx+y*w-w) + *(inframe+x+dx+y*w+w))/2;
+			}
+		}
+
+	*(frame+x+y*w-w) = *(inframe+x+y*w-w);
+	*(frame+x+y*w) = v;
+	}
+#endif
 }
