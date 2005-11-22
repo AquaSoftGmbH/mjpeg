@@ -167,7 +167,6 @@ int main(int argc, char **argv)
   uint8_t *abuff = NULL;
   lav_file_t *lav_fd = NULL;
   lav_file_t *lav_out = NULL;
-  char *dotptr;
   unsigned long ulOutputBytes;
   int iLavFiles, iWavFiles;
   int iTotBytes;
