@@ -241,6 +241,16 @@ if test x$with_libquicktime != xno ; then
                     [have_libquicktime=false])
 fi
 
+if test x$have_libquicktime = xtrue; then
+   OLD_CFLAGS="$CFLAGS"
+   OLD_LIBS="$LIBS"
+   CFLAGS="$CFLAGS $LIBQUICKTIME_CFLAGS"
+   LIBS="$LIBS $LIBQUICKTIME_LIBS"
+   AC_CHECK_FUNCS([lqt_fileno])
+   CFLAGS="$OLD_CFLAGS"
+   LIBS="$OLD_LIBS"
+fi
+
 dnl *********************************************************************
 dnl Check for PNG library
 dnl   (creates LIBPNG_CFLAGS, LIBPNG_LIBS)
