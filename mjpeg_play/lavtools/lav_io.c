@@ -1395,7 +1395,7 @@ int lav_fileno(lav_file_t *lav_file)
          break;
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
-         res = fileno(((quicktime_t *)lav_file->qt_fd)->stream);
+         res = lqt_fileno((quicktime_t *)lav_file->qt_fd);
          break;
 #endif
       default:

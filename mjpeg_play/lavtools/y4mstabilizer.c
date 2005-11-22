@@ -22,6 +22,12 @@
  * Higher values resist panning more at the expense of greater
  * shifting.  <alpha> defaults to 0.95, a fairly high value, on the theory
  * that you probably have some significant vibrations that need smoothing.
+ * Separate alpha values for the X- and Y-axes can be specified by separating
+ * them with a colon.  For example,
+ * 	-a 0.7:0.9
+ * would set the X-axis alpha to 0.7, and the Y-axis alpha to 0.9.  Thus,
+ * the stabilizer would be much more responsive to side-to-side movement,
+ * while resisting up-and-down motion.
  *
  * The <srchRadius> defaults to 15.  Smaller values speed things up,
  * but won't be able to cope with large/fast movements as well.
@@ -60,7 +66,8 @@ struct
     int		nosuper;	/* Flag not to supersample chroma on shift */
     int		rad, diam;	/* Search radius and diameter */
     int		stride;		/* Stride between motion points */
-    float	alpha;		/* Viscosity */
+    float	alphax;		/* X Viscosity */
+    float	alphay;		/* Y Viscosity */
     float	gsX, gsY;	/* Accumulated shift */
     int		ss_h, ss_v;	/* UV decimation factors */
     } Stab;
@@ -96,7 +103,7 @@ main (int argc, char **argv)
 
     Stab.rad = 15;		/* Default search radius */
     Stab.stride = 48;		/* Default stride between motion points */
-    Stab.alpha = 0.95;		/* Default viscosity */
+    Stab.alphax = Stab.alphay = 0.95; /* Default viscosity */
 
     y4m_accept_extensions(1);
 
@@ -117,7 +124,17 @@ main (int argc, char **argv)
 	    Stab.stride = atoi(optarg);
 	    break;
 	  case 'a':
-	    Stab.alpha = atof(optarg);
+	    if (strchr(optarg, ':'))
+		{
+		if (sscanf(optarg, "%g:%g", &Stab.alphax, &Stab.alphay) != 2)
+		    usage();
+		}
+	    else
+		{
+		if (sscanf(optarg, "%g", &Stab.alphax) != 1)
+		    usage();
+		Stab.alphay = Stab.alphax;
+		}
 	    break;
 	  case 'r':
 	    Stab.rad = atoi(optarg);
@@ -303,6 +320,12 @@ usage (void)
 "Higher values resist panning more at the expense of greater\n"
 "shifting.  <alpha> defaults to 0.95, a fairly high value, on the theory\n"
 "that you probably have some significant vibrations that need smoothing.\n"
+"Separate alpha values for the X- and Y-axes can be specified by separating\n"
+"them with a colon.  For example,\n"
+"	-a 0.7:0.9\n"
+"would set the X-axis alpha to 0.7, and the Y-axis alpha to 0.9.  Thus,\n"
+"the stabilizer would be much more responsive to side-to-side movement,\n"
+"while resisting up-and-down motion.\n"
 "\n"
 "The <srchRadius> defaults to 15.  Smaller values speed things up,\n"
 "but won't be able to cope with large/fast movements as well.\n"
@@ -544,8 +567,8 @@ int ss_h = Stab.nosuper ? SS_H : 1;
 int ss_v = Stab.nosuper ? SS_V : 1;
 /* gmotion() returns motion in half-pixels */
 /* Factor in <alpha> the "viscosity"... */
-Stab.gsX = (Stab.gsX * Stab.alpha) + gp->x/2.0;
-Stab.gsY = (Stab.gsY * Stab.alpha) + gp->y/2.0;
+Stab.gsX = (Stab.gsX * Stab.alphax) + gp->x/2.0;
+Stab.gsY = (Stab.gsY * Stab.alphay) + gp->y/2.0;
 /* Now that we know the movement, shift to counteract it */
 shftp->x = -xround(Stab.gsX, ss_h);
 shftp->y = -xround(Stab.gsY, ss_v);
