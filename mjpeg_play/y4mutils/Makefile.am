@@ -22,6 +22,10 @@ bin_PROGRAMS = \
 	yuv4mpeg \
 	yuyvtoy4m
 
+if HAVE_LIBQUICKTIME
+bin_PROGRAMS += y4mtoqt
+endif
+
 yuvmedianfilter_SOURCES = yuvmedianfilter.c
 yuvmedianfilter_LDADD = $(LIBMJPEGUTILS)
 
@@ -42,6 +46,12 @@ y4mblack_LDADD = $(LIBMJPEGUTILS)
 
 y4minterlace_SOURCES = y4minterlace.c
 y4minterlace_LDADD = $(LIBMJPEGUTILS)
+
+if HAVE_LIBQUICKTIME
+y4mtoqt_SOURCES = y4mtoqt.c
+y4mtoqt_CPPFLAGS = $(AM_CPPFLAGS) $(LIBQUICKTIME_CFLAGS)
+y4mtoqt_LDADD = $(LIBMJPEGUTILS) $(top_builddir)/lavtools/liblavfile.la
+endif
 
 y4mtoyuv_SOURCES = y4mtoyuv.c
 y4mtoyuv_LDADD = $(LIBMJPEGUTILS)

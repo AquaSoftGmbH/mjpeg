@@ -240,6 +240,7 @@ if test x$with_libquicktime != xno ; then
                      AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime >= 0.9.7 present])],
                     [have_libquicktime=false])
 fi
+AM_CONDITIONAL(HAVE_LIBQUICKTIME, test x$have_libquicktime = xtrue)
 
 if test x$have_libquicktime = xtrue; then
    OLD_CFLAGS="$CFLAGS"
