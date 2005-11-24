@@ -101,12 +101,12 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 		   int w, int h, int field)
 {
   int x, y;
-  int dx, dy;
+  int dx, dy, ds;
   int fx, fy, ifx, ify;
   int bx, by, ibx, iby;
   uint32_t sad;
   uint32_t fmin, bmin, min;
-  int a, b, c, d, e, f, g;
+  int a, b, c, d, e, f, g, v;
 
   static uint32_t mean=0;
   static int mcnt = 0;
@@ -222,42 +222,117 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 		b = (d+e)/2;
 
 		// check for that interpolation to be valid with a spatial median filter...
-		if( ( a<(b-10) && (b-10)>c ) || ( a>(b+10) && (b+10)<c ) )
+		if( ( a<(b-4) && (b-4)>c ) || ( a>(b+4) && (b+4)<c ) )
 		{
 			// hmm, if we reach this point, spatial check says it might be a miss-hit.
 			// but we can assume, that, if it only varies a little in time, it is correct.
 			// so we check abs(d-e)...
-			if( abs(d-e)>10 )
+			if( abs(d-e)>12)
 			{
 				// OK then, we have no choice left. We cant interpolate that pixel temporaly.
 				// We only can interpolate this one spatialy, so we do so...
+
+				// This is quite intense in terms of calculation-time but it is far better
+				// than any other spatial interpolation method I was able to find. The trick
+				// here is to interpolate along the isophotes of the field (the simpler SINC
+				// interpolator sometimes interpolates across them which leads to a lot more
+				// jaggies...
 				if(field==0)
 				{
-					b  = *(f1 + (x+dx) + (y+dy) * w-w*4)*( -1);
-					b += *(f1 + (x+dx) + (y+dy) * w-w*3)*( +4);
-					b += *(f1 + (x+dx) + (y+dy) * w-w*2)*(-16);
-					b += *(f1 + (x+dx) + (y+dy) * w-w*1)*(+64);
-					b += *(f1 + (x+dx) + (y+dy) * w    )*(+64);
-					b += *(f1 + (x+dx) + (y+dy) * w+w*1)*(-16);
-					b += *(f1 + (x+dx) + (y+dy) * w+w*2)*( +4);
-					b += *(f1 + (x+dx) + (y+dy) * w+w*3)*( -1);
+					min = 0x00ffffff;
+					b = *(f1+(x+dx)+(y+dy)*w)+*(f1+(x+dx)+(y+dy)*w-w);
+					b /= 2;
+					for(ds=1;ds<16;ds++)
+					{
+						g = *(f1+(x+dx-ds)+(y+dy)*w)-*(f1+(x+dx+ds)+(y+dy)*w-w);
+						sad = g*g;
+
+						v = *(f1+(x+dx-ds)+(y+dy)*w)+*(f1+(x+dx+ds)+(y+dy)*w-w);
+						v /= 2;
+
+						if(min>sad && ( (a<v && v<c) || (a>v && v>c) ) )
+							{
+							b = v;
+							min = sad;
+							}
+
+						g = *(f1+(x+dx+ds)+(y+dy)*w)-*(f1+(x+dx-ds)+(y+dy)*w-w);
+						sad = g*g;
+
+						v = *(f1+(x+dx+ds)+(y+dy)*w)+*(f1+(x+dx-ds)+(y+dy)*w-w);
+						v /= 2;
+
+						if(min>sad && ( (a<v && v<c) || (a>v && v>c) ) )
+							{
+							b = v;
+							min = sad;
+							}
+					}
 				}
 				else
 				{
-					b  = *(f1 + (x+dx) + (y+dy) * w-w*3)*( -1);
-					b += *(f1 + (x+dx) + (y+dy) * w-w*2)*( +4);
-					b += *(f1 + (x+dx) + (y+dy) * w-w*1)*(-16);
-					b += *(f1 + (x+dx) + (y+dy) * w    )*(+64);
-					b += *(f1 + (x+dx) + (y+dy) * w+w*1)*(+64);
-					b += *(f1 + (x+dx) + (y+dy) * w+w*2)*(-16);
-					b += *(f1 + (x+dx) + (y+dy) * w+w*3)*( +4);
-					b += *(f1 + (x+dx) + (y+dy) * w+w*4)*( -1);
+					min = 0x00ffffff;
+					b = *(f1+(x+dx)+(y+dy)*w)+*(f1+(x+dx)+(y+dy)*w+w);
+					b /= 2;
+					for(ds=1;ds<16;ds++)
+					{
+						g = *(f1+(x+dx-ds)+(y+dy)*w)-*(f1+(x+dx+ds)+(y+dy)*w+w);
+						sad = g*g;
+
+						v = *(f1+(x+dx-ds)+(y+dy)*w)+*(f1+(x+dx+ds)+(y+dy)*w+w);
+						v /= 2;
+
+						if(min>sad && ( (a<v && v<c) || (a>v && v>c) ) )
+							{
+							b = v;
+							min = sad;
+							}
+
+						g = *(f1+(x+dx+ds)+(y+dy)*w)-*(f1+(x+dx-ds)+(y+dy)*w+w);
+						sad = g*g;
+
+						v = *(f1+(x+dx+ds)+(y+dy)*w)+*(f1+(x+dx-ds)+(y+dy)*w+w);
+						v /= 2;
+
+						if(min>sad && ( (a<v && v<c) || (a>v && v>c) ) )
+							{
+							b = v;
+							min = sad;
+							}
+					}
 				}
-				b /= 102;
-				b = b<0? 0:b;
-				b = b>255? 255:b;
+
+				if(field==0)
+				{
+					v  = *(f1 + (x+dx) + (y+dy) * w-w*4)*( -1);
+					v += *(f1 + (x+dx) + (y+dy) * w-w*3)*( +4);
+					v += *(f1 + (x+dx) + (y+dy) * w-w*2)*(-16);
+					v += *(f1 + (x+dx) + (y+dy) * w-w*1)*(+64);
+					v += *(f1 + (x+dx) + (y+dy) * w    )*(+64);
+					v += *(f1 + (x+dx) + (y+dy) * w+w*1)*(-16);
+					v += *(f1 + (x+dx) + (y+dy) * w+w*2)*( +4);
+					v += *(f1 + (x+dx) + (y+dy) * w+w*3)*( -1);
+				}
+				else
+				{
+					v  = *(f1 + (x+dx) + (y+dy) * w-w*3)*( -1);
+					v += *(f1 + (x+dx) + (y+dy) * w-w*2)*( +4);
+					v += *(f1 + (x+dx) + (y+dy) * w-w*1)*(-16);
+					v += *(f1 + (x+dx) + (y+dy) * w    )*(+64);
+					v += *(f1 + (x+dx) + (y+dy) * w+w*1)*(+64);
+					v += *(f1 + (x+dx) + (y+dy) * w+w*2)*(-16);
+					v += *(f1 + (x+dx) + (y+dy) * w+w*3)*( +4);
+					v += *(f1 + (x+dx) + (y+dy) * w+w*4)*( -1);
+				}
+				v /= 102;
+				v = v<0? 0:v;
+				v = v>255? 255:v;
+
+				b = (v+b)/2;
 			}
 		}
+
+
 
 		if(field==0)
 			{
@@ -281,20 +356,6 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 	//fprintf(stderr,"thres:%i mcnt:%i\n",thres,mcnt);
 #endif
 
-#if 0
-  for (y = field; y < h; y +=2)
-    {
-      for (x = 0; x < w; x++)
-	{
-	  a = *(r + x + y * w-w);
-	  b = *(r + x + y * w  );
-	  c = *(r + x + y * w+w);
-
-	  if( (a>(b+12) && (b+12)<c) || (a<(b-12) && (b-12)>c) )
-		  *(r + x + y * w) = (a+c)/2;
-	}
-    }
-#endif
 #if 1
 // finally do a linear blend to get rid of the last combing and video artefacts
   for (y = 1; y < (h - 1); y++)
@@ -304,9 +365,9 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
   	*(r + x + y * w) =
 			(
 			*(r + x + y * w - w) * 1 +
-	     		*(r + x + y * w)     * 2 + 
+	     		*(r + x + y * w)     * 1 + 
 			*(r + x + y * w + w) * 1
-			) / 4;
+			) / 3;
 	}
     }
 #endif
