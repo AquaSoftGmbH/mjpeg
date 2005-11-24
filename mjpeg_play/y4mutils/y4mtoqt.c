@@ -250,8 +250,6 @@ do_audio(quicktime_t *qtf, uint8_t *buff, int channels, int bps, int samps)
 	int	i, j;
 	int16_t *qt_audio = (int16_t *)buff, **qt_audion;
 
-mjpeg_info("channels %d bps %d samps %d", channels, bps, samps);
-
 	qt_audion = malloc(channels * sizeof (int16_t **));
 	for	(i = 0; i < channels; i++)
 		qt_audion[i] = (int16_t *)malloc(samps * bps);
