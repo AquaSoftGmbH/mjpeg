@@ -1,0 +1,16 @@
+*.lo
+*.la
+.deps
+.libs
+Makefile
+Makefile.in
+yuvmedianfilter
+y4mtoyuv
+y4minterlace
+y4mblack
+y4mshift
+pgmtoy4m
+y4mspatialfilter
+yuv4mpeg
+y4mhist
+yuyvtoy4m

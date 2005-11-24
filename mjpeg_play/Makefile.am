@@ -23,6 +23,7 @@ SUBDIRS = \
 	yuvdeinterlace \
 	y4mdenoise \
 	y4munsharp \
+        y4mutils \
 	debian
 
 #

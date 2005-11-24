@@ -584,6 +584,7 @@ AC_CONFIG_FILES([
      yuvdeinterlace/Makefile
      yuvscaler/Makefile
      y4munsharp/Makefile
+     y4mutils/Makefile
      yuvfilters/Makefile
      mpeg2enc/Makefile
      aenc/Makefile
