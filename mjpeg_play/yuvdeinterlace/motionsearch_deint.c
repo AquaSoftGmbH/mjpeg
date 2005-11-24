@@ -106,7 +106,7 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
   int bx, by, ibx, iby;
   uint32_t sad;
   uint32_t fmin, bmin, min;
-  int a, b, c, d;
+  int a, b, c, d, e, f, g;
 
   static uint32_t mean=0;
   static int mcnt = 0;
@@ -192,23 +192,82 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 	  for (dy = 0; dy < 4; dy++)
 	    for (dx = 0; dx < 8; dx++)
 	      {
-		a  = *(f0 + (x + dx + fx) + (y + dy + fy) * w);
+		// prev. field               next field
+		//      |      current field      |
+		//      |            |            |
+		//      |  --------  a  --------- |
+		//      d  --------  |  --------- e
+		//	|  --------  c  --------- |
+		//
+		//	previous and next field are motion-compensated!
+		//      the missing pixel can be interpolated temporaly (b) or spatialy (f)
+		//	but which one is the better?
+		//
 
-		b  = *(f2 + (x + dx + bx) + (y + dy + by) * w);
+		a = *(f1 + (x+dx) + (y+dy) * w  );
 
-		d = *(f1 + (x + dx ) + (y + dy ) * w);
+		// because of using no intra-field interpolation anymore, which speeds 
+		// things and makes 'em more noise robust, we need to switch the lines
+		// to interpolate/check correctly between spatial neighbouring lines.
+		if(field==0)
+			c = *(f1 + (x+dx) + (y+dy) * w-w);
+		else
+			c = *(f1 + (x+dx) + (y+dy) * w+w);
 
-		c = (a+b)/2;
+		d = *(f0 + (x + dx + fx) + (y + dy + fy) * w);
+
+		e = *(f2 + (x + dx + bx) + (y + dy + by) * w);
+
+		// calculate temporal interpolation
+		b = (d+e)/2;
+
+		// check for that interpolation to be valid with a spatial median filter...
+		if( ( a<(b-10) && (b-10)>c ) || ( a>(b+10) && (b+10)<c ) )
+		{
+			// hmm, if we reach this point, spatial check says it might be a miss-hit.
+			// but we can assume, that, if it only varies a little in time, it is correct.
+			// so we check abs(d-e)...
+			if( abs(d-e)>10 )
+			{
+				// OK then, we have no choice left. We cant interpolate that pixel temporaly.
+				// We only can interpolate this one spatialy, so we do so...
+				if(field==0)
+				{
+					b  = *(f1 + (x+dx) + (y+dy) * w-w*4)*( -1);
+					b += *(f1 + (x+dx) + (y+dy) * w-w*3)*( +4);
+					b += *(f1 + (x+dx) + (y+dy) * w-w*2)*(-16);
+					b += *(f1 + (x+dx) + (y+dy) * w-w*1)*(+64);
+					b += *(f1 + (x+dx) + (y+dy) * w    )*(+64);
+					b += *(f1 + (x+dx) + (y+dy) * w+w*1)*(-16);
+					b += *(f1 + (x+dx) + (y+dy) * w+w*2)*( +4);
+					b += *(f1 + (x+dx) + (y+dy) * w+w*3)*( -1);
+				}
+				else
+				{
+					b  = *(f1 + (x+dx) + (y+dy) * w-w*3)*( -1);
+					b += *(f1 + (x+dx) + (y+dy) * w-w*2)*( +4);
+					b += *(f1 + (x+dx) + (y+dy) * w-w*1)*(-16);
+					b += *(f1 + (x+dx) + (y+dy) * w    )*(+64);
+					b += *(f1 + (x+dx) + (y+dy) * w+w*1)*(+64);
+					b += *(f1 + (x+dx) + (y+dy) * w+w*2)*(-16);
+					b += *(f1 + (x+dx) + (y+dy) * w+w*3)*( +4);
+					b += *(f1 + (x+dx) + (y+dy) * w+w*4)*( -1);
+				}
+				b /= 102;
+				b = b<0? 0:b;
+				b = b>255? 255:b;
+			}
+		}
 
 		if(field==0)
 			{
-			  *(r + (x + dx) + (y + dy ) * w*2  ) = c;
-			  *(r + (x + dx) + (y + dy ) * w*2+w) = d;
+			  *(r + (x + dx) + (y + dy ) * w*2  ) = b;
+			  *(r + (x + dx) + (y + dy ) * w*2+w) = a;
 			}
 		else
 			{
-			  *(r + (x + dx) + (y + dy ) * w*2+w) = c;
-			  *(r + (x + dx) + (y + dy ) * w*2  ) = d;
+			  *(r + (x + dx) + (y + dy ) * w*2  ) = a;
+			  *(r + (x + dx) + (y + dy ) * w*2+w) = b;
 			}
 	      }
 	}
@@ -222,7 +281,7 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 	//fprintf(stderr,"thres:%i mcnt:%i\n",thres,mcnt);
 #endif
 
-#if 1
+#if 0
   for (y = field; y < h; y +=2)
     {
       for (x = 0; x < w; x++)
@@ -231,7 +290,7 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 	  b = *(r + x + y * w  );
 	  c = *(r + x + y * w+w);
 
-	  if( (a>(b+16) && (b+16)<c) || (a<(b-16) && (b-16)>c) )
+	  if( (a>(b+12) && (b+12)<c) || (a<(b-12) && (b-12)>c) )
 		  *(r + x + y * w) = (a+c)/2;
 	}
     }
@@ -245,9 +304,9 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
   	*(r + x + y * w) =
 			(
 			*(r + x + y * w - w) * 1 +
-	     		*(r + x + y * w)     * 1 + 
+	     		*(r + x + y * w)     * 2 + 
 			*(r + x + y * w + w) * 1
-			) / 3;
+			) / 4;
 	}
     }
 #endif
