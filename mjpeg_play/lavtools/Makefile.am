@@ -61,10 +61,10 @@ bin_PROGRAMS = \
 	mjpeg_simd_helper \
 	lav2wav \
 	lav2yuv \
-	yuvmedianfilter \
 	lavaddwav \
 	lavtrans \
-	ypipe yuv2lav \
+	ypipe \
+        yuv2lav \
 	transist.flt \
 	matteblend.flt \
 	multiblend.flt \
@@ -74,19 +74,10 @@ bin_PROGRAMS = \
 	pnmtoy4m \
 	y4mtoppm \
 	y4mtopnm \
-	pgmtoy4m \
 	y4mcolorbars \
 	lavinfo \
-	y4mshift \
-	y4mspatialfilter \
 	y4mstabilizer \
 	yuvfps \
-	y4mhist \
-	y4mblack \
-	y4mtoyuv \
-	y4minterlace \
-	yuv4mpeg \
-	yuyvtoy4m \
 	yuvinactive
 
 if HAVE_GTK
@@ -163,9 +154,6 @@ png2yuv_LDADD = $(LIBMJPEGUTILS) -lpng -lz -lm
 lavpipe_SOURCES = lavpipe.c pipelist.c
 lavpipe_LDADD = $(LIBMJPEGUTILS)
 
-yuvmedianfilter_SOURCES = yuvmedianfilter.c
-yuvmedianfilter_LDADD = $(LIBMJPEGUTILS)
-
 lav2wav_SOURCES = lav2wav.c
 lav2wav_LDADD = $(LIBMJPEGUTILS) liblavfile.la
 
@@ -190,9 +178,6 @@ ppmtoy4m_LDADD = $(LIBMJPEGUTILS)
 pnmtoy4m_SOURCES = pnmtoy4m.c colorspace.c
 pnmtoy4m_LDADD = $(LIBMJPEGUTILS)
 
-pgmtoy4m_SOURCES = pgmtoy4m.c
-pgmtoy4m_LDADD = $(LIBMJPEGUTILS)
-
 y4mtoppm_SOURCES = y4mtoppm.c colorspace.c subsample.c
 y4mtoppm_LDADD = $(LIBMJPEGUTILS)
 
@@ -205,37 +190,11 @@ y4mcolorbars_LDADD = $(LIBMJPEGUTILS)
 lavinfo_SOURCES = lavinfo.c
 lavinfo_LDADD = $(LIBMJPEGUTILS) liblavfile.la
 
-y4mshift_SOURCES = y4mshift.c
-y4mshift_LDADD = $(LIBMJPEGUTILS)
-
-y4mspatialfilter_CFLAGS=@PROGRAM_NOPIC@
-y4mspatialfilter_SOURCES = y4mspatialfilter.c
-y4mspatialfilter_LDADD = $(LIBMJPEGUTILS) $(LIBM_LIBS)
-
 y4mstabilizer_SOURCES = y4mstabilizer.c subsample.c
 y4mstabilizer_LDADD = $(LIBMJPEGUTILS)
-
-y4mblack_SOURCES = y4mblack.c
-y4mblack_LDADD = $(LIBMJPEGUTILS)
-
-y4minterlace_SOURCES = y4minterlace.c
-y4minterlace_LDADD = $(LIBMJPEGUTILS)
-
-y4mtoyuv_SOURCES = y4mtoyuv.c
-y4mtoyuv_LDADD = $(LIBMJPEGUTILS)
-
-yuv4mpeg_SOURCES = yuv4mpeg.c
-yuv4mpeg_LDADD = $(LIBMJPEGUTILS)
-
-yuyvtoy4m_SOURCES = yuyvtoy4m.c
-yuyvtoy4m_LDADD = $(LIBMJPEGUTILS)
 
 yuvfps_SOURCES = yuvfps.c
 yuvfps_LDADD = $(LIBMJPEGUTILS)
 
 yuvinactive_SOURCES = yuvinactive.c
 yuvinactive_LDADD = $(LIBMJPEGUTILS)
-
-y4mhist_SOURCES = y4mhist.c
-y4mhist_CFLAGS=@PROGRAM_NOPIC@
-y4mhist_LDADD = $(LIBMJPEGUTILS)
