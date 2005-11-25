@@ -30,8 +30,8 @@ main(int argc, char **argv)
 	u_char	*frame_buf, *yuv[3], *p, *Y_p, *Cb_p, *Cr_p;
 	int	fdin, y_len, uv_len, nfields = 1, dominance = 0, afd = -1;
 	int64_t	framesize;
-	int	err, i, c, frames, channels = 0;
-	char	*qtchroma;
+	int	err, i, c, frames, channels = 0, y4mchroma;
+	char	*qtchroma = NULL;
 	quicktime_t *qtf;
 	quicktime_pasp_t pasp;
 #if 0
@@ -94,20 +94,14 @@ main(int argc, char **argv)
 
 	rate = y4m_si_get_framerate(&istream);
 
-	switch	(y4m_si_get_chroma(&istream))
+	switch	(y4mchroma = y4m_si_get_chroma(&istream))
 		{
 		case	Y4M_CHROMA_422:
 			qtchroma = QUICKTIME_2VUY;	/* 2vuy */
 			break;
-#ifdef	notnow
-/*
- * Need to lookup the packing order, etc.  Not a commonly used
- * format so it's not critical to support.
-*/
 		case	Y4M_CHROMA_444:			/* v308 */
-			qtchroma = QUICKTIME_YUV444;
+			qtchroma = QUICKTIME_YUV444;    /* QUICKTIME_V308 */
 			break;
-#endif
 		default:
 			mjpeg_error_exit1("unsupported chroma sampling: %d",
 				y4m_si_get_chroma(&istream));
@@ -213,12 +207,24 @@ main(int argc, char **argv)
 		Y_p = yuv[0];
 		Cb_p = yuv[1];
 		Cr_p = yuv[2];
-		for	(i = 0; i < framesize; i += 4)
+		if	(y4mchroma == Y4M_CHROMA_444)
 			{
-			*p++ = *Cb_p++;
-			*p++ = *Y_p++;
-			*p++ = *Cr_p++;
-			*p++ = *Y_p++;
+			for	(i = 0; i < framesize; i += 3)
+				{
+				*p++ = *Cr_p++;
+				*p++ = *Y_p++;
+				*p++ = *Cb_p++;
+				}
+			}
+		else
+			{
+			for	(i = 0; i < framesize; i += 4)
+				{
+				*p++ = *Cb_p++;
+				*p++ = *Y_p++;
+				*p++ = *Cr_p++;
+				*p++ = *Y_p++;
+				}
 			}
 		if	(quicktime_write_frame(qtf, frame_buf, framesize, 0))
 			mjpeg_error_exit1("quicktime_write_frame failed.");
