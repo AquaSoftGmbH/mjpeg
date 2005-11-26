@@ -23,7 +23,7 @@ bin_PROGRAMS = \
 	yuyvtoy4m
 
 if HAVE_LIBQUICKTIME
-bin_PROGRAMS += y4mtoqt
+bin_PROGRAMS += y4mtoqt qttoy4m
 endif
 
 yuvmedianfilter_SOURCES = yuvmedianfilter.c
@@ -51,6 +51,10 @@ if HAVE_LIBQUICKTIME
 y4mtoqt_SOURCES = y4mtoqt.c
 y4mtoqt_CPPFLAGS = $(AM_CPPFLAGS) $(LIBQUICKTIME_CFLAGS)
 y4mtoqt_LDADD = $(LIBMJPEGUTILS) $(top_builddir)/lavtools/liblavfile.la
+
+qttoy4m_SOURCES = qttoy4m.c
+qttoy4m_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/lavtools $(LIBQUICKTIME_CFLAGS)
+qttoy4m_LDADD = $(LIBMJPEGUTILS) $(top_builddir)/lavtools/liblavfile.la
 endif
 
 y4mtoyuv_SOURCES = y4mtoyuv.c
