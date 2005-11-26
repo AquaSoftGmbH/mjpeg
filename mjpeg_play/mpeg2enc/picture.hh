@@ -167,10 +167,9 @@ public:
      *
      **************/
 
-	int decode;					// Number of frame in stream 
+	int decode;				// Number of frame in stream 
 	int present;				// Number of frame in playback order
-    int input;                  // Number of frame in input stream - need
-                                // NOT be the same as decode!!
+                                    // == Number of frame in input stream
 
 	/* multiple-reader/single-writer channels Synchronisation  
 	   sync only: no data is "read"/"written"

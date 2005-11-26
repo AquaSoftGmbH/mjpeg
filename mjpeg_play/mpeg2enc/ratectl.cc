@@ -406,7 +406,7 @@ void OnTheFlyRateCtl::InitNewPict(Picture &picture)
 	   where they will help improve other frames too.  
 
 	   Note that we have to calulate per-frame bits by scaling the one-second
-	   bit-pool a one-GOP bit-pool.
+	   bit-pool to a one-GOP bit-pool.
 	*/
 
 	

@@ -845,9 +845,9 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 		case 'G' :
 			max_GOP_size = atoi(optarg);
 			break;
-        	case 'c' :
-            		closed_GOPs = true;
-            		break;
+        case 'c' :
+                closed_GOPs = true;
+                break;
 		case 'P' :
 			preserve_B = true;
 			break;

@@ -44,34 +44,35 @@ public:
     void ForceIFrame();
 
     // Handle seperately - need to know input frame number (set by Next)
-    inline int FrameInStream() const { return frame_num; }
-    inline int FrameInSeq() const { return s_idx; }
-    inline int  TemporalReference() const
-    {
-        /* Temp ref of I frame in closed GOP of sequence is 0 We have to
-        be a little careful with the end of stream special-case.
-        */
-        return ( g_idx == 0 && closed_gop ) ? 0 :  g_idx+(bigrp_length-1);
-    }
-    inline int  InputFrameNum() const { return TemporalReference()+gop_start_frame; }
+   // inline int FrameInStream() const { return frame_num; }
+    inline bool EndOfStream() const { return end_stream; }
+    inline bool BGroupLength() const { return bigrp_length; }
+    //inline int FrameInSeq() const { return s_idx; }
+    //inline int GopStartInStream() const { return gop_start_frame; }
+    //inline int SeqStartInStream() const { return seq_start_frame; }
+    inline int TemporalReference() const { return temp_ref; }
+    inline int PresentationNum() const { return frame_num+temp_ref-g_idx; }
+    inline int DecodeNum() const { return frame_num; }
+    
+    bool NextGopClosed() const;
+
 protected:    
     void GopStart();
 
-    void SetEndSeq();
+    void SetTempRef();
 
 public:
     // Conext of current frame in hierarchy of structures: sequence, GOP, B-group */
     int frame_num;                  /* Index in total video stream */
-    int temp_ref;                   /* Temporal reference in GOP   */
-    int s_idx;                      /* Index in current sequence */
-    int g_idx;                      /* Index in current GOP */
-    int b_idx;                      /* Index in current B frame group */
-    int frame_type;              /* Type of indexed framme */
+    int s_idx;                          /* Index in current sequence */
+    int g_idx;                          /* Index in current GOP */
+    int b_idx;                          /* Index in current B frame group */
+    int frame_type;                 /* Type of indexed frame */
+    int temp_ref;                   /* Temporal reference in GOP == presentation order in GOP */
     
     // Context of current sequence and GOP in the input image stream
 
-    int seq_start_frame;        /* Index start current sequence in
-                                   input stream */
+    int seq_start_frame;        /* Index start current sequence in  input stream */
     int gop_start_frame;        /* Index start current gop in input stream */
 
     // GOP state
@@ -86,9 +87,10 @@ public:
     bool closed_gop;            /* Current GOP is closed */
 
     // Sequence splitting state
-    bool gop_end_seq;       /* Current GOP is last in sequence */
-    bool end_seq;           /* Current frame is last in sequence */
-    bool new_seq;           /* Current GOP/frame starts new sequence */
+    bool gop_end_seq;      /* Current GOP is last in sequence */
+    bool end_seq;             /* Current frame is last in sequence */
+    bool new_seq;            /* Current GOP/frame starts new sequence */
+    bool end_stream;       /* End of video stream reached - no further coding possible */
 
 private:
     uint64_t next_split_point;      // Keep track of size-based points to split individual sequences

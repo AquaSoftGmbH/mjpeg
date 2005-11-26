@@ -150,8 +150,9 @@ void Picture::SetEncodingParams( const StreamState &ss, int frames_available )
 
     assert( pict_type == ss.frame_type );
 
-	decode = ss.FrameInSeq(); // == ss.s_idx;
-    input   = temp_ref+ss.gop_start_frame;//ss.InputFrameNum(); // temp_ref+ss.gop_start_frame;
+    decode = ss.DecodeNum();
+    present = ss.PresentationNum();
+    temp_ref = ss.TemporalReference();
 
 	dc_prec = encparams.dc_prec;
 	secondfield = false;
@@ -292,15 +293,6 @@ void Picture::SetEncodingParams( const StreamState &ss, int frames_available )
 
 void Picture::Set_IP_Frame( const StreamState &ss, int num_frames )
 {
-
-    // Temp_ref could go beyond end of input sequence (StreamState
-    // currently doesn't check) so need to handle this here.
-    // This is what sorts out correct GOP structure at end of sequence
-    temp_ref = ss.TemporalReference();
-    if (temp_ref >= (num_frames-ss.gop_start_frame))
-		temp_ref = (num_frames-ss.gop_start_frame) - 1;
-
-	present = (ss.s_idx-ss.g_idx)+temp_ref;
 	if (ss.g_idx==0) /* first displayed frame in GOP is I */
 	{
 		pict_type = I_TYPE;
@@ -336,8 +328,7 @@ void Picture::Set_IP_Frame( const StreamState &ss, int num_frames )
 
 void Picture::Set_B_Frame(  const StreamState &ss )
 {
-	temp_ref = ss.g_idx - 1;
-	present = ss.s_idx-1;
+
 	pict_type = B_TYPE;
 	gop_start = false;
 	new_seq = false;

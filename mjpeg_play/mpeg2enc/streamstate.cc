@@ -43,7 +43,7 @@ void StreamState::Init(  )
     next_split_point = BITCOUNT_OFFSET + seq_split_length;
     mjpeg_debug( "Split len = %lld", seq_split_length );
 
-    frame_num = 0;
+    frame_num = 0;          // All these counters in *encoding* order !!
     s_idx = 0;
     g_idx = 0;
     b_idx = 0;
@@ -52,7 +52,16 @@ void StreamState::Init(  )
     gop_start_frame = 0;
     gop_end_seq = true;         // At start we act as after sequence split...
     GopStart(  );
-    SetEndSeq();
+    SetTempRef();
+}
+
+/*
+    Could the following GOP be closed?
+*/
+
+bool StreamState::NextGopClosed() const 
+{ 
+    return gop_end_seq || encparams.closed_GOPs; 
 }
 
 
@@ -83,11 +92,10 @@ void StreamState::Next(  int64_t bits_after_mux )   // Estimate of how much outp
         else
             bigrp_length = encparams.M;
 
-        // Are we starting a new GOP
+        // Do we need to start next GOP?
         if( g_idx == gop_length )
         {
-            GopStart(  );
-            // Sets frame_type == I_TYPE
+            GopStart(  );            // Sets frame_type == I_TYPE
         }
         else
         {
@@ -98,18 +106,17 @@ void StreamState::Next(  int64_t bits_after_mux )   // Estimate of how much outp
     {
         frame_type = B_TYPE;
     }
-    
+
     // Figure out if a sequence split is due...
     if( (next_split_point != 0ULL && bits_after_mux > next_split_point)
-        || (FrameInSeq() != 0 && encparams.seq_end_every_gop)
+        || (s_idx != 0 && encparams.seq_end_every_gop)
         )
     {
         mjpeg_info( "Splitting sequence next GOP start" );
         next_split_point += seq_split_length;
         gop_end_seq = true;
     }
-    
-     SetEndSeq();
+     SetTempRef();
 }
 
 /*
@@ -120,17 +127,33 @@ void StreamState::Next(  int64_t bits_after_mux )   // Estimate of how much outp
 void StreamState::ForceIFrame()
 {
 	GopStart();
-	SetEndSeq();
+	SetTempRef();
 }
 
-void StreamState::SetEndSeq()
+void StreamState::SetTempRef()
 {
-   // Ensure we have read up to the frame we plan to processs / decide
-   // EOS at (need to know if this frame is at EOF - hence must be read).
-   // TODO Cropping of Temporal reference from  Picture::Set_IP_Frame
-   // should really be handled here...
-   reader.FillBufferUpto( InputFrameNum() );
-   end_seq = frame_num == (reader.NumberOfFrames()-1) || ( g_idx == gop_length-1 && gop_end_seq);
+    // Ensure we have read up to the input frame we might need if the next
+    // frame in decode order is an I or P.   Make sure we don't go 'of the end'
+   // once we've reached EOS
+
+    int read_ahead_frame = frame_num+encparams.M;
+    reader.FillBufferUpto( read_ahead_frame  );
+    int last_frame = reader.NumberOfFrames()-1;
+    if( frame_type == B_TYPE )
+        temp_ref =  g_idx - 1;
+    else if( g_idx == 0 && closed_gop)
+        temp_ref =   0;
+    else // I or P frame open GOP
+        temp_ref = g_idx+(bigrp_length-1);
+
+    // At end of Sequence may need to truncate bigrp!
+    if (temp_ref >= (last_frame-gop_start_frame))
+        temp_ref = (last_frame-gop_start_frame) - 1;
+    
+        // DEBUG remove when validated
+    assert( frame_num + temp_ref - g_idx == gop_start_frame + temp_ref );
+    end_stream = frame_num == last_frame;
+    end_seq =  end_stream || ( g_idx == gop_length-1 && gop_end_seq);
 }
 
 
@@ -154,7 +177,7 @@ void StreamState::GopStart(  )
            * order sequence number of the frame that will become frame 0 in display
            * order in  the new sequence 
            */
-          seq_start_frame += s_idx;
+          seq_start_frame =frame_num;
           s_idx = 0;
           gop_end_seq = false;
           new_seq = true;
@@ -164,7 +187,7 @@ void StreamState::GopStart(  )
     /* Normally set closed_GOP in first GOP only...   */
 
     closed_gop = s_idx == 0 || encparams.closed_GOPs;
-    gop_start_frame = seq_start_frame + s_idx;
+    gop_start_frame = frame_num;
     
 
     // 

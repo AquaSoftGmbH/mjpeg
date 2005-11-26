@@ -326,7 +326,7 @@ void SeqEncoder::Pass1EncodePicture(Picture *picture)
 #ifdef TRACE_ACTIVITY
 	mjpeg_info("Frame %5d %5d %c q=%3.2f Sact=(%8.5f->%8.5f) %s [%.0f%%]",
                picture->decode, 
-               picture->input,
+               picture->present,
 			   pict_type_char[picture->pict_type],
                picture->AQ,
                prev_sum_avg_act,
@@ -337,7 +337,7 @@ void SeqEncoder::Pass1EncodePicture(Picture *picture)
 #else
     mjpeg_info("Frame %5d %5d %c q=%3.2f %s [%.0f%% Intra]",
                picture->decode, 
-               picture->input,
+               picture->present,
                pict_type_char[picture->pict_type],
                picture->AQ,
                picture->pad ? "PAD" : "   ",
@@ -385,7 +385,7 @@ void SeqEncoder::Pass1ReEncodePicture(Picture *picture)
 #else
     mjpeg_info("Reenc %5d %5d %c q=%3.2f %s", 
                picture->decode, 
-               picture->input,
+               picture->present,
                pict_type_char[picture->pict_type],
                picture->AQ,
                picture->pad ? "PAD" : "   ");
@@ -491,7 +491,7 @@ void SeqEncoder::EncodeStream()
         {
             Pass2EncodeFrame();
         }
-        else if( ss.FrameInStream() < reader.NumberOfFrames() )
+        else if( !ss.EndOfStream() )
         {
             Pass1EncodeFrame();
             ss.Next( BitsAfterMux() );
@@ -521,7 +521,7 @@ Picture *SeqEncoder::GetPicture()
 
 void SeqEncoder::ReleasePicture( Picture *picture )
 {
-    reader.ReleaseFrame( picture->input );
+    reader.ReleaseFrame( picture->present );
     free_pictures.push_back( picture );
 }
 
@@ -565,11 +565,51 @@ void SeqEncoder::Pass1EncodeFrame()
         cur_picture->fwd_ref_frame = old_ref_picture;
         cur_picture->bwd_ref_frame = new_ref_picture;
     }
+    
+    // We may need to 'back-out' of current frame if it looks
+    // like its type or the GOP structure would be inappropriate
+    //
 
-    cur_picture->SetEncodingParams(ss, reader.NumberOfFrames() );
-    cur_picture->org_img = reader.ReadFrame( cur_picture->input );
+    // TODO
+    // Loop for dynamic B-group dimensioning!
+    for(;;)
+    {
+        cur_picture->SetEncodingParams(ss, reader.NumberOfFrames() );
 
-    Pass1EncodePicture( cur_picture );
+        // DEBUG - remove once proven....
+       assert( cur_picture->temp_ref-ss.g_idx == cur_picture->present-ss.frame_num );
+       
+        // Frames are presented at input in playback (presentation) order
+        cur_picture->org_img = reader.ReadFrame( cur_picture->present );
+        Pass1EncodePicture( cur_picture );
+
+        bool ref_picture_change = false;
+        // Should this P frame really have been an I-frame ?
+        if( ss.b_idx ==0 &&  cur_picture->IntraCodedBlocks() > 0.6 && ss.g_idx >= encparams.N_min )
+        {
+
+            int old_present = cur_picture->present;
+            if( !ss.NextGopClosed() || ss.BGroupLength() ==  0  )
+            {
+                mjpeg_info( "DEVEL: GOP split point found here... %.0f%% intra coded", 
+                            cur_picture->IntraCodedBlocks() * 100.0 );
+                ss.ForceIFrame();
+                cur_picture->SetEncodingParams(ss, reader.NumberOfFrames());
+                assert( cur_picture->present == old_present);
+                Pass1ReEncodePicture( cur_picture );
+                break;
+            }
+            else
+            {
+                // If we have B frames we shrink the B group by one...
+                // TODO: ss.ShrinkBGroup();
+                //ref_picture_change = true;
+                break;
+            }
+        }
+        else
+            break;
+    }
 
     if( cur_picture->end_seq )
         mjpeg_info( "Sequence end inserted");
@@ -588,16 +628,6 @@ void SeqEncoder::Pass1EncodeFrame()
     else if( ss.b_idx == 0  )    // I or P Frame (First frame in B-group)
     {
     
-        // Decide if a P frame really should have been an I-frame, and re-encoded
-        // as such if necessary
-        if( cur_picture->IntraCodedBlocks() > 0.6 && ss.g_idx >= encparams.N_min )
-        {
-            mjpeg_info( "DEVEL: GOP split point found here... %.0f%% intra coded", 
-                        cur_picture->IntraCodedBlocks() * 100.0 );
-            ss.ForceIFrame();
-            cur_picture->SetEncodingParams(ss, reader.NumberOfFrames());
-            Pass1ReEncodePicture( cur_picture );
-        }
         // We have a new fwd reference picture: anything decoded before
         // will no longer be referenced and can be passed on.
         for( i = 0; i < pass1coded.size();  ++i )
@@ -631,9 +661,9 @@ uint64_t    SeqEncoder::BitsAfterMux() const
     double frame_periods;
     uint64_t bits_after_mux;
     if( encparams.pulldown_32 )
-        frame_periods = (double)ss.FrameInStream()*(5.0/4.0);
+        frame_periods = (double)ss.DecodeNum()*(5.0/4.0);
     else
-        frame_periods = (double)ss.FrameInStream();
+        frame_periods = (double)ss.DecodeNum();
     //
     //    For VBR we estimate total bits based on actual stream size and
     //    an estimate for the other streams based on time.
