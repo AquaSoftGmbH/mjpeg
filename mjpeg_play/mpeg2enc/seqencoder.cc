@@ -249,7 +249,7 @@ void Despatcher::WaitForCompletion()
 
 
 // --------------------------------------------------------------------------------
-//  Sequence Encoder top-level class.
+//  Sequence Encoder top-level clapass1_ss.
 //
 
 
@@ -265,7 +265,7 @@ SeqEncoder::SeqEncoder( EncoderParams &_encparams,
     writer( _writer ),
     ratecontroller( _ratecontroller ),
     despatcher( *new Despatcher ),
-    ss( _encparams, _reader ),
+    pass1_ss( _encparams, _reader ),
     pass1_rcstate( ratecontroller.NewState() )
 {
 }
@@ -293,7 +293,7 @@ void SeqEncoder::Init()
                      encparams.encoding_parallelism );
 
     ratecontroller.InitSeq(false);
-    ss.Init(  );
+    pass1_ss.Init(  );
     old_ref_picture = 0;
 
     // Lots of routines assume (for speed) that
@@ -455,7 +455,7 @@ void SeqEncoder::EncodePicture(Picture *picture)
  *
  * EncodeStream - Where it all happens.  This is the top-level loop
  * that despatches all the encoding work.  Encoding is always performed
- * two-pass. 
+ * two-papass1_ss. 
  * Pass 1: a first encoding that determines the GOP
  * structure, but may only do rough-and-ready bit allocatino that is 
  * visually sub-optimal and/or may violate the specified maximum bit-rate.
@@ -488,22 +488,20 @@ void SeqEncoder::EncodeStream()
     // pass1 rate controller.
     do 
     {
-        // If we have Pass2 work to do
-        if( pass2queue.size() != 0 )
+        // For now we simply round-robin schedule the
+        // various passes.  Later - they get split into
+        // seperate processes/threads!!
+        if( !pass1_ss.EndOfStream() )
+        {
+            Pass1EncodeFrame();
+            pass1_ss.Next( BitsAfterMux() );
+        }
+        
+        if( pass2queue.size() > 0 )
         {
             Pass2EncodeFrame();
         }
-        else if( !ss.EndOfStream() )
-        {
-            Pass1EncodeFrame();
-            ss.Next( BitsAfterMux() );
-        }
-        else // Run-out at end of stream
-        {
-            pass2queue.push_back( pass1coded.front() );
-            pass1coded.pop_front(); 
-        }
-    } while( pass2queue.size() > 0 || pass1coded.size() > 0 );
+    } while( pass1coded.size() > 0 || pass2queue.size() > 0  );
 
     StreamEnd();
 }
@@ -549,7 +547,7 @@ void SeqEncoder::Pass1EncodeFrame()
 {
     old_picture = cur_picture;
     
-    if ( ss.b_idx == 0 ) // I or P Frame (First frame in B-group)
+    if ( pass1_ss.b_idx == 0 ) // I or P Frame (First frame in B-group)
     {
         old_ref_picture = new_ref_picture;
         new_ref_picture = cur_picture = GetFreshPicture();
@@ -574,10 +572,10 @@ void SeqEncoder::Pass1EncodeFrame()
     //
 
 
-    cur_picture->SetEncodingParams(ss, reader.NumberOfFrames() );
+    cur_picture->SetEncodingParams( pass1_ss );
 
     // DEBUG - remove once proven....
-     assert( cur_picture->temp_ref-ss.g_idx == cur_picture->present-ss.frame_num );
+     assert( cur_picture->temp_ref-pass1_ss.g_idx == cur_picture->present-pass1_ss.frame_num );
 
    // Frames are presented at input in playback (presentation) order
     cur_picture->org_img = reader.ReadFrame( cur_picture->present );
@@ -585,21 +583,21 @@ void SeqEncoder::Pass1EncodeFrame()
 
 
     // Should this P frame really have been an I-frame ?
-    if( ss.b_idx ==0 &&  cur_picture->IntraCodedBlocks() > 0.6 && ss.g_idx >= encparams.N_min )
+    if( pass1_ss.b_idx ==0 &&  cur_picture->IntraCodedBlocks() > 0.6 && pass1_ss.g_idx >= encparams.N_min )
     {
 
         int old_present = cur_picture->present;
-        if( !ss.NextGopClosed() || ss.BGroupLength() == 1  )
+        if( !pass1_ss.NextGopClosed() || pass1_ss.BGroupLength() == 1  )
         {
             mjpeg_info( "DEVEL: GOP split point found here... %d %d %.0f%% intra coded",
-                        ss.NextGopClosed(), ss.BGroupLength(),
+                        pass1_ss.NextGopClosed(), pass1_ss.BGroupLength(),
                         cur_picture->IntraCodedBlocks() * 100.0 );
-            ss.ForceIFrame();
-            cur_picture->SetEncodingParams(ss, reader.NumberOfFrames());
+            pass1_ss.ForceIFrame();
+            cur_picture->SetEncodingParams(pass1_ss);
             assert( cur_picture->present == old_present);
             Pass1ReEncodePicture( cur_picture );
         }
-        else
+        else if( encparams.M_min == 1 )
         {
             // Next GOP is closed - and B-frames.  We can't just turn the P into an I
             // as the corresponding into frame would then be the first B frame and not
@@ -608,8 +606,8 @@ void SeqEncoder::Pass1EncodeFrame()
             // B frames to allow the I frame to be inserted at the right spot.
             mjpeg_info( "DEVEL: GOP split forces P-frames only... %.0f%% intra coded", 
                         cur_picture->IntraCodedBlocks() * 100.0 );
-            ss.SuppressBFrames();
-            cur_picture->SetEncodingParams(ss, reader.NumberOfFrames());
+            pass1_ss.SuppressBFrames();
+            cur_picture->SetEncodingParams(pass1_ss);
             cur_picture->org_img = reader.ReadFrame( cur_picture->present );
             Pass1ReEncodePicture( cur_picture );
         }
@@ -628,11 +626,9 @@ void SeqEncoder::Pass1EncodeFrame()
     {
         // If end of sequence we flush everything as next GOP won't refer to this frame
         to_queue = pass1coded.size();
-        assert( cur_picture->pict_type != B_TYPE );
     }
-    else if( ss.b_idx == 0  )    // I or P Frame (First frame in B-group)
+    else if( pass1_ss.b_idx == 0  )    // I or P Frame (First frame in B-group)
     {
-    
         // We have a new fwd reference picture: anything decoded before
         // will no longer be referenced and can be passed on.
         for( i = 0; i < pass1coded.size();  ++i )
@@ -642,7 +638,6 @@ void SeqEncoder::Pass1EncodeFrame()
         }
         to_queue = i == pass1coded.size() ? 0 : i;
     }
- 
 
     for( i = 0; i < to_queue; ++i )
     {
@@ -665,9 +660,9 @@ uint64_t    SeqEncoder::BitsAfterMux() const
     double frame_periods;
     uint64_t bits_after_mux;
     if( encparams.pulldown_32 )
-        frame_periods = (double)ss.DecodeNum()*(5.0/4.0);
+        frame_periods = (double)pass1_ss.DecodeNum()*(5.0/4.0);
     else
-        frame_periods = (double)ss.DecodeNum();
+        frame_periods = (double)pass1_ss.DecodeNum();
     //
     //    For VBR we estimate total bits based on actual stream size and
     //    an estimate for the other streams based on time.
@@ -693,11 +688,34 @@ uint64_t    SeqEncoder::BitsAfterMux() const
   
 void SeqEncoder::Pass2EncodeFrame()
 {
-    Picture *cur_pass2_picture = pass2queue.front();
-    pass2queue.pop_front();
-    // Simple single-pass encoding (look-ahead coming soon)
-    cur_pass2_picture->CommitCoding();
-    ReleasePicture( cur_pass2_picture );
+    deque<Picture *>::iterator i = pass2queue.begin()+1;
+    
+    while( i < pass2queue.end() )
+    {
+        if( (*i)->pict_type == I_TYPE )  // First frame of next GOP
+            break;
+        ++i;
+    }
+    
+    if( i == pass2queue.end() )
+    {
+        if( !pass2queue.back()->end_seq)
+            return;
+    }
+    
+    // Here we estimate a good look-ahead coding 
+    
+    int goppics = i-pass2queue.begin();
+    for( int p =0; p < goppics; ++p )
+    {
+        // We have a GOP queue up!
+        Picture *cur_pass2_picture = pass2queue.front();
+    
+        pass2queue.pop_front();
+        // Simple single-pass encoding (look-ahead coming soon)
+        cur_pass2_picture->CommitCoding();
+        ReleasePicture( cur_pass2_picture );
+    }
 }
 
 void SeqEncoder::StreamEnd()

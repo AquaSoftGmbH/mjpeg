@@ -171,13 +171,13 @@ void StreamState::SetTempRef()
         temp_ref = g_idx+(bigrp_length-1);
 
     // At end of Sequence may need to truncate bigrp!
-    if (temp_ref >= (last_frame-gop_start_frame))
-        temp_ref = (last_frame-gop_start_frame) - 1;
+    if (temp_ref > (last_frame-gop_start_frame))
+        temp_ref = (last_frame-gop_start_frame);
     
         // DEBUG remove when validated
     assert( frame_num + temp_ref - g_idx == gop_start_frame + temp_ref );
     end_stream = frame_num > last_frame;
-    end_seq =  end_stream || ( g_idx == gop_length-1 && gop_end_seq);
+    end_seq =  frame_num == last_frame || ( g_idx == gop_length-1 && gop_end_seq);
 }
 
 

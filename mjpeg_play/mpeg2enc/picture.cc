@@ -136,13 +136,14 @@ void Picture::Reconstruct()
  *
  ******************************************/
 
-void Picture::SetEncodingParams( const StreamState &ss, int frames_available )
+void Picture::SetEncodingParams( const StreamState &ss )
 {
     new_seq = ss.new_seq;
     end_seq = ss.end_seq;
+
     if( ss.b_idx == 0 )             // Start of a B-group: I or P frame
     {
-        Set_IP_Frame(ss, frames_available);
+        Set_IP_Frame(ss );
     }
     else
     {
@@ -154,7 +155,8 @@ void Picture::SetEncodingParams( const StreamState &ss, int frames_available )
     decode = ss.DecodeNum();
     present = ss.PresentationNum();
     temp_ref = ss.TemporalReference();
-
+    last_picture = ss.EndOfStream();
+ 
 	dc_prec = encparams.dc_prec;
 	secondfield = false;
 	ipflag = 0;
@@ -292,7 +294,7 @@ void Picture::SetEncodingParams( const StreamState &ss, int frames_available )
  *
  **************************************************/
 
-void Picture::Set_IP_Frame( const StreamState &ss, int num_frames )
+void Picture::Set_IP_Frame( const StreamState &ss)
 {
 	if (ss.g_idx==0) /* first displayed frame in GOP is I */
 	{

@@ -140,7 +140,7 @@ private:
     
     
 	// Internal state of encoding...
-	StreamState ss;
+	StreamState pass1_ss;
 
 	Picture *cur_picture, *old_picture;
 	Picture *new_ref_picture, *old_ref_picture;

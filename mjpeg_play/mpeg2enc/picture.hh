@@ -90,9 +90,9 @@ public:
     void Stats();
     void Reconstruct();
     void CommitCoding();
-   void DiscardCoding();
+    void DiscardCoding();
     
-    void SetEncodingParams(  const StreamState &ss, int last_frame );
+    void SetEncodingParams(  const StreamState &ss );
     void Adjust2ndField();
     
     // Metrics used for stearing the encoding
@@ -133,7 +133,7 @@ public:
 
 
 protected:
-    void Set_IP_Frame( const StreamState &ss, int last_frame );
+    void Set_IP_Frame( const StreamState &ss );
     void Set_B_Frame( const StreamState &ss );
 
     
@@ -170,8 +170,10 @@ public:
      **************/
  
 	int decode;				// Number of frame in stream 
-	int present;				// Number of frame in playback order
-                                    // == Number of frame in input stream
+	int present;			// Number of frame in playback order
+                            // == Number of frame in input stream
+
+    bool last_picture;         // Last Picture of a stream
 
 	/* multiple-reader/single-writer channels Synchronisation  
 	   sync only: no data is "read"/"written"
