@@ -328,6 +328,21 @@ AM_PATH_SDL(1.1.3,
             [have_sdl=false])
 AM_CONDITIONAL(HAVE_SDL, test x$have_sdl = xtrue)
 
+dnl ***
+dnl Check for SDL_gfx which is used by y4mhist to display a graphical 
+dnl histogram.
+dnl ***
+AC_SUBST(SDLgfx_LIBS)
+if test x$have_sdl = xtrue; then
+   OLD_LIBS="$LIBS"
+   LIBS="$LIBS -lSDL -lSDL_gfx"
+   AC_CHECK_LIB(SDL_gfx, vlineColor,
+		[SDLgfx_LIBS="-lSDL_gfx"
+		 AC_DEFINE(HAVE_SDLgfx, 1, [SDL_gfx library present])
+		 have_sdlgfx=true ],[have_sdlgfx=false])
+   LIBS="$OLD_LIBS"
+fi
+
 dnl ********************************************************************
 dnl Test for MMX support if an IA32 platform.  If on a PPC then look for
 dnl Altivec support.  For the IA32 platform see if gcc understands inline 
