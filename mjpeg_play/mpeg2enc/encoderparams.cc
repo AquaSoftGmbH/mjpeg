@@ -213,7 +213,9 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
         prog_seq = 0;
         break;
     default :
-        prog_seq        = (options.mpeg == 1 || options.fieldenc == 0);
+        // If we want 3:2 pulldown must code prog_seq as otherwise
+        // repeat_first_field and topfirst encode frame repetitions!!!
+        prog_seq        = (options.mpeg == 1 || (options.fieldenc == 0 && !options.vid32_pulldown));
         break;
     }
 	pulldown_32     = options.vid32_pulldown;
@@ -568,6 +570,7 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 		mjpeg_warn( "Frame height won't split into two equal field pictures...");
 		mjpeg_warn( "forcing encoding as progressive video");
 		prog_seq = 1;
+        pulldown_32 = false;
 		fieldpic = 0;
 	}
 
