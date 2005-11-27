@@ -421,7 +421,7 @@ static uint32_t framenr;
 	  sinc_interpolation (frame2[0], inframe[0], lwidth, lheight, 0);
 	  sinc_interpolation (frame2[1], inframe[1], cwidth, cheight, 0);
 	  sinc_interpolation (frame2[2], inframe[2], cwidth, cheight, 0);
-#if 0
+#if 1
 	  motion_compensate (r0[0], frame2[0], frame3[0], frame4[0], lwidth,
 			     lheight, 0);
 	  motion_compensate (r0[1], frame2[1], frame3[1], frame4[1], cwidth,
