@@ -42,14 +42,12 @@ public:
     void Init( );
     void Next( int64_t bits_after_mux );
     void ForceIFrame();
+    void SuppressBFrames();
 
     // Handle seperately - need to know input frame number (set by Next)
-   // inline int FrameInStream() const { return frame_num; }
+
     inline bool EndOfStream() const { return end_stream; }
-    inline bool BGroupLength() const { return bigrp_length; }
-    //inline int FrameInSeq() const { return s_idx; }
-    //inline int GopStartInStream() const { return gop_start_frame; }
-    //inline int SeqStartInStream() const { return seq_start_frame; }
+    inline int BGroupLength() const { return bigrp_length; }
     inline int TemporalReference() const { return temp_ref; }
     inline int PresentationNum() const { return frame_num+temp_ref-g_idx; }
     inline int DecodeNum() const { return frame_num; }
@@ -79,8 +77,9 @@ public:
     int gop_length;             /* Length of current gop */
     int bigrp_length;           /* Length of current B-frame group */
     int bs_short;               /* Number of B frame GOP is short of
-                                   having M-1 B's for each I/P frame
-                                */
+                                        having M-1 B's for each I/P frame
+                                    */
+    bool suppress_b_frames; /* Disable B frames for rest of current GOP */
     int np;                        /* P frames in current GOP */
     int nb;                        /* B frames in current GOP */
     double next_b_drop;         /* When next B frame drop is due in GOP */

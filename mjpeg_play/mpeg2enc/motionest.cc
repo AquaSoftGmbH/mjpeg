@@ -745,7 +745,7 @@ void MacroBlock::FrameMEs()
     int mb_row_start = j*eparams.phy_width;
 	
     MotionEst me;
-    best_of_kind_me.erase(best_of_kind_me.begin(),best_of_kind_me.end());
+    best_of_kind_me.clear();
 
 	/* A.Stevens fast motion estimation data is appended to actual
 	   luminance information. 

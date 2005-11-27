@@ -299,7 +299,7 @@ void SeqEncoder::Init()
     // Lots of routines assume (for speed) that
     // a dummy ref picture is provided even if it is not needed
     // because the picture being encoded is  INTRA
-    new_ref_picture = GetPicture();
+    new_ref_picture = GetFreshPicture();
     free_pictures.push_back( new_ref_picture );
 }
 /*
@@ -335,9 +335,10 @@ void SeqEncoder::Pass1EncodePicture(Picture *picture)
                picture->IntraCodedBlocks() * 100.0
         );
 #else
-    mjpeg_info("Frame %5d %5d %c q=%3.2f %s [%.0f%% Intra]",
+    mjpeg_info("Frame %5d %5d(%2d) %c q=%3.2f %s [%.0f%% Intra]",
                picture->decode, 
                picture->present,
+               picture->temp_ref,
                pict_type_char[picture->pict_type],
                picture->AQ,
                picture->pad ? "PAD" : "   ",
@@ -383,9 +384,10 @@ void SeqEncoder::Pass1ReEncodePicture(Picture *picture)
                picture->sum_avg_act,
                picture->pad ? "PAD" : "   ");
 #else
-    mjpeg_info("Reenc %5d %5d %c q=%3.2f %s", 
+    mjpeg_info("Reenc %5d %5d(%2d) %c q=%3.2f %s", 
                picture->decode, 
                picture->present,
+               picture->temp_ref,
                pict_type_char[picture->pict_type],
                picture->AQ,
                picture->pad ? "PAD" : "   ");
@@ -507,16 +509,17 @@ void SeqEncoder::EncodeStream()
 }
 
 
-Picture *SeqEncoder::GetPicture()
+Picture *SeqEncoder::GetFreshPicture()
 {
+    Picture *fresh;
     if( free_pictures.size() == 0 )
-        return new Picture(encparams,  writer , quantizer);
+        fresh = new Picture(encparams,  writer , quantizer);
     else
     {
-        Picture *free = free_pictures.back();
+        fresh = free_pictures.back();
         free_pictures.pop_back();
-        return free;
     }
+    return fresh;
 }
 
 void SeqEncoder::ReleasePicture( Picture *picture )
@@ -549,7 +552,7 @@ void SeqEncoder::Pass1EncodeFrame()
     if ( ss.b_idx == 0 ) // I or P Frame (First frame in B-group)
     {
         old_ref_picture = new_ref_picture;
-        new_ref_picture = cur_picture = GetPicture();
+        new_ref_picture = cur_picture = GetFreshPicture();
         cur_picture->fwd_org = old_ref_picture->org_img;
         cur_picture->fwd_rec = old_ref_picture->rec_img;
         cur_picture->fwd_ref_frame = old_ref_picture;
@@ -557,7 +560,7 @@ void SeqEncoder::Pass1EncodeFrame()
     }
     else
     {
-        cur_picture = GetPicture();
+        cur_picture = GetFreshPicture();
         cur_picture->fwd_org = old_ref_picture->org_img;
         cur_picture->fwd_rec = old_ref_picture->rec_img;
         cur_picture->bwd_org = new_ref_picture->org_img;
@@ -566,51 +569,52 @@ void SeqEncoder::Pass1EncodeFrame()
         cur_picture->bwd_ref_frame = new_ref_picture;
     }
     
-    // We may need to 'back-out' of current frame if it looks
-    // like its type or the GOP structure would be inappropriate
+    //
+    // Initial motion estimation and selection of best macroblock coding mode
     //
 
-    // TODO
-    // Loop for dynamic B-group dimensioning!
-    for(;;)
+
+    cur_picture->SetEncodingParams(ss, reader.NumberOfFrames() );
+
+    // DEBUG - remove once proven....
+     assert( cur_picture->temp_ref-ss.g_idx == cur_picture->present-ss.frame_num );
+
+   // Frames are presented at input in playback (presentation) order
+    cur_picture->org_img = reader.ReadFrame( cur_picture->present );
+    Pass1EncodePicture( cur_picture );
+
+
+    // Should this P frame really have been an I-frame ?
+    if( ss.b_idx ==0 &&  cur_picture->IntraCodedBlocks() > 0.6 && ss.g_idx >= encparams.N_min )
     {
-        cur_picture->SetEncodingParams(ss, reader.NumberOfFrames() );
 
-        // DEBUG - remove once proven....
-       assert( cur_picture->temp_ref-ss.g_idx == cur_picture->present-ss.frame_num );
-       
-        // Frames are presented at input in playback (presentation) order
-        cur_picture->org_img = reader.ReadFrame( cur_picture->present );
-        Pass1EncodePicture( cur_picture );
-
-        bool ref_picture_change = false;
-        // Should this P frame really have been an I-frame ?
-        if( ss.b_idx ==0 &&  cur_picture->IntraCodedBlocks() > 0.6 && ss.g_idx >= encparams.N_min )
+        int old_present = cur_picture->present;
+        if( !ss.NextGopClosed() || ss.BGroupLength() == 1  )
         {
-
-            int old_present = cur_picture->present;
-            if( !ss.NextGopClosed() || ss.BGroupLength() ==  0  )
-            {
-                mjpeg_info( "DEVEL: GOP split point found here... %.0f%% intra coded", 
-                            cur_picture->IntraCodedBlocks() * 100.0 );
-                ss.ForceIFrame();
-                cur_picture->SetEncodingParams(ss, reader.NumberOfFrames());
-                assert( cur_picture->present == old_present);
-                Pass1ReEncodePicture( cur_picture );
-                break;
-            }
-            else
-            {
-                // If we have B frames we shrink the B group by one...
-                // TODO: ss.ShrinkBGroup();
-                //ref_picture_change = true;
-                break;
-            }
+            mjpeg_info( "DEVEL: GOP split point found here... %d %d %.0f%% intra coded",
+                        ss.NextGopClosed(), ss.BGroupLength(),
+                        cur_picture->IntraCodedBlocks() * 100.0 );
+            ss.ForceIFrame();
+            cur_picture->SetEncodingParams(ss, reader.NumberOfFrames());
+            assert( cur_picture->present == old_present);
+            Pass1ReEncodePicture( cur_picture );
         }
         else
-            break;
+        {
+            // Next GOP is closed - and B-frames.  We can't just turn the P into an I
+            // as the corresponding into frame would then be the first B frame and not
+            // the current P frame.
+            // Solution: we need to back up and code the remainder of the GOP without
+            // B frames to allow the I frame to be inserted at the right spot.
+            mjpeg_info( "DEVEL: GOP split forces P-frames only... %.0f%% intra coded", 
+                        cur_picture->IntraCodedBlocks() * 100.0 );
+            ss.SuppressBFrames();
+            cur_picture->SetEncodingParams(ss, reader.NumberOfFrames());
+            cur_picture->org_img = reader.ReadFrame( cur_picture->present );
+            Pass1ReEncodePicture( cur_picture );
+        }
     }
-
+    
     if( cur_picture->end_seq )
         mjpeg_info( "Sequence end inserted");
  
@@ -624,6 +628,7 @@ void SeqEncoder::Pass1EncodeFrame()
     {
         // If end of sequence we flush everything as next GOP won't refer to this frame
         to_queue = pass1coded.size();
+        assert( cur_picture->pict_type != B_TYPE );
     }
     else if( ss.b_idx == 0  )    // I or P Frame (First frame in B-group)
     {
@@ -644,7 +649,6 @@ void SeqEncoder::Pass1EncodeFrame()
         pass2queue.push_back( pass1coded.front() );
         pass1coded.pop_front();
     }
-    
 
 }
 

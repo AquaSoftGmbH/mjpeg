@@ -378,7 +378,9 @@ void OnTheFlyRateCtl::InitNewPict(Picture &picture)
 	   We use this to try to predict the activity of each frame.
 	*/
 
-	picture.ActivityMeasures( actsum, varsum );
+ 
+    actsum = picture.ActivityBestMotionComp();
+    varsum = picture.VarSumBestMotionComp();
 	avg_act = actsum/(double)(encparams.mb_per_pict);
 	avg_var = varsum/(double)(encparams.mb_per_pict);
 	sum_avg_act += avg_act;

@@ -143,7 +143,7 @@ static int unit_coeff_elimination(DCTblock &block,
 
 void MacroBlock::Quantize( Quantizer &quant  )
 {
-    if (final_me.mb_type & MB_INTRA)
+    if (best_me->mb_type & MB_INTRA)
     {
         quant.QuantIntra( dctblocks[0],
                           qdctblocks[0],
@@ -175,14 +175,14 @@ void MacroBlock::Quantize( Quantizer &quant  )
             }
         }
         if (cbp)
-            final_me.mb_type|= MB_PATTERN;
+            best_me->mb_type|= MB_PATTERN;
     }
 }
 
 void MacroBlock::IQuantize( Quantizer &quant)
 {
     int j;
-    if (final_me.mb_type & MB_INTRA)
+    if (best_me->mb_type & MB_INTRA)
     {
         for (j=0; j<BLOCK_COUNT; j++)
             quant.IQuantIntra(qdctblocks[j], qdctblocks[j], picture->dc_prec, mquant);

@@ -72,7 +72,7 @@ private:
      *
      *********************************/
      
-    Picture *GetPicture();
+    Picture *GetFreshPicture();
     void ReleasePicture( Picture *);
       
     /**********************************

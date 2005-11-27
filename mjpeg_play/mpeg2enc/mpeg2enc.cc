@@ -864,7 +864,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 			break;
 		case 'H':
 			hf_quant = 2;
-            		break;
+            break;
 		case 'K':
 			ParseCustomOption(optarg);
 			break;

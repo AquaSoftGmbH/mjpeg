@@ -50,22 +50,28 @@ void MacroBlock::SelectCodingModeOnVariance()
     vector<MotionEst>::iterator i;
     vector<MotionEst>::iterator min_me;
     int best_score = INT_MAX;
+    int best_fwd_score = INT_MAX;
     int cur_score;
 
     //
     // Select motion estimate with lowest variance
     // Penalise the INTRA motion type slightly because it can't be
-    // skip coded.
+    // skip coded and the DC coefficient is usually large...
     for( i = best_of_kind_me.begin(); i < best_of_kind_me.end(); ++ i)
     {
-        cur_score = i->var + (i->mb_type == MB_INTRA ? 4*4*256 : 0);
+        cur_score = i->var + (i->mb_type == MB_INTRA ? 3*3*256 : 0);
         if( cur_score < best_score )
         {
             best_score = cur_score;
-            min_me = i;
+            best_me = &*i;
+        }
+        if( i->mb_type & MB_BACKWARD == 0 && cur_score < best_fwd_score)
+        {   
+            best_fwd_score = cur_score;
+            best_fwd_me = &*i;
         }
     }
-    final_me = *min_me;
+
 } 
 
 

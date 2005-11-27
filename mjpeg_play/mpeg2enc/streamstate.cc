@@ -85,12 +85,14 @@ void StreamState::Next(  int64_t bits_after_mux )   // Estimate of how much outp
            come out right ? */
         if( bs_short != 0 && g_idx > (int)next_b_drop )
         {
-            bigrp_length = encparams.M - 1;
             if( bs_short )
                 next_b_drop += ((double)gop_length) / (double)(bs_short+1) ;
+            bigrp_length = encparams.M - 1;
         }
-        else
+        else if( !suppress_b_frames )
             bigrp_length = encparams.M;
+        else
+            bigrp_length = 1;
 
         // Do we need to start next GOP?
         if( g_idx == gop_length )
@@ -120,15 +122,37 @@ void StreamState::Next(  int64_t bits_after_mux )   // Estimate of how much outp
 }
 
 /*
-	Switch stream state to force an I-Frame at current.  Basically: start a new GOP
-	and do the usual house-keeping.
+	Switch stream state to force an I-Frame where a P-frame would be expected.
+    Basically: start a new GOP and do the usual house-keeping.
 */
 
 void StreamState::ForceIFrame()
 {
+    assert( frame_type != B_TYPE );
 	GopStart();
 	SetTempRef();
 }
+
+/*
+    Switch stream state so that no B frames are used from the current
+    frame and onwards.
+*/
+
+void StreamState::SuppressBFrames()
+{
+    assert( b_idx == 0 && encparams.M_min == 1);
+    frame_type = P_TYPE;
+    if( encparams.M_min == 1 )
+    {
+        np += nb;
+        nb = 0;
+        bigrp_length = encparams.M_min;
+        bs_short = 0;
+        suppress_b_frames = true;
+        SetTempRef();
+    }
+}
+
 
 void StreamState::SetTempRef()
 {
@@ -152,21 +176,21 @@ void StreamState::SetTempRef()
     
         // DEBUG remove when validated
     assert( frame_num + temp_ref - g_idx == gop_start_frame + temp_ref );
-    end_stream = frame_num == last_frame;
+    end_stream = frame_num > last_frame;
     end_seq =  end_stream || ( g_idx == gop_length-1 && gop_end_seq);
 }
 
 
 void StreamState::GopStart(  )
 {
-    //int nb, np;
     uint64_t bits_after_mux;
     double frame_periods;
     /* If   we're starting a GOP and have gone past the current
        sequence splitting point split the sequence and
        set the next splitting point.
     */
-            
+
+    suppress_b_frames = false;
     g_idx = 0;
     b_idx = 0;
     frame_type = I_TYPE;

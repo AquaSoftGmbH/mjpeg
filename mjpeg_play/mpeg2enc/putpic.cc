@@ -183,7 +183,7 @@ void MacroBlock::PutBlocks( )
         /* block loop */
         if( cbp & (1<<(BLOCK_COUNT-1-comp)))
         {
-            if (final_me.mb_type & MB_INTRA)
+            if (best_me->mb_type & MB_INTRA)
             {
                 // TODO: 420 Only?
                 cc = (comp<4) ? 0 : (comp&1)+1;
@@ -206,13 +206,13 @@ void MacroBlock::SkippedCoding( bool slice_begin_end )
          * we have to transmit (0,0) motion vectors
          */
         if (picture->pict_type==P_TYPE && !cbp)
-            final_me.mb_type|= MB_FORWARD;
+            best_me->mb_type|= MB_FORWARD;
         return;
     }
 
     MacroBlock *prev_mb = picture->prev_mb;
     /* P picture, no motion vectors -> skip */
-    if (picture->pict_type==P_TYPE && !(final_me.mb_type&MB_FORWARD))
+    if (picture->pict_type==P_TYPE && !(best_me->mb_type&MB_FORWARD))
     {
         /* reset predictors */
         picture->Reset_DC_DCT_Pred();
@@ -229,14 +229,14 @@ void MacroBlock::SkippedCoding( bool slice_begin_end )
          */
 
         if (  picture->pict_struct==FRAME_PICTURE
-              && final_me.motion_type==MC_FRAME
-              && ((prev_mb->final_me.mb_type ^ final_me.mb_type) &(MB_FORWARD|MB_BACKWARD))==0
-              && (!(final_me.mb_type&MB_FORWARD) ||
-                  (picture->PMV[0][0][0]==final_me.MV[0][0][0] &&
-                   picture->PMV[0][0][1]==final_me.MV[0][0][1]))
-              && (!(final_me.mb_type&MB_BACKWARD) ||
-                  (picture->PMV[0][1][0]==final_me.MV[0][1][0] &&
-                   picture->PMV[0][1][1]==final_me.MV[0][1][1])))
+              && best_me->motion_type==MC_FRAME
+              && ((prev_mb->best_me->mb_type ^ best_me->mb_type) &(MB_FORWARD|MB_BACKWARD))==0
+              && (!(best_me->mb_type&MB_FORWARD) ||
+                  (picture->PMV[0][0][0]==best_me->MV[0][0][0] &&
+                   picture->PMV[0][0][1]==best_me->MV[0][0][1]))
+              && (!(best_me->mb_type&MB_BACKWARD) ||
+                  (picture->PMV[0][1][0]==best_me->MV[0][1][0] &&
+                   picture->PMV[0][1][1]==best_me->MV[0][1][1])))
         {
             skipped = true;
             return;
@@ -249,16 +249,16 @@ void MacroBlock::SkippedCoding( bool slice_begin_end )
          */
 
         if (picture->pict_struct!=FRAME_PICTURE
-            && final_me.motion_type==MC_FIELD
-            && ((prev_mb->final_me.mb_type^final_me.mb_type)&(MB_FORWARD|MB_BACKWARD))==0
-            && (!(final_me.mb_type&MB_FORWARD) ||
-                (picture->PMV[0][0][0]==final_me.MV[0][0][0] &&
-                 picture->PMV[0][0][1]==final_me.MV[0][0][1] &&
-                 final_me.field_sel[0][0]==(picture->pict_struct==BOTTOM_FIELD)))
-            && (!(final_me.mb_type&MB_BACKWARD) ||
-                (picture->PMV[0][1][0]==final_me.MV[0][1][0] &&
-                 picture->PMV[0][1][1]==final_me.MV[0][1][1] &&
-                 final_me.field_sel[0][1]==(picture->pict_struct==BOTTOM_FIELD))))
+            && best_me->motion_type==MC_FIELD
+            && ((prev_mb->best_me->mb_type^best_me->mb_type)&(MB_FORWARD|MB_BACKWARD))==0
+            && (!(best_me->mb_type&MB_FORWARD) ||
+                (picture->PMV[0][0][0]==best_me->MV[0][0][0] &&
+                 picture->PMV[0][0][1]==best_me->MV[0][0][1] &&
+                 best_me->field_sel[0][0]==(picture->pict_struct==BOTTOM_FIELD)))
+            && (!(best_me->mb_type&MB_BACKWARD) ||
+                (picture->PMV[0][1][0]==best_me->MV[0][1][0] &&
+                 picture->PMV[0][1][1]==best_me->MV[0][1][1] &&
+                 best_me->field_sel[0][1]==(picture->pict_struct==BOTTOM_FIELD))))
         {
             skipped = true;
             return;

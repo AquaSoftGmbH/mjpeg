@@ -500,8 +500,8 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 		mpeg = 2;
 		if (bitrate == 0)
 			bitrate = 7500000;
-        	if (video_buffer_size == 0)
-            		video_buffer_size = 230;
+    	if (video_buffer_size == 0)
+    		video_buffer_size = 230;
 		if (!force_cbr && quant == 0)
 			quant = 8;
 		seq_hdr_every_gop = 1;

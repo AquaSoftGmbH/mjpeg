@@ -157,9 +157,12 @@ public:
 	int i_act;  /* Activity measure if intra coded (I/P-frame) */
 	int p_act;  /* Activity measure for *forward* prediction (P-frame) */
 	int b_act;	/* Activity measure if bi-directionally coded (B-frame) */
-    vector<MotionEst> best_of_kind_me; // The best looking motion estimate
+    vector<MotionEst> best_of_kind_me; 
+                                 // The best predicting motion compensation
                                 // of each possible kind.
-    MotionEst final_me;      // Coding mode selected for coding...
+    MotionEst *best_me;      // Best predicting motion estimate overall
+    MotionEst *best_fwd_me; // Best predicting motion compensation requiring only
+                                            // forward motion compensation
 #ifdef OUTPUT_STAT
   double N_act;
 #endif

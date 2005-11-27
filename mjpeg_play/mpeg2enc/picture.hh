@@ -72,6 +72,8 @@ class ImagePlanes;
 class Picture : public CodingPredictors
 {
 public:
+    
+    
     Picture( EncoderParams &_encparams, 
              ElemStrmWriter &writer, 
              Quantizer &_quantizer );
@@ -102,10 +104,10 @@ public:
     void PutHeaders();
     void PutHeader(); 
 
-    // In ratectl.cc
-    void ActivityMeasures( double &act_sum, double &var_sum);
+    double ActivityBestMotionComp();
+    double VarSumBestMotionComp();
+    double VarSumBestFwdMotionComp();
     
-    //
     //
     //
     inline bool Legal( const MotionVector &mv ) const
@@ -144,7 +146,7 @@ public:
 
     /***************
      *
-     * Data initialised at construction
+     * Data areas allocated at construction
      *
      **************/
 
@@ -166,7 +168,7 @@ public:
      * Data update as picture is re-used for different images in streams
      *
      **************/
-
+ 
 	int decode;				// Number of frame in stream 
 	int present;				// Number of frame in playback order
                                     // == Number of frame in input stream

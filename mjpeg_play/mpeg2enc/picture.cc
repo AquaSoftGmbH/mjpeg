@@ -97,6 +97,7 @@ Picture::Picture( EncoderParams &_encparams,
     bwd_rec = bwd_org = 0;
 }
 
+
 Picture::~Picture()
 {
     int i;
@@ -386,65 +387,82 @@ void Picture::IQuantize()
 	}
 }
 
-void Picture::ActivityMeasures( double &act_sum, double &var_sum)
+
+double Picture::VarSumBestMotionComp()
 {
-	int i,j,k,l;
+    double var_sum = 0.0;
+    vector<MacroBlock>::iterator i;
+    for( i = mbinfo.begin(); i < mbinfo.end(); ++i )
+    {
+        var_sum += i->best_me->var;
+    }
+    return var_sum;
+}
+
+double Picture::VarSumBestFwdMotionComp()
+{
+    double var_sum = 0.0;
+    vector<MacroBlock>::iterator i;
+    for( i = mbinfo.begin(); i < mbinfo.end(); ++i )
+    {
+        var_sum += i->best_fwd_me->var;
+    }
+    return var_sum;
+}
+
+double Picture::ActivityBestMotionComp()
+{
 	double actj,sum;
-	double varsum;
 	int blksum;
 	sum = 0.0;
-	varsum = 0.0;
-	k = 0;
-	for (j=0; j<encparams.enc_height2; j+=16)
-		for (i=0; i<encparams.enc_width; i+=16)
-		{
-			/* A.Stevens Jul 2000 Luminance variance *has* to be a
-			   rotten measure of how active a block in terms of bits
-			   needed to code a lossless DCT.  E.g. a half-white
-			   half-black block has a maximal variance but pretty
-			   small DCT coefficients.
+    vector<MacroBlock>::iterator i;
+    for (i = mbinfo.begin(); i < mbinfo.end(); ++i )
+    {
+        /* A.Stevens Jul 2000 Luminance variance *has* to be a
+           rotten measure of how active a block in terms of bits
+           needed to code a lossless DCT.  E.g. a half-white
+           half-black block has a maximal variance but pretty
+           small DCT coefficients.
 
-			   So.... instead of luminance variance as used in the
-			   original we use the absolute sum of DCT coefficients as
-			   our block activity measure.  */
+           So.... instead of luminance variance as used in the
+           original we use the absolute sum of DCT coefficients as
+           our block activity measure.  */
 
-			varsum += (double)mbinfo[k].final_me.var;
-			if( mbinfo[k].final_me.mb_type  & MB_INTRA )
-			{
-				/* Compensate for the wholly disproprotionate weight
-				 of the DC coefficients.  Shold produce more sensible
-				 results...  yes... it *is* an mostly empirically derived
-				 fudge factor ;-)
-				*/
-				blksum =  -80*COEFFSUM_SCALE;
-				for( l = 0; l < 6; ++l )
-					blksum += 
-						quantizer.WeightCoeffIntra( mbinfo[k].RawDCTblocks()[l] ) ;
-			}
-			else
-			{
-				blksum = 0;
-				for( l = 0; l < 6; ++l )
-					blksum += 
-						quantizer.WeightCoeffInter( mbinfo[k].RawDCTblocks()[l] ) ;
-			}
-			/* It takes some bits to code even an entirely zero block...
-			   It also makes a lot of calculations a lot better conditioned
-			   if it can be guaranteed that activity is always distinctly
-			   non-zero.
-			 */
+        if( i->best_me->mb_type  & MB_INTRA )
+        {
+            /* Compensate for the wholly disproprotionate weight
+             of the DC coefficients.  Shold produce more sensible
+             results...  yes... it *is* an mostly empirically derived
+             fudge factor ;-)
+            */
+            blksum =  -80*COEFFSUM_SCALE;
+            for( int l = 0; l < 6; ++l )
+                blksum += 
+                    quantizer.WeightCoeffIntra( i->RawDCTblocks()[l] ) ;
+        }
+        else
+        {
+            blksum = 0;
+            for( int l = 0; l < 6; ++l )
+                blksum += 
+                    quantizer.WeightCoeffInter( i->RawDCTblocks()[l] ) ;
+        }
+        /* It takes some bits to code even an entirely zero block...
+           It also makes a lot of calculations a lot better conditioned
+           if it can be guaranteed that activity is always distinctly
+           non-zero.
+         */
 
 
-			actj = (double)blksum / (double)COEFFSUM_SCALE;
-			if( actj < 12.0 )
-				actj = 12.0;
+        actj = (double)blksum / (double)COEFFSUM_SCALE;
+        if( actj < 12.0 )
+            actj = 12.0;
 
-			mbinfo[k].act = (double)actj;
-			sum += (double)actj;
-			++k;
-		}
-	act_sum = sum;
-	var_sum = varsum;
+        i->act = actj;
+        sum += actj;
+    }
+    return sum;
+
 }
 
 /* inverse transform prediction error and add prediction */
@@ -546,7 +564,7 @@ void Picture::QuantiseAndEncode(RateCtl &ratectl)
             if( cur_mb->cbp && suggested_mquant != mquant_pred )
             {
                 mquant_pred = suggested_mquant;
-                cur_mb->final_me.mb_type |= MB_QUANT;
+                cur_mb->best_me->mb_type |= MB_QUANT;
             }
                 
             /* Check to see if Macroblock is skippable, this may set
@@ -562,15 +580,15 @@ void Picture::QuantiseAndEncode(RateCtl &ratectl)
                 coding->PutAddrInc(MBAinc); /* macroblock_address_increment */
                 MBAinc = 1;
                 
-                coding->PutMBType(pict_type,cur_mb->final_me.mb_type); /* macroblock type */
+                coding->PutMBType(pict_type,cur_mb->best_me->mb_type); /* macroblock type */
 
-                if ( (cur_mb->final_me.mb_type & (MB_FORWARD|MB_BACKWARD)) && !frame_pred_dct)
-                    coding->PutBits(cur_mb->final_me.motion_type,2);
+                if ( (cur_mb->best_me->mb_type & (MB_FORWARD|MB_BACKWARD)) && !frame_pred_dct)
+                    coding->PutBits(cur_mb->best_me->motion_type,2);
 
                 if (pict_struct==FRAME_PICTURE 	&& cur_mb->cbp && !frame_pred_dct)
                     coding->PutBits(cur_mb->field_dct,1);
 
-                if (cur_mb->final_me.mb_type & MB_QUANT)
+                if (cur_mb->best_me->mb_type & MB_QUANT)
                 {
                     coding->PutBits(q_scale_type 
                             ? map_non_linear_mquant[cur_mb->mquant]
@@ -578,19 +596,19 @@ void Picture::QuantiseAndEncode(RateCtl &ratectl)
                 }
 
 
-                if (cur_mb->final_me.mb_type & MB_FORWARD)
+                if (cur_mb->best_me->mb_type & MB_FORWARD)
                 {
                     /* forward motion vectors, update predictors */
-                    PutMVs( cur_mb->final_me, false );
+                    PutMVs( *cur_mb->best_me, false );
                 }
 
-                if (cur_mb->final_me.mb_type & MB_BACKWARD)
+                if (cur_mb->best_me->mb_type & MB_BACKWARD)
                 {
                     /* backward motion vectors, update predictors */
-                    PutMVs( cur_mb->final_me,  true );
+                    PutMVs( *cur_mb->best_me,  true );
                 }
 
-                if (cur_mb->final_me.mb_type & MB_PATTERN)
+                if (cur_mb->best_me->mb_type & MB_PATTERN)
                 {
                     coding->PutCPB((cur_mb->cbp >> (BLOCK_COUNT-6)) & 63);
                 }
@@ -599,11 +617,11 @@ void Picture::QuantiseAndEncode(RateCtl &ratectl)
 
                 cur_mb->PutBlocks( );
                 /* reset predictors */
-                if (!(cur_mb->final_me.mb_type & MB_INTRA))
+                if (!(cur_mb->best_me->mb_type & MB_INTRA))
                     Reset_DC_DCT_Pred();
 
-                if (cur_mb->final_me.mb_type & MB_INTRA || 
-                    (pict_type==P_TYPE && !(cur_mb->final_me.mb_type & MB_FORWARD)))
+                if (cur_mb->best_me->mb_type & MB_INTRA || 
+                    (pict_type==P_TYPE && !(cur_mb->best_me->mb_type & MB_FORWARD)))
                 {
                     Reset_MV_Pred();
                 }
@@ -675,7 +693,7 @@ double Picture::IntraCodedBlocks() const
     int intra = 0;
     for( mbi = mbinfo.begin(); mbi < mbinfo.end(); ++mbi)
     {
-        if( mbi->final_me.mb_type&MB_INTRA )
+        if( mbi->best_me->mb_type&MB_INTRA )
             ++intra;
     }
     return static_cast<double>(intra) / mbinfo.size();
