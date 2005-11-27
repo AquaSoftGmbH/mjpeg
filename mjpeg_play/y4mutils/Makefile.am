@@ -49,7 +49,7 @@ y4minterlace_LDADD = $(LIBMJPEGUTILS)
 
 if HAVE_LIBQUICKTIME
 y4mtoqt_SOURCES = y4mtoqt.c
-y4mtoqt_CPPFLAGS = $(AM_CPPFLAGS) $(LIBQUICKTIME_CFLAGS)
+y4mtoqt_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/lavtools $(LIBQUICKTIME_CFLAGS)
 y4mtoqt_LDADD = $(LIBMJPEGUTILS) $(top_builddir)/lavtools/liblavfile.la
 
 qttoy4m_SOURCES = qttoy4m.c

@@ -16,8 +16,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <lqt.h>
-#include <mjpegtools/yuv4mpeg.h>
-#include <mjpegtools/avilib.h>
+#include "yuv4mpeg.h"
+#include "avilib.h"
 
 static	void	usage(void);
 static void do_audio(quicktime_t *, uint8_t *, int, int,  int);
