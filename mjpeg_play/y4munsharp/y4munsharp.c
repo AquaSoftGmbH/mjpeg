@@ -186,13 +186,13 @@ main(int argc, char **argv)
 	y4m_copy_stream_info(&ostream, &istream);
 	y4m_write_stream_header(fileno(stdout), &ostream);
 
-	mjpeg_log(LOG_INFO, "Luma radius: %lf", y_radius);
-	mjpeg_log(LOG_INFO, "Luma amount: %lf", y_amount);
+	mjpeg_log(LOG_INFO, "Luma radius: %f", y_radius);
+	mjpeg_log(LOG_INFO, "Luma amount: %f", y_amount);
 	mjpeg_log(LOG_INFO, "Luma threshold: %d", y_threshold);
 	if	(uv_radius != -1.0)
 		{
-		mjpeg_log(LOG_INFO, "Chroma radius: %lf", uv_radius);
-		mjpeg_log(LOG_INFO, "Chroma amount: %lf", uv_amount);
+		mjpeg_log(LOG_INFO, "Chroma radius: %f", uv_radius);
+		mjpeg_log(LOG_INFO, "Chroma amount: %f", uv_amount);
 		mjpeg_log(LOG_INFO, "Chroma threshold: %d", uv_threshold);
 		}
 
