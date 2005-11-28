@@ -100,7 +100,7 @@ main(int argc, char **argv)
 			qtchroma = QUICKTIME_2VUY;	/* 2vuy */
 			break;
 		case	Y4M_CHROMA_444:			/* v308 */
-			qtchroma = QUICKTIME_YUV444;    /* QUICKTIME_V308 */
+			qtchroma = QUICKTIME_V308;
 			break;
 		default:
 			mjpeg_error_exit1("unsupported chroma sampling: %d",
