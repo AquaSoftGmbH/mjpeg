@@ -225,13 +225,6 @@ int main(int argc, char *argv[])
 	y4m_si_set_chroma(&ostream, y4mchroma);
 
 /*
- * This should not be necessary but lqt assumes the row_span from the
- * stream format rather than the model set by lqt_set_cmodel()
-*/
-	lqt_set_row_span(file, vtrack, width);
-	lqt_set_row_span_uv(file, vtrack, width / ss_h);
-
-/*
  * If interlacing was specified on the commandline use it (override/ignore
  * any 'fiel' atom in the file).  Otherwise use the 'fiel' atom if present.
  * If no command line value and no 'fiel' atom then use 'progressive' and 
