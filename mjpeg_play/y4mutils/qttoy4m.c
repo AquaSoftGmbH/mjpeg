@@ -176,11 +176,9 @@ int main(int argc, char *argv[])
 */
 	switch	(cmodel)
 		{
-#if 0
 		case	BC_YUV411P:
-			y4mchroma = Y4M_CHROMA_411; /* no lqt code for this */
+			y4mchroma = Y4M_CHROMA_411;
 			break;
-#endif
 		case	BC_YUV422:
 		case	BC_YUV422P16:
 		case	BC_YUVJ422P:			/* should never see */
@@ -191,10 +189,13 @@ int main(int argc, char *argv[])
 			y4mchroma = Y4M_CHROMA_422;
 			break;
 		case	BC_YUV420P:
-			y4mchroma = Y4M_CHROMA_420MPEG2; /* 420PALDV? */
-			break;
 		case	BC_YUVJ420P:
 			y4mchroma = Y4M_CHROMA_420JPEG;
+#if 0
+			if	(lqt_get_chroma_placement(file, vtrack) == 
+					LQT_CHROMA_PLACEMENT_DVPAL)
+				y4mchroma = Y4M_CHROMA_PALDV;
+#endif
 			break;
 		case	BC_YUV444P16:
 		case	BC_YUV444P:
