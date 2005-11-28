@@ -139,11 +139,11 @@ void make_histogram_desc(long number_of_frames)
 	{
 	char framestat[25];
 
-	sprintf(framestat, "Y Stat till frame %i", number_of_frames);
+	sprintf(framestat, "Y Stat till frame %ld", number_of_frames);
 	make_text(sum1_x, sum1_y, framestat);
-	sprintf(framestat, "U Stat till frame %i", number_of_frames);
+	sprintf(framestat, "U Stat till frame %ld", number_of_frames);
 	make_text(sum2_x, sum2_y, framestat);
-	sprintf(framestat, "V Stat till frame %i", number_of_frames);
+	sprintf(framestat, "V Stat till frame %ld", number_of_frames);
 	make_text(sum3_x, sum3_y, framestat);
 
 	sprintf(framestat, "Y Stat curent frame");
@@ -297,7 +297,7 @@ main(int argc, char **argv)
 	textout = 1;
 #endif
 
-	while	((i = getopt(argc, argc, "t")) != EOF)
+	while	((i = getopt(argc, argv, "t")) != EOF)
 		{
 		switch	(i)
 			{
