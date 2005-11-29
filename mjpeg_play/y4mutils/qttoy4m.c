@@ -211,10 +211,10 @@ int main(int argc, char *argv[])
 		}
 
 /*
- * Report unsupported conversions - the only conversions known to be
- * missing are BC_YUV422P16 -> BC_YUV422P and 444P16 -> 444P.  This means that
- * 'v210' and 'v410' files can't be processed at the present time.  IF the 
- * output model is set (non 0) then check if the conversion is supported.
+ * Report unsupported conversions - the only conversion known to be missing
+ * is the 444P16 -> 444P.  This means that 'v410' files can't be processed at 
+ * the present time.  IF the output model is set (non 0) then check if the 
+ * conversion is supported.
 */
 	if	(omodel && !lqt_colormodel_has_conversion(cmodel, omodel))
 		mjpeg_error_exit1("libquicktime can't convert from %s to %s :(",
