@@ -1,21 +1,28 @@
 /*
  * $Id$
  *
- * Simple utility to place 4:2:2 YUV4MPEG2 data in a quicktime wrapper.   An
+ * Utility to place 4:2:2 or 4:4:4 YUV4MPEG2 data in a Quicktime wrapper.   An
  * audio track can also be added by specifying '-a wavfile' (16bit pcm only).
  * The interlacing, frame rate, frame size and field order are extracted 
  * from the YUV4MPEG2 header.  This is the reverse of 'qttoy4m' which dumps
- * 4:2:2 planar data from a Quicktime 2vuy file (and optionally a specified
- * audio track to a wav file).
+ * planar data from a Quicktime file (and optionally a specified audio track 
+ * to a wav file).
  *
- * Usage: y4mtoqt [-a wavfile] -o outputfile < 422yuv4mpeg2stream
+ * Usage: y4mtoqt [-X] [-a wavfile] -o outputfile < 422yuv4mpeg2stream
+ *
+ *   -X enables 10bit packed output, 2vuy becomes v210 and v308 becomes v410.
 */
 
+#ifdef	HAVE_CONFIG_H
 #include "config.h"
+#else
+#define HAVE_STDINT_H
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <lqt.h>
+#include <colormodels.h>
 #include "yuv4mpeg.h"
 #include "avilib.h"
 
@@ -27,10 +34,12 @@ main(int argc, char **argv)
 	{
 	char	*outfilename = NULL;
 	char	*audiofilename = NULL;
-	u_char	*frame_buf, *yuv[3], *p, *Y_p, *Cb_p, *Cr_p;
-	int	fdin, y_len, uv_len, nfields = 1, dominance = 0, afd = -1;
-	int64_t	framesize;
-	int	err, i, c, frames, channels = 0, y4mchroma;
+	uint8_t	*yuv[3], *p;
+	uint16_t *p16;
+	uint16_t *yuv10[3];
+	int	fdin, y_len, u_len, v_len, nfields = 1, dominance = 0, afd = -1;
+	int	imodel = 0;
+	int	err, i, c, frames, channels = 0, y4mchroma, tenbit = 0;
 	char	*qtchroma = NULL;
 	quicktime_t *qtf;
 	quicktime_pasp_t pasp;
@@ -47,10 +56,13 @@ main(int argc, char **argv)
 	fdin = fileno(stdin);
 
 	opterr = 0;
-	while	((c = getopt(argc, argv, "o:a:")) != -1)
+	while	((c = getopt(argc, argv, "o:a:X")) != -1)
 		{
 		switch	(c)
 			{
+			case	'X':
+				tenbit = 1;
+				break;
 			case	'o':
 				outfilename = optarg;
 				break;
@@ -97,34 +109,54 @@ main(int argc, char **argv)
 	switch	(y4mchroma = y4m_si_get_chroma(&istream))
 		{
 		case	Y4M_CHROMA_422:
-			qtchroma = QUICKTIME_2VUY;	/* 2vuy */
+			if	(tenbit)
+				qtchroma = QUICKTIME_V210;
+			else
+				{
+				qtchroma = QUICKTIME_2VUY;
+				imodel = BC_YUV422P;    /* Input is planar */
+				}
 			break;
-		case	Y4M_CHROMA_444:			/* v308 */
-			qtchroma = QUICKTIME_V308;
+		case	Y4M_CHROMA_444:
+			if	(tenbit)
+				qtchroma = QUICKTIME_V410;
+			else
+				{
+				qtchroma = QUICKTIME_V308;
+				imodel = BC_YUV444P;  /* Need this?? */
+				}
 			break;
 		default:
-			mjpeg_error_exit1("unsupported chroma sampling: %d",
-				y4m_si_get_chroma(&istream));
+			mjpeg_error_exit1("unsupported chroma sampling: %s",
+				y4m_chroma_keyword(y4mchroma));
 			break;
 		}
 
 	y_len = y4m_si_get_plane_length(&istream, 0);
-	uv_len = y4m_si_get_plane_length(&istream, 1);
+	u_len = y4m_si_get_plane_length(&istream, 1);
+	v_len = y4m_si_get_plane_length(&istream, 2);
 	yuv[0] = malloc(y_len);
-	yuv[1] = malloc(uv_len);
-	yuv[2] = malloc(uv_len);
-
-	framesize = y_len + uv_len + uv_len;
-	frame_buf = malloc((size_t)framesize);
+	yuv[1] = malloc(u_len);
+	yuv[2] = malloc(v_len);
+	if	(tenbit)
+		{
+		yuv10[0] = malloc(y_len * sizeof(uint16_t));
+		yuv10[1] = malloc(u_len * sizeof(uint16_t));
+		yuv10[2] = malloc(v_len * sizeof(uint16_t));
+		}
 
 	qtf = quicktime_open(outfilename, 0, 1);
 	if	(!qtf)
 		mjpeg_error_exit1("quicktime_open(%s,0,1) failed", outfilename);
 
-	quicktime_set_video(qtf, 1, y4m_si_get_width(&istream),
+	quicktime_set_video(qtf, 1,
+				y4m_si_get_width(&istream),
 				y4m_si_get_height(&istream),
 				(double) rate.n / rate.d,
 				qtchroma);
+
+	if	(imodel != 0)
+		lqt_set_cmodel(qtf, 0, imodel);
 
 	if	(audiofilename)
 		quicktime_set_audio(qtf, channels,
@@ -203,31 +235,24 @@ main(int argc, char **argv)
 
 	for	(;y4m_read_frame(fdin,&istream,&iframe,yuv) == Y4M_OK; frames++)
 		{
-		p = frame_buf;
-		Y_p = yuv[0];
-		Cb_p = yuv[1];
-		Cr_p = yuv[2];
-		if	(y4mchroma == Y4M_CHROMA_444)
+		if	(tenbit)
 			{
-			for	(i = 0; i < framesize; i += 3)
-				{
-				*p++ = *Cr_p++;
-				*p++ = *Y_p++;
-				*p++ = *Cb_p++;
-				}
+			p = yuv[0];
+			p16 = yuv10[0];
+			for	(i = 0; i < y_len; i++)
+				*p16++ = *p++ << 8;
+			p = yuv[1];
+			p16 = yuv10[1];
+			for	(i = 0; i < u_len; i++)
+				*p16++ = *p++ << 8;
+			p = yuv[2];
+			p16 = yuv10[2];
+			for	(i = 0; i < v_len; i++)
+				*p16++ = *p++ << 8;
 			}
-		else
-			{
-			for	(i = 0; i < framesize; i += 4)
-				{
-				*p++ = *Cb_p++;
-				*p++ = *Y_p++;
-				*p++ = *Cr_p++;
-				*p++ = *Y_p++;
-				}
-			}
-		if	(quicktime_write_frame(qtf, frame_buf, framesize, 0))
-			mjpeg_error_exit1("quicktime_write_frame failed.");
+		err = quicktime_encode_video(qtf, tenbit ? (uint8_t **)yuv10: yuv, 0);
+		if	(err != 0)
+			mjpeg_error_exit1("quicktime_encode_video} failed.");
 		}
 
 	if	(audiofilename)
@@ -275,5 +300,7 @@ do_audio(quicktime_t *qtf, uint8_t *buff, int channels, int bps, int samps)
 static void
 usage()
 	{
-	mjpeg_error_exit1("usage: [-a inputwavfile] -o outfile");
+	mjpeg_warn("usage: [-X] [-a inputwavfile] -o outfile");
+	mjpeg_warn("       -X = use v210 (default 2vuy) for 4:2:2, v410 (default v308) for 4:4:4");
+	exit(1);
 	}
