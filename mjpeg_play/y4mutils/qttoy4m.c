@@ -20,6 +20,7 @@
 #include <lqt.h>
 #include <colormodels.h>
 #include "yuv4mpeg.h"
+#include "mpegconsts.h"
 #include "lav_io.h"
 
 #define	nSAMPS 8192
@@ -281,8 +282,7 @@ int main(int argc, char *argv[])
 		qtrate = quicktime_frame_rate(file, vtrack);
 		if	(qtrate == 0.0)
 			mjpeg_error_exit1("frame rate = 0 and no -r given");
-		rate.n = (int) (qtrate * 100.001);
-		rate.d = 100;
+		rate = mpeg_conform_framerate(qtrate);
 		}
 	y4m_ratio_reduce(&rate);
 	y4m_si_set_framerate(&ostream, rate);
