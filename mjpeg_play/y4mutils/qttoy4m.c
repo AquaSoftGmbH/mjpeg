@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <quicktime.h>
 #include <lqt.h>
 #include <colormodels.h>
 #include "yuv4mpeg.h"
