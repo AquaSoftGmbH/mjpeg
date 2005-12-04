@@ -235,22 +235,12 @@ fi
 
 have_libquicktime=false
 if test x$with_libquicktime != xno ; then
-  PKG_CHECK_MODULES(LIBQUICKTIME, [libquicktime >= 0.9.7],
+  PKG_CHECK_MODULES(LIBQUICKTIME, [libquicktime > 0.9.7],
                     [have_libquicktime=true
-                     AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime >= 0.9.7 present])],
+                     AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime > 0.9.7 present])],
                     [have_libquicktime=false])
 fi
 AM_CONDITIONAL(HAVE_LIBQUICKTIME, test x$have_libquicktime = xtrue)
-
-if test x$have_libquicktime = xtrue; then
-   OLD_CFLAGS="$CFLAGS"
-   OLD_LIBS="$LIBS"
-   CFLAGS="$CFLAGS $LIBQUICKTIME_CFLAGS"
-   LIBS="$LIBS $LIBQUICKTIME_LIBS"
-   AC_CHECK_FUNCS([lqt_fileno])
-   CFLAGS="$OLD_CFLAGS"
-   LIBS="$OLD_LIBS"
-fi
 
 dnl *********************************************************************
 dnl Check for PNG library
