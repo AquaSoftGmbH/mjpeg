@@ -158,7 +158,7 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
     return NULL;
   }
   if (fpscode < 1 || h0->fpscode < fpscode) {
-    WERROR("illeagal output fpscode");
+    WERROR("illegal output fpscode");
     return NULL;
   }
   if (y4m_si_get_interlace(&h0->si) == Y4M_ILACE_BOTTOM_FIRST) {
