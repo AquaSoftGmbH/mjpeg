@@ -38,21 +38,22 @@ unsigned long long ly_stats[256], lu_stats[256], lv_stats[256];
 #define gray   0xA5A5A5FF
 /* Defining the size of the screen */
 #define width 640
-#define heigth 480
+#define heigth 590
 
 /* Defining where the histograms are */
-#define sum1_x 30
+#define sum1_x 40
 #define sum1_y 30
-#define frm1_x 320
+#define frm1_x 340
 #define frm1_y 30 
-#define sum2_x 30
+#define sum2_x 40
 #define sum2_y 180
-#define frm2_x 320
+#define frm2_x 340
 #define frm2_y 180 
-#define sum3_x 30
+#define sum3_x 40
 #define sum3_y 340
-#define frm3_x 320
+#define frm3_x 340
 #define frm3_y 340 
+#define stat 490
 
 	/* needed for SDL */
 	SDL_Surface *screen;
@@ -100,6 +101,7 @@ void ClearScreen(SDL_Surface *screen)
 void draw_histogram_layout(int x_off, int y_off)
 	{
 	int i, offset;
+	char text[3];
 
 	hlineColor(screen, x_off, x_off+257, y_off+101 , white);
 	vlineColor(screen, x_off-1, y_off, y_off+101, white);
@@ -111,6 +113,20 @@ void draw_histogram_layout(int x_off, int y_off)
 		vlineColor(screen, x_off+offset, y_off+101, y_off+105, white);
 		}
 	vlineColor(screen, x_off+128, y_off+106, y_off+110, white);
+
+	/* Description of the axis */
+	stringColor(screen, x_off-5 +16 , y_off+115, "16", white);
+	stringColor(screen, x_off-9 +128, y_off+115, "128", white);
+	stringColor(screen, x_off-9 +240, y_off+115, "240", white);
+	
+	for (i = 0; i < 6; i++)
+		{
+		hlineColor(screen, x_off-5, x_off, y_off+ i*20, white);
+		offset = 100- i*20;
+		sprintf(text, "%i", offset);
+		stringColor(screen, x_off-30 , y_off+ i*20 -3 , text, white);
+
+		}
 	}
 
 /* init the screen */
@@ -154,9 +170,25 @@ void make_histogram_desc(long number_of_frames)
 	make_text(frm3_x, frm3_y, framestat);
 	}
 
+/* Here we draw the histogram statistice for the summ of the frames */
+void make_histogram_stat(int peak_y, int peak_u, int peak_v, 
+				int x_off, int y_off)
+{
+	char framestat[25];
+
+	sprintf(framestat, "Peak Y at : %i", peak_y);
+	stringColor(screen, x_off+10, y_off+10, framestat, white);
+	sprintf(framestat, "Peak U at : %i", peak_u);
+	stringColor(screen, x_off+10, y_off+25, framestat, white);
+	sprintf(framestat, "Peak V at : %i", peak_v);
+	stringColor(screen, x_off+10, y_off+40, framestat, white);
+
+}
+
 /* Here we delete the old histograms */
 void clear_histogram_area()
-	{
+	{ 
+	/* clearing the histogram areas */
 	boxColor(screen, sum1_x, sum1_y-1, sum1_x+256, sum1_y+100, black); 
 	boxColor(screen, sum2_x, sum2_y-1, sum2_x+256, sum2_y+100, black); 
 	boxColor(screen, sum3_x, sum3_y-1, sum3_x+256, sum3_y+100, black); 
@@ -164,6 +196,9 @@ void clear_histogram_area()
 	boxColor(screen, frm1_x, frm1_y-1, frm1_x+256, frm1_y+100, black); 
 	boxColor(screen, frm2_x, frm2_y-1, frm2_x+256, frm2_y+100, black); 
 	boxColor(screen, frm3_x, frm3_y-1, frm3_x+256, frm3_y+100, black); 
+
+	/* clearing frame statistics */
+	boxColor(screen, sum1_x,stat, frm1_x+256,stat+90,black); 
 	} 
 
 /* Show the frame stat */
@@ -172,8 +207,11 @@ void make_stat()
 	int percent_y, percent_u, percent_v, percent_fy, percent_fu, percent_fv;
 	long long num_pixels_y, num_pixels_u, num_pixels_v;
 	long long f_pixels_y, f_pixels_u, f_pixels_v;
+	int peak_y, peak_u, peak_v, peak_fy, peak_fu, peak_fv;
 	int i;
 
+	peak_y = 0; peak_u = 0; peak_v = 0;
+	peak_fy = 0; peak_fu = 0; peak_fv = 0;
 	num_pixels_y = y_stats[0];
 	num_pixels_u = u_stats[0];
 	num_pixels_v = v_stats[0];
@@ -186,27 +224,45 @@ void make_stat()
 	for	(i = 0; i < 255; i++)
   		{  /* getting the maximal numbers for Y, U, V for all frames */
 		if	(num_pixels_y < y_stats[i]) 
+			{
 			num_pixels_y = y_stats[i];
+			peak_y = i;
+			}
 		if	(num_pixels_u < u_stats[i]) 
+			{
 			num_pixels_u = u_stats[i];
+			peak_u = i;
+			}
 		if	(num_pixels_v < v_stats[i]) 
+			{
 			num_pixels_v = v_stats[i];
+			peak_v = i;
+			}
 
 /* getting the maximal numbers for Y, U, V for the current frame */
 		fy_stats[i]= y_stats[i] - ly_stats[i];
 		ly_stats[i] = y_stats[i];
 		if	(f_pixels_y < fy_stats[i])
+			{
 			f_pixels_y = fy_stats[i];
+			peak_fy = i;
+			}
 
 		fu_stats[i]= u_stats[i] - lu_stats[i];
 		lu_stats[i] = u_stats[i];
 		if	(f_pixels_u < fu_stats[i])
+			{
 			f_pixels_u = fu_stats[i];
-
+			peak_fu = i;
+			}
+	
 		fv_stats[i]= v_stats[i] - lv_stats[i];
 		lv_stats[i] = v_stats[i];
 		if	(f_pixels_v < fv_stats[i])
+			{
 			f_pixels_v = fv_stats[i];
+			peak_fv = i;
+			}
   		} 
 
 	num_pixels_y = (num_pixels_y /100);
@@ -222,6 +278,9 @@ void make_stat()
 	number_of_frames++;
 
 	clear_histogram_area(); /* Here we delete the old histograms */
+	
+	make_histogram_stat(peak_y, peak_u, peak_v, sum1_x, stat);
+	make_histogram_stat(peak_fy, peak_fu, peak_fv, frm1_x , stat);
 
 	for	(i = 0; i < 255; i++)
 		{
