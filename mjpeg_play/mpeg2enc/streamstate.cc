@@ -17,6 +17,7 @@
  */
 
 #include "streamstate.h"
+#include <cassert>
 #include <algorithm>
 #include "mjpeg_types.h"
 #include "mjpeg_logging.h"
