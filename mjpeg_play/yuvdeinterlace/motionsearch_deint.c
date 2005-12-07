@@ -107,7 +107,7 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
   int bx, by, ibx, iby;
   uint32_t sad;
   uint32_t fmin, bmin, min;
-  int a, b, c, d, e, f, g, v;
+  int a, b, c, d, e, g, v;
 
   static uint32_t mean=0;
   static int mcnt = 0;

@@ -30,7 +30,6 @@ sinc_interpolation (uint8_t * frame, uint8_t * inframe, int w, int h,
 		    int field)
 {
   int x, y, v;
-  int dx, d, e, m, a, b, c, i;
 
   for(y=field;y<h;y+=2)
 	for(x=0;x<w;x++)
