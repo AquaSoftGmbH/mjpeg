@@ -104,7 +104,8 @@ int buff_size;
  ***********************************************************/
 
 void (*blend_fields) (uint8_t * dst[3], uint8_t * src[3]);
-void antialias (uint8_t * dst, uint8_t * src, int w, int h);
+void upscale (uint8_t * dst, uint8_t * src, int w, int h);
+void antialias (uint8_t * src[3]);
 
 /***********************************************************
  * Main Loop                                               *
@@ -122,8 +123,8 @@ main (int argc, char *argv[])
   y4m_stream_info_t istreaminfo;
   y4m_frame_info_t oframeinfo;
   y4m_stream_info_t ostreaminfo;
-static uint32_t framenr;
-	
+  static uint32_t framenr;
+
 #ifdef STATFILE
   statistics = fopen ("SAD-statistics.data", "w");
 #endif
@@ -399,7 +400,7 @@ static uint32_t framenr;
 			     cheight, 1);
 	  motion_compensate (r0[2], frame2[2], frame3[2], frame4[2], cwidth,
 			     cheight, 1);
-		
+
 	  if (both_fields)
 	    {
 	      motion_compensate (r1[0], frame1[0], frame2[0], frame3[0],
@@ -439,19 +440,36 @@ static uint32_t framenr;
 	    }
 #endif
 	}
+
       if (framenr > 0)
 	{
+	  memset( r0[0],0,lwidth*2 );
+	  memset( r0[0]+(lwidth*lheight-2*lwidth),0,lwidth*2 );
+
+	  memset( r1[0],0,lwidth*2 );
+	  memset( r1[0]+(lwidth*lheight-2*lwidth),0,lwidth*2 );
+
+	  memset( r0[1],128,cwidth*2 );
+	  memset( r0[1]+(cwidth*cheight-2*cwidth),128,cwidth*2 );
+
+	  memset( r1[1],128,cwidth*2 );
+	  memset( r1[1]+(cwidth*cheight-2*cwidth),128,cwidth*2 );
+
+	  memset( r0[2],128,cwidth*2 );
+	  memset( r0[2]+(cwidth*cheight-2*cwidth),128,cwidth*2 );
+
+	  memset( r1[2],128,cwidth*2 );
+	  memset( r1[2]+(cwidth*cheight-2*cwidth),128,cwidth*2 );
+
+	  antialias(r0);
 	  y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r0);
 	  if (both_fields)
+		{
+		  antialias(r1);
 	    y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r1);
+		}
 	}
-      else
-	{
-	  framenr++;
-	  y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame2);
-	  if (both_fields)
-	    y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);
-	}
+	framenr++;
     }
 
   /* free allocated buffers */
@@ -520,12 +538,14 @@ static uint32_t framenr;
 }
 
 void
-antialias (uint8_t * dst, uint8_t * src, int w, int h)
+upscale (uint8_t * dst, uint8_t * src, int w, int h)
 {
+  // triangulation scaler
   int x, y;
   int dx, dy;
-  int v, d, m;
-  int a, b, c;
+  int m;
+  int a, b, c, d;
+  int ae, be, ce, de, me;
 
   for (y = 0; y <= h; y++)
     for (x = 0; x <= w; x++)
@@ -533,135 +553,183 @@ antialias (uint8_t * dst, uint8_t * src, int w, int h)
 	*(dst + (x * 2) + (y * 2) * (w * 2)) = *(src + x + y * w);
       }
 
-  for (y = 0; y <= (h * 2); y += 2)
-    for (x = 0; x <= (w * 2); x += 2)
+  w *= 2;
+  h *= 2;
+
+  for (y = 1; y <= h; y += 2)
+    for (x = 1; x <= w; x += 2)
       {
-	a = *(dst + (x) + (y + 0) * (w * 2));
-	b =
-	  (*(dst + (x) + (y + 0) * (w * 2)) +
-	   *(dst + (x) + (y + 2) * (w * 2))) / 2;
-	c = *(dst + (x) + (y + 2) * (w * 2));
+	// fill in the four neighbor-pixels
+	a = *(dst + (x - 1) + (y - 1) * w);
+	b = *(dst + (x + 1) + (y - 1) * w);
+	c = *(dst + (x - 1) + (y + 1) * w);
+	d = *(dst + (x + 1) + (y + 1) * w);
 
-	v = b;
-	m = 255;
-	for (dx = 0; dx <= 8; dx += 2)
-	  {
-	    d =
-	      abs (*(dst + (x + dx) + (y + 0) * (w * 2)) -
-		   *(dst + (x - dx) + (y + 2) * (w * 2)));
-	    b =
-	      (*(dst + (x + dx) + (y + 0) * (w * 2)) +
-	       *(dst + (x - dx) + (y + 2) * (w * 2))) / 2;
-	    if (m > d && ((a < b && b < c) || (a > b && b > c)))
-	      {
-		m = d;
-		v = b;
-	      }
+	// calculate the mean of the neighbors
+	m = (a + b + c + d) / 4;
 
-	    d =
-	      abs (*(dst + (x - dx) + (y + 0) * (w * 2)) -
-		   *(dst + (x + dx) + (y + 2) * (w * 2)));
-	    b =
-	      (*(dst + (x - dx) + (y + 0) * (w * 2)) +
-	       *(dst + (x + dx) + (y + 2) * (w * 2))) / 2;
-	    if (m > d && (a < b && b < c))
-	      {
-		m = d;
-		v = b;
-	      }
-	  }
-	*(dst + (x) + (y + 1) * (w * 2)) = v;
+	// calculate the error for every neighbor-pixel
+	ae = (m - a) * (m - a);
+	be = (m - b) * (m - b);
+	ce = (m - c) * (m - c);
+	de = (m - d) * (m - d);
+
+	// find the maximum error-value
+	me = ae;
+	me = (me < be) ? be : me;
+	me = (me < ce) ? ce : me;
+	me = (me < de) ? de : me;
+
+
+	// generate mixing coefficients
+	ae = me - ae;
+	be = me - be;
+	ce = me - ce;
+	de = me - de;
+	me = ae + be + ce + de;
+
+	if (me != 0)
+	  m = (a * ae + b * be + c * ce + d * de) / me;
+
+	*(dst + x + y * w) = m;
       }
 
-  for (y = 0; y <= (h * 2); y += 1)
-    for (x = 1; x <= (w * 2); x += 2)
+  for (y = 0; y <= h; y += 2)
+    for (x = 1; x <= w; x += 2)
       {
-	a = *(dst + (x - 1) + (y) * (w * 2));
-	b =
-	  (*(dst + (x - 1) + (y) * (w * 2)) +
-	   *(dst + (x + 1) + (y) * (w * 2))) / 2;
-	c = *(dst + (x + 1) + (y) * (w * 2));
+	// fill in the four neighbor-pixels
+	a = *(dst + (x - 1) + y * w);
+	b = *(dst + (x + 1) + y * w);
+	c = *(dst + x + (y - 1) * w);
+	d = *(dst + x + (y + 1) * w);
 
-	v = b;
-	m = 255;
-	for (dy = 0; dy <= 8; dy++)
-	  {
-	    d =
-	      abs (*(dst + (x - 1) + (y + dy) * (w * 2)) -
-		   *(dst + (x + 1) + (y - dy) * (w * 2)));
-	    b =
-	      (*(dst + (x - 1) + (y + dy) * (w * 2)) +
-	       *(dst + (x + 1) + (y - dy) * (w * 2))) / 2;
-	    if (m > d && ((a < b && b < c) || (a > b && b > c)))
-	      {
-		m = d;
-		v = b;
-	      }
-	    d =
-	      abs (*(dst + (x - 1) + (y - dy) * (w * 2)) -
-		   *(dst + (x + 1) + (y + dy) * (w * 2)));
-	    b =
-	      (*(dst + (x - 1) + (y - dy) * (w * 2)) +
-	       *(dst + (x + 1) + (y + dy) * (w * 2))) / 2;
-	    if (m > d && ((a < b && b < c) || (a > b && b > c)))
-	      {
-		m = d;
-		v = b;
-	      }
-	  }
-	*(dst + (x) + (y) * (w * 2)) = v;
+	// calculate the mean of the neighbors
+	m = (a + b + c + d) / 4;
+
+	// calculate the error for every neighbor-pixel
+	ae = (m - a) * (m - a);
+	be = (m - b) * (m - b);
+	ce = (m - c) * (m - c);
+	de = (m - d) * (m - d);
+
+	// find the maximum error-value
+	me = ae;
+	me = (me < be) ? be : me;
+	me = (me < ce) ? ce : me;
+	me = (me < de) ? de : me;
+
+
+	// generate mixing coefficients
+	ae = me - ae;
+	be = me - be;
+	ce = me - ce;
+	de = me - de;
+	me = ae + be + ce + de;
+
+	if (me != 0)
+	  m = (a * ae + b * be + c * ce + d * de) / me;
+
+	*(dst + x + y * w) = m;
       }
 
-// lowpassfilter the super-resolution-image
-  for (a = 0; a < 2; a++)
-    {
-      for (y = 4; y <= (h * 2 - 4); y++)
-	for (x = 0; x <= (w * 2); x++)
-	  {
-	    v =
-	      (*(dst + (x - 4) + y * (w * 2)) * -8 +
-	       *(dst + (x - 3) + y * (w * 2)) * 16 +
-	       *(dst + (x - 2) + y * (w * 2)) * -32 +
-	       *(dst + (x - 1) + y * (w * 2)) * 64 +
-	       *(dst + (x) + y * (w * 2)) * 100 +
-	       *(dst + (x + 1) + y * (w * 2)) * 64 +
-	       *(dst + (x + 2) + y * (w * 2)) * -32 +
-	       *(dst + (x + 3) + y * (w * 2)) * 16 +
-	       *(dst + (x + 4) + y * (w * 2)) * -8) / 180;
-	    v = v > 255 ? 255 : v;
-	    v = v < 0 ? 0 : v;
-	    *(dst + x + y * (w * 2)) = v;
-	  }
-
-      for (y = 4; y <= (h * 2 - 4); y++)
-	for (x = 0; x <= (w * 2); x++)
-	  {
-	    v =
-	      (*(dst + x + (y - 4) * (w * 2)) * -8 +
-	       *(dst + x + (y - 3) * (w * 2)) * 16 +
-	       *(dst + x + (y - 2) * (w * 2)) * -32 +
-	       *(dst + x + (y - 1) * (w * 2)) * 64 +
-	       *(dst + x + (y) * (w * 2)) * 100 +
-	       *(dst + x + (y + 1) * (w * 2)) * 64 +
-	       *(dst + x + (y + 2) * (w * 2)) * -32 +
-	       *(dst + x + (y + 3) * (w * 2)) * 16 +
-	       *(dst + x + (y + 4) * (w * 2)) * -8) / 180;
-	    v = v > 255 ? 255 : v;
-	    v = v < 0 ? 0 : v;
-	    *(dst + x + y * (w * 2)) = v;
-	  }
-    }
-// downscale it and fill into SDTV-reconstruction. 
-// This should be quite sharp and quite alias-free...
-  for (y = 1; y <= (h - 1); y++)
-    for (x = 0; x <= (w); x++)
+  for (y = 1; y <= h; y += 2)
+    for (x = 0; x <= w; x += 2)
       {
-	v =
-	  (*(dst + (x * 2) + (y * 2) * (w * 2)) +
-	   *(dst + (x * 2 + 1) + (y * 2) * (w * 2)) +
-	   *(dst + (x * 2) + (y * 2 + 1) * (w * 2)) +
-	   *(dst + (x * 2 + 1) + (y * 2 + 1) * (w * 2))) / 4;
-	*(src + x + y * w) = v;
+	// fill in the four neighbor-pixels
+	a = *(dst + (x - 1) + y * w);
+	b = *(dst + (x + 1) + y * w);
+	c = *(dst + x + (y - 1) * w);
+	d = *(dst + x + (y + 1) * w);
+
+	// calculate the mean of the neighbors
+	m = (a + b + c + d) / 4;
+
+	// calculate the error for every neighbor-pixel
+	ae = (m - a) * (m - a);
+	be = (m - b) * (m - b);
+	ce = (m - c) * (m - c);
+	de = (m - d) * (m - d);
+
+	// find the maximum error-value
+	me = ae;
+	me = (me < be) ? be : me;
+	me = (me < ce) ? ce : me;
+	me = (me < de) ? de : me;
+
+
+	// generate mixing coefficients
+	ae = me - ae;
+	be = me - be;
+	ce = me - ce;
+	de = me - de;
+	me = ae + be + ce + de;
+
+	if (me != 0)
+	  m = (a * ae + b * be + c * ce + d * de) / me;
+
+	*(dst + x + y * w) = m;
       }
 
+  // only very little lowpass-filtering...
+#if 0
+  for (y = 0; y <= h; y++)
+    for (x = 0; x <= w; x++)
+      {
+	a = *(dst + (x - 1) + (y - 1) * w);
+	b = *(dst + (x + 1) + (y - 1) * w);
+	c = *(dst + (x - 1) + (y + 1) * w);
+	d = *(dst + (x + 1) + (y + 1) * w);
+
+	m = (a + b + c + d) / 4;
+	m += *(dst + x + y * w) * 3;
+	m /= 4;
+
+	*(dst + x + y * w) = m;
+      }
+#endif
+}
+
+void antialias (uint8_t * src[3])
+{
+	int x,y;
+
+	upscale (sr[0], src[0], lwidth, lheight);
+	upscale (sr[1], src[1], cwidth, cheight);
+	upscale (sr[2], src[2], cwidth, cheight);
+
+	for(y=0;y<lheight;y++)
+		for(x=0;x<lwidth;x++)
+		{
+			*(src[0]+(x+0)+(y+0)*(lwidth))=
+				(
+					*(sr[0]+(x*2+0)+(y*2+0)*(lwidth*2))+
+					*(sr[0]+(x*2+1)+(y*2+0)*(lwidth*2))+
+					*(sr[0]+(x*2+0)+(y*2+1)*(lwidth*2))+
+					*(sr[0]+(x*2+1)+(y*2+1)*(lwidth*2))
+				)/4;
+		}
+
+	for(y=0;y<cheight;y++)
+		for(x=0;x<cwidth;x++)
+		{
+			*(src[1]+(x+0)+(y+0)*(cwidth))=
+				(
+					*(sr[1]+(x*2+0)+(y*2+0)*(cwidth*2))+
+					*(sr[1]+(x*2+1)+(y*2+0)*(cwidth*2))+
+					*(sr[1]+(x*2+0)+(y*2+1)*(cwidth*2))+
+					*(sr[1]+(x*2+1)+(y*2+1)*(cwidth*2))
+				)/4;
+		}
+
+	for(y=0;y<cheight;y++)
+		for(x=0;x<cwidth;x++)
+		{
+			*(src[2]+(x+0)+(y+0)*(cwidth))=
+				(
+					*(sr[2]+(x*2+0)+(y*2+0)*(cwidth*2))+
+					*(sr[2]+(x*2+1)+(y*2+0)*(cwidth*2))+
+					*(sr[2]+(x*2+0)+(y*2+1)*(cwidth*2))+
+					*(sr[2]+(x*2+1)+(y*2+1)*(cwidth*2))
+				)/4;
+		}
 }
