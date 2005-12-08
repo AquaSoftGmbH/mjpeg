@@ -246,8 +246,9 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 			access_unit.type   = bs.GetBits( 3);
 
 			/* Now scan forward a little for an MPEG-2 picture coding extension
-			   so we can get pulldown info (if present) */
-			if( bs.SeekSync(EXT_START_CODE, 32, 64) &&
+			   so we can get pulldown info (if present). We ignore the possibility
+               MPEG-1's ghastly 'extra_information_picture' bytes. */
+			if( bs.SeekSync(EXT_START_CODE, 32, 11) &&
                 bs.GetBits(4) == CODING_EXT_ID)
 			{
 				/* Skip: 4 F-codes (4)... */
