@@ -247,9 +247,11 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 
 			/* Now scan forward a little for an MPEG-2 picture coding extension
 			   so we can get pulldown info (if present). We ignore the possibility
-               MPEG-1's ghastly 'extra_information_picture' bytes. */
-			if( bs.SeekSync(EXT_START_CODE, 32, 11) &&
-                bs.GetBits(4) == CODING_EXT_ID)
+               MPEG-1's ghastly 'extra_information_picture' bytes. So the extension 
+               must come in under 9 bytes (4 for the sync-code itself 5 for the rest 
+               of the picture header)
+            */
+			if( bs.SeekSync(EXT_START_CODE, 32, 9) && bs.GetBits(4) == CODING_EXT_ID)
 			{
 				/* Skip: 4 F-codes (4)... */
 				(void)bs.GetBits(16); 
@@ -263,7 +265,6 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				(void)bs.GetBits(2);	
 				repeat_first_field = bs.Get1Bit();
 				pulldown_32 |= repeat_first_field;
-
 			}
 			else
 			{
