@@ -451,6 +451,12 @@ void MPEG2EncCmdLineOptions::Usage()
 "    [0 = Generic MPEG1, 1 = standard VCD, 2 = user VCD,\n"
 "     3 = Generic MPEG2, 4 = standard SVCD, 5 = user SVCD,\n"
 "     6 = VCD Stills sequences, 7 = SVCD Stills sequences, 8|9 = DVD]\n"
+"--display-hsize|-x [32..16383]\n"
+"   Set the the display-horizontal-size hint in MPEG-2 output to\n"
+"   something other than the encoded image width\n"
+"--display-vsize|-x [32..16383]\n"
+"   Set the the display-vertical-size hint in MPEG-2 output to\n"
+"   something other than the encoded image height\n" 
 "--aspect|-a num\n"
 "    Set displayed image aspect ratio image (default: 2 = 4:3)\n"
 "    [1 = 1:1, 2 = 4:3, 3 = 16:9, 4 = 2.21:1]\n"
@@ -460,7 +466,7 @@ void MPEG2EncCmdLineOptions::Usage()
 "    0 = Display frame rate code table\n"
 "--video-bitrate|-b num\n"
 "    Set Bitrate of compressed video in KBit/sec\n"
-"    (default: 1152 for VCD, 2500 for SVCD, 7500 for DVD)\n"
+"    (default: 1152.0 for VCD, 2500.0 for SVCD, 7500.0 for DVD)\n"
 "--nonvideo-bitrate|-B num\n"
 "    Non-video data bitrate to assume for sequence splitting\n"
 "    calculations (see also --sequence-length).\n"
@@ -603,16 +609,21 @@ void MPEG2EncCmdLineOptions::StartupBanner()
 
 int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 {
-    int n;
-    int nerr = 0;
-    static const char	short_options[]=
-        "a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:A:Q:X:D:g:G:v:V:F:N:pdsHcCPK:E:R:";
+int n;
+int nerr = 0;
+static const char   short_options[]=
+    "a:f:x:y:n:b:z:T:B:q:o:S:I:r:M:4:2:A:Q:X:D:g:G:v:V:F:N:pdsHcCPK:E:R:";
 
 #ifdef HAVE_GETOPT_LONG
-    static struct option long_options[]={
-        { "verbose",           1, 0, 'v' },
+
+static struct option long_options[]=
+    {
+        { "verbose",           1, 0, 'v'
+        },
         { "format",            1, 0, 'f' },
         { "aspect",            1, 0, 'a' },
+        { "display-hsize",     1, 0, 'x' },
+        { "display-vsize",     1, 0, 'y' },
         { "frame-rate",        1, 0, 'F' },
         { "video-bitrate",     1, 0, 'b' },
         { "nonvideo-bitrate",  1, 0, 'B' },
@@ -648,319 +659,339 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
         { "custom-quant-matrices", 1, 0, 'K'},
         { "unit-coeff-elim",   1, 0, 'E'},
         { "b-per-refframe",    1, 0, 'R' },
-	    { "cbr",               0, 0, 'u'},
+        { "cbr",               0, 0, 'u'},
         { "help",              0, 0, '?' },
         { 0,                   0, 0, 0 }
     };
 
-    while( (n=getopt_long(argc,argv,short_options,long_options, NULL)) != -1 )
+while( (n=getopt_long(argc,argv,short_options,long_options, NULL)) != -1 )
 #else
-    while( (n=getopt(argc,argv,short_options)) != -1)
+while( (n=getopt(argc,argv,short_options)) != -1)
 #endif
-	{
-		switch(n) {
-        case 0 :                /* Flag setting handled by getopt-long */
+{
+    switch(n)
+    {
+    case 0 :                /* Flag setting handled by getopt-long */
+        break;
+    case 'b':
+        bitrate = static_cast<int>(atof(optarg)*1000);
+        if( bitrate % 400 != 0 )
+        {
+            mjpeg_warn( "MPEG bitrate must be a multiple of 400 - rounding up" );
+            bitrate = (bitrate / 400 + 1) * 400;
+        }
+        break;
+
+    case 'T' :
+        still_size = atoi(optarg)*1024;
+        if( still_size < 20*1024 || still_size > 500*1024 )
+        {
+            mjpeg_error( "-T requires arg 20..500" );
+            ++nerr;
+        }
+        break;
+    case 'B':
+        nonvid_bitrate = atoi(optarg);
+        if( nonvid_bitrate < 0 )
+        {
+            mjpeg_error("-B requires arg > 0");
+            ++nerr;
+        }
+        break;
+    case 'D':
+        mpeg2_dc_prec = atoi(optarg)-8;
+        if( mpeg2_dc_prec < 0 || mpeg2_dc_prec > 3 )
+        {
+            mjpeg_error( "-D requires arg [8..11]" );
+            ++nerr;
+        }
+        break;
+    case 'C':
+        hack_svcd_hds_bug = 0;
+        break;
+
+    case 'q':
+        quant = atoi(optarg);
+        if(quant<1 || quant>32)
+        {
+            mjpeg_error("-q option requires arg 1 .. 32");
+            ++nerr;
+        }
+        break;
+
+    case 'x' :
+        display_hsize = atoi(optarg);
+        if( display_hsize < 32 || display_hsize >= 16384 )
+        {
+            mjpeg_error( "-x option must be in range [32..16383]" );
+            ++nerr;
+        }
+        break;
+    case 'y' :
+        display_vsize = atoi(optarg);
+        if( display_vsize < 32 || display_vsize >= 16384 )
+        {
+            mjpeg_error( "-y option must be in range [32..16383]" );
+            ++nerr;
+        }
+        break;
+    case 'a' :
+        aspect_ratio = atoi(optarg);
+        if( aspect_ratio == 0 )
+            DisplayAspectRatios();
+        /* Checking has to come later once MPEG 1/2 has been selected...*/
+        if( aspect_ratio < 0 )
+        {
+            mjpeg_error( "-a option must be positive");
+            ++nerr;
+        }
+        break;
+
+    case 'F' :
+        frame_rate = atoi(optarg);
+        if( frame_rate == 0 )
+            DisplayFrameRates();
+        if( !mpeg_valid_framerate_code(frame_rate) )
+        {
+            mjpeg_error( "illegal -F value (use -F 0 to list options)" );
+            ++nerr;
+        }
+        break;
+
+    case 'o':
+        outfilename = optarg;
+        break;
+
+    case 'I':
+        fieldenc = atoi(optarg);
+        if( fieldenc < 0 || fieldenc > 2 )
+        {
+            mjpeg_error("-I option requires 0,1 or 2");
+            ++nerr;
+        }
+        break;
+
+    case 'r':
+        searchrad = atoi(optarg);
+        if(searchrad<0 || searchrad>32)
+        {
+            mjpeg_error("-r option requires arg 0 .. 32");
+            ++nerr;
+        }
+        break;
+
+    case 'M':
+        num_cpus = atoi(optarg);
+        if(num_cpus<0 || num_cpus>32)
+        {
+            mjpeg_error("-M option requires arg 0..32");
+            ++nerr;
+        }
+        break;
+
+    case '4':
+        me44_red = atoi(optarg);
+        if(me44_red<0 || me44_red>4)
+        {
+            mjpeg_error("-4 option requires arg 0..4");
+            ++nerr;
+        }
+        break;
+
+    case '2':
+        me22_red = atoi(optarg);
+        if(me22_red<0 || me22_red>4)
+        {
+            mjpeg_error("-2 option requires arg 0..4");
+            ++nerr;
+        }
+        break;
+
+    case 'v':
+        verbose = atoi(optarg);
+        if( verbose < 0 || verbose > 2 )
+            ++nerr;
+        break;
+    case 'V' :
+        video_buffer_size = atoi(optarg);
+        if(video_buffer_size<20 || video_buffer_size>4000)
+        {
+            mjpeg_error("-v option requires arg 20..4000");
+            ++nerr;
+        }
+        break;
+
+    case 'S' :
+        seq_length_limit = atoi(optarg);
+        if(seq_length_limit<1 )
+        {
+            mjpeg_error("-S option requires arg > 1");
+            ++nerr;
+        }
+        break;
+    case 'p' :
+        vid32_pulldown = 1;
+        break;
+
+    case 'z' :
+        if( strlen(optarg) != 1 || (optarg[0] != 't' && optarg[0] != 'b' ) )
+        {
+            mjpeg_error("-z option requires arg b or t" );
+            ++nerr;
+        }
+        else if( optarg[0] == 't' )
+            force_interlacing = Y4M_ILACE_TOP_FIRST;
+        else if( optarg[0] == 'b' )
+            force_interlacing = Y4M_ILACE_BOTTOM_FIRST;
+        break;
+
+    case 'f' :
+        format = atoi(optarg);
+        if( format < MPEG_FORMAT_FIRST ||
+                format > MPEG_FORMAT_LAST )
+        {
+            mjpeg_error("-f option requires arg [%d..%d]",
+                        MPEG_FORMAT_FIRST, MPEG_FORMAT_LAST);
+            ++nerr;
+        }
+
+        break;
+
+    case 'n' :
+        switch( optarg[0] )
+        {
+        case 'p' :
+        case 'n' :
+        case 's' :
+            norm = optarg[0];
             break;
-		case 'b':
-			bitrate = atoi(optarg)*1000;
-			break;
+        default :
+            mjpeg_error("-n option requires arg n or p, or s.");
+            ++nerr;
+        }
+        break;
+    case 'g' :
+        min_GOP_size = atoi(optarg);
+        break;
+    case 'G' :
+        max_GOP_size = atoi(optarg);
+        break;
+    case 'c' :
+        closed_GOPs = true;
+        break;
+    case 'P' :
+        preserve_B = true;
+        break;
+    case 'N':
+        hf_q_boost = atof(optarg);
+        if (hf_q_boost <0.0 || hf_q_boost > 2.0)
+        {
+            mjpeg_error( "-N option requires arg 0.0 .. 2.0" );
+            ++nerr;
+            hf_q_boost = 0.0;
+        }
+        if (hf_quant == 0 && hf_q_boost != 0.0)
+            hf_quant = 1;
+        break;
+    case 'H':
+        hf_quant = 2;
+        break;
+    case 'K':
+        ParseCustomOption(optarg);
+        break;
 
-		case 'T' :
-			still_size = atoi(optarg)*1024;
-			if( still_size < 20*1024 || still_size > 500*1024 )
-			{
-				mjpeg_error( "-T requires arg 20..500" );
-				++nerr;
-			}
-			break;
+    case 'u':
+        force_cbr = 1;
+        break;
 
-		case 'B':
-			nonvid_bitrate = atoi(optarg);
-			if( nonvid_bitrate < 0 )
-			{
-				mjpeg_error("-B requires arg > 0");
-				++nerr;
-			}
-			break;
+    case 'E':
+        unit_coeff_elim = atoi(optarg);
+        if (unit_coeff_elim < -40 || unit_coeff_elim > 40)
+        {
+            mjpeg_error( "-E option range arg -40 to 40" );
+            ++nerr;
+        }
+        break;
+    case 'R' :
+        Bgrp_size = atoi(optarg)+1;
+        if( Bgrp_size<1 || Bgrp_size>3)
+        {
+            mjpeg_error( "-R option arg 0|1|2" );
+            ++nerr;
+        }
+        break;
+    case 's' :
+        seq_hdr_every_gop = 1;
+        break;
+    case 'd' :
+        svcd_scan_data = 0;
+        break;
+    case 'A' :
+        rate_control = atoi(optarg);
+        if( rate_control < 0 || rate_control > 1 )
+        {
+            mjpeg_error( "-A option requires arg [0,1]");
+            ++nerr;
+        }
+        break;
+    case 'Q' :
+        act_boost = atof(optarg);
+        if( act_boost < 0.0 || act_boost > 4.0)
+        {
+            mjpeg_error( "-Q option requires arg 0.0 .. 4.0");
+            ++nerr;
+        }
+        break;
+    case 'X' :
+        boost_var_ceil = atof(optarg);
+        if( boost_var_ceil <0 || boost_var_ceil > 50*50 )
+        {
+            mjpeg_error( "-X option requires arg 0 .. 2500" );
+            ++nerr;
+        }
+        break;
+    case ':' :
+        mjpeg_error( "Missing parameter to option!" );
+    case '?':
+    default:
+        ++nerr;
+    }
+}
 
-        case 'D':
-            mpeg2_dc_prec = atoi(optarg)-8;
-            if( mpeg2_dc_prec < 0 || mpeg2_dc_prec > 3 )
-            {
-                mjpeg_error( "-D requires arg [8..11]" );
-                ++nerr;
-            }
-            break;
-        case 'C':
-            hack_svcd_hds_bug = 0;
-            break;
+/* Select input stream */
+if(optind!=argc)
+{
+    if( optind == argc-1 )
+    {
+        istrm_fd = open( argv[optind], O_RDONLY );
+        if( istrm_fd < 0 )
+        {
+            mjpeg_error( "Unable to open: %s: ",argv[optind] );
+            perror("");
+            ++nerr;
+        }
+    }
+    else
+        ++nerr;
+}
+else
+    istrm_fd = 0; /* stdin */
 
-		case 'q':
-			quant = atoi(optarg);
-			if(quant<1 || quant>32)
-			{
-				mjpeg_error("-q option requires arg 1 .. 32");
-				++nerr;
-			}
-			break;
+if(!outfilename)
+{
+    mjpeg_error("Output file name (-o option) is required!");
+    ++nerr;
+}
 
-        case 'a' :
-			aspect_ratio = atoi(optarg);
-            if( aspect_ratio == 0 )
-				DisplayAspectRatios();
-			/* Checking has to come later once MPEG 1/2 has been selected...*/
-			if( aspect_ratio < 0 )
-			{
-				mjpeg_error( "-a option must be positive");
-				++nerr;
-			}
-			break;
-
-       case 'F' :
-			frame_rate = atoi(optarg);
-            if( frame_rate == 0 )
-				DisplayFrameRates();
-			if( !mpeg_valid_framerate_code(frame_rate) )
-			{
-                mjpeg_error( "illegal -F value (use -F 0 to list options)" );
-				++nerr;
-			}
-			break;
-
-		case 'o':
-			outfilename = optarg;
-			break;
-
-		case 'I':
-			fieldenc = atoi(optarg);
-			if( fieldenc < 0 || fieldenc > 2 )
-			{
-				mjpeg_error("-I option requires 0,1 or 2");
-				++nerr;
-			}
-			break;
-
-		case 'r':
-			searchrad = atoi(optarg);
-			if(searchrad<0 || searchrad>32)
-			{
-				mjpeg_error("-r option requires arg 0 .. 32");
-				++nerr;
-			}
-			break;
-
-		case 'M':
-			num_cpus = atoi(optarg);
-			if(num_cpus<0 || num_cpus>32)
-			{
-				mjpeg_error("-M option requires arg 0..32");
-				++nerr;
-			}
-			break;
-
-		case '4':
-			me44_red = atoi(optarg);
-			if(me44_red<0 || me44_red>4)
-			{
-				mjpeg_error("-4 option requires arg 0..4");
-				++nerr;
-			}
-			break;
-			
-		case '2':
-			me22_red = atoi(optarg);
-			if(me22_red<0 || me22_red>4)
-			{
-				mjpeg_error("-2 option requires arg 0..4");
-				++nerr;
-			}
-			break;
-
-		case 'v':
-			verbose = atoi(optarg);
-			if( verbose < 0 || verbose > 2 )
-				++nerr;
-			break;
-		case 'V' :
-			video_buffer_size = atoi(optarg);
-			if(video_buffer_size<20 || video_buffer_size>4000)
-			{
-				mjpeg_error("-v option requires arg 20..4000");
-				++nerr;
-			}
-			break;
-
-		case 'S' :
-			seq_length_limit = atoi(optarg);
-			if(seq_length_limit<1 )
-			{
-				mjpeg_error("-S option requires arg > 1");
-				++nerr;
-			}
-			break;
-		case 'p' :
-			vid32_pulldown = 1;
-			break;
-
-		case 'z' :
-			if( strlen(optarg) != 1 || (optarg[0] != 't' && optarg[0] != 'b' ) )
-			{
-				mjpeg_error("-z option requires arg b or t" );
-				++nerr;
-			}
-			else if( optarg[0] == 't' )
-				force_interlacing = Y4M_ILACE_TOP_FIRST;
-			else if( optarg[0] == 'b' )
-				force_interlacing = Y4M_ILACE_BOTTOM_FIRST;
-			break;
-
-		case 'f' :
-			format = atoi(optarg);
-			if( format < MPEG_FORMAT_FIRST ||
-				format > MPEG_FORMAT_LAST )
-			{
-				mjpeg_error("-f option requires arg [%d..%d]", 
-							MPEG_FORMAT_FIRST, MPEG_FORMAT_LAST);
-				++nerr;
-			}
-				
-			break;
-
-		case 'n' :
-			switch( optarg[0] )
-			{
-			case 'p' :
-			case 'n' :
-			case 's' :
-				norm = optarg[0];
-				break;
-			default :
-				mjpeg_error("-n option requires arg n or p, or s.");
-				++nerr;
-			}
-			break;
-		case 'g' :
-			min_GOP_size = atoi(optarg);
-			break;
-		case 'G' :
-			max_GOP_size = atoi(optarg);
-			break;
-        case 'c' :
-                closed_GOPs = true;
-                break;
-		case 'P' :
-			preserve_B = true;
-			break;
-		case 'N':
-            hf_q_boost = atof(optarg);
-            if (hf_q_boost <0.0 || hf_q_boost > 2.0)
-            {
-                mjpeg_error( "-N option requires arg 0.0 .. 2.0" );
-                ++nerr;
-                hf_q_boost = 0.0;
-            }
-			if (hf_quant == 0 && hf_q_boost != 0.0)
-			   hf_quant = 1;
-			break;
-		case 'H':
-			hf_quant = 2;
-            break;
-		case 'K':
-			ParseCustomOption(optarg);
-			break;
-
-        case 'u':
-		    force_cbr = 1;
-    		break;
-
-        case 'E':
-            unit_coeff_elim = atoi(optarg);
-            if (unit_coeff_elim < -40 || unit_coeff_elim > 40)
-            {
-                mjpeg_error( "-E option range arg -40 to 40" );
-                ++nerr;
-            }
-            break;
-        case 'R' :
-            Bgrp_size = atoi(optarg)+1;
-            if( Bgrp_size<1 || Bgrp_size>3)
-            {
-                mjpeg_error( "-R option arg 0|1|2" );
-                ++nerr;
-            }
-            break;
-		case 's' :
-			seq_hdr_every_gop = 1;
-			break;
-		case 'd' :
-			svcd_scan_data = 0;
-			break;
-		case 'A' :
-			rate_control = atoi(optarg);
-			if( rate_control < 0 || rate_control > 1 )
-			{
-				mjpeg_error( "-A option requires arg [0,1]");
-				++nerr;
-			}
-			break;
-		case 'Q' :
-			act_boost = atof(optarg);
-			if( act_boost < 0.0 || act_boost > 4.0)
-			{
-				mjpeg_error( "-Q option requires arg 0.0 .. 4.0");
-				++nerr;
-			}
-			break;
-		case 'X' :
-			boost_var_ceil = atof(optarg);
-			if( boost_var_ceil <0 || boost_var_ceil > 50*50 )
-			{
-				mjpeg_error( "-X option requires arg 0 .. 2500" );
-				++nerr;
-			}
-			break;
-		case ':' :
-			mjpeg_error( "Missing parameter to option!" );
-		case '?':
-		default:
-			++nerr;
-		}
-	}
-
-	/* Select input stream */
-	if(optind!=argc)
-	{
-		if( optind == argc-1 )
-		{
-			istrm_fd = open( argv[optind], O_RDONLY );
-			if( istrm_fd < 0 )
-			{
-				mjpeg_error( "Unable to open: %s: ",argv[optind] );
-				perror("");
-				++nerr;
-			}
-		}
-		else
-			++nerr;
-	}
-	else
-		istrm_fd = 0; /* stdin */
-
-	if(!outfilename)
-	{
-		mjpeg_error("Output file name (-o option) is required!");
-		++nerr;
-	}
-
-/* 
+/*
  * Probably not necessary but err on the safe side.  If someone wants to
  * waste space by using a Constant Bit Rate stream then disable the '-q'
  * parameter.  Further checks for CBR are made in mpeg2encoptions.cc 
 */
-    if (force_cbr != 0)
-       quant = 0;
+if (force_cbr != 0)
+    quant = 0;
 
-    return nerr;
+return nerr;
 }
 
 

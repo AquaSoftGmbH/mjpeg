@@ -332,8 +332,14 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
         }
 		break;
 	default:
-		display_horizontal_size  =  options.in_img_width;
-		display_vertical_size    =  options.in_img_height;
+        if( options.display_hsize <= 0 )
+            display_horizontal_size  = options.in_img_width;
+        else
+            display_horizontal_size = options.display_hsize;
+        if( options.display_vsize <= 0 )
+		  display_vertical_size = options.in_img_height;
+        else
+            display_vertical_size = options.display_vsize;
 		break;
 	}
 

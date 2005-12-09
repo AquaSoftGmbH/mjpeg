@@ -29,6 +29,8 @@ MPEG2EncOptions::MPEG2EncOptions()
     // Parameters initialised to -1 indicate a format-dependent
     // or stream inferred default.
     format = MPEG_FORMAT_MPEG1;
+    display_hsize  = 0; // Use default
+    display_vsize  = 0; // Use default
     bitrate    = 0;
     nonvid_bitrate = 0;
     quant      = 0;

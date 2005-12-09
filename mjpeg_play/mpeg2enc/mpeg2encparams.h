@@ -28,8 +28,10 @@
 
 struct MPEG2EncParams
 {
-    int in_img_width;
+    int in_img_width;       // MUST match the actual dimensions of the passed frames!
     int in_img_height;
+    int display_hsize;      // Passed on to display extension header
+    int display_vsize;      // not used in encoding.
     int format;
     int bitrate;
     int nonvid_bitrate;
