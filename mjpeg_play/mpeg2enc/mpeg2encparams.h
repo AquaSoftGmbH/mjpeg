@@ -32,6 +32,7 @@ struct MPEG2EncParams
     int in_img_height;
     int display_hsize;      // Passed on to display extension header
     int display_vsize;      // not used in encoding.
+    int level;              // MPEG-2 main profile level to enforce.
     int format;
     int bitrate;
     int nonvid_bitrate;

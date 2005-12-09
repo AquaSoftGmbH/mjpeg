@@ -29,12 +29,13 @@ MPEG2EncOptions::MPEG2EncOptions()
     // Parameters initialised to -1 indicate a format-dependent
     // or stream inferred default.
     format = MPEG_FORMAT_MPEG1;
+    level = 0;          // Use default
     display_hsize  = 0; // Use default
     display_vsize  = 0; // Use default
     bitrate    = 0;
     nonvid_bitrate = 0;
     quant      = 0;
-    searchrad  = 16;
+    searchrad  = 0;     // Use default
     mpeg       = 1;
     aspect_ratio = 0;
     frame_rate  = 0;
@@ -306,24 +307,87 @@ int MPEG2EncOptions::CheckBasicConstraints()
 			mjpeg_warn( "If you're not using vcdimager you may wish to turn this off using -d");
 		}
 		break;
+     case MPEG_FORMAT_ATSC480i :
+         if( frame_rate != 4 && frame_rate != 5 )
+         {
+             mjpeg_warn( "ATSC 480p only supports 29.97 and 30 frames/sec" );
+         }
+     case MPEG_FORMAT_ATSC480p :
+         if(    (in_img_width != 704 && in_img_width != 640) 
+             || in_img_height != 480 )
+         {
+             mjpeg_warn( "ATSC 480i/480p only supports 640x480 and 704x480 images!" );
+         }
+         if( in_img_width == 704 && aspect_ratio != 2 && aspect_ratio != 3 )
+         {
+             mjpeg_warn( "ATSC 480i/480p 704x480 only supports aspect ratio codes 2 and 3 (4:3 and 16:9)" );
+         }
+         if( in_img_width == 640 && aspect_ratio != 1 && aspect_ratio != 2 )
+         {
+             mjpeg_warn( "ATSC 480i/480p 704x480 only supports aspect ratio codes 1 and 2 (square pixel and 4:3)" );
+         }
+         break;
+     case MPEG_FORMAT_ATSC720p :
+         if(  in_img_width != 1280 || in_img_height != 720 )
+         {
+             mjpeg_warn( "ATSC 720p only supports 1280x720 images!" );
+         }
+         if( aspect_ratio != 1 && aspect_ratio != 3 )
+         {
+             mjpeg_warn( "ATSC 720p only supports aspect ratio codes 1 and 3 (square pixel and 16:9)" );
+         }
+         break;
+     case MPEG_FORMAT_ATSC1080i :
+         if(  in_img_width != 1280 || in_img_height != 720 )
+         {
+             mjpeg_warn( "ATSC 1080i only supports 1920x1080 images!" );
+         }
+         if( aspect_ratio != 1 && aspect_ratio != 3 )
+         {
+             mjpeg_warn( "ATSC 1080i only supports aspect ratio codes 1 and 3 (square pixel and 16:9)" );
+         }
+         if( frame_rate > 7 )
+         {
+             mjpeg_warn( "ATSC 1080i only supports frame rates up to 30 frame/sec/" );
+         }
+         break;
 	}
+ 
+    
+    if(    format >= MPEG_FORMAT_ATSC480i && format <= MPEG_FORMAT_ATSC1080i )
+    {
+         if( bitrate > 38800000 )
+        {
+            mjpeg_warn( "ATSC specifies a maximum high data rate mode bitrate of 38.8Mbps" );
+        }
+        
+        if( frame_rate == 3 || frame_rate == 6 )
+        {
+            mjpeg_warn( "ATSC does not support 25 or 50 frame/sec video" );
+        }
+    }
+
 	return nerr;
 }
+
+
 
 bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 {
     int nerr = 0;
     in_img_width = strm.horizontal_size;
     in_img_height = strm.vertical_size;
-
+    mjpeg_info( "Selecting %s output profile", 
+                mpeg_format_code_defintion(format));
 	switch( format  )
 	{
 	case MPEG_FORMAT_MPEG1 :  /* Generic MPEG1 */
-		mjpeg_info( "Selecting generic MPEG1 output profile");
 		if( video_buffer_size == 0 )
 			video_buffer_size = 46;
 		if (bitrate == 0)
 			bitrate = 1151929;
+        if (searchrad == 0)
+            searchrad = 16;
 		break;
 
 	case MPEG_FORMAT_VCD :
@@ -334,10 +398,8 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
         	Bgrp_size = 3;
         	min_GOP_size = 9;
 		max_GOP_size = norm == 'n' ? 18 : 15;
-		mjpeg_info("VCD default options selected");
 		
 	case MPEG_FORMAT_VCD_NSR : /* VCD format, non-standard rate */
-		mjpeg_info( "Selecting VCD output profile");
 		mpeg = 1;
 		svcd_scan_data = 0;
 		seq_hdr_every_gop = 1;
@@ -352,7 +414,6 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 		break;
 		
 	case  MPEG_FORMAT_MPEG2 : 
-		mjpeg_info( "Selecting generic MPEG2 output profile");
 		mpeg = 2;
 		if (!force_cbr && quant == 0)
 			quant = 8;
@@ -361,7 +422,6 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 		break;
 
 	case MPEG_FORMAT_SVCD :
-		mjpeg_info("SVCD standard settings selected");
 		if (nonvid_bitrate == 0)
 		   /* 224 kbps for audio + around 2% of 2788800 bits */
 		   nonvid_bitrate = 288; 
@@ -371,7 +431,6 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 		video_buffer_size = 230;
 
 	case  MPEG_FORMAT_SVCD_NSR :		/* Non-standard data-rate */
-		mjpeg_info( "Selecting SVCD output profile");
 		mpeg = 2;
 		if (!force_cbr && quant == 0)
 			quant = 8;
@@ -389,7 +448,6 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
         	break;
 
 	case MPEG_FORMAT_VCD_STILL :
-		mjpeg_info( "Selecting VCD Stills output profile");
 		mpeg = 1;
 		quant = 0;	/* We want to try and hit our size target */
 
@@ -446,7 +504,6 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 		break;
 
 	case MPEG_FORMAT_SVCD_STILL :
-		mjpeg_info( "Selecting SVCD Stills output profile");
 		mpeg = 2;
 		quant = 0;	/* We want to try and hit our size target */
 
@@ -498,7 +555,6 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 
 	case MPEG_FORMAT_DVD :
 	case MPEG_FORMAT_DVD_NAV :
-		mjpeg_info( "Selecting DVD output profile");
 		mpeg = 2;
 		if (bitrate == 0)
 			bitrate = 7500000;
@@ -508,8 +564,21 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 			quant = 8;
 		seq_hdr_every_gop = 1;
 		break;
+  
+     case MPEG_FORMAT_ATSC720p :
+     case MPEG_FORMAT_ATSC1080i :
+         // Need a bigger pixel search radius for HD
+         // images :-(
+         if (searchrad == 0)
+             searchrad = 32;
+     case MPEG_FORMAT_ATSC480i :
+     case MPEG_FORMAT_ATSC480p :
+         mpeg = 2;
+         video_buffer_size = 488;
+         if (bitrate == 0)
+             bitrate = 19400000;
+         
 	}
-
 
     /*
      * At this point the command line arguments have been processed, the format (-f)
@@ -541,12 +610,16 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
     }
 	if( svcd_scan_data == -1 )
 		svcd_scan_data = 0;
+    if (searchrad == 0)
+        searchrad = 16;
 	nerr += InferStreamDataParams(strm);
 	nerr += CheckBasicConstraints();
 
 	return nerr != 0;
 }
-
+
+
+
 /* 
  * Local variables:
  *  c-file-style: "stroustrup"

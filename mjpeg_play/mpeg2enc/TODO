@@ -44,11 +44,12 @@ Near Future improvements
 	and coding phases. 
 	This will provide the basis for two-pass encoding and pipelined encoding.
 
-5.	Replace the current frame-based parallelism with striping in the 
-	ME/pred/DCT routine.
 
-6.	The rate control code is now a mess of int64_t , double and int. Needs
+5.	The rate control code is now a mess of int64_t , double and int. Needs
 	tidying... 
+
+6.  Add support for the ATSC Active Format Description and Bar Data extenstions
+
 
 Minor Tidying
 

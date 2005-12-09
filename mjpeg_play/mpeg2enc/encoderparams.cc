@@ -202,6 +202,10 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 	fieldpic        = (options.fieldenc == 2);
     dualprime   = options.hack_dualprime == 1 && M == 1;
 
+    pulldown_32     = options.vid32_pulldown;
+
+    aspectratio     = options.aspect_ratio;
+    frame_rate_code = options.frame_rate;
     // SVCD and probably DVD? mandate progressive_sequence = 0 
     switch( options.format )
     {
@@ -212,16 +216,21 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
     case MPEG_FORMAT_DVD_NAV :
         prog_seq = 0;
         break;
+    case MPEG_FORMAT_ATSC1080i :
+    case MPEG_FORMAT_ATSC480i :
+        prog_seq = frame_rate_code == 1 || frame_rate_code == 2 ? 0 : 1;
+        break;
+    case MPEG_FORMAT_ATSC720p :
+    case MPEG_FORMAT_ATSC480p :
+        prog_seq = 1;
+        break;
     default :
         // If we want 3:2 pulldown must code prog_seq as otherwise
         // repeat_first_field and topfirst encode frame repetitions!!!
         prog_seq        = (options.mpeg == 1 || (options.fieldenc == 0 && !options.vid32_pulldown));
         break;
     }
-	pulldown_32     = options.vid32_pulldown;
 
-	aspectratio     = options.aspect_ratio;
-	frame_rate_code = options.frame_rate;
 	dctsatlim		= mpeg1 ? 255 : 2047;
 
 	/* If we're using a non standard (VCD?) profile bit-rate adjust	the vbv
@@ -274,37 +283,83 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 	low_delay       = 0;
 	constrparms     = (options.mpeg == 1 &&
 						   !MPEG_STILLS_FORMAT(options.format));
-	profile         = 4; /* Main profile resp. */
-	level           = 8; /* Main Level      CCIR 601 rates */
-	switch(options.norm)
-	{
-	case 'p': video_format = 1; break;
-	case 'n': video_format = 2; break;
-	case 's': video_format = 3; break;
-	default:  video_format = 5; break; /* unspec. */
-	}
-	switch(options.norm)
-	{
-	case 's':
-	case 'p':  /* ITU BT.470  B,G */
-		color_primaries = 5;
-		transfer_characteristics = 5; /* Gamma = 2.8 (!!) */
-		matrix_coefficients = 5; 
-        msg = "PAL B/G";
-		break;
-	case 'n': /* SMPTPE 170M "modern NTSC" */
-		color_primaries = 6;
-		matrix_coefficients = 6; 
-		transfer_characteristics = 6;
-        msg = "NTSC";
-		break; 
-	default:   /* unspec. */
-		color_primaries = 2;
-		matrix_coefficients = 2; 
-		transfer_characteristics = 2;
-        msg = "unspecified";
-		break;
-	}
+	profile         = MAIN_PROFILE;
+    
+    level = options.level;
+    // Force appropriate level for standards-compliant preset-formats
+    switch(options.format)
+    {
+        case MPEG_FORMAT_ATSC720p :
+        case MPEG_FORMAT_ATSC1080i :
+            level = HIGH_LEVEL;
+            break;
+        case MPEG_FORMAT_SVCD_STILL :
+        case MPEG_FORMAT_SVCD :
+        case MPEG_FORMAT_DVD :
+        case MPEG_FORMAT_DVD_NAV :
+        case MPEG_FORMAT_VCD :
+        default :
+            level = MAIN_LEVEL;
+            break;
+    };
+    if( level == 0 )
+        level = MAIN_LEVEL;
+
+    if( MPEG_SDTV_FORMAT(options.format) )
+    {
+        switch(options.norm)
+        {
+        case 'p': video_format = 1; break;
+        case 'n': video_format = 2; break;
+        case 's': video_format = 3; break;
+        default:  video_format = 5; break; /* unspec. */
+        }
+     
+        switch(options.norm)
+        {
+        case 's':
+        case 'p':  /* ITU BT.470  B,G */
+            color_primaries = 5;
+            transfer_characteristics = 5; /* Gamma = 2.8 (!!) */
+            matrix_coefficients = 5; 
+            msg = "PAL B/G";
+            break;
+        case 'n': /* SMPTPE 170M "modern NTSC" */
+            color_primaries = 6;
+            matrix_coefficients = 6; 
+            transfer_characteristics = 6;
+            msg = "NTSC";
+            break; 
+        default:   /* unspec. */
+            color_primaries = 2;
+            matrix_coefficients = 2; 
+            transfer_characteristics = 2;
+            msg = "unspecified";
+            break;
+        }
+    }
+    else
+    {
+        video_format = 0; // 'Component'
+        switch( options.format )
+        {
+            case MPEG_FORMAT_ATSC480i : /* SMPTPE 170M "modern NTSC" */
+            case MPEG_FORMAT_ATSC480p :
+                color_primaries = 6;
+                matrix_coefficients = 6; 
+                transfer_characteristics = 6;
+                break;
+            case MPEG_FORMAT_ATSC720p :/* ITU.R BT.709 HDTV */
+            case MPEG_FORMAT_ATSC1080i :
+                color_primaries = 1;
+                matrix_coefficients = 1; 
+                transfer_characteristics = 1;
+                break;
+            default : 
+                abort();
+                
+        };
+    };
     mjpeg_info( "Setting colour/gamma parameters to \"%s\"", msg);
 
     horizontal_size = options.in_img_width;
@@ -331,7 +386,14 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
             display_vertical_size    = options.in_img_height;
         }
 		break;
-	default:
+  
+      // ATSC 1080i is unusual in that it *requires* display of 1080 lines
+      // when 1088 are coded 
+     case MPEG_FORMAT_ATSC1080i :
+         display_vertical_size = 1080;
+         break;
+     
+     default:
         if( options.display_hsize <= 0 )
             display_horizontal_size  = options.in_img_width;
         else

@@ -25,6 +25,7 @@
 #include "mpegconsts.h"
 #include "yuv4mpeg.h"
 #include "yuv4mpeg_intern.h"
+#include "format_codes.h"
 
 static y4m_ratio_t
 mpeg_framerates[] = {
@@ -133,6 +134,23 @@ static const mpeg_aspect_code_t mpeg_num_aspect_ratios[2] =
   sizeof(mpeg2_aspect_ratios)/sizeof(mpeg2_aspect_ratios[0])
 };
 
+static const char *mjpegtools_format_code_definitions[MPEG_FORMAT_LAST+1] =
+{
+    "Generic MPEG1",
+    "Standard VCD",
+    "Stretched VCD",
+    "Generic MPEG2",
+    "Standard SVCD",
+    "Stretched SVCD",
+    "VCD Still",
+    "SVCD Still",
+    "DVD with dummy navigation packets",
+    "Standard DVD",
+    "ATSC 480i",
+    "ATSC 480p",
+    "ATSC 720p",
+    "ATSC 1080i"
+};
 
 /*
  * Is code a valid MPEG framerate code?
@@ -474,6 +492,17 @@ mpeg_interlace_code_definition( int yuv4m_interlace_code )
 	return def;
 }
 
+/*
+ * Look-up explanatory definition of mjepgtools preset format code
+ *
+ */
+const char *mpeg_format_code_defintion( int format_code )
+{
+    if(format_code >= MPEG_FORMAT_FIRST && format_code <= MPEG_FORMAT_LAST )
+        return mjpegtools_format_code_definitions[format_code];
+    else
+        return "UNDEFINED: illegal format code!";
+};
 
 /* 
  * Local variables:

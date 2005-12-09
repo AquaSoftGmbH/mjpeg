@@ -33,6 +33,23 @@
 
 #define BITCOUNT_OFFSET  0LL
 
+enum PROFILES
+{
+    HIGH_PROFILE=1,
+    SPATIAL_PROFILE=2,
+    SNR_PROFILE=3,
+    MAIN_PROFILE=4,
+    SIMPLE_PROFILE=5
+};
+
+
+enum LEVELS
+{ 
+    HIGH_LEVEL = 4,
+    HIGH1440_LEVEL = 6,
+    MAIN_LEVEL = 8,
+    LOW_LEVEL = 10
+};
 
 /* Globally defined MPEG syntax constants */
 

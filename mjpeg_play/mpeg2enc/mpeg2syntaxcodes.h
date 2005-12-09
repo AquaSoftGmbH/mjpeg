@@ -42,28 +42,38 @@
 #define SYSTEM_START_CODE  0x1BBL
 
 /* picture coding type */
+enum PICTURE_CODING
+{
+    I_TYPE=1,
+    P_TYPE=2,
+    B_TYPE=3,
+    NUM_PICT_TYPES
+};
 
-#define I_TYPE 1
-#define P_TYPE 2
-#define B_TYPE 3
 #define FIRST_PICT_TYPE I_TYPE
 #define LAST_PICT_TYPE B_TYPE
-// Allow for arrays starting at 0...
-#define NUM_PICT_TYPES (LAST_PICT_TYPE+FIRST_PICT_TYPE) 
+
 
 /* picture structure */
-#define TOP_FIELD     1
-#define BOTTOM_FIELD  2
-#define FRAME_PICTURE 3
+enum PICTURE_STRUCT
+{
+    TOP_FIELD=1,
+    BOTTOM_FIELD=2,
+    FRAME_PICTURE=3
+};
 
 /* macroblock type */
-#define MB_INTRA    1
-#define MB_PATTERN  2
-#define MB_BACKWARD 4
-#define MB_FORWARD  8
-#define MB_QUANT    16
+enum MACROBLOCK_CODING_BITS
+{
+    MB_INTRA=1,
+    MB_PATTERN=2,
+    MB_BACKWARD=4,
+    MB_FORWARD=8,
+    MB_QUANT=16
+};
 
 /* motion_type */
+
 #define MC_FIELD 1
 #define MC_FRAME 2
 #define MC_16X8  2

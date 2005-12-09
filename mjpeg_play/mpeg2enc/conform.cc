@@ -221,13 +221,13 @@ void EncoderParams::ProfileAndLevelChecks()
     return;
   }
 
-  if (profile<HP || profile>SP)
+  if (profile<HIGH_PROFILE || profile>SIMPLE_PROFILE)
     mjpeg_error_exit1("undefined Profile");
 
-  if (profile==SNR || profile==SPAT)
-    mjpeg_error_exit1("This encoder currently generates no scalable bitstreams");
+  if (profile < MAIN_PROFILE)
+    mjpeg_error_exit1("This encoder currently generates only main or simple profile MPEG-2");
 
-  if (level<HL || level>LL || level&1)
+  if (level<HIGH_LEVEL || level>LOW_LEVEL || level&1)
     mjpeg_error_exit1("undefined Level");
 
   maxval = &maxval_tab[(level-4) >> 1];
@@ -239,7 +239,7 @@ void EncoderParams::ProfileAndLevelChecks()
 
   /* profile (syntax) constraints */
 
-  if (profile==SP && M!=1)
+  if (profile==SIMPLE_PROFILE && M!=1)
     mjpeg_error_exit1("Simple Profile does not allow B pictures");
 
 

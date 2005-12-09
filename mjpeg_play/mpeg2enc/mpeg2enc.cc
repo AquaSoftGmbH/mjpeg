@@ -612,7 +612,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 int n;
 int nerr = 0;
 static const char   short_options[]=
-    "a:f:x:y:n:b:z:T:B:q:o:S:I:r:M:4:2:A:Q:X:D:g:G:v:V:F:N:pdsHcCPK:E:R:";
+        "l:a:f:x:y:n:b:z:T:B:q:o:S:I:r:M:4:2:A:Q:X:D:g:G:v:V:F:N:pdsHcCPK:E:R:";
 
 #ifdef HAVE_GETOPT_LONG
 
@@ -621,6 +621,7 @@ static struct option long_options[]=
         { "verbose",           1, 0, 'v'
         },
         { "format",            1, 0, 'f' },
+        { "level",             1, 0, 'l' },
         { "aspect",            1, 0, 'a' },
         { "display-hsize",     1, 0, 'x' },
         { "display-vsize",     1, 0, 'y' },
@@ -672,6 +673,17 @@ while( (n=getopt(argc,argv,short_options)) != -1)
     switch(n)
     {
     case 0 :                /* Flag setting handled by getopt-long */
+        break;
+    case 'l' :          /* MPEG-2 level */
+        if( strcmp( optarg, "high" ) == 0 || strcmp( optarg, "h" ) == 0 )
+            level = HIGH_LEVEL;
+        else if( strcmp( optarg, "main") == 0 || strcmp( optarg, "m" ) == 0 )
+            level = MAIN_LEVEL;
+        else
+        {
+            mjpeg_error( "Level must be 'main', 'm', 'high' or 'h'");
+            ++nerr;
+        }
         break;
     case 'b':
         bitrate = static_cast<int>(atof(optarg)*1000);

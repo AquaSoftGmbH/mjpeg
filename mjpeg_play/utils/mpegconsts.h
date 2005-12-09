@@ -159,6 +159,12 @@ y4m_ratio_t
 mpeg_guess_sample_aspect_ratio(int mpeg_version,
 			       mpeg_aspect_code_t code,
 			       int frame_width, int frame_height);
+                   
+/*
+ * Look-up MJPEGTOOLS MPEG preset format code explanatory definition string a
+ *
+ */
+const char *mpeg_format_code_defintion( int format_code );
 
 END_CPP_WRAP
 
