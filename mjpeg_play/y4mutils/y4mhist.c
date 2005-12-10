@@ -38,6 +38,7 @@ unsigned long long ly_stats[256], lu_stats[256], lv_stats[256];
 #define gray   0xA5A5A5FF
 /* Defining the size of the screen */
 #define width 640
+#define width_v 940  /* when we use the vectorscope whe have a differnet size */
 #define heigth 590
 
 /* Defining where the histograms are */
@@ -54,6 +55,8 @@ unsigned long long ly_stats[256], lu_stats[256], lv_stats[256];
 #define frm3_x 340
 #define frm3_y 340 
 #define stat 490
+#define vector_x 790
+#define vector_y 200
 
 	/* needed for SDL */
 	SDL_Surface *screen;
@@ -170,6 +173,22 @@ void make_histogram_desc(long number_of_frames)
 	make_text(frm3_x, frm3_y, framestat);
 	}
 
+/* Here we draw the vectorscope layout */
+void make_vectorscope_layout()
+	{
+	boxColor(screen, vector_x-120, vector_y+120, 
+			 vector_x+120, vector_y-120, black); 
+
+	hlineColor(screen, vector_x-20, vector_x-128, vector_y, white);
+	hlineColor(screen, vector_x+20, vector_x+128, vector_y, white);
+	vlineColor(screen, vector_x, vector_y-20, vector_y-128, white);
+	vlineColor(screen, vector_x, vector_y+20, vector_y+128, white);
+	circleColor(screen,vector_x, vector_y, 20, white);
+	circleColor(screen,vector_x, vector_y, 50, white);
+	circleColor(screen,vector_x, vector_y, 80, white);
+	circleColor(screen,vector_x, vector_y,112, white);
+	}
+
 /* Here we draw the histogram statistice for the summ of the frames */
 void make_histogram_stat(int peak_y, int peak_u, int peak_v, 
 				int x_off, int y_off)
@@ -276,6 +295,7 @@ void make_stat()
 /* The description for the histogram */
 	make_histogram_desc(number_of_frames);
 	number_of_frames++;
+	make_vectorscope_layout(); /* draw the vectorscope basic layout */
 
 	clear_histogram_area(); /* Here we delete the old histograms */
 	
@@ -330,6 +350,8 @@ void make_stat()
 					((frm3_y+100)-percent_fv),gray);
 			}
 		}
+
+
 	SDL_UpdateRect(screen,0,0,0,0);
 	}
 #endif /* HAVE_SDLgfx */
@@ -337,18 +359,21 @@ void make_stat()
 static void
 usage(void)
 	{
-	mjpeg_error_exit1("usage: [-t]\n\temit text summary even if graphical mode enabled");
+	mjpeg_error("usage: [-t]\n\temit text summary even if graphical mode enabled");
+	mjpeg_error_exit1("       [-v]\n\enable also the vectorscope");
 	}
 
 int
 main(int argc, char **argv)
 	{
 	int	i, fdin, ss_v, ss_h, chroma_ss, textout;
+	int 	do_vectorscope;
 	int	plane0_l, plane1_l, plane2_l;
 	u_char	*yuv[3], *cp;
 	y4m_stream_info_t istream;
 	y4m_frame_info_t iframe;
 
+	do_vectorscope = 0;
 
 #ifdef	HAVE_SDLgfx
 	textout = 0;
@@ -356,12 +381,15 @@ main(int argc, char **argv)
 	textout = 1;
 #endif
 
-	while	((i = getopt(argc, argv, "t")) != EOF)
+	while	((i = getopt(argc, argv, "tv")) != EOF)
 		{
 		switch	(i)
 			{
 			case	't':
 				textout = 1;
+				break;
+			case	'v':
+				do_vectorscope = 1;
 				break;
 			default:
 				usage();
@@ -382,7 +410,11 @@ main(int argc, char **argv)
                 mjpeg_error_exit1("Couldn't initialize SDL:%s",SDL_GetError());
         atexit(SDL_Quit);                       /* Clean up on exit */
         /* Initialize the display */
-        screen = SDL_SetVideoMode(width, heigth, desired_bpp, video_flags);
+	if (do_vectorscope == 0)
+	        screen = SDL_SetVideoMode(width,heigth,desired_bpp,video_flags);
+	else
+	        screen=SDL_SetVideoMode(width_v,heigth,desired_bpp,video_flags);
+
         if	(screen == NULL)
                 mjpeg_error_exit1("Couldn't set %dx%dx%d video mode: %s",
                                 width, heigth, desired_bpp, SDL_GetError());
@@ -433,6 +465,17 @@ main(int argc, char **argv)
 			v_stats[*cp]++;	/* V */
 #ifdef HAVE_SDLgfx
 		make_stat();
+		
+		u_char *cpx, *cpy;
+		for (i=0, cpx=yuv[1], cpy=yuv[2]; i<plane1_l; i++,cpx++,cpy++)
+			{
+				pixelColor(screen, vector_x -128 +*cpx,
+	 		      		vector_y+ ((*cpy-128)*-1) ,red);
+				
+			}
+
+		SDL_UpdateRect(screen,0,0,0,0);
+		
 
 		/* Events for SDL */
 		HandleEvent();
