@@ -142,7 +142,7 @@ testrec_LDADD = $(PTHREAD_LIBS) $(LIBMJPEGUTILS)
 lav2yuv_SOURCES = lav2yuv.c lav_common.c
 lav2yuv_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS)
 lav2yuv_LDADD = $(LIBMJPEGUTILS) \
-		liblavfile.la liblavjpeg.la $(LIBDV_LIBS)
+		liblavfile.la liblavjpeg.la
 
 jpeg2yuv_SOURCES = jpeg2yuv.c
 jpeg2yuv_CPPFLAGS = $(AM_CPPFLAGS) $(JPEG_CFLAGS)
