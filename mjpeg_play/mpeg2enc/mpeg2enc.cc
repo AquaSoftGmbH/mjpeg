@@ -454,7 +454,7 @@ void MPEG2EncCmdLineOptions::Usage()
 "--display-hsize|-x [32..16383]\n"
 "   Set the the display-horizontal-size hint in MPEG-2 output to\n"
 "   something other than the encoded image width\n"
-"--display-vsize|-x [32..16383]\n"
+"--display-vsize|-y [32..16383]\n"
 "   Set the the display-vertical-size hint in MPEG-2 output to\n"
 "   something other than the encoded image height\n" 
 "--aspect|-a num\n"
