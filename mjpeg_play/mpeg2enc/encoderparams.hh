@@ -60,19 +60,11 @@
 
 
 /*
-  How many frames to read in one go
-*/
-
-#define READ_CHUNK_SIZE 3
-
-/*
-  How many frames encoding may be concurrently under way.
-  N.b. there is no point setting this greater than M.
-  Additional parallelism can be exposed at a finer grain by
-  parallelising per-macro-block computations.
+  Ensure we don't bury a system in wild spawning of
+  threads...
  */
 
-#define MAX_WORKER_THREADS 4
+#define MAX_WORKER_THREADS 16
 
 
 
