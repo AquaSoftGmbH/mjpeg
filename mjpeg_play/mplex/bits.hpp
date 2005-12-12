@@ -59,7 +59,8 @@ public:
 		bitreadpos(0),
 		bitidx(8),
 		bytereadpos(0),
-		eobs(true)
+		eobs(true),
+  scandone(false)
 		{}
 	inline bool eos() { return eobs; }
 	inline bitcount_t bitcount() { return bitreadpos; }
@@ -80,6 +81,7 @@ protected:
 	bool eobs;					// End-of-bitstream  flag: true iff
 								// Bit read position has reached the end
 								// of the underlying bitstream...
+    bool scandone;              // Caller signals scanning completed.
 };
 
 /***************************************
@@ -150,7 +152,11 @@ public:
 	//
 	// Byte data buffer management
 	void Flush( bitcount_t byte_position );
-
+    
+    //
+    // Reading from stream is done...
+    void ScanDone();
+ 
 	inline const char *StreamName() { return streamname; }
 protected:
 	bool ReadIntoBuffer( unsigned int to_read = BUFFER_SIZE );

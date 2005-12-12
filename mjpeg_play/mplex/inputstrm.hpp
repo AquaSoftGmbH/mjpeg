@@ -38,6 +38,7 @@
 
 using std::vector;
 
+#if 0
 class InputStream
 {
 public:
@@ -55,12 +56,12 @@ public:
 			bs.SetBufSize( buf_size );
 		}
 
+    void Close() 
     bitcount_t stream_length;
 
 protected:
-	off_t      file_length;
     IBitStream &bs;
-	bool eoscan;
+    bool eoscan;
 	
 	unsigned int last_buffered_AU;		// decode seq num of last buffered frame + 1
    	bitcount_t AU_start;
@@ -70,6 +71,7 @@ protected:
     unsigned int old_frames;
 
 };
+#endif
 
 class Multiplexor;
 
@@ -153,15 +155,25 @@ public:
 };
 
 
-class ElementaryStream : public InputStream,
+class ElementaryStream : //public InputStream,
 						 public MuxStream
 {
 public:
 	enum stream_kind { audio, video, dummy };
-	ElementaryStream( IBitStream &ibs,
+
+ ElementaryStream( IBitStream &ibs,
                       Multiplexor &into, 
 					  stream_kind kind
 					  );
+
+
+
+    void SetBufSize( unsigned int buf_size )
+    {
+        bs.SetBufSize( buf_size );
+    }
+
+        
     virtual ~ElementaryStream () { }
     
     inline stream_kind Kind() const { return kind; }
@@ -253,6 +265,20 @@ public:
     bitcount_t bytes_read;
 private:
     void AUBufferLookaheadFill( unsigned int look_ahead);
+
+
+
+protected:
+        bitcount_t stream_length;
+        IBitStream &bs;
+        bool eoscan;
+    
+        unsigned int last_buffered_AU;      // decode seq num of last buffered frame + 1
+        bitcount_t AU_start;
+        uint32_t  syncword;
+        bitcount_t prev_offset;
+        unsigned int decoding_order;
+        unsigned int old_frames;
 
 //protected:
 public:

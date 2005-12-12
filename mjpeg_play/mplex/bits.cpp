@@ -75,6 +75,7 @@ void BitStreamBuffering::Empty()
     buffered = 0;
 }
 
+
 /** sets the internal buffer size. 
     @param new_buf_size requests new internal buffer size 
 */
@@ -354,7 +355,7 @@ unsigned int IBitStream::GetBytes(uint8_t *dst, unsigned int length)
 
 	if(  bytereadpos+length > bfr_start+buffered )
 	{
-		if( !EndOfStream() )
+		if( !EndOfStream() && !scandone )
         {
 			mjpeg_error("INTERNAL ERROR: access to input stream buffer beyond last buffered byte @POS=%lld END=%d REQ=%lld + %d bytes", 
                         bytereadpos,
@@ -374,6 +375,19 @@ unsigned int IBitStream::GetBytes(uint8_t *dst, unsigned int length)
 	//flush( bytereadpos );
 	bytereadpos += to_read;
 	return to_read;
+}
+
+/*****
+ *
+ * Bitstream reading is complete...
+ *
+ * Currently mainly there to allow Bug detection.  Doesn't actually *do* anything!
+ *
+ *****/
+
+void IBitStream::ScanDone()
+{
+    scandone = true;
 }
 
 

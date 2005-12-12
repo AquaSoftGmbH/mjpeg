@@ -68,7 +68,13 @@ MuxStream::BufferSizeCode()
 
 ElementaryStream::ElementaryStream( IBitStream &ibs,
                                     Multiplexor &into, stream_kind _kind) : 
-    InputStream( ibs ),
+
+    stream_length(0),
+    bs( ibs ),
+    eoscan(false),
+    last_buffered_AU(0),
+    decoding_order(0),
+    old_frames(0),
     au(0),
 	muxinto( into ),
 	kind(_kind),
@@ -94,6 +100,9 @@ ElementaryStream::AUBufferLookaheadFill( unsigned int look_ahead)
     {
         FillAUbuffer(FRAME_CHUNK);
     }
+    if( eoscan )
+        bs.ScanDone();
+        
 }
 
 /******************************************
