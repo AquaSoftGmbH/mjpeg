@@ -176,8 +176,8 @@ void make_histogram_desc(long number_of_frames)
 /* Here we draw the vectorscope layout */
 void make_vectorscope_layout()
 	{
-	boxColor(screen, vector_x-120, vector_y+120, 
-			 vector_x+120, vector_y-120, black); 
+	boxColor(screen, vector_x-130, vector_y+130, 
+			 vector_x+130, vector_y-130, black); 
 
 	hlineColor(screen, vector_x-20, vector_x-128, vector_y, white);
 	hlineColor(screen, vector_x+20, vector_x+128, vector_y, white);
@@ -295,7 +295,7 @@ void make_stat()
 /* The description for the histogram */
 	make_histogram_desc(number_of_frames);
 	number_of_frames++;
-	make_vectorscope_layout(); /* draw the vectorscope basic layout */
+	make_vectorscope_layout(); /*draw the vectorscope basic layout*/
 
 	clear_histogram_area(); /* Here we delete the old histograms */
 	
@@ -359,17 +359,21 @@ void make_stat()
 static void
 usage(void)
 	{
-	mjpeg_error("usage: [-t]\n\temit text summary even if graphical mode enabled");
-	mjpeg_error_exit1("       [-v]\n\enable also the vectorscope");
+	fprintf(stderr, "usage: [-t]  [-v num]\n");
+	fprintf(stderr, "  -t      emit text summary even if graphical mode enabled\n");
+	fprintf(stderr, "  -v=num  enable also the vectorscope, allowed numbers 1-16\n");
+
+	exit(1);
 	}
 
 int
 main(int argc, char **argv)
 	{
-	int	i, fdin, ss_v, ss_h, chroma_ss, textout;
+	int	i, j, fdin, ss_v, ss_h, chroma_ss, textout;
 	int 	do_vectorscope;
+	int	pwidth, pheight; /* Needed for the vectorscope */
 	int	plane0_l, plane1_l, plane2_l;
-	u_char	*yuv[3], *cp;
+	u_char	*yuv[3], *cp, *cpx, *cpy;
 	y4m_stream_info_t istream;
 	y4m_frame_info_t iframe;
 
@@ -381,7 +385,7 @@ main(int argc, char **argv)
 	textout = 1;
 #endif
 
-	while	((i = getopt(argc, argv, "tv")) != EOF)
+	while	((i = getopt(argc, argv, "tv:")) != EOF)
 		{
 		switch	(i)
 			{
@@ -389,7 +393,7 @@ main(int argc, char **argv)
 				textout = 1;
 				break;
 			case	'v':
-				do_vectorscope = 1;
+				do_vectorscope = atoi(optarg);
 				break;
 			default:
 				usage();
@@ -397,6 +401,9 @@ main(int argc, char **argv)
 		}
 
 #ifdef HAVE_SDLgfx
+	if ( (do_vectorscope < 0) || (do_vectorscope >16) )
+		usage();
+
 	/* Initialize SDL */
 	desired_bpp = 8; 
 	video_flags = 0;
@@ -437,9 +444,12 @@ main(int argc, char **argv)
         if      (y4m_si_get_plane_count(&istream) != 3)
                 mjpeg_error_exit1("Only 3 plane formats supported");
 
+	pwidth = y4m_si_get_width(&istream);
+	pheight = y4m_si_get_height(&istream);
 	chroma_ss = y4m_si_get_chroma(&istream);
 	ss_h = y4m_chroma_ss_x_ratio(chroma_ss).d;
 	ss_v = y4m_chroma_ss_y_ratio(chroma_ss).d;
+
 
 	plane0_l = y4m_si_get_plane_length(&istream, 0);
 	plane1_l = y4m_si_get_plane_length(&istream, 1);
@@ -465,17 +475,32 @@ main(int argc, char **argv)
 			v_stats[*cp]++;	/* V */
 #ifdef HAVE_SDLgfx
 		make_stat();
-		
-		u_char *cpx, *cpy;
-		for (i=0, cpx=yuv[1], cpy=yuv[2]; i<plane1_l; i++,cpx++,cpy++)
+			
+		if (do_vectorscope >= 1 )
+		{
+
+		cpx = yuv[1];
+		cpy = yuv[2];
+
+		for (i=0; i < (pheight/ss_h); i++)
 			{
-				pixelColor(screen, vector_x -128 +*cpx,
-	 		      		vector_y+ ((*cpy-128)*-1) ,red);
+			for (j = 0; j < (pwidth/ss_v); j++)
+				{
+					cpx++;
+					cpy++;
 				
+					pixelColor(screen, vector_x -128 +*cpx,
+	 		      		vector_y+ ((*cpy-128)*-1) ,red);
+				}
+
+				/* Here we got to the n'th next line if needed */
+				i   = i + (do_vectorscope-1);
+				cpy = cpy + (pwidth/ss_v) * (do_vectorscope-1);
+				cpx = cpx + (pwidth/ss_v) * (do_vectorscope-1);
 			}
 
 		SDL_UpdateRect(screen,0,0,0,0);
-		
+		}
 
 		/* Events for SDL */
 		HandleEvent();
