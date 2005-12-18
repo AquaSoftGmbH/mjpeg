@@ -1348,12 +1348,15 @@ static int check_DV2_input(lav_file_t *lav_fd)
 	  }
 	  break;
 	case e_dv_sample_411:
+	   /* libdv decodes NTSC DV (native 411) as packed YUV 422 (YUY2 or 4CC 0x32595559)
+	    * where the U and V information is repeated.
+	    */
+	   lav_fd->chroma = Y4M_CHROMA_411;
+	   break;
 	case e_dv_sample_422:
-	   /* libdv decodes NTSC DV (native 411) and by default also PAL
-	    * DV (native 420) as packed YUV 422 (YUY2 or 4CC 0x32595559)
+	   /* libdv decodes PAL DV (native 420) as packed YUV 422 (YUY2 or 4CC 0x32595559)
 	    * where the U and V information is repeated.  This can be
 	    * transformed to planar 420 (YV12 or 4CC 0x32315659).
-	    * For NTSC DV this transformation is lossy.
 	    */
 	   lav_fd->chroma = Y4M_CHROMA_422;
 	   break;

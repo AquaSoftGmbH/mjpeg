@@ -93,6 +93,6 @@ void init(LavParam *param, uint8_t *frame[]);
 #include <libdv/dv.h>
 
 void frame_YUV422_to_planar(uint8_t **output, uint8_t *input,
-			    int width, int height, int chroma422);
+			    int width, int height, int chroma);
 void lav_init_dv_decoder(void);
 #endif

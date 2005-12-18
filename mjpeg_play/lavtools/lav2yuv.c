@@ -58,7 +58,7 @@ void Usage(char *str)
    "              the sample aspect ratio).  Common values are 4:3 and 16:9.\n"
    "              (default:  read from DV files, or assume 4:3 for MJPEG)\n"
    "   -C chroma  Set output chroma (default: '420jpeg')\n"
-   "              '420jpeg', '420mpeg2', '420paldv', '422' are available\n"
+   "              '420jpeg', '420mpeg2', '420paldv', '422', '411' are available\n"
    "   -o num     Frame offset - skip num frames in the beginning\n"
    "              if num is negative, all but the last num frames are skipped\n"
    "   -f num     Only num frames are written to stdout (0 means all frames)\n"
@@ -288,6 +288,7 @@ int main(argc, argv)
 		  case Y4M_CHROMA_420MPEG2:
 		  case Y4M_CHROMA_420PALDV:
 		  case Y4M_CHROMA_422:
+		  case Y4M_CHROMA_411:
 		    break;
 		  default:
 		    mjpeg_error("Unsupported chroma '%s'", optarg);

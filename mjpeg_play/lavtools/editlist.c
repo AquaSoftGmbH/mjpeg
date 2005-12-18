@@ -79,9 +79,10 @@ int open_video_file(char *filename, EditList *el, int preserve_pathname)
       mjpeg_error_exit1("Error opening %s",filename);
    }
    if(lav_video_chroma(el->lav_fd[n]) != Y4M_CHROMA_422 &&
-	   lav_video_chroma(el->lav_fd[n]) != Y4M_CHROMA_420JPEG)
+	   lav_video_chroma(el->lav_fd[n]) != Y4M_CHROMA_420JPEG &&
+	   lav_video_chroma(el->lav_fd[n]) != Y4M_CHROMA_411)
    {
-      mjpeg_warn("Input file %s is not in  JPEG 4:2:2 or 4:2:0 format",
+      mjpeg_warn("Input file %s is not in  JPEG 4:2:2 or 4:2:0 or 4:1:1 format",
 				 filename);
       el->chroma = Y4M_UNKNOWN;
    }

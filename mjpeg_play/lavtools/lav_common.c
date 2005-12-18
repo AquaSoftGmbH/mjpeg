@@ -123,8 +123,8 @@ uint8_t *dv_frame[3] = {NULL,NULL,NULL};
  *  treating each interlaced field independently
  *
  */
-void frame_YUV422_to_planar(uint8_t **output, uint8_t *input,
-			    int width, int height, int chroma422)
+static void frame_YUV422_to_planar_42x(uint8_t **output, uint8_t *input,
+				       int width, int height, int chroma)
 {
     int i, j, w2;
     uint8_t *y, *cb, *cr;
@@ -154,7 +154,7 @@ void frame_YUV422_to_planar(uint8_t **output, uint8_t *input,
             *(cr++) = *(input++);
         }
 	i++;
-	if (chroma422)
+	if (chroma == Y4M_CHROMA_422)
 	  continue;
 	/* process next two scanlines (one from each field, interleaved) */
         /* ...top-field scanline */
@@ -178,9 +178,93 @@ void frame_YUV422_to_planar(uint8_t **output, uint8_t *input,
     }
 }
 
+/***** NTSC 4:1:1 *****
+ *
+ *   libdv's 4:2:2-packed representation  (chroma repeated horizontally)
+ *	
+ *  23		Ft Y00.Cb00.Y01.Cr00.Y02.Cb00.Y03.Cr00 Y04.Cb04.Y05.Cr04.Y06.Cb04.Y07.Cr04
+ *		    ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^
+ * 285		Fb Y00.Cb00.Y01.Cr00.Y02.Cb00.Y03.Cr00 Y04.Cb04.Y05.Cr04.Y06.Cb04.Y07.Cr04
+ *		    ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^
+ *  24		Ft Y10.Cb10.Y11.Cr10.Y12.Cb10.Y13.Cr10 Y14.Cb14.Y15.Cr14.Y16.Cb14.Y17.Cr14
+ *		    ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^
+ * 286		Fb Y10.Cb10.Y11.Cr10.Y12.Cb10.Y13.Cr10 Y14.Cb14.Y15.Cr14.Y16.Cb14.Y17.Cr14
+ *		    ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^
+ *	
+ *   lavtools unpacking into 4:1:1-planar 
+ *	
+ *  23		Ft  Y00.Y01.Y02.Y03.Y04.Y05.Y06.Y07...
+ * 285		Fb  Y00.Y01.Y02.Y03.Y04.Y05.Y06.Y07...
+ *  24		Ft  Y10.Y11.Y12.Y13.Y14.Y15.Y16.Y17...
+ * 286		Fb  Y10.Y11.Y12.Y13.Y14.Y15.Y16.Y17...
+ *		
+ * 23       	Ft  Cb00.Cb04...
+ * 285	        Fb  Cb00.Cb04...
+ * 24       	Ft  Cb10.Cb14...
+ * 286	        Fb  Cb10.Cb14...
+ *		
+ * 23       	Ft  Cr00.Cr04...
+ * 285	        Fb  Cr00.Cr04...
+ * 24       	Ft  Cr10.Cr14...
+ * 286	        Fb  Cr10.Cr14...
+ *		
+ *		
+ * cf. http://www.sony.ca/dvcam/pdfs/dvcam%20format%20overview.pdf
+ */
+static void frame_YUV422_to_planar_411(uint8_t **output, uint8_t *input,
+				       int width, int height)
+{
+    int i, j, w4;
+    uint8_t *y, *cb, *cr;
+
+    w4 = width/4;
+    y = output[0];
+    cb = output[1];
+    cr = output[2];
+
+    for (i=0; i<height;) {
+	/* process two scanlines (one from each field, interleaved) */
+        /* ...top-field scanline */
+        for (j=0; j<w4; j++) {
+            /* packed YUV 422 is: Y[i] U[i] Y[i+1] V[i] */
+            *(y++) =  *(input++);
+            *(cb++) = *(input++);       // NTSC-specific: assert( j%2==0 || cb[-1]==cb[-2]);
+            *(y++) =  *(input++);
+            *(cr++) = *(input++);       // NTSC-specific: assert( j%2==0 || cr[-1]==cr[-2]);
+
+            *(y++) =  *(input++);
+            (input++);                  // NTSC-specific: assert( j%2==0 || cb[-1]==cb[-2]);
+            *(y++) =  *(input++);
+            (input++);                  // NTSC-specific: assert( j%2==0 || cr[-1]==cr[-2]);
+        }
+	i++;
+        /* ...bottom-field scanline */
+        for (j=0; j<w4; j++) {
+            /* packed YUV 422 is: Y[i] U[i] Y[i+1] V[i] */
+            *(y++) =  *(input++);
+            *(cb++) = *(input++);       // NTSC-specific: assert( j%2==0 || cb[-1]==cb[-2]);
+            *(y++) =  *(input++);
+            *(cr++) = *(input++);       // NTSC-specific: assert( j%2==0 || cr[-1]==cr[-2]);
+
+            *(y++) =  *(input++);
+            (input++);                  // NTSC-specific: assert( j%2==0 || cb[-1]==cb[-2]);
+            *(y++) =  *(input++);
+            (input++);                  // NTSC-specific: assert( j%2==0 || cr[-1]==cr[-2]);
+        }
+	i++;
+    }
+}
+
+void frame_YUV422_to_planar(uint8_t **output, uint8_t *input,
+			    int width, int height, int chroma)
+{
+    if (chroma == Y4M_CHROMA_411)
+        frame_YUV422_to_planar_411(output, input, width, height);
+    else
+        frame_YUV422_to_planar_42x(output, input, width, height, chroma);
+                
+}
 #endif /* HAVE_LIBDV */
-
-
 
 /***********************
  *
@@ -245,6 +329,9 @@ void init(LavParam *param, uint8_t *buffer[])
      break;
    case Y4M_CHROMA_422:
      param->chroma_width  = param->output_width  / 2;
+     param->chroma_height = param->output_height;
+   case Y4M_CHROMA_411:
+     param->chroma_width  = param->output_width  / 4;
      param->chroma_height = param->output_height;
      break;
    }
@@ -341,7 +428,7 @@ int readframe(int numframe,
 			     dv_frame, (int *)pitches);
 	frame_YUV422_to_planar(frame, dv_frame[0],
 			       decoder->width,	decoder->height,
-			       (param->chroma == Y4M_CHROMA_422));
+			       param->chroma);
       }
       break;
     default:
@@ -479,6 +566,15 @@ void writeoutYUV4MPEGheader(int out_fd,
        }
        break;
      case e_dv_sample_411:
+       if (param->chroma != Y4M_CHROMA_411)
+	 mjpeg_info("chroma '411' recommended with this input");
+       switch (param->chroma) {
+       case Y4M_CHROMA_420MPEG2:
+       case Y4M_CHROMA_420PALDV:
+	 mjpeg_warn("4:2:0 chroma should be '420jpeg' with this input");
+	 break;
+       }
+       break;
      case e_dv_sample_422:
        if (param->chroma != Y4M_CHROMA_422)
 	 mjpeg_info("chroma '422' recommended with this input");
