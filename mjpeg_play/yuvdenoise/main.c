@@ -33,13 +33,21 @@ int cheight = 0;
 int input_chroma_subsampling = 0;
 int input_interlaced = 0;
 
-int temp_Y_thres = 3;
-int temp_U_thres = 6;
-int temp_V_thres = 6;
+int renoise_Y=0;
+int renoise_U=0;
+int renoise_V=0;
 
-int spat_Y_thres = 3;
-int spat_U_thres = 6;
-int spat_V_thres = 6;
+int temp_Y_thres = 4;
+int temp_U_thres = 8;
+int temp_V_thres = 8;
+
+int med_Y_thres = 2;
+int med_U_thres = 4;
+int med_V_thres = 4;
+
+int spat_Y_thres = 2;
+int spat_U_thres = 4;
+int spat_V_thres = 4;
 
 int gauss_Y = 32;
 int gauss_U = 255;
@@ -76,6 +84,66 @@ uint8_t transform_G8[65536];
 // the data. As YUV 8Bit is compressed in the shaddows, we would need to uncompress
 // this first by applying a gamma-correction of 2.8 for PAL and 2.2 for NTSC...
 // we instead actualy use 1.8 (which is incorrect for both but more "real")
+
+#define CMP(a,b) {int temp;if(a<b){temp=a;a=b;b=temp;}}
+
+int median5 ( int a, int b, int c, int d, int e )
+{
+	CMP(a,b);
+	CMP(b,c);
+	CMP(c,d);
+	CMP(d,e);
+
+	CMP(a,b);
+	CMP(b,c);
+	CMP(c,d);
+
+	CMP(a,b);
+	CMP(b,c);
+
+	return c;
+}
+
+int median9 ( int value[9] )
+{
+	CMP(value[0],value[1]);
+	CMP(value[1],value[2]);
+	CMP(value[2],value[3]);
+	CMP(value[3],value[4]);
+	CMP(value[4],value[5]);
+	CMP(value[5],value[6]);
+	CMP(value[6],value[7]);
+	CMP(value[7],value[8]);
+
+	CMP(value[0],value[1]);
+	CMP(value[1],value[2]);
+	CMP(value[2],value[3]);
+	CMP(value[3],value[4]);
+	CMP(value[4],value[5]);
+	CMP(value[5],value[6]);
+	CMP(value[6],value[7]);
+
+	CMP(value[0],value[1]);
+	CMP(value[1],value[2]);
+	CMP(value[2],value[3]);
+	CMP(value[3],value[4]);
+	CMP(value[4],value[5]);
+	CMP(value[5],value[6]);
+
+	CMP(value[0],value[1]);
+	CMP(value[1],value[2]);
+	CMP(value[2],value[3]);
+	CMP(value[3],value[4]);
+	CMP(value[4],value[5]);
+
+	CMP(value[0],value[1]);
+	CMP(value[1],value[2]);
+	CMP(value[2],value[3]);
+	CMP(value[3],value[4]);
+
+	return value[4];
+}
+
 void
 init_gamma_transform_LUTs (void)
 {
@@ -106,7 +174,7 @@ gauss_filter_plane (uint8_t * plane, int w, int h, int p)
   int x, y;
   int g;
   uint8_t *src = plane;
-  uint8_t *dst = frame8[0];
+  uint8_t *dst = outframe[0]; // use outframe as temp-buffer gets overwritten later
 
 
 // If the gaussian filter is disabled why go thru all the data copying - just
@@ -136,7 +204,7 @@ gauss_filter_plane (uint8_t * plane, int w, int h, int p)
 	dst++;
 	src++;
       }
-  memcpy (plane, frame8[0], w * h);
+  memcpy (plane, outframe[0], w * h);
 }
 
 void
@@ -382,6 +450,24 @@ temporal_filter_planes (int idx, int w, int h, int t)
       }
 }
 
+void renoise (uint8_t * frame, int w, int h, int level )
+{
+static int initialized=0;
+static uint8_t random[8192];
+int i;
+
+if(level==0) return;
+
+if(initialized!=1)
+{
+	for(i=0;i<8192;i++)
+		random[i]=(i+i+i+i*i*i+1-random[i-1]+random[i-20]*random[i-5]*random[i-25])&255;
+	initialized=1;
+}
+
+for(i=0;i<(w*h);i++)
+	*(frame+i)=(*(frame+i)*(255-level)+random[i&8191]*level)/255;
+}
 
 /***********************************************************
  * Main Loop                                               *
@@ -407,7 +493,7 @@ main (int argc, char *argv[])
   mjpeg_log (LOG_INFO,
 	     "-----------------------------------------------------");
 
-  while ((c = getopt (argc, argv, "hvs:t:g:")) != -1)
+  while ((c = getopt (argc, argv, "hvs:t:g:m:r:")) != -1)
     {
       switch (c)
 	{
@@ -470,6 +556,16 @@ main (int argc, char *argv[])
 	    sscanf (optarg, "%i,%i,%i", &gauss_Y, &gauss_U, &gauss_V);
 	    break;
 	  }
+	case 'm':
+	  {
+	    sscanf (optarg, "%i,%i,%i", &med_Y_thres, &med_U_thres, &med_V_thres);
+	    break;
+	  }
+	case 'r':
+	  {
+	    sscanf (optarg, "%i,%i,%i", &renoise_Y, &renoise_U, &renoise_V);
+	    break;
+	  }
 	case '?':
 	default:
 	  exit (1);
@@ -477,12 +573,16 @@ main (int argc, char *argv[])
     }
 
   mjpeg_log (LOG_INFO, "Using the following thresholds:");
+  mjpeg_log (LOG_INFO, " 3D-Median-Filter     [Y,U,V] : [%i,%i,%i]",
+	     med_Y_thres, med_U_thres, med_V_thres);
   mjpeg_log (LOG_INFO, " Spatial-Noise-Filter [Y,U,V] : [%i,%i,%i]",
 	     spat_Y_thres, spat_U_thres, spat_V_thres);
   mjpeg_log (LOG_INFO, " Gauss-Lowpass-Filter [Y,U,V] : [%i,%i,%i]", gauss_Y,
 	     gauss_U, gauss_V);
   mjpeg_log (LOG_INFO, "Temporal-Noise-Filter [Y,U,V] : [%i,%i,%i]",
 	     temp_Y_thres, temp_U_thres, temp_V_thres);
+  mjpeg_log (LOG_INFO, "Renoise               [Y,U,V] : [%i,%i,%i]",
+	     renoise_Y, renoise_U, renoise_V);
 
   /* initialize stream-information */
   y4m_accept_extensions (1);
@@ -641,13 +741,134 @@ main (int argc, char *argv[])
   /* read every frame until the end of the input stream and process it */
   while (Y4M_OK == (errno = y4m_read_frame (fd_in,
 					    &istreaminfo,
-					    &iframeinfo, frame1)))
+					    &iframeinfo, frame8)))
     {
       static uint32_t frame_nr = 0;
       uint8_t *temp[3];
 
       frame_nr++;
 
+
+	{ // test-code 
+	int x,y;
+	int v;
+	int value[9];
+	int ref;
+
+	for(y=0;y<height;y++)
+	for(x=0;x<width;x++)
+		{
+		value[0] = *(frame8[0]+(x-1)+(y-1)*lwidth);
+		value[1] = *(frame8[0]+(x  )+(y-1)*lwidth);
+		value[2] = *(frame8[0]+(x+1)+(y-1)*lwidth);
+		value[3] = *(frame8[0]+(x-1)+(y  )*lwidth);
+		value[4] = *(frame8[0]+(x  )+(y  )*lwidth);
+		value[5] = *(frame8[0]+(x+1)+(y  )*lwidth);
+		value[6] = *(frame8[0]+(x-1)+(y+1)*lwidth);
+		value[7] = *(frame8[0]+(x  )+(y+1)*lwidth);
+		value[8] = *(frame8[0]+(x+1)+(y+1)*lwidth);
+
+		ref = value[4]; // must be stored as median9(...) alters the array
+
+		v = median9 ( value );
+
+		if(abs(v-ref)>med_Y_thres) v=ref;
+
+		*(frame8[0]+x+y*lwidth) = v;
+		}
+	for(y=0;y<cheight;y++)
+	for(x=0;x<cwidth;x++)
+		{
+		value[0] = *(frame8[1]+(x-1)+(y-1)*cwidth);
+		value[1] = *(frame8[1]+(x  )+(y-1)*cwidth);
+		value[2] = *(frame8[1]+(x+1)+(y-1)*cwidth);
+		value[3] = *(frame8[1]+(x-1)+(y  )*cwidth);
+		value[4] = *(frame8[1]+(x  )+(y  )*cwidth);
+		value[5] = *(frame8[1]+(x+1)+(y  )*cwidth);
+		value[6] = *(frame8[1]+(x-1)+(y+1)*cwidth);
+		value[7] = *(frame8[1]+(x  )+(y+1)*cwidth);
+		value[8] = *(frame8[1]+(x+1)+(y+1)*cwidth);
+
+		ref = value[4]; // must be stored as median9(...) alters the array
+
+		v = median9 ( value );
+
+		if(abs(v-ref)>med_Y_thres) v=ref;
+
+		*(frame8[1]+x+y*cwidth) = v;
+
+		value[0] = *(frame8[2]+(x-1)+(y-1)*cwidth);
+		value[1] = *(frame8[2]+(x  )+(y-1)*cwidth);
+		value[2] = *(frame8[2]+(x+1)+(y-1)*cwidth);
+		value[3] = *(frame8[2]+(x-1)+(y  )*cwidth);
+		value[4] = *(frame8[2]+(x  )+(y  )*cwidth);
+		value[5] = *(frame8[2]+(x+1)+(y  )*cwidth);
+		value[6] = *(frame8[2]+(x-1)+(y+1)*cwidth);
+		value[7] = *(frame8[2]+(x  )+(y+1)*cwidth);
+		value[8] = *(frame8[2]+(x+1)+(y+1)*cwidth);
+
+		ref = value[4]; // must be stored as median9(...) alters the array
+
+		v = median9 ( value );
+
+		if(abs(v-ref)>med_Y_thres) v=ref;
+
+		*(frame8[2]+x+y*cwidth) = v;
+
+		}
+	}
+
+	if(1)
+	{ // test-code 
+	int x,y;
+	int a,b,c,d,e,v;
+
+	for(y=0;y<height;y++)
+	for(x=0;x<width;x++)
+		{
+		a = *(frame8[0]+x+y*width);
+		b = *(frame9[0]+x+y*width);
+		c = *(framea[0]+x+y*width);
+		d = *(frameb[0]+x+y*width);
+		e = *(framec[0]+x+y*width);
+
+		v = median5 ( a,b,c,d,e );
+
+		if(abs(v-c)>med_Y_thres) v=c;
+
+		*(frame1[0]+x+y*width) = v;
+		}
+
+	for(y=0;y<height;y++)
+	for(x=0;x<width;x++)
+		{
+		a = *(frame8[1]+x+y*width);
+		b = *(frame9[1]+x+y*width);
+		c = *(framea[1]+x+y*width);
+		d = *(frameb[1]+x+y*width);
+		e = *(framec[1]+x+y*width);
+
+		v = median5 ( a,b,c,d,e );
+
+		if(abs(v-c)>med_U_thres) v=c;
+
+		*(frame1[1]+x+y*width) = v;
+
+		a = *(frame8[2]+x+y*width);
+		b = *(frame9[2]+x+y*width);
+		c = *(framea[2]+x+y*width);
+		d = *(frameb[2]+x+y*width);
+		e = *(framec[2]+x+y*width);
+
+		v = median5 ( a,b,c,d,e );
+
+		if(abs(v-c)>med_V_thres) v=c;
+
+		*(frame1[2]+x+y*width) = v;
+		}
+	}
+
+#if 1
       adaptive_filter_plane (frame1[0], lwidth, lheight, spat_Y_thres);
       adaptive_filter_plane (frame1[1], cwidth, cheight, spat_U_thres);
       adaptive_filter_plane (frame1[2], cwidth, cheight, spat_V_thres);
@@ -660,8 +881,17 @@ main (int argc, char *argv[])
       temporal_filter_planes (1, cwidth, cheight, temp_U_thres);
       temporal_filter_planes (2, cwidth, cheight, temp_V_thres);
 
-      if (frame_nr >= 4)
+      // a completely denoised image looks ugly as our brain is trained to 
+      // expect structures even in clean parts of the image. Static-Noise 
+      // is something not so harmfull to an encoder. But if you need the
+      // least bitrate turn it off...
+      renoise (outframe[0], lwidth, lheight, renoise_Y );
+      renoise (outframe[1], cwidth, cheight, renoise_U );
+      renoise (outframe[2], cwidth, cheight, renoise_V );
+
+      if (frame_nr >= 6)
 	y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, outframe);
+#endif
 
       // rotate buffer pointers to rotate input-buffers
       temp[0] = framef[0];
