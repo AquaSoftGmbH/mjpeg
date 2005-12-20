@@ -42,6 +42,13 @@ This sets the thresholds for the 3D median filter.
 (default=2,4,4)
 
 .TP 4
+.BI \-r " y,u,v [0..255] Renoising filter thresholds"
+This sets the thresholds for adding random \"noise\" back into the video stream.
+Default is disabled (not adding random noise).
+.br
+(default=0,0,0)
+
+.TP 4
 .BI \-t " y,u,v [0..255] Temporal noise\-filter thresholds"
 This sets the thresholds for the temporal noise\-filter.
 Values above 12 may introduce ghosting.  The default value for Y' (y)
