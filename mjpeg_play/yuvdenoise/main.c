@@ -827,16 +827,13 @@ main (int argc, char *argv[])
 		       "              chroma-planes... It sometimes may be usefull, to smooth");
 	    mjpeg_log (LOG_INFO,
 		       "              the luma-plane, too. Default is to only smooth it very very");
-	    mjpeg_log (LOG_INFO,
-		       "              little, just to get rid of jaggies.\n");
-	    mjpeg_log (LOG_INFO,
-		       " -t y,u,v     This sets the thresholds for the temporal noise-filter.");
-	    mjpeg_log (LOG_INFO,
-		       "              Values above 12 may introduce ghosts. But usually you can't");
-	    mjpeg_log (LOG_INFO,
-		       "              see them in a sequence of moving frames until you pass 18.");
-	    mjpeg_log (LOG_INFO,
-		       "              This is due to the fact that our brain supresses these.");
+	    mjpeg_log (LOG_INFO,"              little, just to get rid of jaggies.\n");
+	    mjpeg_log (LOG_INFO," -t y,u,v     This sets the thresholds for the temporal noise-filter.");
+	    mjpeg_log (LOG_INFO,"              Values above 12 may introduce ghosts. But usually you can't");
+	    mjpeg_log (LOG_INFO,"              see them in a sequence of moving frames until you pass 18.");
+	    mjpeg_log (LOG_INFO,"              This is due to the fact that our brain supresses these.");
+	    mjpeg_log (LOG_INFO," -m y,u,v     This sets the thresholds for the (pseudo) median-noise-filter.\n");
+	    mjpeg_log (LOG_INFO," -r y,u,v     add this amount of static noise to the denoised image.\n");
 
 	    exit (0);
 	    break;
