@@ -49,7 +49,7 @@ int spat_Y_thres = 2;
 int spat_U_thres = 4;
 int spat_V_thres = 4;
 
-int gauss_Y = 32;
+int gauss_Y = 16;
 int gauss_U = 255;
 int gauss_V = 255;
 
@@ -68,6 +68,7 @@ uint8_t *framec[3];
 uint8_t *framed[3];
 uint8_t *framee[3];
 uint8_t *framef[3];
+uint8_t *scratchplane;
 uint8_t *outframe[3];
 
 int buff_offset;
@@ -144,6 +145,267 @@ int median9 ( int value[9] )
 	return value[4];
 }
 
+int median27 (uint8_t value[27] )
+{
+	CMP(value[ 0],value[ 1]);
+	CMP(value[ 1],value[ 2]);
+	CMP(value[ 2],value[ 3]);
+	CMP(value[ 3],value[ 4]);
+	CMP(value[ 4],value[ 5]);
+	CMP(value[ 5],value[ 6]);
+	CMP(value[ 6],value[ 7]);
+	CMP(value[ 7],value[ 8]);
+	CMP(value[ 8],value[ 9]);
+	CMP(value[ 9],value[10]);
+	CMP(value[10],value[11]);
+	CMP(value[11],value[12]);
+	CMP(value[12],value[13]);
+	CMP(value[13],value[14]);
+	CMP(value[14],value[15]);
+	CMP(value[15],value[16]);
+	CMP(value[16],value[17]);
+	CMP(value[17],value[18]);
+	CMP(value[18],value[19]);
+	CMP(value[19],value[20]);
+	CMP(value[20],value[21]);
+	CMP(value[21],value[22]);
+	CMP(value[22],value[23]);
+	CMP(value[23],value[24]);
+	CMP(value[24],value[25]);
+	CMP(value[25],value[26]);
+	CMP(value[26],value[27]);
+
+	CMP(value[ 0],value[ 1]);
+	CMP(value[ 1],value[ 2]);
+	CMP(value[ 2],value[ 3]);
+	CMP(value[ 3],value[ 4]);
+	CMP(value[ 4],value[ 5]);
+	CMP(value[ 5],value[ 6]);
+	CMP(value[ 6],value[ 7]);
+	CMP(value[ 7],value[ 8]);
+	CMP(value[ 8],value[ 9]);
+	CMP(value[ 9],value[10]);
+	CMP(value[10],value[11]);
+	CMP(value[11],value[12]);
+	CMP(value[12],value[13]);
+	CMP(value[13],value[14]);
+	CMP(value[14],value[15]);
+	CMP(value[15],value[16]);
+	CMP(value[16],value[17]);
+	CMP(value[17],value[18]);
+	CMP(value[18],value[19]);
+	CMP(value[19],value[20]);
+	CMP(value[20],value[21]);
+	CMP(value[21],value[22]);
+	CMP(value[22],value[23]);
+	CMP(value[23],value[24]);
+	CMP(value[24],value[25]);
+	CMP(value[25],value[26]);
+
+	CMP(value[ 0],value[ 1]);
+	CMP(value[ 1],value[ 2]);
+	CMP(value[ 2],value[ 3]);
+	CMP(value[ 3],value[ 4]);
+	CMP(value[ 4],value[ 5]);
+	CMP(value[ 5],value[ 6]);
+	CMP(value[ 6],value[ 7]);
+	CMP(value[ 7],value[ 8]);
+	CMP(value[ 8],value[ 9]);
+	CMP(value[ 9],value[10]);
+	CMP(value[10],value[11]);
+	CMP(value[11],value[12]);
+	CMP(value[12],value[13]);
+	CMP(value[13],value[14]);
+	CMP(value[14],value[15]);
+	CMP(value[15],value[16]);
+	CMP(value[16],value[17]);
+	CMP(value[17],value[18]);
+	CMP(value[18],value[19]);
+	CMP(value[19],value[20]);
+	CMP(value[20],value[21]);
+	CMP(value[21],value[22]);
+	CMP(value[22],value[23]);
+	CMP(value[23],value[24]);
+	CMP(value[24],value[25]);
+
+	CMP(value[ 0],value[ 1]);
+	CMP(value[ 1],value[ 2]);
+	CMP(value[ 2],value[ 3]);
+	CMP(value[ 3],value[ 4]);
+	CMP(value[ 4],value[ 5]);
+	CMP(value[ 5],value[ 6]);
+	CMP(value[ 6],value[ 7]);
+	CMP(value[ 7],value[ 8]);
+	CMP(value[ 8],value[ 9]);
+	CMP(value[ 9],value[10]);
+	CMP(value[10],value[11]);
+	CMP(value[11],value[12]);
+	CMP(value[12],value[13]);
+	CMP(value[13],value[14]);
+	CMP(value[14],value[15]);
+	CMP(value[15],value[16]);
+	CMP(value[16],value[17]);
+	CMP(value[17],value[18]);
+	CMP(value[18],value[19]);
+	CMP(value[19],value[20]);
+	CMP(value[20],value[21]);
+	CMP(value[21],value[22]);
+	CMP(value[22],value[23]);
+	CMP(value[23],value[24]);
+
+	CMP(value[ 0],value[ 1]);
+	CMP(value[ 1],value[ 2]);
+	CMP(value[ 2],value[ 3]);
+	CMP(value[ 3],value[ 4]);
+	CMP(value[ 4],value[ 5]);
+	CMP(value[ 5],value[ 6]);
+	CMP(value[ 6],value[ 7]);
+	CMP(value[ 7],value[ 8]);
+	CMP(value[ 8],value[ 9]);
+	CMP(value[ 9],value[10]);
+	CMP(value[10],value[11]);
+	CMP(value[11],value[12]);
+	CMP(value[12],value[13]);
+	CMP(value[13],value[14]);
+	CMP(value[14],value[15]);
+	CMP(value[15],value[16]);
+	CMP(value[16],value[17]);
+	CMP(value[17],value[18]);
+	CMP(value[18],value[19]);
+	CMP(value[19],value[20]);
+	CMP(value[20],value[21]);
+	CMP(value[21],value[22]);
+
+	CMP(value[ 0],value[ 1]);
+	CMP(value[ 1],value[ 2]);
+	CMP(value[ 2],value[ 3]);
+	CMP(value[ 3],value[ 4]);
+	CMP(value[ 4],value[ 5]);
+	CMP(value[ 5],value[ 6]);
+	CMP(value[ 6],value[ 7]);
+	CMP(value[ 7],value[ 8]);
+	CMP(value[ 8],value[ 9]);
+	CMP(value[ 9],value[10]);
+	CMP(value[10],value[11]);
+	CMP(value[11],value[12]);
+	CMP(value[12],value[13]);
+	CMP(value[13],value[14]);
+	CMP(value[14],value[15]);
+	CMP(value[15],value[16]);
+	CMP(value[16],value[17]);
+	CMP(value[17],value[18]);
+	CMP(value[18],value[19]);
+	CMP(value[19],value[20]);
+	CMP(value[20],value[21]);
+
+	CMP(value[ 0],value[ 1]);
+	CMP(value[ 1],value[ 2]);
+	CMP(value[ 2],value[ 3]);
+	CMP(value[ 3],value[ 4]);
+	CMP(value[ 4],value[ 5]);
+	CMP(value[ 5],value[ 6]);
+	CMP(value[ 6],value[ 7]);
+	CMP(value[ 7],value[ 8]);
+	CMP(value[ 8],value[ 9]);
+	CMP(value[ 9],value[10]);
+	CMP(value[10],value[11]);
+	CMP(value[11],value[12]);
+	CMP(value[12],value[13]);
+	CMP(value[13],value[14]);
+	CMP(value[14],value[15]);
+	CMP(value[15],value[16]);
+	CMP(value[16],value[17]);
+	CMP(value[17],value[18]);
+	CMP(value[18],value[19]);
+
+	CMP(value[ 0],value[ 1]);
+	CMP(value[ 1],value[ 2]);
+	CMP(value[ 2],value[ 3]);
+	CMP(value[ 3],value[ 4]);
+	CMP(value[ 4],value[ 5]);
+	CMP(value[ 5],value[ 6]);
+	CMP(value[ 6],value[ 7]);
+	CMP(value[ 7],value[ 8]);
+	CMP(value[ 8],value[ 9]);
+	CMP(value[ 9],value[10]);
+	CMP(value[10],value[11]);
+	CMP(value[11],value[12]);
+	CMP(value[12],value[13]);
+	CMP(value[13],value[14]);
+	CMP(value[14],value[15]);
+	CMP(value[15],value[16]);
+	CMP(value[16],value[17]);
+	CMP(value[17],value[18]);
+
+	CMP(value[ 0],value[ 1]);
+	CMP(value[ 1],value[ 2]);
+	CMP(value[ 2],value[ 3]);
+	CMP(value[ 3],value[ 4]);
+	CMP(value[ 4],value[ 5]);
+	CMP(value[ 5],value[ 6]);
+	CMP(value[ 6],value[ 7]);
+	CMP(value[ 7],value[ 8]);
+	CMP(value[ 8],value[ 9]);
+	CMP(value[ 9],value[10]);
+	CMP(value[10],value[11]);
+	CMP(value[11],value[12]);
+	CMP(value[12],value[13]);
+	CMP(value[13],value[14]);
+	CMP(value[14],value[15]);
+	CMP(value[15],value[16]);
+
+	CMP(value[ 0],value[ 1]);
+	CMP(value[ 1],value[ 2]);
+	CMP(value[ 2],value[ 3]);
+	CMP(value[ 3],value[ 4]);
+	CMP(value[ 4],value[ 5]);
+	CMP(value[ 5],value[ 6]);
+	CMP(value[ 6],value[ 7]);
+	CMP(value[ 7],value[ 8]);
+	CMP(value[ 8],value[ 9]);
+	CMP(value[ 9],value[10]);
+	CMP(value[10],value[11]);
+	CMP(value[11],value[12]);
+	CMP(value[12],value[13]);
+	CMP(value[13],value[14]);
+	CMP(value[14],value[15]);
+
+	CMP(value[ 0],value[ 1]);
+	CMP(value[ 1],value[ 2]);
+	CMP(value[ 2],value[ 3]);
+	CMP(value[ 3],value[ 4]);
+	CMP(value[ 4],value[ 5]);
+	CMP(value[ 5],value[ 6]);
+	CMP(value[ 6],value[ 7]);
+	CMP(value[ 7],value[ 8]);
+	CMP(value[ 8],value[ 9]);
+	CMP(value[ 9],value[10]);
+	CMP(value[10],value[11]);
+	CMP(value[11],value[12]);
+	CMP(value[12],value[13]);
+	CMP(value[13],value[14]);
+
+
+	return value[14];
+}
+uint8_t get_median ( uint8_t * pix_list, int max_index )
+{
+	int i;
+	int j;
+	int n = max_index;
+
+	for(i=0;i<max_index;i++)
+	{
+		for(j=0;j<n;j++)
+		{
+			CMP ( pix_list[j],pix_list[j+1] );
+		}
+		n--;
+	}
+	return pix_list[max_index/2];
+}
+
+
 void
 init_gamma_transform_LUTs (void)
 {
@@ -174,7 +436,7 @@ gauss_filter_plane (uint8_t * plane, int w, int h, int p)
   int x, y;
   int g;
   uint8_t *src = plane;
-  uint8_t *dst = outframe[0]; // use outframe as temp-buffer gets overwritten later
+  uint8_t *dst = scratchplane;
 
 
 // If the gaussian filter is disabled why go thru all the data copying - just
@@ -204,7 +466,7 @@ gauss_filter_plane (uint8_t * plane, int w, int h, int p)
 	dst++;
 	src++;
       }
-  memcpy (plane, outframe[0], w * h);
+  memcpy (plane, scratchplane, w * h);
 }
 
 void
@@ -469,6 +731,51 @@ for(i=0;i<(w*h);i++)
 	*(frame+i)=(*(frame+i)*(255-level)+random[i&8191]*level)/255;
 }
 
+void filter_plane_median ( uint8_t * plane, int w, int h, int level)
+{
+	int x,y;
+	int sx,sy;
+	int i;
+	uint32_t median;
+	int max_index;
+	uint8_t t=level;
+	uint8_t pix_list[255];
+	uint8_t ref_pixel;
+	uint8_t chk_pixel;
+
+	for(y=0;y<h;y++)
+		for(x=0;x<w;x++)
+		{
+		ref_pixel = *(plane+(x)+(y)*w);
+
+		max_index = 0;
+		for(sy=-6;sy<=6;sy++)
+			for(sx=-6;sx<=6;sx++)
+			{
+			chk_pixel = *(plane+(x+sx)+(y+sy)*w);
+			if(abs(chk_pixel-ref_pixel)<t)
+				{
+				pix_list[max_index]=chk_pixel;
+				max_index++;
+				}
+			}
+
+		// median-approximation
+		median = 0;
+		for(i=0;i<max_index;i++)
+		{
+		median += pix_list[i];
+		}
+		if(max_index!=0)
+			median /= max_index;
+		else
+			median = ref_pixel;
+ 
+		*(plane+x+y*w) = median;
+
+		}
+}
+
 /***********************************************************
  * Main Loop                                               *
  ***********************************************************/
@@ -662,8 +969,8 @@ main (int argc, char *argv[])
      * functions to overshot. The biggest overshot is needed for the
      * MC-functions, so we'll use 8*width...
      */
-    buff_offset = width * 8;
-    buff_size = buff_offset * 2 + width * height;
+    buff_offset = lwidth * 8;
+    buff_size = buff_offset * 2 + lwidth * lheight;
 
     frame1[0] = buff_offset + (uint8_t *) malloc (buff_size);
     frame1[1] = buff_offset + (uint8_t *) malloc (buff_size);
@@ -729,6 +1036,8 @@ main (int argc, char *argv[])
     outframe[1] = buff_offset + (uint8_t *) malloc (buff_size);
     outframe[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
+    scratchplane = buff_offset + (uint8_t *) malloc (buff_size);
+
     mjpeg_log (LOG_INFO, "Buffers allocated.");
   }
 
@@ -741,157 +1050,35 @@ main (int argc, char *argv[])
   /* read every frame until the end of the input stream and process it */
   while (Y4M_OK == (errno = y4m_read_frame (fd_in,
 					    &istreaminfo,
-					    &iframeinfo, frame8)))
+					    &iframeinfo, frame1)))
     {
       static uint32_t frame_nr = 0;
       uint8_t *temp[3];
 
       frame_nr++;
 
+      	gauss_filter_plane (frame1[0], lwidth, lheight, gauss_Y);
+      	gauss_filter_plane (frame1[1], cwidth, cheight, gauss_U);
+      	gauss_filter_plane (frame1[2], cwidth, cheight, gauss_V);
 
-	{ // test-code 
-	int x,y;
-	int v;
-	int value[9];
-	int ref;
+	filter_plane_median (frame1[0], lwidth, lheight, med_Y_thres);
+	filter_plane_median (frame1[1], cwidth, cheight, med_U_thres);
+	filter_plane_median (frame1[2], cwidth, cheight, med_V_thres);
 
-	for(y=0;y<height;y++)
-	for(x=0;x<width;x++)
-		{
-		value[0] = *(frame8[0]+(x-1)+(y-1)*lwidth);
-		value[1] = *(frame8[0]+(x  )+(y-1)*lwidth);
-		value[2] = *(frame8[0]+(x+1)+(y-1)*lwidth);
-		value[3] = *(frame8[0]+(x-1)+(y  )*lwidth);
-		value[4] = *(frame8[0]+(x  )+(y  )*lwidth);
-		value[5] = *(frame8[0]+(x+1)+(y  )*lwidth);
-		value[6] = *(frame8[0]+(x-1)+(y+1)*lwidth);
-		value[7] = *(frame8[0]+(x  )+(y+1)*lwidth);
-		value[8] = *(frame8[0]+(x+1)+(y+1)*lwidth);
+	adaptive_filter_plane (frame1[0], lwidth, lheight, spat_Y_thres);
+	adaptive_filter_plane (frame1[1], cwidth, cheight, spat_U_thres);
+	adaptive_filter_plane (frame1[2], cwidth, cheight, spat_V_thres);
 
-		ref = value[4]; // must be stored as median9(...) alters the array
+	temporal_filter_planes (0, lwidth, lheight, temp_Y_thres);
+      	temporal_filter_planes (1, cwidth, cheight, temp_U_thres);
+      	temporal_filter_planes (2, cwidth, cheight, temp_V_thres);
 
-		v = median9 ( value );
+      	renoise (outframe[0], lwidth, lheight, renoise_Y );
+      	renoise (outframe[1], cwidth, cheight, renoise_U );
+      	renoise (outframe[2], cwidth, cheight, renoise_V );
 
-		if(abs(v-ref)>med_Y_thres) v=ref;
-
-		*(frame8[0]+x+y*lwidth) = v;
-		}
-	for(y=0;y<cheight;y++)
-	for(x=0;x<cwidth;x++)
-		{
-		value[0] = *(frame8[1]+(x-1)+(y-1)*cwidth);
-		value[1] = *(frame8[1]+(x  )+(y-1)*cwidth);
-		value[2] = *(frame8[1]+(x+1)+(y-1)*cwidth);
-		value[3] = *(frame8[1]+(x-1)+(y  )*cwidth);
-		value[4] = *(frame8[1]+(x  )+(y  )*cwidth);
-		value[5] = *(frame8[1]+(x+1)+(y  )*cwidth);
-		value[6] = *(frame8[1]+(x-1)+(y+1)*cwidth);
-		value[7] = *(frame8[1]+(x  )+(y+1)*cwidth);
-		value[8] = *(frame8[1]+(x+1)+(y+1)*cwidth);
-
-		ref = value[4]; // must be stored as median9(...) alters the array
-
-		v = median9 ( value );
-
-		if(abs(v-ref)>med_Y_thres) v=ref;
-
-		*(frame8[1]+x+y*cwidth) = v;
-
-		value[0] = *(frame8[2]+(x-1)+(y-1)*cwidth);
-		value[1] = *(frame8[2]+(x  )+(y-1)*cwidth);
-		value[2] = *(frame8[2]+(x+1)+(y-1)*cwidth);
-		value[3] = *(frame8[2]+(x-1)+(y  )*cwidth);
-		value[4] = *(frame8[2]+(x  )+(y  )*cwidth);
-		value[5] = *(frame8[2]+(x+1)+(y  )*cwidth);
-		value[6] = *(frame8[2]+(x-1)+(y+1)*cwidth);
-		value[7] = *(frame8[2]+(x  )+(y+1)*cwidth);
-		value[8] = *(frame8[2]+(x+1)+(y+1)*cwidth);
-
-		ref = value[4]; // must be stored as median9(...) alters the array
-
-		v = median9 ( value );
-
-		if(abs(v-ref)>med_Y_thres) v=ref;
-
-		*(frame8[2]+x+y*cwidth) = v;
-
-		}
-	}
-
-	if(1)
-	{ // test-code 
-	int x,y;
-	int a,b,c,d,e,v;
-
-	for(y=0;y<height;y++)
-	for(x=0;x<width;x++)
-		{
-		a = *(frame8[0]+x+y*width);
-		b = *(frame9[0]+x+y*width);
-		c = *(framea[0]+x+y*width);
-		d = *(frameb[0]+x+y*width);
-		e = *(framec[0]+x+y*width);
-
-		v = median5 ( a,b,c,d,e );
-
-		if(abs(v-c)>med_Y_thres) v=c;
-
-		*(frame1[0]+x+y*width) = v;
-		}
-
-	for(y=0;y<height;y++)
-	for(x=0;x<width;x++)
-		{
-		a = *(frame8[1]+x+y*width);
-		b = *(frame9[1]+x+y*width);
-		c = *(framea[1]+x+y*width);
-		d = *(frameb[1]+x+y*width);
-		e = *(framec[1]+x+y*width);
-
-		v = median5 ( a,b,c,d,e );
-
-		if(abs(v-c)>med_U_thres) v=c;
-
-		*(frame1[1]+x+y*width) = v;
-
-		a = *(frame8[2]+x+y*width);
-		b = *(frame9[2]+x+y*width);
-		c = *(framea[2]+x+y*width);
-		d = *(frameb[2]+x+y*width);
-		e = *(framec[2]+x+y*width);
-
-		v = median5 ( a,b,c,d,e );
-
-		if(abs(v-c)>med_V_thres) v=c;
-
-		*(frame1[2]+x+y*width) = v;
-		}
-	}
-
-#if 1
-      adaptive_filter_plane (frame1[0], lwidth, lheight, spat_Y_thres);
-      adaptive_filter_plane (frame1[1], cwidth, cheight, spat_U_thres);
-      adaptive_filter_plane (frame1[2], cwidth, cheight, spat_V_thres);
-
-      gauss_filter_plane (frame1[0], lwidth, lheight, gauss_Y);
-      gauss_filter_plane (frame1[1], cwidth, cheight, gauss_U);
-      gauss_filter_plane (frame1[2], cwidth, cheight, gauss_V);
-
-      temporal_filter_planes (0, lwidth, lheight, temp_Y_thres);
-      temporal_filter_planes (1, cwidth, cheight, temp_U_thres);
-      temporal_filter_planes (2, cwidth, cheight, temp_V_thres);
-
-      // a completely denoised image looks ugly as our brain is trained to 
-      // expect structures even in clean parts of the image. Static-Noise 
-      // is something not so harmfull to an encoder. But if you need the
-      // least bitrate turn it off...
-      renoise (outframe[0], lwidth, lheight, renoise_Y );
-      renoise (outframe[1], cwidth, cheight, renoise_U );
-      renoise (outframe[2], cwidth, cheight, renoise_V );
-
-      if (frame_nr >= 6)
+      if (frame_nr >= 4)
 	y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, outframe);
-#endif
 
       // rotate buffer pointers to rotate input-buffers
       temp[0] = framef[0];
@@ -959,6 +1146,11 @@ main (int argc, char *argv[])
       frame1[2] = temp[2];
 
     }
+	// write out the left frames...
+	y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame4);
+	y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame3);
+	y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame2);
+	y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);
 
   /* free allocated buffers */
   {
@@ -993,6 +1185,8 @@ main (int argc, char *argv[])
     free (outframe[0] - buff_offset);
     free (outframe[1] - buff_offset);
     free (outframe[2] - buff_offset);
+
+	free (scratchplane - buff_offset);
 
     mjpeg_log (LOG_INFO, "Buffers freed.");
   }
