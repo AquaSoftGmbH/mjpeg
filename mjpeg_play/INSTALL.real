@@ -55,7 +55,8 @@ installing the shared libraries from libquicktime).
 
 COMPILING THE MJPEGTOOLS
 ========================
-Unpack the tarball and run './configure --with-jpeg-mmx=/path/to/jpeg-mmx'
+Unpack the tarball and run 'autogen.sh' to create the configure script.
+Than run './configure --with-jpeg-mmx=/path/to/jpeg-mmx'
 where /path/to/jpeg-mmx is the directory where you just
 compiled JPEG-MMX.  If you do NOT want to include quicktime support you may
 specify '--with-quicktime=no', otherwise the presence of libquicktime will 
