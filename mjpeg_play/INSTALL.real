@@ -37,8 +37,7 @@ of them are not found this will be logged during the ./configure process.
 
 COMPILING SUPPORT LIBRARIES
 ===========================
-The following libraries is strongly recommended for compiling
-the mjpegtools:
+The following library is highly recommended for compiling the mjpegtools:
 
 libquicktime   : http://libquicktime.sourceforge.net/
 
@@ -47,14 +46,15 @@ Optionally (but not recommended):
 JPEG-MMX       : http://sourceforge.net/projects/mjpeg/
 
 The JPEG-MMX only compiles on a IA32 (x86) architecture. If you have a 
-Power PC, AMD64 or something else you cannot use the JPEG-MMX.
+Power PC, AMD64 or other non-IA32 architecture you cannot use the jpeg-mmx
+library.
 
 First, install JPEG-MMX, simply unpack, './configure' and 'make'.
 Do *not* run 'make install'! 
 
-Lastly unpack libquicktime and run './configure', 'make' and 'make install' 
-(it may also be necessary to run 'ldconfig' after installing the shared 
-libraries from libquicktime).
+Lastly unpack libquicktime and run './configure', 'make' and 'make install'.
+As usual when installing new libraries it may be necessary to run 'ldconfig' 
+after 'make install'.
 
 COMPILING THE MJPEGTOOLS
 ========================
