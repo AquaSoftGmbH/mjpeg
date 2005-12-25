@@ -8,13 +8,13 @@ Linux MPEG/MJPEG Audio/Video tools - MJPEG TOOLS
 The mjpegtools are a set of utilities for video-decoding, -recording,
 -playback, -editing and -encoding. Most parts of this software are
 distributed under the terms of the Gnu Public License (GPL). See
-the individual source files for the exact terms. We are known to build and
-install on Linux, BSD and OS/X.  On other systems you are on yor own - maybe
+the individual source files for the exact terms.  Mjpegtools is known to build 
+and install on Linux, BSD and OS/X.  On other systems you are on yor own - maybe
 you'll be lucky.
 
 REQUIRED/RECOMMENDED SOFTWARE
 =============================
-For compiling the mjpegtools, you will at least need the following
+For compiling the mjpegtools you will at least need the following
 pieces of software:
 
 glib           : http://www.gtk.org/
@@ -22,7 +22,7 @@ glib           : http://www.gtk.org/
 libjpeg        : http://www.ijg.org/
 XFree86        : http://www.xfree86.org/
 
-These are almost always included with every distribution by default.
+These are almost always included with every distribution.
 
 However, with this, many of the tools and many features of the tools
 will not be compiled by default. The following software is advised
@@ -32,40 +32,53 @@ Gtk+           : http://www.gtk.org/
 libDV          : http://libdv.sourceforge.net/
 SDL            : http://www.libsdl.org/
 
-Some of these are not installed with default distributions. If any
-of them is not found, you will find out after the ./configure process.
+Some of these are not installed by default with some distributions. If any
+of them are not found this will be logged during the ./configure process.
 
 COMPILING SUPPORT LIBRARIES
 ===========================
-The following libraries are strongly recommended for compiling
+The following libraries is strongly recommended for compiling
 the mjpegtools:
 
-JPEG-MMX       : http://sourceforge.net/projects/mjpeg/
 libquicktime   : http://libquicktime.sourceforge.net/
 
-The JPEG-MMX only compiles on a x86 architecture. If you have a Power PC or
-something else, you cannot use the JPEG-MMX.
+Optionally (but not recommended):
+
+JPEG-MMX       : http://sourceforge.net/projects/mjpeg/
+
+The JPEG-MMX only compiles on a IA32 (x86) architecture. If you have a 
+Power PC, AMD64 or something else you cannot use the JPEG-MMX.
 
 First, install JPEG-MMX, simply unpack, './configure' and 'make'.
 Do *not* run 'make install'! 
 
-Lastly unpack libquicktime and run './configure', 
-'make' and 'make install' (it may also be necessary to run 'ldconfig' after 
-installing the shared libraries from libquicktime).
+Lastly unpack libquicktime and run './configure', 'make' and 'make install' 
+(it may also be necessary to run 'ldconfig' after installing the shared 
+libraries from libquicktime).
 
 COMPILING THE MJPEGTOOLS
 ========================
-Unpack the tarball and run 'autogen.sh' to create the configure script.
-Than run './configure --with-jpeg-mmx=/path/to/jpeg-mmx'
-where /path/to/jpeg-mmx is the directory where you just
-compiled JPEG-MMX.  If you do NOT want to include quicktime support you may
-specify '--with-quicktime=no', otherwise the presence of libquicktime will 
-be autodetected.  You can possibly use other options, such as 
-'--enable-large-file' to enable support for > 2GB file support.
-Binaries compiled with large file support will *not* run on systems lacking 
-large file support!  Next, run 'make' and 'make install'. You're now ready 
-to use the mjpegtools!  The MJPEG HOWTO (mjpeg_howto.txt or 'man mjpegtools') 
-is probably a good place to start.
+Unpack the tarball and run './autogen.sh' to create the configure script.
+
+Then if jpeg-mmx is to be used run 
+
+    './configure --with-jpeg-mmx=/path/to/jpeg-mmx'
+
+where /path/to/jpeg-mmx is the directory where you just compiled JPEG-MMX.   IF
+jpeg-mmx is NOT being used then a simple "./configure" is all that is 
+necessary.
+
+If you do NOT want to include quicktime support you may specify 
+'--with-quicktime=no', otherwise the presence of libquicktime will be 
+autodetected.  This is not recommended since Quicktime is a very useful 
+format.
+
+You can possibly use other options, such as '--enable-large-file' to enable 
+support for > 2GB file support.  This is NOT needed by default since autoconf
+automatically generates the checks for largefile support.  Binaries compiled 
+with large file support will *not* run on systems lacking large file support!  
+Next, run 'make' and 'make install'. You're now ready to use the mjpegtools!
+The MJPEG HOWTO (mjpeg_howto.txt or 'man mjpegtools') is a good place to start.
 
 HELP
 ====
@@ -75,7 +88,7 @@ one of the developers individually.
 
 Have fun,
 
-/Andrew <andrew.stevens@nexgo.de>
+/Andrew <andrew.stevens@mnet-online.de>
 /Gernot <gz@lysator.liu.se>
 /Ronald <rbultje@ronald.bitfreak.net>
 /Bernhard <shadowlord@utanet.at>
