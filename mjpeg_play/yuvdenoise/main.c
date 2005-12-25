@@ -743,6 +743,9 @@ void filter_plane_median ( uint8_t * plane, int w, int h, int level)
 	uint8_t ref_pixel;
 	uint8_t chk_pixel;
 
+	if (level == 0)		/* If nothing to do return now */
+	   return;
+
 	for(y=0;y<h;y++)
 		for(x=0;x<w;x++)
 		{
