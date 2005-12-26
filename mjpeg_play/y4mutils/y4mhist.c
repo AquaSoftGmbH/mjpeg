@@ -24,6 +24,7 @@
 unsigned long long y_stats[256], u_stats[256], v_stats[256];
 unsigned long long fy_stats[256], fu_stats[256], fv_stats[256];
 unsigned long long ly_stats[256], lu_stats[256], lv_stats[256];
+unsigned char vectorfield[260][260];
 /* the l?_stats means till last frame, and f?_stat means the actual frame */
 
 /* For the graphical history output */
@@ -227,7 +228,7 @@ void make_stat()
 	long long num_pixels_y, num_pixels_u, num_pixels_v;
 	long long f_pixels_y, f_pixels_u, f_pixels_v;
 	int peak_y, peak_u, peak_v, peak_fy, peak_fu, peak_fv;
-	int i;
+	int i,j;
 
 	peak_y = 0; peak_u = 0; peak_v = 0;
 	peak_fy = 0; peak_fu = 0; peak_fv = 0;
@@ -351,6 +352,10 @@ void make_stat()
 			}
 		}
 
+		for (i=0; i < 260; i++)
+			for (j=0; j < 260; j++)
+				if (vectorfield[i][j]== 1)
+					pixelColor(screen, (vector_x+ i- 127), (vector_y+ j- 132) ,red);
 
 	SDL_UpdateRect(screen,0,0,0,0);
 	}
@@ -361,7 +366,7 @@ usage(void)
 	{
 	fprintf(stderr, "usage: [-t]  [-v num]\n");
 	fprintf(stderr, "  -t      emit text summary even if graphical mode enabled\n");
-	fprintf(stderr, "  -v=num  enable also the vectorscope, allowed numbers 1-16\n");
+	fprintf(stderr, "  -s=num  enable also the vectorscope, allowed numbers 1-16\n");
 
 	exit(1);
 	}
@@ -385,14 +390,14 @@ main(int argc, char **argv)
 	textout = 1;
 #endif
 
-	while	((i = getopt(argc, argv, "tv:")) != EOF)
+	while	((i = getopt(argc, argv, "ts:")) != EOF)
 		{
 		switch	(i)
 			{
 			case	't':
 				textout = 1;
 				break;
-			case	'v':
+			case	's':
 				do_vectorscope = atoi(optarg);
 				break;
 			default:
@@ -474,10 +479,13 @@ main(int argc, char **argv)
 		for	(i = 0, cp = yuv[2]; i < plane2_l; i++, cp++)
 			v_stats[*cp]++;	/* V */
 #ifdef HAVE_SDLgfx
-		make_stat();
 			
 		if (do_vectorscope >= 1 )
 		{
+		
+		for (i=0; i<260; i++) /* Resetting the vectorfield */
+			for (j=0;j<260;j++)
+				vectorfield[i][j]=0;
 
 		cpx = yuv[1];
 		cpy = yuv[2];
@@ -488,9 +496,8 @@ main(int argc, char **argv)
 				{
 					cpx++;
 					cpy++;
-				
-					pixelColor(screen, vector_x -128 +*cpx,
-	 		      		vector_y+ ((*cpy-128)*-1) ,red);
+
+					vectorfield[*cpx][(*cpy*-1)]=1;
 				}
 
 				/* Here we got to the n'th next line if needed */
@@ -499,7 +506,9 @@ main(int argc, char **argv)
 				cpx = cpx + (pwidth/ss_v) * (do_vectorscope-1);
 			}
 
-		SDL_UpdateRect(screen,0,0,0,0);
+		make_stat(); /* showing the sats */
+
+		SDL_UpdateRect(screen,0,0,0,0); /* updating all */
 		}
 
 		/* Events for SDL */
