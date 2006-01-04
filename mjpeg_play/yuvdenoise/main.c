@@ -41,13 +41,13 @@ int temp_Y_thres = 4;
 int temp_U_thres = 8;
 int temp_V_thres = 8;
 
-int med_Y_thres = 2;
-int med_U_thres = 4;
-int med_V_thres = 4;
+int med_Y_thres = 4;
+int med_U_thres = 8;
+int med_V_thres = 8;
 
-int spat_Y_thres = 2;
-int spat_U_thres = 4;
-int spat_V_thres = 4;
+int spat_Y_thres = 0;
+int spat_U_thres = 0;
+int spat_V_thres = 0;
 
 int gauss_Y = 16;
 int gauss_U = 255;
@@ -60,6 +60,7 @@ uint8_t *frame4[3];
 uint8_t *frame5[3];
 uint8_t *frame6[3];
 uint8_t *frame7[3];
+#if 0
 uint8_t *frame8[3];
 uint8_t *frame9[3];
 uint8_t *framea[3];
@@ -68,6 +69,7 @@ uint8_t *framec[3];
 uint8_t *framed[3];
 uint8_t *framee[3];
 uint8_t *framef[3];
+#endif
 uint8_t *scratchplane;
 uint8_t *outframe[3];
 
@@ -88,6 +90,15 @@ uint8_t transform_G8[65536];
 
 #define CMP(a,b) {int temp;if(a<b){temp=a;a=b;b=temp;}}
 
+int median3 ( int a, int b, int c )
+{
+	CMP(a,b);
+	CMP(b,c);
+	CMP(a,b);
+
+	return b;
+}
+
 int median5 ( int a, int b, int c, int d, int e )
 {
 	CMP(a,b);
@@ -101,6 +112,33 @@ int median5 ( int a, int b, int c, int d, int e )
 
 	CMP(a,b);
 	CMP(b,c);
+
+	return c;
+}
+
+int median7 ( int a, int b, int c, int d, int e, int f, int g )
+{
+	CMP(a,b);
+	CMP(b,c);
+	CMP(c,d);
+	CMP(d,e);
+	CMP(e,f);
+	CMP(f,g);
+
+	CMP(a,b);
+	CMP(b,c);
+	CMP(c,d);
+	CMP(d,e);
+	CMP(e,f);
+
+	CMP(a,b);
+	CMP(b,c);
+	CMP(c,d);
+	CMP(d,e);
+
+	CMP(a,b);
+	CMP(b,c);
+	CMP(c,d);
 
 	return c;
 }
@@ -438,7 +476,7 @@ gauss_filter_plane (uint8_t * plane, int w, int h, int p)
   uint8_t *src = plane;
   uint8_t *dst = scratchplane;
 
-
+  
 // If the gaussian filter is disabled why go thru all the data copying - just
 // return early and speed things up.
   if (p == 0)
@@ -568,6 +606,7 @@ adaptive_filter_plane (uint8_t * ref, int w, int h, uint16_t t)
 void
 temporal_filter_planes (int idx, int w, int h, int t)
 {
+  int tm = 640;
   uint32_t r, i, c, m;
   int32_t d;
   int x;
@@ -592,19 +631,62 @@ temporal_filter_planes (int idx, int w, int h, int t)
       t *= 256;
       for (x = 0; x < (w * h); x++)
 	{
-	  r = transform_L16[*(f4 - 1 - w)];
-	  r += transform_L16[*(f4 - w)];
-	  r += transform_L16[*(f4 + 1 - w)];
-	  r += transform_L16[*(f4 - 1)];
-	  r += transform_L16[*(f4)];
-	  r += transform_L16[*(f4 + 1)];
-	  r += transform_L16[*(f4 - 1 + w)];
-	  r += transform_L16[*(f4 + w)];
-	  r += transform_L16[*(f4 + 1 + w)];
-	  r /= 9;
+	// at first try to get a temporal median filtered reference
+	// this will calm down small irregular temporal variations
+	  r = transform_L16[median7( *(f1),*(f2),*(f3),*(f4),*(f5),*(f6),*(f7) )];
+	  d = r-transform_L16[*(f4)];
+	  d = d<0? -d:d;
 
-	  i = transform_L16[*(f4)] * (t + 1);
+	if (d>(tm))
+	{
+	  r = transform_L16[median5( *(f2),*(f3),*(f4),*(f5),*(f6) )];
+	}
+
+	if (d>(tm))
+	{
+	  r = transform_L16[median3( *(f3),*(f4),*(f5) )];
+	}
+
+	if (d>(tm))
+	{
+	  r = transform_L16[*(f4)];
+	}
+
+	  i = r * (t + 1);
 	  c = (t + 1);
+
+          m  = *(f1);
+          m += *(f2);
+          m += *(f3);
+          m += *(f5);
+          m += *(f6);
+          m += *(f7);
+	  m /= 6;
+
+	  d = t - abs (r - transform_L16[m]);
+	  d = d < 0 ? 0 : d;
+	  c = c + d;
+	  i = i + d * transform_L16[m];
+
+          m  = *(f1);
+          m += *(f2);
+          m += *(f3);
+	  m /= 3;
+
+	  d = t - abs (r - transform_L16[m]);
+	  d = d < 0 ? 0 : d;
+	  c = c + d;
+	  i = i + d * transform_L16[m];
+
+          m  = *(f5);
+          m += *(f6);
+          m += *(f7);
+	  m /= 3;
+
+	  d = t - abs (r - transform_L16[m]);
+	  d = d < 0 ? 0 : d;
+	  c = c + d;
+	  i = i + d * transform_L16[m];
 
 	  d = t - abs (r - transform_L16[*(f1)]);
 	  d = d < 0 ? 0 : d;
@@ -737,46 +819,92 @@ void filter_plane_median ( uint8_t * plane, int w, int h, int level)
 	int sx,sy;
 	int i;
 	uint32_t median;
-	int max_index;
-	uint8_t t=level;
-	uint8_t pix_list[255];
-	uint8_t ref_pixel;
-	uint8_t chk_pixel;
+	int t;
+	uint16_t ref_pixel;
+	uint16_t chk_pixel;
+	uint32_t accu=0;
+	uint32_t cnt=0;
+	uint8_t * p;
+	int32_t a;
 
-	if (level == 0)		/* If nothing to do return now */
-	   return;
+	if(level==0) return;
 
+	if(w==lwidth)
+	{
+	t = 128*level;
+	for(y=0;y<h;y++)
+		for(x=0;x<w;x++)
+		{
+		ref_pixel = transform_L16[*(plane+(x)+(y)*w)]/2;
+
+		cnt=0;
+		accu=0;
+
+		p = plane+(x-4)+(y-4)*w;
+
+		for(sy=0;sy<=8;sy++)
+		{
+			for(sx=0;sx<=8;sx++)
+			{
+			chk_pixel = transform_L16[*(p)]/2;
+			p++;
+
+			a = chk_pixel-ref_pixel;
+			a = a<0? -a:a;
+			a = t-a;
+			a = a<0? 0:a;
+
+			accu += chk_pixel*a;
+			cnt +=a;
+
+			}
+		p += w-8;
+		}
+
+		median = (accu/cnt)+1; 
+
+		*(plane+x+y*w) = transform_G8[median*2];
+
+		}
+	}
+	else
+	{
+	t = level;
 	for(y=0;y<h;y++)
 		for(x=0;x<w;x++)
 		{
 		ref_pixel = *(plane+(x)+(y)*w);
 
-		max_index = 0;
-		for(sy=-6;sy<=6;sy++)
-			for(sx=-6;sx<=6;sx++)
-			{
-			chk_pixel = *(plane+(x+sx)+(y+sy)*w);
-			if(abs(chk_pixel-ref_pixel)<t)
-				{
-				pix_list[max_index]=chk_pixel;
-				max_index++;
-				}
-			}
+		cnt=0;
+		accu=0;
 
-		// median-approximation
-		median = 0;
-		for(i=0;i<max_index;i++)
+		p = plane+(x-4)+(y-4)*w;
+
+		for(sy=0;sy<=8;sy++)
 		{
-		median += pix_list[i];
+			for(sx=0;sx<=8;sx++)
+			{
+			chk_pixel = *(p);
+			p++;
+
+			a = chk_pixel-ref_pixel;
+			a = a<0? -a:a;
+			a = t-a;
+			a = a<0? 0:a;
+
+			accu += chk_pixel*a;
+			cnt +=a;
+
+			}
+		p += w-8;
 		}
-		if(max_index!=0)
-			median /= max_index;
-		else
-			median = ref_pixel;
- 
+
+		median = accu/cnt; 
+
 		*(plane+x+y*w) = median;
 
 		}
+	}
 }
 
 /***********************************************************
@@ -999,7 +1127,7 @@ main (int argc, char *argv[])
     frame7[0] = buff_offset + (uint8_t *) malloc (buff_size);
     frame7[1] = buff_offset + (uint8_t *) malloc (buff_size);
     frame7[2] = buff_offset + (uint8_t *) malloc (buff_size);
-
+#if 0
     frame8[0] = buff_offset + (uint8_t *) malloc (buff_size);
     frame8[1] = buff_offset + (uint8_t *) malloc (buff_size);
     frame8[2] = buff_offset + (uint8_t *) malloc (buff_size);
@@ -1031,7 +1159,7 @@ main (int argc, char *argv[])
     framef[0] = buff_offset + (uint8_t *) malloc (buff_size);
     framef[1] = buff_offset + (uint8_t *) malloc (buff_size);
     framef[2] = buff_offset + (uint8_t *) malloc (buff_size);
-
+#endif
     outframe[0] = buff_offset + (uint8_t *) malloc (buff_size);
     outframe[1] = buff_offset + (uint8_t *) malloc (buff_size);
     outframe[2] = buff_offset + (uint8_t *) malloc (buff_size);
@@ -1081,10 +1209,10 @@ main (int argc, char *argv[])
 	y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, outframe);
 
       // rotate buffer pointers to rotate input-buffers
-      temp[0] = framef[0];
-      temp[1] = framef[1];
-      temp[2] = framef[2];
-
+      temp[0] = frame7[0];
+      temp[1] = frame7[1];
+      temp[2] = frame7[2];
+#if 0
       framef[0] = framee[0];
       framef[1] = framee[1];
       framef[2] = framee[2];
@@ -1116,7 +1244,7 @@ main (int argc, char *argv[])
       frame8[0] = frame7[0];
       frame8[1] = frame7[1];
       frame8[2] = frame7[2];
-
+#endif
       frame7[0] = frame6[0];
       frame7[1] = frame6[1];
       frame7[2] = frame6[2];
