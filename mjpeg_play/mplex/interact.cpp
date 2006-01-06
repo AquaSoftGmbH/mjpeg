@@ -65,6 +65,7 @@ MultiplexJob::MultiplexJob()
     audio_offset = 0;
     sector_size = 2048;
     VBR = false;
+    CBR = false;
     mpeg = 1;
     mux_format = MPEG_FORMAT_MPEG1;
     multifile_segment = false;

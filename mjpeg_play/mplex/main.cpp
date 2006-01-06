@@ -262,7 +262,7 @@ private:
 };
 
 const char CmdLineMultiplexJob::short_options[] =
-    "o:i:b:r:O:v:f:l:s:S:p:W:L:VMh";
+    "o:i:b:r:O:v:f:l:s:S:p:W:L:VCMh";
 #if defined(HAVE_GETOPT_LONG)
 struct option CmdLineMultiplexJob::long_options[] = 
 {
@@ -273,8 +273,9 @@ struct option CmdLineMultiplexJob::long_options[] =
 	{ "video-buffer",      1, 0, 'b' },
 	{ "lpcm-params",       1, 0, 'L' },
 	{ "output",            1, 0, 'o' },
-	{ "sync-offset",    	1, 0, 'O' },
-	{ "vbr",      	        1, 0, 'V' },
+	{ "sync-offset",       1, 0, 'O' },
+	{ "vbr",      	       1, 0, 'V' },
+    { "cbr",               1, 0, 'C' },
 	{ "system-headers",    1, 0, 'h' },
 	{ "ignore-seqend-markers",     0, 0, 'M' },
 	{ "max-segment-size",  1, 0, 'S' },
@@ -290,44 +291,49 @@ struct option CmdLineMultiplexJob::long_options[] =
 
 CmdLineMultiplexJob::CmdLineMultiplexJob(unsigned int argc, char *argv[]) :
 	MultiplexJob()
+
 {
     int n;
     outfile_pattern = NULL;
-    
+
 #if defined(HAVE_GETOPT_LONG)
-	while( (n=getopt_long(argc,argv,short_options,long_options, NULL)) != -1 )
+
+    while( (n=getopt_long(argc,argv,short_options,long_options, NULL)) != -1 )
 #else
+
     while( (n=getopt(argc,argv,short_options)) != -1 )
 #endif
-	{
-		switch(n)
-		{
+
+    {
+        switch(n)
+        {
         case 0 :
             break;
-		case 'o' :
-			outfile_pattern = optarg;
-			break;
+        case 'o' :
+            outfile_pattern = optarg;
+            break;
         case 'i' :
             vdr_index_pathname = optarg;
             break;
-		case 'v' :
-			verbose = atoi(optarg);
-			if( verbose < 0 || verbose > 2 )
-				Usage(argv[0]);
-			break;
+        case 'v' :
+            verbose = atoi(optarg);
+            if( verbose < 0 || verbose > 2 )
+                Usage(argv[0]);
+            break;
+        case 'V' :
+            VBR = true;
+            break;
+        case 'C' :
+            CBR = false;
+            break;
+        case 'h' :
+            always_system_headers = true;
+            break;
 
-		case 'V' :
-			VBR = true;
-			break;
-	  
-		case 'h' :
-			always_system_headers = true;
-			break;
-
-		case 'b' :
+        case 'b' :
             if( ! ParseVideoOpt( optarg ) )
             {
-                mjpeg_error( "Illegal video decoder buffer size(s): %s", 
+                mjpeg_error( "Illegal video decoder buffer size(s): %s",
                              optarg );
                 Usage(argv[0]);
             }
@@ -340,76 +346,75 @@ CmdLineMultiplexJob::CmdLineMultiplexJob(unsigned int argc, char *argv[]) :
             }
             break;
 
-		case 'r':
-			data_rate = atoi(optarg);
-			if( data_rate < 0 )
-				Usage(argv[0]);
-			/* Convert from kbit/sec (user spec) to 50B/sec units... */
-			data_rate = (( data_rate * 1000 / 8 + 49) / 50 ) * 50;
-			break;
+        case 'r':
+            data_rate = atoi(optarg);
+            if( data_rate < 0 )
+                Usage(argv[0]);
+            /* Convert from kbit/sec (user spec) to 50B/sec units... */
+            data_rate = (( data_rate * 1000 / 8 + 49) / 50 ) * 50;
+            break;
 
-		case 'O':
-			if( ! ParseTimeOffset(optarg) )
-			{
-				mjpeg_error( "Time offset units if specified must: ms|s|mpt" );
-				Usage(argv[0]);
-			}
-			break;
-          
-		case 'l' : 
- 			max_PTS = atoi(optarg);
-			if( max_PTS < 1  )
-				Usage(argv[0]);
-			break;
-		
-		case 'p' : 
-			packets_per_pack = atoi(optarg);
-			if( packets_per_pack < 1 || packets_per_pack > 100  )
-				Usage(argv[0]);
-			break;
-		
-	  
-		case 'f' :
-			mux_format = atoi(optarg);
-			if( mux_format < MPEG_FORMAT_MPEG1 || mux_format > MPEG_FORMAT_LAST
-                )
-				Usage(argv[0]);
-			break;
-		case 's' :
-			sector_size = atoi(optarg);
-			if( sector_size < 256 || sector_size > 16384 )
-				Usage(argv[0]);
-			break;
-		case 'S' :
-			max_segment_size = atoi(optarg);
-			if( max_segment_size < 0  )
-				Usage(argv[0]);
-			break;
-		case 'M' :
-			multifile_segment = true;
-			break;
+        case 'O':
+            if( ! ParseTimeOffset(optarg) )
+            {
+                mjpeg_error( "Time offset units if specified must: ms|s|mpt" );
+                Usage(argv[0]);
+            }
+            break;
+
+        case 'l' :
+            max_PTS = atoi(optarg);
+            if( max_PTS < 1  )
+                Usage(argv[0]);
+            break;
+
+        case 'p' :
+            packets_per_pack = atoi(optarg);
+            if( packets_per_pack < 1 || packets_per_pack > 100  )
+                Usage(argv[0]);
+            break;
+
+
+        case 'f' :
+            mux_format = atoi(optarg);
+            if( mux_format < MPEG_FORMAT_MPEG1 || mux_format > MPEG_FORMAT_LAST
+              )
+                Usage(argv[0]);
+            break;
+        case 's' :
+            sector_size = atoi(optarg);
+            if( sector_size < 256 || sector_size > 16384 )
+                Usage(argv[0]);
+            break;
+        case 'S' :
+            max_segment_size = atoi(optarg);
+            if( max_segment_size < 0  )
+                Usage(argv[0]);
+            break;
+        case 'M' :
+            multifile_segment = true;
+            break;
         case 'W' :
             if( ! ParseWorkaroundOpt( optarg ) )
             {
                 Usage(argv[0]);
             }
             break;
-		case '?' :
-		default :
-			Usage(argv[0]);
-			break;
-		}
-	}
-	if (argc - optind < 1 || outfile_pattern == NULL)
-    {	
-		Usage(argv[0]);
+        case '?' :
+        default :
+            Usage(argv[0]);
+            break;
+        }
     }
-	(void)mjpeg_default_handler_verbosity(verbose);
-	mjpeg_info( "mplex version %s (%s %s)",VERSION,MPLEX_VER,MPLEX_DATE );
+    if (argc - optind < 1 || outfile_pattern == NULL)
+    {
+        Usage(argv[0]);
+    }
+    (void)mjpeg_default_handler_verbosity(verbose);
+    mjpeg_info( "mplex version %s (%s %s)",VERSION,MPLEX_VER,MPLEX_DATE );
 
     InputStreamsFromCmdLine( argc-(optind-1), argv+optind-1);
 }
-
 /*************************************************************************
  Usage banner for the command line wrapper.
 *************************************************************************/
@@ -442,7 +447,9 @@ void CmdLineMultiplexJob::Usage(char *str)
 	"--sector-size|-s num\n"
     "  Specify sector size in bytes for generic formats [256..16384]\n"
     "--vbr|-V\n"
-    "  Multiplex variable bit-rate video\n"
+    "  Force variable bit-rate video multiplexing\n"
+    "--cbr|-C\n"
+    "  Force constant bit-rate video multiplexing\n"
 	"--packets-per-pack|-p num\n"
     "  Number of packets per pack generic formats [1..100]\n"
 	"--system-headers|-h\n"

@@ -55,7 +55,8 @@ public:
                                 // other positive. Specified in 
   int audio_offset;             // MPEG-2 CLOCKS: 1/(90000*300)-th sec
   unsigned int sector_size;
-  bool VBR;
+  bool VBR;                     // Force VBR even if profile suggests CBR
+  bool CBR;                     // Force CBR even if profile suggests VBR
   int mpeg;
   int mux_format;
   bool multifile_segment;
@@ -140,7 +141,7 @@ public:
     Program ID
 *************************************************************************/
  
-#define MPLEX_VER    "2.2.4"
+#define MPLEX_VER    "2.2.5"
 #define MPLEX_DATE   "$Date$"
 
 #endif // __INTERACT_H__

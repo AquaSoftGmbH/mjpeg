@@ -73,7 +73,6 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
 	seg_starts_with_video = false;
 	audio_buffer_size = 4 * 1024;
     mux_format = job.mux_format;
-    vbr = job.VBR;
     packets_per_pack = job.packets_per_pack;
     data_rate = job.data_rate;
     mpeg = job.mpeg;
@@ -117,6 +116,8 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
             mjpeg_info( "Audio-only VCD track - variable-bit-rate (VCD2.0)");
             vbr = true;
         }
+        else
+            vbr = false;
 		break;
 		
 	case  MPEG_FORMAT_MPEG2 : 
@@ -134,9 +135,9 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
 		always_buffers_in_audio = 1;
 		vcd_zero_stuffing = 0;
 		vbr = true;
-        	dtspts_for_all_vau = 0;
-        	timestamp_iframe_only = false;
-        	video_buffers_iframe_only = false;
+        dtspts_for_all_vau = 0;
+        timestamp_iframe_only = false;
+        video_buffers_iframe_only = false;
 		break;
 
 	case MPEG_FORMAT_SVCD :
@@ -270,8 +271,14 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
 		sector_align_iframeAUs = false;
         timestamp_iframe_only = false;
         video_buffers_iframe_only = false;
+        vbr = false;
 		break;
 	}
+ 
+ if( job.VBR )
+     vbr = true;
+ if( job.CBR )
+     vbr = false;
 }
 
 /**************************************
