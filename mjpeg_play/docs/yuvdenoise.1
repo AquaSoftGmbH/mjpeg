@@ -20,9 +20,11 @@ needed to encode your captured movies for VCD and SVCD creation.
 .BI \-s " y,u,v [0..255] Spatial noise-filter thresholds"
 This sets the thresholds for the spatial noise filter.
 If you set this too high expect the image to be blurred.  Reducing the
-Y' (y) value to 2 will preserve more detail but still remove noise.
+Y' (y) value to 2 will preserve more detail but still remove noise.  This
+option defaults to disabled because the 3D medianfilter (\-m) does the job
+as good or better.
 .br
-(default=2,4,4)
+(default=0,0,0)
 
 .TP 4
 .BI \-g " y,u,v [0..255] Gaussian blur mixing levels"
@@ -33,7 +35,7 @@ detail in the image a Y' (y) value of 64 or less is recommended.  A value
 of 0 disables gaussian blur processing for a specific component (0,0,0
 completely disables/bypasses the gaussian blur).
 .br
-(default=32,255,255)
+(default=16,255,255)
 
 .TP 4
 .BI \-m " y,u,v [0..255] 3D Median filter thresholds"
