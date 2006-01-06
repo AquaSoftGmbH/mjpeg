@@ -374,11 +374,15 @@ usage(void)
 int
 main(int argc, char **argv)
 	{
-	int	i, j, fdin, ss_v, ss_h, chroma_ss, textout;
+	int	i, fdin, ss_v, ss_h, chroma_ss, textout;
 	int 	do_vectorscope;
 	int	pwidth, pheight; /* Needed for the vectorscope */
 	int	plane0_l, plane1_l, plane2_l;
-	u_char	*yuv[3], *cp, *cpx, *cpy;
+	u_char	*yuv[3], *cp;
+#ifdef	HAVE_SDLgfx
+	int	j;
+	u_char	*cpx, *cpy;
+#endif
 	y4m_stream_info_t istream;
 	y4m_frame_info_t iframe;
 
