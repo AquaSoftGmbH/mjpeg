@@ -25,6 +25,7 @@ unsigned long long y_stats[256], u_stats[256], v_stats[256];
 unsigned long long fy_stats[256], fu_stats[256], fv_stats[256];
 unsigned long long ly_stats[256], lu_stats[256], lv_stats[256];
 unsigned char vectorfield[260][260];
+int scalepercent;
 /* the l?_stats means till last frame, and f?_stat means the actual frame */
 
 /* For the graphical history output */
@@ -36,6 +37,7 @@ unsigned char vectorfield[260][260];
 #define white 0xFFFFFFFF
 #define black 0x000000FF
 #define red  0xFF0000FF
+#define blue  0x0000FFFF
 #define gray   0xA5A5A5FF
 /* Defining the size of the screen */
 #define width 640
@@ -111,25 +113,38 @@ void draw_histogram_layout(int x_off, int y_off)
 	vlineColor(screen, x_off-1, y_off, y_off+101, white);
 	vlineColor(screen, x_off+257,y_off,y_off+101, white);
 
-	for	(i = 0; i < 15; i++)
-  		{
-		offset = i*16+ 16;
-		vlineColor(screen, x_off+offset, y_off+101, y_off+105, white);
-		}
-	vlineColor(screen, x_off+128, y_off+106, y_off+110, white);
-
-	/* Description of the axis */
-	stringColor(screen, x_off-5 +16 , y_off+115, "16", white);
-	stringColor(screen, x_off-9 +128, y_off+115, "128", white);
-	stringColor(screen, x_off-9 +240, y_off+115, "240", white);
-	
-	for (i = 0; i < 6; i++)
+	if (scalepercent == 0)
 		{
-		hlineColor(screen, x_off-5, x_off, y_off+ i*20, white);
-		offset = 100- i*20;
-		sprintf(text, "%i", offset);
-		stringColor(screen, x_off-30 , y_off+ i*20 -3 , text, white);
+		for (i = 0; i < 15; i++)
+	  		{
+			offset = i*16+ 16;
+			vlineColor(screen, x_off+offset, y_off+101, y_off+105, white);
+			}
 
+		vlineColor(screen, x_off+128, y_off+106, y_off+110, white);
+
+		/* Description of the axis */
+		stringColor(screen, x_off-5 +16 , y_off+115, "16", white);
+		stringColor(screen, x_off-9 +128, y_off+115, "128", white);
+		stringColor(screen, x_off-9 +240, y_off+115, "240", white);
+		}
+	else
+		{
+		for (i =0; i< 11;i++)
+			{
+			offset = (int)i*21.9 + 16;
+			vlineColor(screen, x_off+offset, y_off+101, y_off+105, white);
+
+			}
+
+		}
+			
+	for (i = 0; i < 6; i++) /*Labeling the y axis in percent */
+		{
+			hlineColor(screen, x_off-5, x_off, y_off+ i*20, white);
+			offset = 100- i*20;
+			sprintf(text, "%i", offset);
+			stringColor(screen, x_off-30 , y_off+ i*20 -3 , text, white);
 		}
 	}
 
@@ -174,9 +189,69 @@ void make_histogram_desc(long number_of_frames)
 	make_text(frm3_x, frm3_y, framestat);
 	}
 
+/* Here we draw the souroundings for the color points */
+void makepoint(int laeng, int winkel)
+{
+	int i, p1_x, p1_y, p2_x, p2_y;
+	int sm,la;
+
+	sm = 5;
+	la = 10;
+
+	p1_x = round ( (laeng+la) * cos ((winkel-10) /57.3) );
+	p1_y = round ( (laeng+la) * sin ((winkel-10) /57.3) );
+	p2_x = round ( (laeng+sm) * cos ((winkel-10) /57.3) );
+	p2_y = round ( (laeng+sm) * sin ((winkel-10) /57.3) );
+	lineColor(screen, vector_x + p1_x, vector_y - p1_y, 
+							vector_x + p2_x, vector_y - p2_y,blue);
+	p2_x = round ( (laeng+la) * cos ((winkel-5) /57.3) );
+	p2_y = round ( (laeng+la) * sin ((winkel-5) /57.3) );
+	lineColor(screen, vector_x + p1_x, vector_y - p1_y, 
+							vector_x + p2_x, vector_y - p2_y,blue);
+
+	p1_x = round ( (laeng-la) * cos ((winkel-10) /57.3) );
+	p1_y = round ( (laeng-la) * sin ((winkel-10) /57.3) );
+	p2_x = round ( (laeng-sm) * cos ((winkel-10) /57.3) );
+	p2_y = round ( (laeng-sm) * sin ((winkel-10) /57.3) );
+	lineColor(screen, vector_x + p1_x, vector_y - p1_y, 
+							vector_x + p2_x, vector_y - p2_y,blue);
+	p2_x = round ( (laeng-la) * cos ((winkel-5) /57.3) );
+	p2_y = round ( (laeng-la) * sin ((winkel-5) /57.3) );
+	lineColor(screen, vector_x + p1_x, vector_y - p1_y, 
+							vector_x + p2_x, vector_y - p2_y,blue);
+
+	p1_x = round ( (laeng+la) * cos ((winkel+10) /57.3) );
+	p1_y = round ( (laeng+la) * sin ((winkel+10) /57.3) );
+	p2_x = round ( (laeng+sm) * cos ((winkel+10) /57.3) );
+	p2_y = round ( (laeng+sm) * sin ((winkel+10) /57.3) );
+	lineColor(screen, vector_x + p1_x, vector_y - p1_y, 
+							vector_x + p2_x, vector_y - p2_y,blue);
+	p2_x = round ( (laeng+la) * cos ((winkel+5) /57.3) );
+	p2_y = round ( (laeng+la) * sin ((winkel+5) /57.3) );
+	lineColor(screen, vector_x + p1_x, vector_y - p1_y, 
+							vector_x + p2_x, vector_y - p2_y,blue);
+
+	p1_x = round ( (laeng-la) * cos ((winkel+10) /57.3) );
+	p1_y = round ( (laeng-la) * sin ((winkel+10) /57.3) );
+	p2_x = round ( (laeng-sm) * cos ((winkel+10) /57.3) );
+	p2_y = round ( (laeng-sm) * sin ((winkel+10) /57.3) );
+	lineColor(screen, vector_x + p1_x, vector_y - p1_y, 
+							vector_x + p2_x, vector_y - p2_y,blue);
+	p2_x = round ( (laeng-la) * cos ((winkel+5) /57.3) );
+	p2_y = round ( (laeng-la) * sin ((winkel+5) /57.3) );
+	lineColor(screen, vector_x + p1_x, vector_y - p1_y, 
+							vector_x + p2_x, vector_y - p2_y,blue);
+
+	//mjpeg_debug(" 1x %i, 1y %i, 2x %i, 2y %i", p1_x, p1_y, p2_x, p2_y);
+}
+
 /* Here we draw the vectorscope layout */
 void make_vectorscope_layout()
 	{
+	int i, p1_x, p1_y, p2_x, p2_y;
+	double temp;
+	char text[4];
+
 	boxColor(screen, vector_x-130, vector_y+130, 
 			 vector_x+130, vector_y-130, black); 
 
@@ -188,6 +263,39 @@ void make_vectorscope_layout()
 	circleColor(screen,vector_x, vector_y, 50, white);
 	circleColor(screen,vector_x, vector_y, 80, white);
 	circleColor(screen,vector_x, vector_y,112, white);
+	
+	for (i =0; i<36; i++)
+		{		/* Here we draw the degree scale */
+			temp = 112* cos (i*(10/57.3)) ;  /* sin & cos only accept radiant */
+			p1_x = round(temp);					/* and not degree input */
+			temp = 112* sin (i*(10/57.3) );
+			p1_y = round(temp);
+			temp = 117* cos (i*(10/57.3) );
+			p2_x = round(temp);
+			temp = 117* sin (i*(10/57.3) );
+			p2_y = round(temp);
+
+			lineColor(screen, vector_x + p1_x, vector_y + p1_y,
+									vector_x + p2_x, vector_y + p2_y, white);
+		}
+
+	sprintf(text, "0"); /* Creating the grad description */
+	stringColor(screen, vector_x + 135 , vector_y - 3, text, white);
+	sprintf(text, "90");
+	stringColor(screen, vector_x - 7 , vector_y - 145, text, white);
+	sprintf(text, "180");
+	stringColor(screen, vector_x - 155 , vector_y - 3, text, white);
+	sprintf(text, "270");
+	stringColor(screen, vector_x - 10 , vector_y + 135, text, white);
+
+	makepoint( 90, 60); /* length, arc, for purple */	
+	makepoint( 93, 104); /* length, arc, for red */	
+	makepoint( 93, 166); /* length, arc, for yellow */	
+	makepoint( 93, 241); /* length, arc, for green */	
+	makepoint( 93, 283); /* length, arc, for cyan */	
+	makepoint( 93, 346); /* length, arc, for blue */	
+	
+
 	}
 
 /* Here we draw the histogram statistice for the summ of the frames */
@@ -366,7 +474,8 @@ usage(void)
 	{
 	fprintf(stderr, "usage: [-t]  [-v num]\n");
 	fprintf(stderr, "  -t      emit text summary even if graphical mode enabled\n");
-	fprintf(stderr, "  -s=num  enable also the vectorscope, allowed numbers 1-16\n");
+	fprintf(stderr, "  -p      label the scale in percent not absolute numbers\n");
+	fprintf(stderr, "  -s num  enable also the vectorscope, allowed numbers 1-16\n");
 
 	exit(1);
 	}
@@ -387,6 +496,7 @@ main(int argc, char **argv)
 	y4m_frame_info_t iframe;
 
 	do_vectorscope = 0;
+	scalepercent = 0;
 
 #ifdef	HAVE_SDLgfx
 	textout = 0;
@@ -394,12 +504,15 @@ main(int argc, char **argv)
 	textout = 1;
 #endif
 
-	while	((i = getopt(argc, argv, "ts:")) != EOF)
+	while	((i = getopt(argc, argv, "tps:")) != EOF)
 		{
 		switch	(i)
 			{
 			case	't':
 				textout = 1;
+				break;
+			case	'p':
+				scalepercent = 1;
 				break;
 			case	's':
 				do_vectorscope = atoi(optarg);
@@ -510,10 +623,10 @@ main(int argc, char **argv)
 				cpx = cpx + (pwidth/ss_v) * (do_vectorscope-1);
 			}
 
+		}
 		make_stat(); /* showing the sats */
 
 		SDL_UpdateRect(screen,0,0,0,0); /* updating all */
-		}
 
 		/* Events for SDL */
 		HandleEvent();
