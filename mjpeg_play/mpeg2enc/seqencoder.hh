@@ -77,24 +77,22 @@ private:
       
     /**********************************
      *
-     * Pass1EncodeFrame - Pass1 encode a frame.
-     * Between zero and many frames may be read (lots of internal
-     * look-ahead and buffering).  Internal parallelism via
-     * POSIXworker threads.
-     * May re-encode frames 
+     * Pass1Process - Unit of pass-1 processing work
+     * generates a pass-1 coded frame ready for pass2
+     * processing.
      *
      *********************************/
-    void Pass1EncodeFrame();
+    void Pass1Process();
     
      /**********************************
      *
-     * Pass1EncodeFrame - Pass2 encode a frame.
-     *
+     * Pass2Process - Unit of pass-2 processing work
+     * Consumes any available pass-1 coded frames ready
+     * for pass2 coding.
+     * If possible generates a frame of coded output.
      *
      *********************************/
-     void Pass2EncodeFrame();
-     
-    
+    void Pass2Process();
 
 
      /**********************************
@@ -108,10 +106,10 @@ private:
     void StreamEnd();
 
     
-    void EncodePicture(Picture *picture);
-    void Pass1EncodePicture( Picture *picture );
-    void Pass1ReEncodePicture( Picture *picture );
-
+    void EncodeFrame( void (MacroBlock::*encodingFunc)(), Picture *picture);
+    void Pass1EncodeFrame( Picture *picture );
+    void Pass1ReEncodeFrame( Picture *picture );
+    void Pass2EncodeFrame( Picture *picture );
     
     uint64_t BitsAfterMux() const;
     

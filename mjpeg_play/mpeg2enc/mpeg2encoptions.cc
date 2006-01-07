@@ -316,7 +316,7 @@ int MPEG2EncOptions::CheckBasicConstraints()
          if(    (in_img_width != 704 && in_img_width != 640) 
              || in_img_height != 480 )
          {
-             mjpeg_warn( "ATSC 480i/480p only supports 640x480 and 704x480 images!" );
+             mjpeg_warn( "ATSC 480i/480p requires 640x480 or 704x480 input images!" );
          }
          if( in_img_width == 704 && aspect_ratio != 2 && aspect_ratio != 3 )
          {
@@ -330,7 +330,7 @@ int MPEG2EncOptions::CheckBasicConstraints()
      case MPEG_FORMAT_ATSC720p :
          if(  in_img_width != 1280 || in_img_height != 720 )
          {
-             mjpeg_warn( "ATSC 720p only supports 1280x720 images!" );
+             mjpeg_warn( "ATSC 720p requires 1280x720 input images!" );
          }
          if( aspect_ratio != 1 && aspect_ratio != 3 )
          {
@@ -338,9 +338,9 @@ int MPEG2EncOptions::CheckBasicConstraints()
          }
          break;
      case MPEG_FORMAT_ATSC1080i :
-         if(  in_img_width != 1280 || in_img_height != 720 )
+         if(  in_img_width != 1920 || in_img_height != 1088 )
          {
-             mjpeg_warn( "ATSC 1080i only supports 1920x1080 images!" );
+             mjpeg_warn( "ATSC 1080i requires  1920x1088 input images!" );
          }
          if( aspect_ratio != 1 && aspect_ratio != 3 )
          {
@@ -354,7 +354,7 @@ int MPEG2EncOptions::CheckBasicConstraints()
 	}
  
     
-    if(    format >= MPEG_FORMAT_ATSC480i && format <= MPEG_FORMAT_ATSC1080i )
+ if( MPEG_ATSC_FORMAT(format) )
     {
          if( bitrate > 38800000 )
         {

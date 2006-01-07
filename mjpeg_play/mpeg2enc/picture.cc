@@ -132,115 +132,154 @@ void Picture::Reconstruct()
 
 /*******************************************
  *
- * Adjust picture encoding parameters
+ * Set picture encoding parameters that depend
+ * on the frame being encoded.
  *
  ******************************************/
 
-void Picture::SetEncodingParams( const StreamState &ss )
+void Picture::SetFrameParams( const StreamState &ss )
 {
     new_seq = ss.new_seq;
     end_seq = ss.end_seq;
-
-    if( ss.b_idx == 0 )             // Start of a B-group: I or P frame
-    {
-        Set_IP_Frame(ss );
-    }
-    else
-    {
-        Set_B_Frame( ss );
-    }
-
-    assert( pict_type == ss.frame_type );
-
+    gop_decode = ss.g_idx;
+    bgrp_decode = ss.b_idx;
     decode = ss.DecodeNum();
     present = ss.PresentationNum();
     temp_ref = ss.TemporalReference();
     last_picture = ss.EndOfStream();
- 
-	dc_prec = encparams.dc_prec;
-	secondfield = false;
-	ipflag = 0;
+    nb = ss.nb;
+    np = ss.np;
+    closed_gop = ss.closed_gop;
+    dc_prec = encparams.dc_prec;
+}
 
-		
-	/* Handle picture structure... */
-	if( encparams.fieldpic )
-	{
-		pict_struct = encparams.topfirst ? TOP_FIELD : BOTTOM_FIELD;
-		topfirst = 0;
-		repeatfirst = 0;
-	}
 
-	/* Handle 3:2 pulldown frame pictures */
-	else if( encparams.pulldown_32 )
-	{
-		pict_struct = FRAME_PICTURE;
-		switch( present % 4 )
-		{
-		case 0 :
-			repeatfirst = 1;
-			topfirst = encparams.topfirst;			
-			break;
-		case 1 :
-			repeatfirst = 0;
-			topfirst = !encparams.topfirst;
-			break;
-		case 2 :
-			repeatfirst = 1;
-			topfirst = !encparams.topfirst;
-			break;
-		case 3 :
-			repeatfirst = 0;
-			topfirst = encparams.topfirst;
-			break;
-		}
-	}
-	
-	/* Handle ordinary frame pictures */
-	else
 
-	{
-		pict_struct = FRAME_PICTURE;
-		repeatfirst = 0;
-		topfirst = encparams.topfirst;
-	}
+/************************************************************************
+ *
+ * Set encoding parameters that depend on which field of a frame
+ * is being encoded.
+ *
+ ************************************************************************/
 
-    forw_hor_f_code = encparams.motion_data[ss.b_idx].forw_hor_f_code;
-    forw_vert_f_code = encparams.motion_data[ss.b_idx].forw_vert_f_code;
-    sxf = encparams.motion_data[ss.b_idx].sxf;
-    syf = encparams.motion_data[ss.b_idx].syf;
 
-	switch ( pict_type )
-	{
-	case I_TYPE :
-		forw_hor_f_code = 15;
-		forw_vert_f_code = 15;
-		back_hor_f_code = 15;
-		back_vert_f_code = 15;
-		break;
-	case P_TYPE :
-		back_hor_f_code = 15;
-		back_vert_f_code = 15;
-		break;
-	case B_TYPE :
-		back_hor_f_code = encparams.motion_data[ss.b_idx].back_hor_f_code;
-		back_vert_f_code = encparams.motion_data[ss.b_idx].back_vert_f_code;
-		sxb = encparams.motion_data[ss.b_idx].sxb;
-		syb = encparams.motion_data[ss.b_idx].syb;
-		break;
-	}
+void Picture::SetFieldParams(int field)
+{
+    secondfield = (field == 1);
 
-	/* We currently don't support frame-only DCT/Motion Est.  for non
-	   progressive frames */
-	prog_frame = encparams.frame_pred_dct_tab[pict_type-1];
-	frame_pred_dct = encparams.frame_pred_dct_tab[pict_type-1];
-	q_scale_type = encparams.qscale_tab[pict_type-1];
-	intravlc = encparams.intravlc_tab[pict_type-1];
-	altscan = encparams.altscan_tab[pict_type-1];
+    if( bgrp_decode == 0 )             // Start of a B-group: I or P frame
+    {
+        if (gop_decode==0 ) /* first encoded frame in GOP is I */
+        {
+            if( field == 0)
+            {
+                gop_start = true;
+                ipflag = 0;
+                pict_type = I_TYPE;
+
+            }
+            else // P field of I-frame
+            {
+                gop_start = false;
+                ipflag = 1;
+                pict_type = P_TYPE;
+            }
+        }
+        else 
+        {
+            pict_type = P_TYPE;
+            gop_start = false;
+            closed_gop = false;
+            new_seq = false;
+        }
+    }
+    else
+    {
+        closed_gop = false;
+        pict_type = B_TYPE;
+        gop_start = false;
+        new_seq = false;
+    }
+
+    secondfield = (field == 1);
+        
+    /* Handle picture structure... */
+    if( encparams.fieldpic )
+    {
+        pict_struct = ((encparams.topfirst) ^ (field == 1)) ? TOP_FIELD : BOTTOM_FIELD;
+        topfirst = 0;
+        repeatfirst = 0;
+    }
+
+    /* Handle 3:2 pulldown frame pictures */
+    else if( encparams.pulldown_32 )
+    {
+        pict_struct = FRAME_PICTURE;
+        switch( present % 4 )
+        {
+            case 0 :
+                repeatfirst = 1;
+                topfirst = encparams.topfirst;          
+                break;
+            case 1 :
+                repeatfirst = 0;
+                topfirst = !encparams.topfirst;
+                break;
+            case 2 :
+                repeatfirst = 1;
+                topfirst = !encparams.topfirst;
+                break;
+            case 3 :
+                repeatfirst = 0;
+                topfirst = encparams.topfirst;
+                break;
+        }
+    }
+    /* Handle ordinary frame pictures */
+    else
+    {
+        pict_struct = FRAME_PICTURE;
+        repeatfirst = 0;
+        topfirst = encparams.topfirst;
+    }
+
+    forw_hor_f_code = encparams.motion_data[bgrp_decode].forw_hor_f_code;
+    forw_vert_f_code = encparams.motion_data[bgrp_decode].forw_vert_f_code;
+    sxf = encparams.motion_data[bgrp_decode].sxf;
+    syf = encparams.motion_data[bgrp_decode].syf;
+
+    switch ( pict_type )
+    {
+        case I_TYPE :
+            forw_hor_f_code = 15;
+            forw_vert_f_code = 15;
+            back_hor_f_code = 15;
+            back_vert_f_code = 15;
+            break;
+        case P_TYPE :
+            back_hor_f_code = 15;
+            back_vert_f_code = 15;
+            break;
+        case B_TYPE :
+            back_hor_f_code = encparams.motion_data[bgrp_decode].back_hor_f_code;
+            back_vert_f_code = encparams.motion_data[bgrp_decode].back_vert_f_code;
+            sxb = encparams.motion_data[bgrp_decode].sxb;
+            syb = encparams.motion_data[bgrp_decode].syb;
+            break;
+    }
+
+    /* We currently don't support frame-only DCT/Motion Est.  for non
+    progressive frames */
+    prog_frame = encparams.frame_pred_dct_tab[pict_type-1];
+    frame_pred_dct = encparams.frame_pred_dct_tab[pict_type-1];
+    q_scale_type = encparams.qscale_tab[pict_type-1];
+    intravlc = encparams.intravlc_tab[pict_type-1];
+    altscan = encparams.altscan_tab[pict_type-1];
     scan_pattern = (altscan ? alternate_scan : zig_zag_scan);
 
     /* If we're using B frames then we reserve unit coefficient
-       dropping for them as B frames have no 'knock on' information
-       loss */
+    dropping for them as B frames have no 'knock on' information
+    loss */
     if( pict_type == B_TYPE || encparams.M == 1 )
     {
         unit_coeff_threshold = abs( encparams.unit_coeff_elim );
@@ -252,133 +291,9 @@ void Picture::SetEncodingParams( const StreamState &ss )
         unit_coeff_first = 0;
     }
         
-
-#ifdef OUTPUT_STAT
-	fprintf(statfile,"\nFrame %d (#%d in display order):\n",decode,display);
-	fprintf(statfile," picture_type=%c\n",pict_type_char[pict_type]);
-	fprintf(statfile," temporal_reference=%d\n",temp_ref);
-	fprintf(statfile," frame_pred_frame_dct=%d\n",frame_pred_dct);
-	fprintf(statfile," q_scale_type=%d\n",q_scale_type);
-	fprintf(statfile," intra_vlc_format=%d\n",intravlc);
-	fprintf(statfile," alternate_scan=%d\n",altscan);
-
-	if (pict_type!=I_TYPE)
-	{
-		fprintf(statfile," forward search window: %d...%d / %d...%d\n",
-				-sxf,sxf,-syf,syf);
-		fprintf(statfile," forward vector range: %d...%d.5 / %d...%d.5\n",
-				-(4<<forw_hor_f_code),(4<<forw_hor_f_code)-1,
-				-(4<<forw_vert_f_code),(4<<forw_vert_f_code)-1);
-	}
-
-	if (pict_type==B_TYPE)
-	{
-		fprintf(statfile," backward search window: %d...%d / %d...%d\n",
-				-sxb,sxb,-syb,syb);
-		fprintf(statfile," backward vector range: %d...%d.5 / %d...%d.5\n",
-				-(4<<back_hor_f_code),(4<<back_hor_f_code)-1,
-				-(4<<back_vert_f_code),(4<<back_vert_f_code)-1);
-	}
-#endif
-
-
 }
 
 
-
-/**************************************************
- *
- * Set the picture encoding paramters for an I or P frame
- *
- * num_frames is the total number for frames in the input...
- *
- **************************************************/
-
-void Picture::Set_IP_Frame( const StreamState &ss)
-{
-	if (ss.g_idx==0) /* first displayed frame in GOP is I */
-	{
-		pict_type = I_TYPE;
-	}
-	else 
-	{
-		pict_type = P_TYPE;
-	}
-
-	/* Start of GOP - set GOP data for picture */
-	if( ss.g_idx == 0 )
-	{
-		gop_start = true;
-        closed_gop = ss.closed_gop;
-		nb = ss.nb;
-		np = ss.np;
-	}		
-	else
-	{
-		gop_start = false;
-        closed_gop = false;
-		new_seq = false;
-	}
-}
-
-/**************************************************
- *
- * Set the picture encoding paramters for a B frame
- *
- * num_frames is the total number for frames in the input...
- *
- **************************************************/
-
-void Picture::Set_B_Frame(  const StreamState &ss )
-{
-
-	pict_type = B_TYPE;
-	gop_start = false;
-	new_seq = false;
-}
-
-/************************************************************************
- *
- * Adjust picture parameters for the second field in a pair of field
- * pictures.
- *
- ************************************************************************/
-
-void Picture::Adjust2ndField()
-{
-	secondfield = true;
-    gop_start = false;
-	if( pict_struct == TOP_FIELD )
-		pict_struct =  BOTTOM_FIELD;
-	else
-		pict_struct =  TOP_FIELD;
-	
-	if( pict_type == I_TYPE )
-	{
-		ipflag = 1;
-		pict_type = P_TYPE;
-		
-		forw_hor_f_code = encparams.motion_data[0].forw_hor_f_code;
-		forw_vert_f_code = encparams.motion_data[0].forw_vert_f_code;
-		back_hor_f_code = 15;
-		back_vert_f_code = 15;
-		sxf = encparams.motion_data[0].sxf;
-		syf = encparams.motion_data[0].syf;	
-	}
-}
-
-
-
-void Picture::Encode()
-{ 
-    vector<MacroBlock>::iterator mbi = mbinfo.begin();
-
-	for( mbi = mbinfo.begin(); mbi < mbinfo.end(); ++mbi)
-	{
-        mbi->Encode();
-	}
-
-}
 
 void Picture::IQuantize()
 {
@@ -522,7 +437,7 @@ void Picture::MotionSubSampledLum( )
  *
  * *********************************************** */
 
-void Picture::QuantiseAndEncode(RateCtl &ratectl)
+void Picture::QuantiseAndCode(RateCtl &ratectl)
 {
 
     InitRateControl( ratectl );

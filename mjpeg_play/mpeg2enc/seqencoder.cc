@@ -1,4 +1,4 @@
-/* (C) 2000, 2001, 2005 Andrew Stevens 
+/* (C) 2000, 2001, 2005, 2006 Andrew Stevens 
  *  This file is free software; you can redistribute it
  *  and/or modify it under the terms of the GNU General Public License
  *  as published by the Free Software Foundation; either version 2 of
@@ -60,15 +60,29 @@
 
 // --------------------------------------------------------------------------------
 //  Striped Encoding Job parallel despatch classes
+//
+
+// Selection of the way macro blocks are distributed between
+// threads.
+//
+// STRIPED ensures each job processes macroblocks in encoding order 
+// This is useful for parallelising threads generating output.
+// INTERLEAVED ensures shared caches enjoy reasonable locality of reference.
+//
+
 
 
 struct EncoderJob
 {
-    EncoderJob() : shutdown( false ) {}
+    enum JobPattern { ENCODE_ORDER, INTERLEAVED };
+    
+    EncoderJob() : shutdown( false ),working(false) {}
     void (MacroBlock::*encodingFunc)(); 
-    Picture *picture;
-    unsigned int stripe;
-    bool shutdown;
+    Picture         *picture;
+    JobPattern      pattern; 
+    unsigned int    stripe;
+    bool            shutdown;
+    volatile bool   working;
 };
 
 class ShutdownJob : public EncoderJob
@@ -87,21 +101,18 @@ class Despatcher
 public:
     Despatcher();
     ~Despatcher();
-    void Init( unsigned int mb_width,
-               unsigned int mb_height,
-               unsigned int parallelism );
-    void Despatch( Picture *picture, void (MacroBlock::*encodingFunc)() );
+    void Init( unsigned int parallelism );
+    void Despatch( Picture *picture, void (MacroBlock::*encodingFunc)(),
+                   EncoderJob::JobPattern pattern = EncoderJob::INTERLEAVED );
     void ParallelWorker();
     void WaitForCompletion();
 private:
     static void *ParallelPerformWrapper(void *despatcher);
 
     unsigned int parallelism;
-    unsigned int mb_width;
-    unsigned int mb_height;
-    vector<unsigned int> stripe_start;
-    vector<unsigned int> stripe_length;
-    Channel<EncoderJob> jobs;	
+    
+    Channel<EncoderJob *> jobstodo;	
+    vector<EncoderJob>    jobpool;
     pthread_t *worker_threads;
 };
 
@@ -109,57 +120,49 @@ Despatcher::Despatcher() :
     worker_threads(0)
 {}
 
-void Despatcher::Init( unsigned int _mb_width,
-                       unsigned int _mb_height,
-                       unsigned int _parallelism )
+void Despatcher::Init( unsigned int _parallelism )
+
 {
     parallelism = _parallelism;
-    mb_width = _mb_width;
-    mb_height = _mb_height;
-
-    if( !parallelism )
-        return;
-
-    unsigned int mb_in_stripe = 0;
-    int i = 0;
-    unsigned int pitch = mb_width / parallelism;
-    for( int stripe = 0; stripe < parallelism; ++stripe )
+    mjpeg_info( "PAR = %d\n", parallelism );
+    if( parallelism > 0 )
     {
-        stripe_start.push_back(mb_in_stripe);
-        mb_in_stripe += pitch;
-        stripe_length.push_back(pitch);
-    }
-    stripe_length.back() = mb_width - stripe_start.back();
-	pthread_attr_t *pattr = NULL;
-
-	/* For some Unixen we get a ridiculously small default stack size.
-	   Hence we need to beef this up if we can.
-	*/
+        jobpool.resize(parallelism);
+        pthread_attr_t *pattr = 0;
+        EncoderJob job;
+        /* For some Unixen we get a ridiculously small default stack size.
+           Hence we need to beef this up if we can.
+        */
 #ifdef HAVE_PTHREADSTACKSIZE
 #define MINSTACKSIZE 200000
-	pthread_attr_t attr;
-	size_t stacksize;
 
-	pthread_attr_init(&attr);
-	pthread_attr_getstacksize(&attr, &stacksize);
+        pthread_attr_t attr;
+        size_t stacksize;
 
-	if (stacksize < MINSTACKSIZE) {
-		pthread_attr_setstacksize(&attr, MINSTACKSIZE);
-	}
+        pthread_attr_init(&attr);
+        pthread_attr_getstacksize(&attr, &stacksize);
 
-	pattr = &attr;
+        if (stacksize < MINSTACKSIZE)
+        {
+            pthread_attr_setstacksize(&attr, MINSTACKSIZE);
+        }
+
+        pattr = &attr;
 #endif
-    worker_threads = new pthread_t[parallelism];
-	for(i = 0; i < parallelism; ++i )
-	{
-        mjpeg_info("Creating worker thread" );
-		if( pthread_create( &worker_threads[i], pattr, 
-                            &Despatcher::ParallelPerformWrapper,
-                            this ) != 0 )
-		{
-			mjpeg_error_exit1( "worker thread creation failed: %s", strerror(errno) );
-		}
-	}
+        worker_threads = new pthread_t[parallelism];
+        for(int i = 0; i < parallelism; ++i )
+        {
+            jobpool[i].working = false;
+            jobpool[i].stripe = i;
+            mjpeg_info("Creating worker thread %d", i );
+            if( pthread_create( &worker_threads[i], pattr,
+                                &Despatcher::ParallelPerformWrapper,
+                                this ) != 0 )
+            {
+                mjpeg_error_exit1( "worker thread creation failed: %s", strerror(errno) );
+            }
+        }
+    }
 }
 
 Despatcher::~Despatcher()
@@ -172,7 +175,7 @@ Despatcher::~Despatcher()
 
         for( i = 0; i < parallelism; ++i )
         {
-            jobs.Put( shutdownjob );
+            jobstodo.Put( &shutdownjob );
         }
         for( i = 0; i < parallelism; ++i )
         {
@@ -190,46 +193,101 @@ void *Despatcher::ParallelPerformWrapper(void *despatcher)
 
 void Despatcher::ParallelWorker()
 {
-	EncoderJob job;
+	EncoderJob *job;
 	mjpeg_debug( "Worker thread started" );
     pthread_setcanceltype( PTHREAD_CANCEL_ASYNCHRONOUS, NULL );
 
 	for(;;)
 	{
         // Get Job to do and do it!!
-        jobs.Get( job );
-        if( job.shutdown )
+     mjpeg_info( "Worker: getting" );
+      
+        jobstodo.Get( job );
+        if( job->shutdown )
         {
             mjpeg_info ("SHUTDOWN worker" );
             pthread_exit( 0 );
         }
+        mjpeg_info( "Working: stripe %d/%d %d", job->stripe, parallelism, job->pattern );
+        Picture *picture = job->picture;
+        vector<MacroBlock>::iterator macroblocks_begin;
+        vector<MacroBlock>::iterator macroblocks_end;
+        switch( picture->pict_struct )
+        {
+            case FRAME_PICTURE :
+                macroblocks_begin = picture->mbinfo.begin();
+                macroblocks_end = picture->mbinfo.end();
+                break;
+            case TOP_FIELD :
+                macroblocks_begin = picture->mbinfo.begin();
+                macroblocks_end = picture->mbinfo.begin() + picture->mbinfo.size()/2;
+                break;
+            case BOTTOM_FIELD :
+                macroblocks_begin = picture->mbinfo.begin() + picture->mbinfo.size()/2;
+                macroblocks_end = picture->mbinfo.end();
+                break;
+        }
+        
+        int macroblocks = macroblocks_end-macroblocks_begin;
+
         vector<MacroBlock>::iterator stripe_begin;
         vector<MacroBlock>::iterator stripe_end;
         vector<MacroBlock>::iterator mbi;
-
-        stripe_begin = job.picture->mbinfo.begin() + stripe_start[job.stripe];
-        for( int row = 0; row < mb_height; ++row )
+        int                          stripe_step;
+        
+        switch( job->pattern )
         {
-            stripe_end = stripe_begin + stripe_length[job.stripe];
-            for( mbi = stripe_begin; mbi < stripe_end; ++mbi )
-            {
-                (*mbi.*job.encodingFunc)();
-            }
-            stripe_begin += mb_width;
+            case EncoderJob::ENCODE_ORDER :
+                stripe_step = 1;
+                stripe_begin = macroblocks_begin + job->stripe* macroblocks/parallelism;
+                stripe_end = macroblocks_begin + (job->stripe+1)* macroblocks/parallelism;
+                break;
+            case EncoderJob::INTERLEAVED :
+                stripe_step = parallelism;
+                stripe_begin = macroblocks_begin+job->stripe;
+                stripe_end = macroblocks_end;
+                break;
         }
-
+        
+        for( mbi = stripe_begin; mbi < stripe_end; mbi += stripe_step )
+        {
+            (*mbi.*job->encodingFunc)();
+        }
+        mjpeg_info( "Worker: stripe %d done", job->stripe );
+        job->working = false;
     }
 }
 
 void Despatcher::Despatch(  Picture *picture,
-                            void (MacroBlock::*encodingFunc)() )
+                            void (MacroBlock::*encodingFunc)(),
+                            EncoderJob::JobPattern pattern 
+                         )
 {
-    EncoderJob job;
-    job.encodingFunc = encodingFunc;
-    job.picture = picture;
-    for( job.stripe = 0; job.stripe < parallelism; ++job.stripe )
+    if( parallelism > 0 )
     {
-        jobs.Put( job );
+        for( int stripe = 0; stripe < parallelism; ++stripe )
+        {
+            EncoderJob *job = &jobpool[stripe];
+            // We guanratee a previously despatched stripe has completed before it is redespatched
+            while( job->working )
+            {
+                jobstodo.WaitForNewConsumers();
+            }
+
+            job->working = false;
+            job->pattern = pattern;
+            job->encodingFunc = encodingFunc;
+            job->picture = picture;
+            jobstodo.Put( job );
+        }
+    }
+    else
+    {
+        vector<MacroBlock>::iterator mbi;
+        for( mbi = picture->mbinfo.begin(); mbi < picture->mbinfo.end(); ++mbi )
+        {
+            (*mbi.*encodingFunc)();
+        }
     }
 }
 
@@ -240,7 +298,10 @@ void Despatcher::WaitForCompletion()
     // pool of worker threads is waiting on the job despatch
     // channel
     //
-    jobs.WaitUntilConsumersWaitingAtLeast( parallelism );
+    if( parallelism > 0 )
+    {
+        jobstodo.WaitUntilConsumersWaitingAtLeast( parallelism );
+    }
 }
 
 
@@ -288,9 +349,7 @@ void SeqEncoder::Init()
     //
     // Setup the parallel job despatcher...
     //
-    despatcher.Init( encparams.mb_width, 
-                     encparams.mb_height2, 
-                     encparams.encoding_parallelism );
+    despatcher.Init( encparams.encoding_parallelism );
 
     ratecontroller.InitSeq(false);
     pass1_ss.Init(  );
@@ -302,100 +361,91 @@ void SeqEncoder::Init()
     new_ref_picture = GetFreshPicture();
     free_pictures.push_back( new_ref_picture );
 }
+
 /*
 	Encode a picture from scratch: motion estimate relative to the reference
 	frames (if any), encode the resulting macro  block image data
 	using the best motion estimate available and buffer the result.
 */
 
-void SeqEncoder::Pass1EncodePicture(Picture *picture)
+void SeqEncoder::Pass1EncodeFrame(Picture *picture)
 {
-    double prev_sum_avg_act = ratecontroller.SumAvgActivity();
-	mjpeg_debug("Start %d %c %d %d",
-			   picture->decode, 
-			   pict_type_char[picture->pict_type],
-			   picture->temp_ref,
-			   picture->present);
-
-
     pass1_rcstate->Set( ratecontroller.GetState() );
-
+    picture->SetFrameParams(pass1_ss);
     picture->MotionSubSampledLum();
 
-    EncodePicture(picture);
-#ifdef TRACE_ACTIVITY
-	mjpeg_info("Frame %5d %5d %c q=%3.2f Sact=(%8.5f->%8.5f) %s [%.0f%%]",
-               picture->decode, 
-               picture->present,
-			   pict_type_char[picture->pict_type],
-               picture->AQ,
-               prev_sum_avg_act,
-               picture->sum_avg_act,
-               picture->pad ? "PAD" : "   ",
-               picture->IntraCodedBlocks() * 100.0
-        );
-#else
-    mjpeg_info("Frame %5d %5d(%2d) %c q=%3.2f %s [%.0f%% Intra]",
+    EncodeFrame( &MacroBlock::Encode, picture);
+
+    mjpeg_info("Enc1  %5d %5d(%2d) %c q=%3.2f %s [%.0f%% Intra]",
                picture->decode, 
                picture->present,
                picture->temp_ref,
-               pict_type_char[picture->pict_type],
+               pict_type_char[pass1_ss.frame_type],
                picture->AQ,
                picture->pad ? "PAD" : "   ",
                picture->IntraCodedBlocks() * 100.0
         );
-#endif
 			
 }
 
 /*
 	Re-Encode a picture after type or parameters have been revised
-
-    N.b. currently motion estimation is *RE-DONE* as it is only
-    used for picture type changes (where new ME is needed).
+    from scratch.
+    N.b. this means motion estimation is *RE-DONE* as it is only.
 
 
 */
 
-void SeqEncoder::Pass1ReEncodePicture(Picture *picture)
+void SeqEncoder::Pass1ReEncodeFrame(Picture *picture)
 {
-
 	// Flush any previous encoding
 	picture->DiscardCoding();
     ratecontroller.SetState( pass1_rcstate->Get() );
-    double prev_sum_avg_act = ratecontroller.SumAvgActivity();
 
-	mjpeg_debug("Reencode %d %c %d %d @%8.5f",
-			   picture->decode, 
-			   pict_type_char[picture->pict_type],
-			   picture->temp_ref,
-			   picture->present);
+    picture->SetFrameParams(pass1_ss);
 
+    EncodeFrame( &MacroBlock::Encode, picture);
 
-    EncodePicture(picture);
-
-#ifdef TRACE_ACTIVITY
-    mjpeg_info("Reenc %5d %5d %c q=%3.2f Sact=(%8.5f->%8.5f) %s", 
-               picture->decode, 
-               picture->input,
-               pict_type_char[picture->pict_type],
-               picture->AQ,
-               prev_sum_avg_act,
-               picture->sum_avg_act,
-               picture->pad ? "PAD" : "   ");
-#else
-    mjpeg_info("Reenc %5d %5d(%2d) %c q=%3.2f %s", 
+    mjpeg_info("Renc1 %5d %5d(%2d) %c q=%3.2f %s", 
                picture->decode, 
                picture->present,
                picture->temp_ref,
-               pict_type_char[picture->pict_type],
+               pict_type_char[pass1_ss.frame_type],
                picture->AQ,
                picture->pad ? "PAD" : "   ");
-#endif
 
-			
 }
 
+/*
+    Finally encode a picture based on pass-1 data.
+    If necessary, predict and transform raw input based on
+    pass-1 motion estimation.
+    Quantise, Code and Output
+
+
+*/
+
+void SeqEncoder::Pass2EncodeFrame(Picture *picture)
+{
+  
+    abort();
+    // TODO nb,bp etc need to be adjusted to match pass-1 updates
+    
+    double prev_sum_avg_act = ratecontroller.SumAvgActivity();
+    pass1_rcstate->Set( ratecontroller.GetState() );
+
+    picture->MotionSubSampledLum();
+    EncodeFrame( &MacroBlock::Encode, picture);
+
+    mjpeg_info("Enc2  %5d %5d q=%3.2f %s [%.0f%% Intra]",
+               picture->decode, 
+               picture->present,
+               picture->AQ,
+               picture->pad ? "PAD" : "   ",
+               picture->IntraCodedBlocks() * 100.0
+              );
+            
+}
 
 /*
     Encode a picture based on set picture parameters.
@@ -405,49 +455,47 @@ void SeqEncoder::Pass1ReEncodePicture(Picture *picture)
 
 */
 
-void SeqEncoder::EncodePicture(Picture *picture)
+void SeqEncoder::EncodeFrame( void (MacroBlock::*encodingFunc)(), Picture *picture)
 {
+    picture->SetFieldParams( 0 );
+    mjpeg_debug("Start %d %c %d %d",
+                picture->decode, 
+                pict_type_char[picture->pict_type],
+                picture->temp_ref,
+                picture->present);
     if( picture->pict_struct != FRAME_PICTURE )
         mjpeg_debug("Field %s (%d)",
                    (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
                    picture->pict_struct
             );
 
-    if( encparams.encoding_parallelism > 1 )
-    {
-        despatcher.Despatch( picture, &MacroBlock::Encode );
-        despatcher.WaitForCompletion();
-    }
-    else
-    {
-        picture->Encode();
-    }
 
-    picture->QuantiseAndEncode(ratecontroller);
+    despatcher.Despatch( picture, encodingFunc );
+    despatcher.WaitForCompletion();
+
+    picture->QuantiseAndCode(ratecontroller);
     picture->Reconstruct();
 
     /* Handle second field of a frame that is being field encoded */
     if( encparams.fieldpic )
     {
-        picture->Adjust2ndField();
+        picture->SetFieldParams( 1);
         mjpeg_debug("Field %s (%d)",
                    (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
                    picture->pict_struct
             );
 
-        if( encparams.encoding_parallelism > 1 )
-        {
-            despatcher.Despatch( picture, &MacroBlock::Encode );
-            despatcher.WaitForCompletion();
-        }
-        else
-        {
-            picture->Encode();
-        }
-        picture->QuantiseAndEncode(ratecontroller);
+
+        despatcher.Despatch( picture, encodingFunc );
+        despatcher.WaitForCompletion();
+        picture->QuantiseAndCode(ratecontroller);
         picture->Reconstruct();
     }
 }
+
+
+
+
 
 
 
@@ -493,13 +541,13 @@ void SeqEncoder::EncodeStream()
         // seperate processes/threads!!
         if( !pass1_ss.EndOfStream() )
         {
-            Pass1EncodeFrame();
+            Pass1Process();
             pass1_ss.Next( BitsAfterMux() );
         }
         
         if( pass2queue.size() > 0 )
         {
-            Pass2EncodeFrame();
+            Pass2Process();
         }
     } while( pass1coded.size() > 0 || pass2queue.size() > 0  );
 
@@ -531,10 +579,10 @@ void SeqEncoder::ReleasePicture( Picture *picture )
  * Pass1EncodeFrame - Do a unit of work in building up a queue of
  * Pass-1 encoded frame's.
  *
- * A Picture is encoded based on a normal (maximum) length GOP with quantisation
+ * A Frame is encoded based on a normal (maximum) length GOP with quantisation
  * determined by Pass1 rate controller.
  * 
- * If the Picture is a P-frame and is almost entirely intra-coded the picture is
+ * If the Frame is a P-frame and is almost entirely intra-coded the picture is
  * converted to an I-frame and the current GOP ended early.
  *
  * Once a GOP is succesfully completed its Picture's are transferred to the
@@ -543,7 +591,7 @@ void SeqEncoder::ReleasePicture( Picture *picture )
  *********************/
  
   
-void SeqEncoder::Pass1EncodeFrame()
+void SeqEncoder::Pass1Process()
 {
     old_picture = cur_picture;
     
@@ -572,14 +620,11 @@ void SeqEncoder::Pass1EncodeFrame()
     //
 
 
-    cur_picture->SetEncodingParams( pass1_ss );
 
-    // DEBUG - remove once proven....
-     assert( cur_picture->temp_ref-pass1_ss.g_idx == cur_picture->present-pass1_ss.frame_num );
 
    // Frames are presented at input in playback (presentation) order
-    cur_picture->org_img = reader.ReadFrame( cur_picture->present );
-    Pass1EncodePicture( cur_picture );
+    cur_picture->org_img = reader.ReadFrame( pass1_ss.PresentationNum() );
+    Pass1EncodeFrame( cur_picture );
 
 
     // Should this P frame really have been an I-frame ?
@@ -593,9 +638,8 @@ void SeqEncoder::Pass1EncodeFrame()
                         pass1_ss.NextGopClosed(), pass1_ss.BGroupLength(),
                         cur_picture->IntraCodedBlocks() * 100.0 );
             pass1_ss.ForceIFrame();
-            cur_picture->SetEncodingParams(pass1_ss);
             assert( cur_picture->present == old_present);
-            Pass1ReEncodePicture( cur_picture );
+            Pass1ReEncodeFrame( cur_picture );
         }
         else if( encparams.M_min == 1 )
         {
@@ -607,9 +651,8 @@ void SeqEncoder::Pass1EncodeFrame()
             mjpeg_info( "DEVEL: GOP split forces P-frames only... %.0f%% intra coded", 
                         cur_picture->IntraCodedBlocks() * 100.0 );
             pass1_ss.SuppressBFrames();
-            cur_picture->SetEncodingParams(pass1_ss);
             cur_picture->org_img = reader.ReadFrame( cur_picture->present );
-            Pass1ReEncodePicture( cur_picture );
+            Pass1ReEncodeFrame( cur_picture );
         }
     }
     
@@ -680,13 +723,13 @@ uint64_t    SeqEncoder::BitsAfterMux() const
 
 /*********************
  *
- * Pass2EncodeFrame - Take a frame from pass2queue if necessary
+ * Pass2EncodeFrame - Take a Frame from pass2queue if necessary
  * requantize and re-encode then commit the result.
  *
  *********************/
  
   
-void SeqEncoder::Pass2EncodeFrame()
+void SeqEncoder::Pass2Process()
 {
     deque<Picture *>::iterator i = pass2queue.begin()+1;
     

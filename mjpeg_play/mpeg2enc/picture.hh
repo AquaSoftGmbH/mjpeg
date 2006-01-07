@@ -28,6 +28,7 @@
 #include "synchrolib.h"
 #include "macroblock.hh"
 #include <vector>
+#include "mpeg2syntaxcodes.h"
 
 using namespace std;
 
@@ -79,11 +80,10 @@ public:
              Quantizer &_quantizer );
     ~Picture();
 
-    void QuantiseAndEncode(RateCtl &ratecontrol);
+    void QuantiseAndCode(RateCtl &ratecontrol);
     void InitRateControl(RateCtl &ratecontrol);
 
     void MotionSubSampledLum();
-    void Encode();
     void ITransform();
     void IQuantize();
     void CalcSNR();
@@ -92,8 +92,8 @@ public:
     void CommitCoding();
     void DiscardCoding();
     
-    void SetEncodingParams(  const StreamState &ss );
-    void Adjust2ndField();
+    void SetFrameParams( const StreamState &ss );
+    void SetFieldParams(int field);
     
     // Metrics used for stearing the encoding
     int SizeCodedMacroBlocks() const;
@@ -133,9 +133,6 @@ public:
 
 
 protected:
-    void Set_IP_Frame( const StreamState &ss );
-    void Set_B_Frame( const StreamState &ss );
-
     
 
     void PutSliceHdr( int slice_mb_y, int mquant );
@@ -197,12 +194,15 @@ public:
 	/* picture structure (header) data */
 
 	int temp_ref; /* temporal reference */
-	int pict_type; /* picture coding type (I, P or B) */
+    PICTURE_CODING frame_type;  /* picture coding type for frame  (I, P or B) */
+    int gop_decode;              /* Frame number in gop (decode order) */
+    int bgrp_decode;            /* Frame number in 'B group' (decode order) */
+    PICTURE_CODING pict_type;   /* picture coding type for current field (I, P or B) */
 	int vbv_delay; /* video buffering verifier delay (1/90000 seconds) */
 	int forw_hor_f_code, forw_vert_f_code;
 	int back_hor_f_code, back_vert_f_code; /* motion vector ranges */
 	int dc_prec;				/* DC coefficient prec for intra blocks */
-	int pict_struct;			/* picture structure (frame, top / bottom) */
+    PICTURE_STRUCT pict_struct;	/* picture structure (frame, top / bottom) */
 	int topfirst;				/* display top field first */
 	bool frame_pred_dct;			/* Use only frame prediction... */
 	int intravlc;				/* Intra VLC format */
@@ -217,7 +217,7 @@ public:
     int unit_coeff_first;       // First coefficient for zeroing purposes...
                                 // either 1 or 0.
 	/* Information for GOP start frames */
-	bool gop_start;             /* GOP Start frame */
+	bool gop_start;             /* GOP Start picture */
     bool closed_gop;            /* GOP is closed   */
 	int nb;						/* B frames in GOP */
 	int np;						/* P frames in GOP */
