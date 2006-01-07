@@ -324,7 +324,7 @@ CmdLineMultiplexJob::CmdLineMultiplexJob(unsigned int argc, char *argv[]) :
             VBR = true;
             break;
         case 'C' :
-            CBR = false;
+            CBR = true;
             break;
         case 'h' :
             always_system_headers = true;
