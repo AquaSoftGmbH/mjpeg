@@ -36,7 +36,7 @@
 #include "yuv4mpeg.h"
 #include "mpegconsts.h"
 
-#define YUVFPS_VERSION "0.1"
+#define YUVFPS_VERSION "0.2"
 
 static void print_usage() 
 {
