@@ -264,14 +264,15 @@ int main(int argc, char *argv[])
 */
 	if	(Y4M_RATIO_EQL(sar, y4m_sar_UNKNOWN))
 		{
-		if	(lqt_get_pasp(file, vtrack, &pasp))
+		lqt_get_pasp(file, vtrack, &pasp);
+		if	(pasp.hSpacing && pasp.vSpacing)
 			{
 			sar.n = pasp.hSpacing;
 			sar.d = pasp.vSpacing;
 			}
 		else
 			{
-			mjpeg_warn("No 'pasp' atom & no -a,  1:1 SAR ASSUMED!");
+			mjpeg_warn("Missing/malformed 'pasp' atom, -a not specified, 1:1 SAR assumed.");
 			sar = y4m_sar_SQUARE;
 			}
 		}
