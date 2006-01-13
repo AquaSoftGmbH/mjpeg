@@ -542,7 +542,6 @@ upscale (uint8_t * dst, uint8_t * src, int w, int h)
 {
   // triangulation scaler
   int x, y;
-  int dx, dy;
   int m;
   int a, b, c, d;
   int ae, be, ce, de, me;
