@@ -603,8 +603,7 @@ adaptive_filter_plane (uint8_t * ref, int w, int h, uint16_t t)
 void
 temporal_filter_planes (int idx, int w, int h, int t)
 {
-  int tm = 640;
-  uint32_t r, i, c, m;
+  uint32_t r, c, m;
   int32_t d;
   int x;
 
@@ -716,11 +715,10 @@ void filter_plane_median ( uint8_t * plane, int w, int h, int level)
 	int cnt;
 	int c;
 	int e;
-
-	if(level==0) return;
-
 	uint8_t * p;
 	uint8_t * d;
+
+	if(level==0) return;
 
 	p = plane;
 	d = scratchplane1;
