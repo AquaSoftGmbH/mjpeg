@@ -25,11 +25,20 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
+#include "cpu_accel.h"
+
+#ifdef HAVE_ASM_MMX
+#include "mmx.h"
+#endif
 
 
-int verbose = 1;
+// must be less than 24
+#define DIVISORBITS 20
+
+int verbose = 1, domean8 = 0;
 uint8_t	*input_frame[3];
 uint8_t	*output_frame[3];
 
@@ -47,9 +56,11 @@ int param_skip = 0;
 int param_fast = 0;
 int param_weight_type = 0;	/* 0 = use param_weight, 1 = 8, 2 = 2.667,
 							   3 = 13.333, 4 = 24 */
-double param_weight = 8.0;
+double param_weight = -1.0;
+double cutoff = 0.3333333;
 #define	NUMAVG	1024
 unsigned long avg_replace[NUMAVG];
+int divisor[NUMAVG],divoffset[NUMAVG];
 
 int	chroma_mode;
 int     SS_H = 2;
@@ -58,7 +69,7 @@ int     SS_V = 2;
 static void Usage(char *name )
 {
 	fprintf(stderr,
-		"Usage: %s: [-h] [-r num] [-R num] [-t num] [-T num] [-v num]\n"
+		"Usage: %s: [-h] [-r num] [-R num] [-t num] [-T num] [-c cutoff] [-v num]\n"
                 "-h   - Print out this help\n"
 		"-r   - Radius for luma median (default: 2 pixels)\n"
 		"-R   - Radius for chroma median (default: 2 pixels)\n"
@@ -67,6 +78,7 @@ static void Usage(char *name )
 		"-I   - Interlacing 0=off 1=on (default: taken from yuv stream)\n"
 		"-f   - Fast mode (i.e. no trigger threshold, just simple mean)\n"
 		"-w   - Weight given to current pixel vs. pixel in radius (default: 8)\n"
+                "-c   - Fraction of pixels that must be within threshold (default: 0.333)\n"
 		"-v   - Verbosity [0..2]\n", name);
 }
 			
@@ -74,7 +86,7 @@ int
 main(int argc, char *argv[])
 {
 	int	i;
-	long long avg;
+	long long avg, total;
 	int	input_fd = 0;
 	int	output_fd = 1;
 	int	horz;
@@ -87,7 +99,7 @@ main(int argc, char *argv[])
 
 	y4m_accept_extensions(1);
 
-	while((c = getopt(argc, argv, "r:R:t:T:v:S:hI:w:f")) != EOF) {
+	while((c = getopt(argc, argv, "r:R:t:T:v:S:hI:w:fc:")) != EOF) {
 		switch(c) {
 		case 'r':
 			radius_luma = atoi(optarg);
@@ -128,6 +140,9 @@ main(int argc, char *argv[])
 				param_weight_type = 0;
 			param_weight = atof (optarg);
 			break;
+                case 'c':
+                        cutoff = atof(optarg);
+                        break;
 		case 'v':
 			verbose = atoi (optarg);
 			if (verbose < 0 || verbose >2)
@@ -143,6 +158,24 @@ main(int argc, char *argv[])
 			exit(0);
 		}
 	}
+
+        if( param_weight < 0 ) {
+            if( param_fast )
+                param_weight = 8.0;
+            else
+                param_weight = 1.0;
+        }
+
+        for( i=1; i<NUMAVG; i++ ) {
+            avg_replace[i]=0;
+            divisor[i]=((1<<DIVISORBITS)+(i>>1))/i;
+            divoffset[i]=divisor[i]*(i>>1)+(divisor[i]>>1);
+        }
+
+#ifdef HAVE_ASM_MMX
+        if( cpu_accel() & ACCEL_X86_MMXEXT )
+            domean8=1;
+#endif
 
 	mjpeg_info ("fast %d, weight type %d\n", param_fast,
 		param_weight_type);
@@ -224,13 +257,15 @@ main(int argc, char *argv[])
 		  y4m_write_frame(output_fd, &ostream, &iframe, input_frame);
 	}
 
-	for (avg=0, i=0; i < NUMAVG; i++)
-		avg += avg_replace[i];
-	mjpeg_info("frames=%d avg=%lld", frame_count, avg);
+	for (total=0, avg=0, i=0; i < NUMAVG; i++) {
+		total += avg_replace[i];
+                avg   += avg_replace[i] * i; 
+        }
+	mjpeg_info("frames=%d avg=%3.1f", frame_count, ((double)avg)/((double)total));
 
 	for (i=0; i < NUMAVG; i++) {
 		mjpeg_debug( "%02d: %6.2f", i,
-			(((double)avg_replace[i]) * 100.0)/(double)(avg));
+			(((double)avg_replace[i]) * 100.0)/(double)(total));
 	}
 
 	y4m_fini_stream_info(&istream);
@@ -320,17 +355,105 @@ filter(int width, int height, uint8_t * const input[], uint8_t *output[])
 	}
 }
 
+#ifdef HAVE_ASM_MMX
+static inline void mean8(unsigned char *refpix,unsigned char *pixel,int radius_count,int row_stride,int threshold,char *diff,unsigned char *count)
+{
+    int a,b;
+
+    pxor_r2r(mm6,mm6); // mm6 (aka count) = 0
+    pxor_r2r(mm7,mm7); // mm7 (aka diff) = 0
+    movq_m2r(*refpix,mm3); // mm3 = refpix[0]
+
+    movd_g2r(0x80808080,mm4); // mm4 = 128
+    punpcklbw_r2r(mm4,mm4);
+
+    pxor_r2r(mm4,mm3); // mm3 = refpix[0]-128
+
+    movd_g2r(threshold,mm5); // mm5 = threshold
+    punpcklbw_r2r(mm5,mm5);
+    punpcklbw_r2r(mm5,mm5);
+    punpcklbw_r2r(mm5,mm5);
+
+    for( b=0; b<radius_count; b++ ) {
+        for( a=0; a<radius_count; a++ ) {
+            movq_m2r(*pixel,mm0); // mm0  = pixel[0]
+            pxor_r2r(mm4,mm0);    // mm0  = pixel[0]-128
+            movq_r2r(mm3,mm2);    // mm2  = refpix[0]-128
+            psubsb_r2r(mm0,mm2);  // mm2  = refpix[0]-pixel[0]
+            psubsb_r2r(mm3,mm0);  // mm0  = pixel[0]-refpix[0]
+            pminub_r2r(mm0,mm2);  // mm2  = abs(pixel[0]-refpix[0])
+            movq_r2r(mm5,mm1);    // mm1  = threshold
+            pcmpgtb_r2r(mm2,mm1); // mm1  = (threshold > abs(pixel[0]-refpix[0])) ? -1 : 0
+            psubb_r2r(mm1,mm6);   // mm6 += (threshold > abs(pixel[0]-refpix[0]))
+            pand_r2r(mm1,mm0);    // mm0  = (threshold > abs(pixel[0]-refpix[0])) ? pixel[0]-refpix[0] : 0
+            paddb_r2r(mm0,mm7);   // mm7 += (threshold > abs(pixel[0]-refpix[0])) ? pixel[0]-refpix[0] : 0
+
+            ++pixel;
+        }
+        pixel += row_stride - radius_count;
+    }
+
+    movq_r2m(mm6,*count);
+    movq_r2m(mm7,*diff);
+
+    emms();
+ 
+}
+#endif
+
+static inline void mean1(unsigned char *refpix,unsigned char *pixel,int radius_count,int row_stride,int threshold,char *diff,unsigned char *count)
+{
+    int reference = *refpix;
+    int total = 0;
+    int cnt = 0;
+    int a,b;
+    for( b = radius_count; b > 0; --b ) {
+        for( a = radius_count; a > 0; --a ) {
+            int d = *pixel - reference;
+            if (d < threshold && d > -threshold)
+            {
+                total += d;
+                cnt++;
+            }
+            ++pixel;
+        }
+        pixel += (row_stride - radius_count);
+    }
+    *diff = total;
+    *count = cnt;
+}
+
+static inline void tally(unsigned char *outpix,unsigned char *refpix,int total,int count,int min_count,int row_stride)
+{
+    ++avg_replace[count];
+
+    /*
+     * If we don't have enough samples to make a decent
+     * pseudo-median use a simple mean
+     */
+    if (count <= min_count)
+    {
+        *outpix =  
+            ( ( (refpix[-row_stride-1] + refpix[-row_stride]) + 
+                (refpix[-row_stride+1] +  refpix[-1]) 
+                ) 
+              + 
+              ( ((refpix[0]<<3) + 8 + refpix[1]) +
+                (refpix[row_stride-1] + refpix[row_stride]) + 
+                refpix[row_stride+1]
+                  )
+                ) >> 4;
+    } else {
+        count += param_weight - 1;
+        //*outpix = (refpix[0]*count + total + count/2) / count;
+        *outpix = refpix[0] + ((total * divisor[count] + divoffset[count])>>DIVISORBITS);
+    }
+}
+
 void
 filter_buffer(int width, int height, int row_stride,
 			  int radius, int threshold, uint8_t * const input, uint8_t * const output)
 {
-	int	reference;
-	int	diff;
-	int	a;
-	int	b;
-	uint8_t *pixel;
-	int	total;
-	int	count;
 	int	radius_count;
 	int	x;
 	int	y;
@@ -338,8 +461,10 @@ filter_buffer(int width, int height, int row_stride,
 	int	min_count;
 	uint8_t *inpix, *refpix;
 	uint8_t *outpix;
+        static uint8_t count[8];
+        static int8_t total[8];
 	radius_count = radius + radius + 1;
-	min_count = (radius_count * radius_count + 2)/3;
+	min_count = ceil((radius_count * radius_count) * cutoff);
 	
 
 	if (threshold == 0)
@@ -359,18 +484,16 @@ filter_buffer(int width, int height, int row_stride,
 	outpix = &output[0];
 	for(y=0; y < height; ++y)
 	{
-		a = 0;
-		while(a<radius)
+		x = 0;
+		while(x<radius)
 		{
-			outpix[a] = inpix[a];
-			++a;
-			outpix[width-a] = inpix[width-a];
+			outpix[x] = inpix[x];
+			++x;
+			outpix[width-x] = inpix[width-x];
 		}
 		inpix += row_stride;
 		outpix += row_stride;
 	}
-
-	count = 0;
 
 	offset = radius*row_stride+radius;	/* Offset top-left of processing */
 	                                /* Window to its centre */
@@ -378,56 +501,31 @@ filter_buffer(int width, int height, int row_stride,
 	outpix = &output[offset];
 	for(y=radius; y < height-radius; y++)
 	{
-		for(x=radius; x < width - radius; x++)
-		{
-			reference = *refpix;
-			total = 0;
-			count = 0;
-			pixel = refpix-offset;
-			b = radius_count;
-			while( b > 0 )
-			{
-				a = radius_count;
-				--b;
-				while( a > 0 )
-				{
-					diff = reference - *pixel;
-					--a;
-					if (diff < threshold && diff > -threshold)
-					{
-						total += *pixel;
-						count++;
-					}
-					++pixel;
-				}
-				pixel += (row_stride - radius_count);
-			}
-			++avg_replace[count];
+            x=radius;
+#ifdef HAVE_ASM_MMX
+            if( domean8 ) {
+                for(; x < width - radius - 7; x+=8)
+                {
+                    int i;
 
-			/*
-			 * If we don't have enough samples to make a decent
-			 * pseudo-median use a simple mean
-			 */
-			if (count <= min_count)
-			{
-				*outpix =  
-					( ( (refpix[-row_stride-1] + refpix[-row_stride]) + 
-						(refpix[-row_stride+1] +  refpix[-1]) 
-						) 
-					  + 
-					  ( ((refpix[0]<<3) + 8 + refpix[1]) +
-						(refpix[row_stride-1] + refpix[row_stride]) + 
-						refpix[row_stride+1]
-						  )
-					 ) >> 4;
-			} else {
-				*outpix = (total + count/2) / count;
- 			}
-			++refpix;
-			++outpix;
-		}
-		refpix += (row_stride-width+(radius*2));
-		outpix += (row_stride-width+(radius*2));
+                    mean8(refpix,refpix-offset,radius_count,row_stride,threshold,total,count);
+                    for( i=0; i<8; i++ ) {
+                        tally(outpix,refpix,total[i],count[i],min_count,row_stride);
+                        ++refpix;
+                        ++outpix;
+                    }
+                }
+            }
+#endif
+            for(; x < width - radius; x++)
+            {
+                mean1(refpix,refpix-offset,radius_count,row_stride,threshold,total,count);
+                tally(outpix,refpix,total[0],count[0],min_count,row_stride);
+                ++refpix;
+                ++outpix;
+            }
+            refpix += (row_stride-width+(radius*2));
+            outpix += (row_stride-width+(radius*2));
 	}
 }
 

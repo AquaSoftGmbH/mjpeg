@@ -66,6 +66,11 @@ Note that certain combinations of radii and weights have been
 optimized to be even faster -- radius 1 and weight 2.667, radius 1
 and weight 8, and radius 2 and weight 8.
 .TP 5
+.BI \-c " num"
+In slow mode, more than this fraction of the pixels must be within the
+threshold; otherwise the pixel is simply the weighted mean of pixels
+within a radius of 1.  Default is 0.33333.
+.TP 5
 .BI \-s " num"
 Number of beginning frames to skip.  The first num frames are written
 to stdout unfiltered.  This is useful for resuming an interrupted
