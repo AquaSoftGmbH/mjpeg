@@ -803,7 +803,7 @@ void filter_plane_median ( uint8_t * plane, int w, int h, int level)
 		avg += e*c;
 		cnt += e;
 
-		c = *(p-w*1+2);
+		c = *(p-w*2+2);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
 		avg += e*c;
