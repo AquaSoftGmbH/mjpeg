@@ -11,6 +11,7 @@ mpeg2enc \- MPEG-1/2 encoder
 .IR num_CPU ]
 .RB [ -f | --format
 .IR mpeg_profile ]
+.RB [ -l | --level ] h | high | m | main
 .RB [ -b | --video-bitrate
 .IR bitrate_kbps ]
 .RB [ -V | --video-buffer
@@ -38,6 +39,10 @@ mpeg2enc \- MPEG-1/2 encoder
 .IR n|p|s ]
 .RB [ -F | --frame-rate
 .IR frame_rate_code ]
+.RB [ -x | --display-hsize]
+.IR 32 .. 38383 ]
+.RB [ -y | --display-vsize]
+.IR 32 .. 38383 ]
 .RB [ -a | --aspect
 .IR aspect_ratio_code ]
 .RB [ -z | --playback-field-order
@@ -193,6 +198,19 @@ Just a very basic implementation. Useful with DXR2 board and similar
 hardware that can decode MPEG-2 only if it is presented in a DVD like
 form.  Bit-rate defaults to 7500kbps, buffer sizes to the maximum
 permitted by the DVD specification.
+.PP
+.BR -f|--format \ 10
+        -       ATSC 480i 
+.PP
+.BR -f|--format \ 10
+        -       ATSC 480p
+.PP
+.BR -f|--format \ 10
+        -       ATSC 720p
+.PP
+.BR -f|--format \ 10
+        -       ATSC 1080i
+
 .SH "GENERAL FUNCTION LETTERS"
 .PP
 .BR -v|--verbose \ num
@@ -305,6 +323,10 @@ play at 4:3 aspect ratio.
 .BR --no-constraints
 .PP
 This flag deactivates all constraints for the maximum video samplerate or video resolution. Its purpose is to allow the encoding of unusual resolutions of MPEG-video (e.g. 2200 x 576, 160 degrees FOV VR-theatre MPEG movies), but should be used with care: It can possible circumvent a number of other security checks, and untested settings can cause mpeg2enc to crash in this mode. 
+.BR -l |--level\ h|high|m|main
+.PP
+This flag allows the MPEG-2 implementation level against which the coding parameters are checked to
+be set.  You may need to set this to 'high' if you're encoding HDTV material.
 .PP
 .BR --no-altscan-mpeg2
 .PP
@@ -383,8 +405,19 @@ value is inferred from the input header.
 For MPEG-2 the specified aspect ratios are used directly. For MPEG-1
 mpeg2enc infers the MPEG-1 pixel aspect code from the video norm
 specified and the specified playback aspect ratio.
-
 .PP
+.BR -x|--display-hsize \ num
+.PP
+.BR -y|--display-vsize \ num
+.PP
+These set the display-horizontal-size and display-vertical-size hints
+in the MPEG-2.  By default these are simply the encode frame dimensions.
+However, if they are set to different values the player gets a hint that
+the appropriate 'black bars' or cropping/scaling should be performed. The main
+use for these parameters is to set a display-vertical-size of 1080 for HDTV
+1080i or 1080p material.  Here, since the frame height has to be a multiple of 16, the encoded frame height is forced to be 1088, even though HDTV standards
+specify only 1080 lines of picture content.  Standards committees ... love' em.
+
 .BR -p|--3-2-pulldown
 .PP
 Setting -p only makes sense for 24frame/sec Movie source material.  It sets

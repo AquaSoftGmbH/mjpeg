@@ -25,7 +25,10 @@ mplex \- MPEG 1/2 program/system stream multiplexer
 .IR num ]
 .RB [ -O|--sync-offset
 .IR num[\fBms\fP|\fBs\fP|\fBpts\fP] ]
+.RB [ -R|--run-in
+.IR num ]
 .RB [ -V|--vbr]
+.RB [ -C|--cbr]
 .RB [ -s|--sector-size
 .IR sector_size_B ]
 .RB [ -p|--packets-per-pack
@@ -159,11 +162,16 @@ the (seperate) decoding/encoding of audio and video.
 By appending 's', 'ms' or 'mpt' the offset can given in seconds,
 milliseconds or MPEG clock ticks (1/90000th of a second) respectively.
 If no suffix is given milliseconds are assumed.
-
+.TP
+.BI -R|--run-in \ num
+Set a non-default run-in (the time data is preloaded into buffers before decoding is scheduled) at the start of each sequence in video frame intervals.
+By default a run-in matching the specified size of the video and audio buffers in the decoder and the type of multiplexing (constant or variable bit-rate) is selected automatically.
 .TP
 .B -V|--vbr
-Set variable bit rate multiplexing.  This is needed to multiplex variable
-bit-rate video streams correctly.
+Force variable bit rate multiplexing even if selected profile defaults to constant-bit-rate.
+.TP
+.B -C||-cbr
+Force constant bit rate multiplexing even if selected profile defaults to variable bit-rate.
 .TP
 .BI -s|--sector-size \ num
 This option specifies the sector size of the output stream in bytes.
