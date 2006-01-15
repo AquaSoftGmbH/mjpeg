@@ -69,6 +69,7 @@ public:
   const char *vdr_index_pathname;
   int max_segment_size;
   int min_pes_header_len;
+  int run_in_frames;            // Run-in expressed in Frame intervals
   Workarounds workarounds;      // Special work-around flags that
                                 // constrain the syntax to suit
                                 // the foibles of particular MPEG

@@ -64,7 +64,8 @@ public:
 
 	int mpeg;
 	int data_rate;
-	int mux_format;
+    unsigned int    run_in_frames;
+    int mux_format;
 	off_t max_segment_size;
 
 	Workarounds workarounds;
@@ -80,7 +81,7 @@ public:
 	unsigned int    transport_prefix_sectors; 
 	unsigned int 	sector_size;
 	unsigned int	vcd_zero_stuffing;	/* VCD audio sectors have 20 0 bytes :-( */
-
+    
 	int 		dmux_rate;	/* Actual data mux-rate for calculations always a multiple of 50  */
 	int 		mux_rate;	/* MPEG mux rate (50 byte/sec units      */
 
@@ -132,7 +133,7 @@ private:
 	void InitInputStreams(MultiplexJob &job);
 	void InitInputStreamsForStills(MultiplexJob & job );
 	void InitInputStreamsForVideo(MultiplexJob & job );
-	unsigned int RunInSectors();
+	clockticks RunInDelay();
 	void Init();
 	
 

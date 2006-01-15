@@ -76,6 +76,7 @@ MultiplexJob::MultiplexJob()
     max_segment_size = 0; // MB, default is unlimited (suitable for DVD)
     outfile_pattern = 0;
     packets_per_pack = 1;
+    run_in_frames = 0;      // Select default run-in...
     audio_tracks = 0;
     video_tracks = 0;
     lpcm_tracks = 0;

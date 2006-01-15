@@ -262,29 +262,30 @@ private:
 };
 
 const char CmdLineMultiplexJob::short_options[] =
-    "o:i:b:r:O:v:f:l:s:S:p:W:L:VCMh";
+        "o:i:b:r:O:v:f:l:s:S:p:W:L:R:VCMh";
 #if defined(HAVE_GETOPT_LONG)
 struct option CmdLineMultiplexJob::long_options[] = 
 {
-	{ "verbose",           1, 0, 'v' },
+    { "verbose",           0, 0, 'v' },
     { "vdr-index",         1, 0, 'i' },
-	{ "format",            1, 0, 'f' },
-	{ "mux-bitrate",       1, 0, 'r' },
-	{ "video-buffer",      1, 0, 'b' },
-	{ "lpcm-params",       1, 0, 'L' },
-	{ "output",            1, 0, 'o' },
-	{ "sync-offset",       1, 0, 'O' },
-	{ "vbr",      	       1, 0, 'V' },
-    { "cbr",               1, 0, 'C' },
-	{ "system-headers",    1, 0, 'h' },
-	{ "ignore-seqend-markers",     0, 0, 'M' },
-	{ "max-segment-size",  1, 0, 'S' },
-	{ "mux-limit",   	    1, 0, 'l' },
-	{ "packets-per-pack",  1, 0, 'p' },
-	{ "sector-size",       1, 0, 's' },
-	{ "workarounds", 1, 0, 'W' },
-	{ "help",              0, 0, '?' },
-	{ 0,                   0, 0, 0   }
+    { "format",            1, 0, 'f' },
+    { "mux-bitrate",       1, 0, 'r' },
+    { "video-buffer",      1, 0, 'b' },
+    { "lpcm-params",       1, 0, 'L' },
+    { "output",            1, 0, 'o' },
+    { "sync-offset",       1, 0, 'O' },
+    { "vbr",               0, 0, 'V' },
+    { "cbr",               0, 0, 'C' },
+    { "system-headers",    0, 0, 'h' },
+    { "ignore-seqend-markers",     0, 0, 'M' },
+    { "run-in",            1, 0, 'R' },
+    { "max-segment-size",  1, 0, 'S' },
+    { "mux-limit",          1, 0, 'l' },
+    { "packets-per-pack",  1, 0, 'p' },
+    { "sector-size",       1, 0, 's' },
+    { "workarounds", 1, 0, 'W' },
+    { "help",              0, 0, '?' },
+    { 0,                   0, 0, 0   }
 };
 #endif
 
@@ -352,6 +353,12 @@ CmdLineMultiplexJob::CmdLineMultiplexJob(unsigned int argc, char *argv[]) :
                 Usage(argv[0]);
             /* Convert from kbit/sec (user spec) to 50B/sec units... */
             data_rate = (( data_rate * 1000 / 8 + 49) / 50 ) * 50;
+            break;
+        
+        case 'R':
+            run_in_frames = atoi(optarg);
+            if( run_in_frames < 0 || run_in_frames > 100 )
+                Usage(argv[0]);
             break;
 
         case 'O':
@@ -450,6 +457,8 @@ void CmdLineMultiplexJob::Usage(char *str)
     "  Force variable bit-rate video multiplexing\n"
     "--cbr|-C\n"
     "  Force constant bit-rate video multiplexing\n"
+    "--run-in|-R num\n"
+    "  Force a 'run-in' of exactly num frame intervals\n"
 	"--packets-per-pack|-p num\n"
     "  Number of packets per pack generic formats [1..100]\n"
 	"--system-headers|-h\n"
@@ -459,7 +468,7 @@ void CmdLineMultiplexJob::Usage(char *str)
 	"--ignore-seqend-markers|-M\n"
     "  Don't switch to a new output file if a  sequence end marker\n"
 	"  is encountered ithe input video.\n"
-    "--vdr-index|-i\n"
+    "--vdr-index|-i <vdr-index-filename>\n"
     "  Generate a VDR index file with the output stream\n"
     "--workaround|-W workaround [, workaround ]\n"
 	"--help|-?\n"

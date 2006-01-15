@@ -81,6 +81,7 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
     sector_size = job.sector_size;
 	split_at_seq_end = !job.multifile_segment;
     workarounds = job.workarounds;
+    run_in_frames = job.run_in_frames;
     max_segment_size = static_cast<off_t>(job.max_segment_size)
                        * static_cast<off_t>(1024 * 1024);
     max_PTS = static_cast<clockticks>(job.max_PTS) * CLOCKS;
@@ -550,7 +551,7 @@ segment_state;
  * ever process one frame at a time.
  * @returns the number of run-in sectors needed to fill up the buffers to suit the type of stream being muxed.
  */
-
+#if 0
 unsigned int Multiplexor::RunInSectors()
 {
 	std::vector<ElementaryStream *>::iterator str;
@@ -570,6 +571,64 @@ unsigned int Multiplexor::RunInSectors()
 	}
     sectors_delay += astreams.size();
 	return sectors_delay;
+}
+#endif
+clockticks Multiplexor::RunInDelay()
+{
+    std::vector<ElementaryStream *>::iterator str;
+    double frame_interval = 0.0;
+    clockticks delay;
+    
+    // User has specified a particular run-in
+
+    if(vstreams.size() != 0 )
+    {
+        frame_interval = CLOCKS / dynamic_cast<VideoStream *>(vstreams[0])->FrameRate();
+    }
+ 
+    if( run_in_frames != 0 ) 
+    {
+        if( frame_interval == 0.0 )
+        {
+            mjpeg_warn( "Run-in specified in frame intervals but no video stream - using 25Hz" );
+            frame_interval = CLOCKS / 25.0;
+        }
+        delay = static_cast<clockticks>(run_in_frames * frame_interval);
+    }
+    else
+    {
+        // No run-in specified: choose something reasonable based on the 
+        // specified buffer sizes
+        unsigned int data_delay = 0;
+
+        for( str = vstreams.begin(); str < vstreams.end(); ++str )
+        {
+            if( MPEG_STILLS_FORMAT( mux_format ) )
+            {
+                data_delay += static_cast<unsigned int>(1.1*(*str)->BufferSize());
+            }
+            else if( vbr )
+                data_delay += (*str)->BufferSize() / 2 ;
+            else
+                data_delay += 2*(*str)->BufferSize() / 3 ;
+        }
+        for( str = astreams.begin(); str < astreams.end(); ++str )
+        {
+            data_delay += 3*(*str)->BufferSize()/4;
+        }
+        ByteposTimecode( data_delay, delay );
+    }
+    
+    // Round delay a multiple of frame interval if its known...
+    if( frame_interval != 0.0 )
+    {
+        return static_cast<clockticks>(static_cast<int>( delay / frame_interval+0.5) * frame_interval);
+    }
+    else
+    {
+        return delay;
+    }
+
 }
 
 /**********************************************************************
@@ -709,11 +768,12 @@ void Multiplexor::Init()
 	   time to fill before decoding starts. Calculate the necessary delays...
 	*/
 
-	sectors_delay = RunInSectors();
-
-	ByteposTimecode( 
-		static_cast<bitcount_t>(sectors_delay*sector_transport_size),
-		delay );
+	//sectors_delay = RunInSectors();
+    //ByteposTimecode( 
+    //        static_cast<bitcount_t>(sectors_delay*sector_transport_size),
+    //        delay );
+    delay = RunInDelay();
+	
     video_delay += delay;
     audio_delay += delay;
 
@@ -729,8 +789,8 @@ void Multiplexor::Init()
         audio_delay += vstreams[0]->BasePTS()-vstreams[0]->BaseDTS();
     }
 
-	mjpeg_info( "Run-in Sectors = %d Video delay = %lld Audio delay = %lld",
-				sectors_delay,
+	mjpeg_info( "Run-in delay = %lld Video delay = %lld Audio delay = %lld",
+             delay / 300,
 				 video_delay / 300,
 				 audio_delay / 300 );
 

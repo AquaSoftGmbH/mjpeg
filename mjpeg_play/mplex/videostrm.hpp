@@ -67,6 +67,7 @@ public:
 
     void SetMaxStdBufferDelay( unsigned int demux_rate );
 	void OutputSector();
+    inline double FrameRate() const { return frame_rate; }
 
 
 protected:
