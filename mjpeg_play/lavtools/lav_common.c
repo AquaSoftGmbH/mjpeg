@@ -330,6 +330,7 @@ void init(LavParam *param, uint8_t *buffer[])
    case Y4M_CHROMA_422:
      param->chroma_width  = param->output_width  / 2;
      param->chroma_height = param->output_height;
+     break;
    case Y4M_CHROMA_411:
      param->chroma_width  = param->output_width  / 4;
      param->chroma_height = param->output_height;
