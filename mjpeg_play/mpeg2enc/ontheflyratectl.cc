@@ -1,4 +1,4 @@
-/* pass1atectl.c, bitrate control routines  */
+/* ratectl.c, bitrate control routines (linear quantization only currently) */
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
@@ -27,7 +27,7 @@
  *
  */
 
-/* Modifications and enhancements (C) 2006 Andrew Stevens */
+/* Modifications and enhancements (C) 2000,2001,2002,2003 Andrew Stevens */
 
 /* These modifications are free software; you can redistribute it
  *  and/or modify it under the terms of the GNU General Public License
@@ -55,20 +55,19 @@
 #include "tables.h"
 #include "mpeg2encoder.hh"
 #include "picture.hh"
-#include "pass1ratectl.hh"
+#include "ontheflyratectl.hh"
 
 
 
 /*****************************
  *
- * Rate controller for pass1 of multi-pass/lookahead rate-control encoding.
- * Currently a simple clone of the on-the-fly encoder. 
- * TODO: evolve into proper 1st pass near-constant-quanrisation rate-control 
- * using long-term sequence statistics to choose quantisation likely to be close to
- * final pass-2 quantisation...
+ * On-the-fly rate controller.  The constructor sets up the initial
+ * control and estimator parameter values to values that experience
+ * suggest make sense.  All the important ones are dynamically 
+ * tuned anyway so these values are not too critical.
  *
  ****************************/
-Pass1RateCtl::Pass1RateCtl(EncoderParams &encparams ) :
+OnTheFlyRateCtl::OnTheFlyRateCtl(EncoderParams &encparams ) :
 	RateCtl(encparams, *this)
 {
 	buffer_variation = 0;
@@ -96,7 +95,7 @@ Pass1RateCtl::Pass1RateCtl(EncoderParams &encparams ) :
  *
  ********************/
 
-void Pass1RateCtl::InitSeq(bool reinit)
+void OnTheFlyRateCtl::InitSeq(bool reinit)
 {
 	double init_quant;
 	/* If its stills with a size we have to hit then make the
@@ -202,7 +201,7 @@ void Pass1RateCtl::InitSeq(bool reinit)
 }
 
 
-void Pass1RateCtl::InitGOP( int np, int nb)
+void OnTheFlyRateCtl::InitGOP( int np, int nb)
 {
 	N[P_TYPE] = encparams.fieldpic ? 2*np+1 : 2*np;
 	N[B_TYPE] = encparams.fieldpic ? 2*nb : 2*nb;
@@ -259,7 +258,7 @@ void Pass1RateCtl::InitGOP( int np, int nb)
 /* Step 1a: compute target bits for current picture being coded, based
  * on predicting from past frames */
 
-void Pass1RateCtl::InitNewPict(Picture &picture)
+void OnTheFlyRateCtl::InitNewPict(Picture &picture)
 {
 	double target_Q;
 	int available_bits;
@@ -414,7 +413,7 @@ void Pass1RateCtl::InitNewPict(Picture &picture)
 /* Step 1b: compute target bits for current picture being coded, based
  * on an actual encoding */
 
-void Pass1RateCtl::InitKnownPict( Picture &picture )
+void OnTheFlyRateCtl::InitKnownPict( Picture &picture )
 {
 	double target_Q;
 	int available_bits;
@@ -521,7 +520,7 @@ void Pass1RateCtl::InitKnownPict( Picture &picture )
  * rate constraints...
  */
 
-void Pass1RateCtl::UpdatePict( Picture &picture, int &padding_needed)
+void OnTheFlyRateCtl::UpdatePict( Picture &picture, int &padding_needed)
 {
 	double K;
 	int32_t actual_bits;		/* Actual (inc. padding) picture bit counts */
@@ -696,7 +695,7 @@ void Pass1RateCtl::UpdatePict( Picture &picture, int &padding_needed)
    overall size.
  */
 
-int Pass1RateCtl::InitialMacroBlockQuant(Picture &picture)
+int OnTheFlyRateCtl::InitialMacroBlockQuant(Picture &picture)
 {
     return cur_mquant;
 }
@@ -711,7 +710,7 @@ int Pass1RateCtl::InitialMacroBlockQuant(Picture &picture)
  * supported.
  ************/
 
-int Pass1RateCtl::MacroBlockQuant( const MacroBlock &mb )
+int OnTheFlyRateCtl::MacroBlockQuant( const MacroBlock &mb )
 {
     --mquant_change_ctr;
     if( mquant_change_ctr < 0)
@@ -799,7 +798,7 @@ int Pass1RateCtl::MacroBlockQuant( const MacroBlock &mb )
  * bit-stream.
  */
 
-void Pass1RateCtl::VbvEndOfPict(Picture &picture)
+void OnTheFlyRateCtl::VbvEndOfPict(Picture &picture)
 {
 }
 
@@ -814,7 +813,7 @@ void Pass1RateCtl::VbvEndOfPict(Picture &picture)
  * themselves.
  */
 
-void Pass1RateCtl::CalcVbvDelay(Picture &picture)
+void OnTheFlyRateCtl::CalcVbvDelay(Picture &picture)
 {
 	
 	/* number of 1/90000 s ticks until next picture is to be decoded */

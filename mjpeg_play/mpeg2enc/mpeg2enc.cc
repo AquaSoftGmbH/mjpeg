@@ -63,7 +63,7 @@
 #include "imageplanes.hh"
 #include "elemstrmwriter.hh"
 #include "quantize.hh"
-#include "ratectl.hh"
+#include "ontheflyratectl.hh"
 #include "seqencoder.hh"
 #include "mpeg2coder.hh"
 #include "format_codes.h"
