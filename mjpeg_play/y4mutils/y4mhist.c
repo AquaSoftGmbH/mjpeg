@@ -198,6 +198,7 @@ void makepoint(int laeng, int winkel)
 	sm = 5;
 	la = 10;
 
+	/* That 57,3 makes the conversation from Grad to radiant */
 	p1_x = round ( (laeng+la) * cos ((winkel-10) /57.3) );
 	p1_y = round ( (laeng+la) * sin ((winkel-10) /57.3) );
 	p2_x = round ( (laeng+sm) * cos ((winkel-10) /57.3) );
@@ -289,12 +290,11 @@ void make_vectorscope_layout()
 	stringColor(screen, vector_x - 10 , vector_y + 135, text, white);
 
 	makepoint( 90, 60); /* length, arc, for purple */	
-	makepoint( 93, 104); /* length, arc, for red */	
-	makepoint( 93, 166); /* length, arc, for yellow */	
-	makepoint( 93, 241); /* length, arc, for green */	
-	makepoint( 93, 283); /* length, arc, for cyan */	
-	makepoint( 93, 346); /* length, arc, for blue */	
-	
+	makepoint( 96, 104); /* length, arc, for red */	
+	makepoint( 67, 166); /* length, arc, for yellow */	
+	makepoint( 90, 241); /* length, arc, for green */	
+	makepoint( 96, 283); /* length, arc, for cyan */	
+	makepoint( 67, 346); /* length, arc, for blue */	
 
 	}
 
@@ -490,6 +490,7 @@ main(int argc, char **argv)
 	u_char	*yuv[3], *cp;
 #ifdef	HAVE_SDLgfx
 	int	j;
+	int temp_x, temp_y;
 	u_char	*cpx, *cpy;
 #endif
 	y4m_stream_info_t istream;
@@ -614,7 +615,12 @@ main(int argc, char **argv)
 					cpx++;
 					cpy++;
 
-					vectorfield[*cpx][(*cpy*-1)]=1;
+					/* Have no idea why I have to multiply it with that values
+					   But than the vectorsscope works correct. If someone has
+						a explantion or better fix tell me. Bernhard */
+					temp_x = round( 128+ ((*cpx-128) * 0.7857) );
+					temp_y = round( 128+ ((*cpy-128) * 1.1143) );
+					vectorfield[temp_x][temp_y*-1]=1;
 				}
 
 				/* Here we got to the n'th next line if needed */
