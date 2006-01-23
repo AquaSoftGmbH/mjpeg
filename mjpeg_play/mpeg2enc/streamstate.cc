@@ -119,7 +119,7 @@ void StreamState::Next(  int64_t bits_after_mux )   // Estimate of how much outp
         next_split_point += seq_split_length;
         gop_end_seq = true;
     }
-     SetTempRef();
+    SetTempRef();
 }
 
 /*
@@ -130,8 +130,8 @@ void StreamState::Next(  int64_t bits_after_mux )   // Estimate of how much outp
 void StreamState::ForceIFrame()
 {
     assert( frame_type != B_TYPE );
-	GopStart();
-	SetTempRef();
+    GopStart();
+    SetTempRef();
 }
 
 /*
@@ -159,7 +159,7 @@ void StreamState::SetTempRef()
 {
     // Ensure we have read up to the input frame we might need if the next
     // frame in decode order is an I or P.   Make sure we don't go 'of the end'
-   // once we've reached EOS
+    // once we've reached EOS
 
     int read_ahead_frame = frame_num+encparams.M;
     reader.FillBufferUpto( read_ahead_frame  );
@@ -175,7 +175,7 @@ void StreamState::SetTempRef()
     if (temp_ref > (last_frame-gop_start_frame))
         temp_ref = (last_frame-gop_start_frame);
     
-        // DEBUG remove when validated
+    // DEBUG remove when validated
     assert( frame_num + temp_ref - g_idx == gop_start_frame + temp_ref );
     end_stream = frame_num > last_frame;
     end_seq =  frame_num == last_frame || ( g_idx == gop_length-1 && gop_end_seq);
@@ -198,14 +198,14 @@ void StreamState::GopStart(  )
     /* Sequence ended at end previous GOP so this one starts a new sequence */
     if( gop_end_seq )
     {
-          /* We split sequence last frame.This is the input stream display 
-           * order sequence number of the frame that will become frame 0 in display
-           * order in  the new sequence 
-           */
-          seq_start_frame =frame_num;
-          s_idx = 0;
-          gop_end_seq = false;
-          new_seq = true;
+        /* We split sequence last frame.This is the input stream display 
+         * order sequence number of the frame that will become frame 0 in display
+         * order in  the new sequence 
+         */
+        seq_start_frame =frame_num;
+        s_idx = 0;
+        gop_end_seq = false;
+        new_seq = true;
     }
     
 
