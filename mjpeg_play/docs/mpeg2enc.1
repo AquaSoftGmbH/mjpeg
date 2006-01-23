@@ -71,6 +71,8 @@ mpeg2enc \- MPEG-1/2 encoder
 .IR 0..2 ]
 .RB [ --no-altscan-mpeg2 ]
 .RB [ --dualprime-mpeg2 ]
+.RB [ -A | --ratecontroller
+.IR 0..1 ]
 .RB [ -u | --cbr ]
 .RB [ -? | --help ]
 .B -o|--output
@@ -275,6 +277,10 @@ If variable bitrate (VBR) mode has been selected (see the
 bitrate of the stream. \fBNOTE:\fP By default MPEG-2 streams (\fB-f\fP
 3, 4, 5, 8 and 9 are VBR.  Use the \fB--cbr\fP option for generating
 CBR (Constant Bit Rate) streams.
+.PP
+.BR -A|--ratecontroller \ 0..1
+.PP
+Specify which of the rate control algorithms to use.   Default is 0.
 .PP
 .BR -V|--video-buffer \ num
 .PP
