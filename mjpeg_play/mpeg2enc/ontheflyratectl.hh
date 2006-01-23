@@ -135,14 +135,13 @@ public:
 };
 
 
-class OnTheFlyRateCtl :  public RateCtl,  public OnTheFlyRateCtlState
+class OnTheFlyRateCtl :  public Pass1RateCtl,  public OnTheFlyRateCtlState
 {
 public:
 	OnTheFlyRateCtl( EncoderParams &encoder );
 	virtual void InitSeq( bool reinit );
 	virtual void InitGOP( int nb, int np );
 	virtual void InitNewPict (Picture &picture);
-	virtual void InitKnownPict (Picture &picture);
 	virtual void UpdatePict ( Picture &picture, int &padding_needed );
 	virtual int  MacroBlockQuant( const MacroBlock &mb);
 	virtual int  InitialMacroBlockQuant(Picture &picture);

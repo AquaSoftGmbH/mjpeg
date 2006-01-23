@@ -319,15 +319,15 @@ SeqEncoder::SeqEncoder( EncoderParams &_encparams,
                         PictureReader &_reader,
                         Quantizer &_quantizer,
                         ElemStrmWriter &_writer,
-                        RateCtl    &_ratecontroller ) :
+                        Pass1RateCtl    &_ratecontroller ) :
     encparams( _encparams ),
     reader( _reader ),
     quantizer( _quantizer ),
     writer( _writer ),
-    ratecontroller( _ratecontroller ),
+    pass1ratectl( _ratecontroller ),
     despatcher( *new Despatcher ),
     pass1_ss( _encparams, _reader ),
-    pass1_rcstate( ratecontroller.NewState() )
+    pass1_rcstate( pass1ratectl.NewState() )
 {
 }
 
@@ -351,7 +351,7 @@ void SeqEncoder::Init()
     //
     despatcher.Init( encparams.encoding_parallelism );
 
-    ratecontroller.InitSeq(false);
+    pass1ratectl.InitSeq(false);
     pass1_ss.Init(  );
     old_ref_picture = 0;
 
@@ -362,6 +362,20 @@ void SeqEncoder::Init()
     free_pictures.push_back( new_ref_picture );
 }
 
+void SeqEncoder::Pass1RateCtlSetup()
+{
+    /* Handle splitting of output stream into sequences of desired size */
+    if(  pass1_ss.new_seq )
+    {
+        pass1ratectl.InitSeq(true);
+    }
+
+    if( pass1_ss.g_idx == 0)
+    {
+        pass1ratectl.InitGOP( pass1_ss.np, pass1_ss.nb);
+    }
+}
+
 /*
 	Encode a picture from scratch: motion estimate relative to the reference
 	frames (if any), encode the resulting macro  block image data
@@ -370,11 +384,12 @@ void SeqEncoder::Init()
 
 void SeqEncoder::Pass1EncodeFrame(Picture *picture)
 {
-    pass1_rcstate->Set( ratecontroller.GetState() );
+    pass1_rcstate->Set( pass1ratectl.GetState() );
     picture->SetFrameParams(pass1_ss);
+    Pass1RateCtlSetup();
     picture->MotionSubSampledLum();
 
-    EncodeFrame( &MacroBlock::Encode, picture);
+    EncodeFrame( &MacroBlock::Encode, picture, pass1ratectl);
 
     mjpeg_info("Enc1  %5d %5d(%2d) %c q=%3.2f %s [%.0f%% Intra]",
                picture->decode, 
@@ -400,11 +415,11 @@ void SeqEncoder::Pass1ReEncodeFrame(Picture *picture)
 {
 	// Flush any previous encoding
 	picture->DiscardCoding();
-    ratecontroller.SetState( pass1_rcstate->Get() );
+    pass1ratectl.SetState( pass1_rcstate->Get() );
 
     picture->SetFrameParams(pass1_ss);
-
-    EncodeFrame( &MacroBlock::Encode, picture);
+    Pass1RateCtlSetup( );
+    EncodeFrame( &MacroBlock::Encode, picture, pass1ratectl);
 
     mjpeg_info("Renc1 %5d %5d(%2d) %c q=%3.2f %s", 
                picture->decode, 
@@ -430,20 +445,8 @@ void SeqEncoder::Pass2EncodeFrame(Picture *picture)
   
     abort();
     // TODO nb,bp etc need to be adjusted to match pass-1 updates
-    
-    double prev_sum_avg_act = ratecontroller.SumAvgActivity();
-    pass1_rcstate->Set( ratecontroller.GetState() );
+    // TODO pass2ratecontroller!!!
 
-    picture->MotionSubSampledLum();
-    EncodeFrame( &MacroBlock::Encode, picture);
-
-    mjpeg_info("Enc2  %5d %5d q=%3.2f %s [%.0f%% Intra]",
-               picture->decode, 
-               picture->present,
-               picture->AQ,
-               picture->pad ? "PAD" : "   ",
-               picture->IntraCodedBlocks() * 100.0
-              );
             
 }
 
@@ -455,7 +458,8 @@ void SeqEncoder::Pass2EncodeFrame(Picture *picture)
 
 */
 
-void SeqEncoder::EncodeFrame( void (MacroBlock::*encodingFunc)(), Picture *picture)
+void SeqEncoder::EncodeFrame( void (MacroBlock::*encodingFunc)(), Picture *picture,
+                              RateCtl &ratecontrol)
 {
     picture->SetFieldParams( 0 );
     mjpeg_debug("Start %d %c %d %d",
@@ -472,8 +476,10 @@ void SeqEncoder::EncodeFrame( void (MacroBlock::*encodingFunc)(), Picture *pictu
 
     despatcher.Despatch( picture, encodingFunc );
     despatcher.WaitForCompletion();
-
-    picture->QuantiseAndCode(ratecontroller);
+    // Setup rate control
+    ratecontrol.CalcVbvDelay(*picture);
+    ratecontrol.InitNewPict(*picture);
+    picture->QuantiseAndCode(ratecontrol);
     picture->Reconstruct();
 
     /* Handle second field of a frame that is being field encoded */
@@ -488,7 +494,9 @@ void SeqEncoder::EncodeFrame( void (MacroBlock::*encodingFunc)(), Picture *pictu
 
         despatcher.Despatch( picture, encodingFunc );
         despatcher.WaitForCompletion();
-        picture->QuantiseAndCode(ratecontroller);
+        ratecontrol.CalcVbvDelay(*picture);
+        ratecontrol.InitNewPict(*picture);
+        picture->QuantiseAndCode(ratecontrol);
         picture->Reconstruct();
     }
 }

@@ -21,12 +21,14 @@
  */
 
 #include <config.h>
+#include <deque>
 #include "mjpeg_types.h"
 #include "mpeg2syntaxcodes.h"
 
 class MacroBlock;
 class EncoderParams;
 class Picture;
+
 
 
 /*
@@ -49,11 +51,9 @@ public:
 class RateCtl 
 {
 public:
-    RateCtl( EncoderParams &encoder, RateCtlState &state );
+    RateCtl( EncoderParams &_encparams, RateCtlState &_state );
     virtual void InitSeq( bool reinit ) = 0;
-    virtual void InitGOP( int nb, int np ) = 0;
     virtual void InitNewPict (Picture &picture) = 0;
-    virtual void InitKnownPict (Picture &picture) = 0;
     virtual void UpdatePict (Picture &picture, int &padding_needed ) = 0;
     virtual int MacroBlockQuant(  const MacroBlock &mb) = 0;
     virtual int  InitialMacroBlockQuant(Picture &picture) = 0;
@@ -75,6 +75,19 @@ protected:
     RateCtlState &state;
 };
 
+class Pass1RateCtl : public RateCtl
+{    
+public:
+    Pass1RateCtl( EncoderParams &encoder, RateCtlState &state );
+    virtual void InitGOP( int nb, int np ) = 0;
+};
+
+class Pass2RateCtl : public RateCtl
+{
+public:
+    Pass2RateCtl( EncoderParams &encoder, RateCtlState &state );
+    virtual void InitGOP( std::deque<Picture *>::iterator gop_pics, int gop_len ) = 0;
+};
 
 /* 
  * Local variables:

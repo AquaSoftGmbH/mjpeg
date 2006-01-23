@@ -68,8 +68,8 @@
  * final pass-2 quantisation...
  *
  ****************************/
-Pass1RateCtl::Pass1RateCtl(EncoderParams &encparams ) :
-	RateCtl(encparams, *this)
+VBufPass1RC::VBufPass1RC(EncoderParams &encparams ) :
+	Pass1RateCtl(encparams, *this)
 {
 	buffer_variation = 0;
 	bits_transported = 0;
@@ -96,7 +96,7 @@ Pass1RateCtl::Pass1RateCtl(EncoderParams &encparams ) :
  *
  ********************/
 
-void Pass1RateCtl::InitSeq(bool reinit)
+void VBufPass1RC::InitSeq(bool reinit)
 {
 	double init_quant;
 	/* If its stills with a size we have to hit then make the
@@ -195,14 +195,10 @@ void Pass1RateCtl::InitSeq(bool reinit)
 
 	next_ip_delay = 0.0;
 	decoding_time = 0.0;
-
-
-
-
 }
 
 
-void Pass1RateCtl::InitGOP( int np, int nb)
+void VBufPass1RC::InitGOP( int np, int nb )
 {
 	N[P_TYPE] = encparams.fieldpic ? 2*np+1 : 2*np;
 	N[B_TYPE] = encparams.fieldpic ? 2*nb : 2*nb;
@@ -259,7 +255,7 @@ void Pass1RateCtl::InitGOP( int np, int nb)
 /* Step 1a: compute target bits for current picture being coded, based
  * on predicting from past frames */
 
-void Pass1RateCtl::InitNewPict(Picture &picture)
+void VBufPass1RC::InitNewPict(Picture &picture)
 {
 	double target_Q;
 	int available_bits;
@@ -411,107 +407,6 @@ void Pass1RateCtl::InitNewPict(Picture &picture)
     mquant_change_ctr = encparams.mb_width;
 }
 
-/* Step 1b: compute target bits for current picture being coded, based
- * on an actual encoding */
-
-void Pass1RateCtl::InitKnownPict( Picture &picture )
-{
-	double target_Q;
-	int available_bits;
-	double Xsum,varsum;
-
-	actcovered = 0.0;
-	sum_vbuf_Q = 0.0;
-
-	/* Allocate target bits for frame based on frames numbers in GOP
-	   weighted by:
-	   - global complexity averages
-	   - predicted activity measures
-	   
-	   T = (Nx * Xx) / Sigma_j (Nj * Xj)
-	*/
-
-	
-	if( encparams.still_size > 0 )
-		available_bits = per_pict_bits;
-	else
-	{
-		int feedback_correction =
-			static_cast<int>( fast_tune 
-							  ?	buffer_variation * overshoot_gain
-							  : (buffer_variation+gop_buffer_correction) 
-							    * overshoot_gain
-				);
-		available_bits = 
-			static_cast<int>( (encparams.bit_rate+feedback_correction)
-							  * fields_in_gop/field_rate
-							  );
-	}
-
-    Xsum = 0.0;
-    int i;
-    double rawquant = InvScaleQuant( picture.q_scale_type, 
-                                     static_cast<int>(actual_avg_Q) );
-    vbuf_fullness = static_cast<int>(rawquant*fb_gain/62.0);
-    for( i = FIRST_PICT_TYPE; i <= LAST_PICT_TYPE; ++i )
-        Xsum += N[i]*Xhi[i];
-    target_bits =
-        static_cast<int32_t>(fields_per_pict*available_bits*actual_Xhi/Xsum);
-
-	/* 
-	   If we're fed a sequences of identical or near-identical images
-	   we can get actually get allocations for frames that exceed
-	   the video buffer size!  This of course won't work so we arbitrarily
-	   limit any individual frame to 3/4's of the buffer.
-	*/
-
-	target_bits = min( target_bits, encparams.video_buffer_size*3/4 );
-
-	mjpeg_debug( "Frame %c T=%05d A=%06d  Xi=%.2f Xp=%.2f Xb=%.2f", 
-                 pict_type_char[picture.pict_type],
-                 (int)target_bits/8, (int)available_bits/8, 
-                 Xhi[I_TYPE], Xhi[P_TYPE],Xhi[B_TYPE] );
-
-
-	/* 
-	   To account for the wildly different sizes of frames
-	   we compute a correction to the current instantaneous
-	   buffer state that accounts for the fact that all other
-	   thing being equal buffer will go down a lot after the I-frame
-	   decode but fill up again through the B and P frames.
-
-	   For this we use the base bit allocations of the picture's
-	   "pict_base_bits" which will pretty accurately add up to a
-	   GOP-length's of bits not the more dynamic predictive T target
-	   bit-allocation (which *won't* add up very well).
-	*/
-
-	gop_buffer_correction += (pict_base_bits[picture.pict_type]-per_pict_bits);
-
-
-	/* We don't let the target volume get absurdly low as it makes some
-	   of the prediction maths ill-condtioned.  At these levels quantisation
-	   is always minimum anyway
-	*/
-	target_bits = max( target_bits, 4000 );
-
-	if( encparams.still_size > 0 && encparams.vbv_buffer_still_size )
-	{
-		/* If stills size must match then target low to ensure no
-		   overshoot.
-		*/
-		mjpeg_info( "Setting VCD HR still overshoot margin to %d bytes", target_bits/(16*8) );
-		frame_overshoot_margin = target_bits/16;
-		target_bits -= frame_overshoot_margin;
-	}
-
-    printf( "vbuf = %d\n", vbuf_fullness );
-	cur_mquant = ScaleQuant( picture.q_scale_type, 
-                             fmax( vbuf_fullness*62.0/fb_gain, encparams.quant_floor) );
-    printf( "MQ = %d\n", cur_mquant );
-    mquant_change_ctr = encparams.mb_width;
-}
-
 
 
 /*
@@ -521,7 +416,7 @@ void Pass1RateCtl::InitKnownPict( Picture &picture )
  * rate constraints...
  */
 
-void Pass1RateCtl::UpdatePict( Picture &picture, int &padding_needed)
+void VBufPass1RC::UpdatePict( Picture &picture, int &padding_needed)
 {
 	double K;
 	int32_t actual_bits;		/* Actual (inc. padding) picture bit counts */
@@ -533,46 +428,10 @@ void Pass1RateCtl::UpdatePict( Picture &picture, int &padding_needed)
 	/* For the virtual buffers for quantisation feedback it is the
 	   actual under/overshoot *including* padding.  Otherwise the
 	   buffers go zero.
-       BUGBUGBUG  should'nt this go after the padding calculation?
 	*/
 	vbuf_fullness += frame_overshoot;
 
-	/* Warn if it looks like we've busted the safety margins in stills
-	   size specification.  Adjust padding to account for safety
-	   margin if we're padding to suit stills whose size has to be
-	   specified in advance in vbv_buffer_size.
-	*/
-	picture.pad = 0;
-    int padding_bits = 0;
-	if( encparams.still_size > 0 && encparams.vbv_buffer_still_size)
-	{
-		if( frame_overshoot > frame_overshoot_margin )
-		{
-			mjpeg_warn( "Rate overshoot: VCD hi-res still %d bytes too large! ", 
-						((int)actual_bits)/8-encparams.still_size);
-		}
-		
-		//
-		// Aim for an actual size squarely in the middle of the 2048
-		// byte granuality of the still_size coding.  This gives a 
-		// safety margin for headers etc.
-		//
-		frame_overshoot = frame_overshoot - frame_overshoot_margin;
-		if( frame_overshoot < -2048*8 )
-			frame_overshoot += 1024*8;
-        
-        // Make sure we pad nicely to byte alignment
-        if( frame_overshoot < 0 )
-        {
-            padding_bits = (((actual_bits-frame_overshoot)>>3)<<3)-actual_bits;
-            picture.pad = 1;
-        }
-	}
 
-    /* Adjust the various bit counting  parameters for the padding bytes that
-     * will be added */
-    actual_bits += padding_bits ;
-    frame_overshoot += padding_bits;
 
 	/*
 	  Compute the estimate of the current decoder buffer state.  We
@@ -687,7 +546,7 @@ void Pass1RateCtl::UpdatePict( Picture &picture, int &padding_needed)
     
                 
 	VbvEndOfPict(picture);
-    padding_needed = padding_bits/8;
+    padding_needed = 0;
 }
 
 /* compute initial quantization stepsize (at the beginning of picture) 
@@ -696,7 +555,7 @@ void Pass1RateCtl::UpdatePict( Picture &picture, int &padding_needed)
    overall size.
  */
 
-int Pass1RateCtl::InitialMacroBlockQuant(Picture &picture)
+int VBufPass1RC::InitialMacroBlockQuant(Picture &picture)
 {
     return cur_mquant;
 }
@@ -711,7 +570,7 @@ int Pass1RateCtl::InitialMacroBlockQuant(Picture &picture)
  * supported.
  ************/
 
-int Pass1RateCtl::MacroBlockQuant( const MacroBlock &mb )
+int VBufPass1RC::MacroBlockQuant( const MacroBlock &mb )
 {
     --mquant_change_ctr;
     if( mquant_change_ctr < 0)
@@ -799,7 +658,7 @@ int Pass1RateCtl::MacroBlockQuant( const MacroBlock &mb )
  * bit-stream.
  */
 
-void Pass1RateCtl::VbvEndOfPict(Picture &picture)
+void VBufPass1RC::VbvEndOfPict(Picture &picture)
 {
 }
 
@@ -814,7 +673,7 @@ void Pass1RateCtl::VbvEndOfPict(Picture &picture)
  * themselves.
  */
 
-void Pass1RateCtl::CalcVbvDelay(Picture &picture)
+void VBufPass1RC::CalcVbvDelay(Picture &picture)
 {
 	
 	/* number of 1/90000 s ticks until next picture is to be decoded */

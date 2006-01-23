@@ -30,7 +30,7 @@
  
 class EncoderParams;
 class PictureReader;
-class RateController;
+class Pass1RateCtl;
 class SeqEncoder;
 class Quantizer;
 class Transformer;
@@ -48,12 +48,12 @@ public:
     static bool simd_init;
     MPEG2EncOptions &options;
     EncoderParams parms;
-    PictureReader *reader;
+    PictureReader  *reader;
     ElemStrmWriter *writer;
-    Quantizer     *quantizer;
-    MPEG2CodingBuf    *coder;
-    RateCtl       *bitrate_controller;
-    SeqEncoder    *seqencoder;
+    Quantizer      *quantizer;
+    MPEG2CodingBuf *coder;
+    Pass1RateCtl   *bitrate_controller;
+    SeqEncoder     *seqencoder;
 };
 
 

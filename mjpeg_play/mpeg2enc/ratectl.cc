@@ -157,7 +157,17 @@ double RateCtl::InvScaleQuant( int q_scale_type, int raw_code )
 		return ((double)raw_code);
 }
 
+Pass1RateCtl::Pass1RateCtl( EncoderParams &_encparams, RateCtlState &_state ) :
+        RateCtl( _encparams, _state )
+{
+}
 
+
+
+Pass2RateCtl::Pass2RateCtl( EncoderParams &_encparams, RateCtlState &_state ) :
+        RateCtl( _encparams, _state )
+{
+}
 
 
 /* 

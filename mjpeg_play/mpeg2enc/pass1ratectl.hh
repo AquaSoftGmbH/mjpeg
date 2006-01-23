@@ -29,12 +29,12 @@
 	a partial encoding
 */
 
-class Pass1RateCtlState :  public RateCtlState
+class VBufPass1RCState :  public RateCtlState
 {
 public:
-	virtual ~Pass1RateCtlState() {}
-	virtual RateCtlState *New() const { return new Pass1RateCtlState; }
-	virtual void Set( const RateCtlState &state ) { *this = static_cast<const Pass1RateCtlState &>(state); }
+	virtual ~VBufPass1RCState() {}
+	virtual RateCtlState *New() const { return new VBufPass1RCState; }
+	virtual void Set( const RateCtlState &state ) { *this = static_cast<const VBufPass1RCState &>(state); }
 	virtual const RateCtlState &Get() const { return *this; }
 	int32_t target_bits; // target_bits
 	int32_t vbuf_fullness;
@@ -135,14 +135,13 @@ public:
 };
 
 
-class Pass1RateCtl :  public RateCtl,  public Pass1RateCtlState
+class VBufPass1RC :  public Pass1RateCtl,  public VBufPass1RCState
 {
 public:
-	Pass1RateCtl( EncoderParams &encoder );
+	VBufPass1RC( EncoderParams &encoder );
 	virtual void InitSeq( bool reinit );
-	virtual void InitGOP( int nb, int np );
+    virtual void InitGOP( int nb, int np );
 	virtual void InitNewPict (Picture &picture);
-	virtual void InitKnownPict (Picture &picture);
 	virtual void UpdatePict ( Picture &picture, int &padding_needed );
 	virtual int  MacroBlockQuant( const MacroBlock &mb);
 	virtual int  InitialMacroBlockQuant(Picture &picture);

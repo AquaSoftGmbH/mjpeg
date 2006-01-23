@@ -52,19 +52,19 @@ mpeg2enc_SOURCES = mpeg2enc.cc imageplanes.cc
 libmpeg2encpp_la_SOURCES = conform.cc elemstrmwriter.cc encoderparams.cc \
 	macroblock.cc motionest.cc mpeg2coder.cc mpeg2encoptions.cc mpeg2encoder.cc \
 	picture.cc picturereader.cc predict.cc putpic.cc streamstate.cc seqencoder.cc \
-	quantize.cc ratectl.cc pass1ratectl.cc stats.cc synchrolib.cc tables.c transfrm.cc \
-	$(mpeg2enc_REF) $(SIMD_INLINE) ontheflyratectl.cc pass2ratectl.cc
+	quantize.cc ratectl.cc stats.cc synchrolib.cc tables.c transfrm.cc $(mpeg2enc_REF) \
+	$(SIMD_INLINE) ontheflyratectl.cc pass2ratectl.cc pass1ratectl.cc
 
-noinst_HEADERS = channel.hh 	mpeg2syntaxcodes.h 	quantize_precomp.h 	simd.h \
-			tables.h 	$(mpeg2enc_noinst_header_REF) imageplanes.hh
+noinst_HEADERS = channel.hh mpeg2syntaxcodes.h quantize_precomp.h simd.h \
+	tables.h $(mpeg2enc_noinst_header_REF) imageplanes.hh
 
 libmpeg2encpp_includedir = $(pkgincludedir)/mpeg2enc
 
-libmpeg2encpp_include_HEADERS = elemstrmwriter.hh 	encoderparams.hh \
-		encodertypes.h 	macroblock.hh 	mpeg2coder.hh 	mpeg2encoder.hh 	mpeg2encoptions.hh \
-		mpeg2encparams.h 	picture.hh 	picturereader.hh 	quantize.hh 	quantize_ref.h 	ratectl.hh \
-	streamstate.h 	seqencoder.hh 	synchrolib.h 	syntaxconsts.h \
-		$(mpeg2enc_inst_header_REF) ontheflyratectl.hh pass1ratectl.hh pass2ratectl.hh
+libmpeg2encpp_include_HEADERS = elemstrmwriter.hh encoderparams.hh \
+	encodertypes.h macroblock.hh mpeg2coder.hh mpeg2encoder.hh mpeg2encoptions.hh \
+	mpeg2encparams.h picture.hh picturereader.hh quantize.hh quantize_ref.h ratectl.hh \
+	streamstate.h seqencoder.hh synchrolib.h syntaxconsts.h $(mpeg2enc_inst_header_REF) \
+	ontheflyratectl.hh pass2ratectl.hh
 
 libmpeg2encpp_la_LDFLAGS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \

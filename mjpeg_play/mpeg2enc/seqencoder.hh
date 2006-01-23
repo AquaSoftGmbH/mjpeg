@@ -33,6 +33,7 @@ class MPEG2CodingBuf;
 class PictureReader;
 class Despatcher;
 class RateCtlState;
+class Pass1RateCtl;
 
 class SeqEncoder
 {
@@ -41,7 +42,7 @@ public:
                 PictureReader &reader,
                 Quantizer &quantizer,
                 ElemStrmWriter &writer,
-                RateCtl    &ratecontroller
+                Pass1RateCtl   &pass1ratectl
         );
 	~SeqEncoder();
 
@@ -105,8 +106,9 @@ private:
    
     void StreamEnd();
 
-    
-    void EncodeFrame( void (MacroBlock::*encodingFunc)(), Picture *picture);
+    void Pass1RateCtlSetup();
+            
+    void EncodeFrame( void (MacroBlock::*encodingFunc)(), Picture *picture, RateCtl &ratectl);
     void Pass1EncodeFrame( Picture *picture );
     void Pass1ReEncodeFrame( Picture *picture );
     void Pass2EncodeFrame( Picture *picture );
@@ -117,7 +119,7 @@ private:
     PictureReader &reader;
     Quantizer &quantizer;
     ElemStrmWriter &writer;
-    RateCtl    &ratecontroller;
+    Pass1RateCtl    &pass1ratectl;
     
     Despatcher &despatcher;
 	

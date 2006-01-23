@@ -81,7 +81,6 @@ public:
     ~Picture();
 
     void QuantiseAndCode(RateCtl &ratecontrol);
-    void InitRateControl(RateCtl &ratecontrol);
 
     void MotionSubSampledLum();
     void ITransform();
@@ -96,6 +95,8 @@ public:
     void SetFieldParams(int field);
     
     // Metrics used for stearing the encoding
+    inline double Complexity() const { return Xhi; }
+    void SetComplexity( double _Xhi ) { Xhi = _Xhi; }
     int SizeCodedMacroBlocks() const;
     double IntraCodedBlocks() const;   // Proportion of Macroblocks coded Intra
 
@@ -223,6 +224,9 @@ public:
 	int np;						/* P frames in GOP */
 	bool new_seq;				/* GOP starts new sequence */
     bool end_seq;               /* Frame ends sequence */
+    
+    double Xhi;                 /* Complexity ... product of bits needed to code and
+                                   quantisation */
 	/* Statistics... */
 	int pad;
 	int split;

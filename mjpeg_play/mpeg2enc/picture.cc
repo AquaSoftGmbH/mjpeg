@@ -439,9 +439,6 @@ void Picture::MotionSubSampledLum( )
 
 void Picture::QuantiseAndCode(RateCtl &ratectl)
 {
-
-    InitRateControl( ratectl );
-    
     PutHeaders();
 
     /* Now the actual quantisation and encoding->.. */     
@@ -568,35 +565,6 @@ void Picture::QuantiseAndCode(RateCtl &ratectl)
     
 }
 
-
-/* *****************
- *
- * InitRateControl - Setup rate controller new current picture / GOP/ Sequence
- *
- ******************/
-
-void Picture::InitRateControl( RateCtl &ratecontrol )
-{
-     /* Handle splitting of output stream into sequences of desired size */
-    if( new_seq )
-    {
-        ratecontrol.InitSeq(true);
-    }
-    
-    /* Handle start of GOP stuff:
-       We've reach a new GOP so we emit what we coded for the
-       previous one as (for the moment) and mark the resulting coder
-       state for eventual backup.
-       Currently, we never backup more that to the start of the current GOP.
-     */
-    if( gop_start )
-    {
-        ratecontrol.InitGOP( np, nb);
-    }
-
-    ratecontrol.CalcVbvDelay(*this);
-    ratecontrol.InitNewPict(*this); /* set up rate control */
-}
 
 
 int Picture::SizeCodedMacroBlocks() const
