@@ -640,7 +640,8 @@ void SeqEncoder::Pass1Process()
     {
 
         int old_present = cur_picture->present;
-        if( !pass1_ss.NextGopClosed() || pass1_ss.BGroupLength() == 1  )
+        if( (!pass1_ss.NextGopClosed() || pass1_ss.BGroupLength() == 1) &&
+            pass1_ss.CanSplitHere() )
         {
             mjpeg_info( "DEVEL: GOP split point found here... %d %d %.0f%% intra coded",
                         pass1_ss.NextGopClosed(), pass1_ss.BGroupLength(),

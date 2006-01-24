@@ -56,6 +56,8 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
+#include <algorithm>
+
 #include "mpeg2encoder.hh"
 #include "mpeg2encoptions.hh"
 #include "encoderparams.hh"
@@ -664,6 +666,7 @@ static struct option long_options[]=
         { "b-per-refframe",    1, 0, 'R' },
         { "cbr",               0, 0, 'u'},
         { "help",              0, 0, '?' },
+        { "chapters",          1, 0, 256 },
         { 0,                   0, 0, 0 }
     };
 
@@ -963,6 +966,11 @@ while( (n=getopt(argc,argv,short_options)) != -1)
             mjpeg_error( "-X option requires arg 0 .. 2500" );
             ++nerr;
         }
+        break;
+    case 256: // --chapters=X
+        for( char *x=strtok(optarg,","); x; x=strtok(0,",") )
+            chapter_points.push_back(atoi(x));
+        std::sort(chapter_points.begin(),chapter_points.end());
         break;
     case ':' :
         mjpeg_error( "Missing parameter to option!" );

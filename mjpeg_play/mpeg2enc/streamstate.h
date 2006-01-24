@@ -53,11 +53,14 @@ public:
     inline int DecodeNum() const { return frame_num; }
     
     bool NextGopClosed() const;
+    bool CanSplitHere(int offset=0) const;
 
 protected:    
     void GopStart();
 
     void SetTempRef();
+
+    int GetNextChapter() const;
 
 public:
     // Conext of current frame in hierarchy of structures: sequence, GOP, B-group */

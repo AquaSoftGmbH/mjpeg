@@ -67,6 +67,7 @@
 EncoderParams::EncoderParams( const MPEG2EncOptions &encoptions)
 {
     memset( this, -1, sizeof(EncoderParams) ); // REMOVE
+    new (&chapter_points) deque<int>(); // damn memset kills the object
 }
 
 void EncoderParams::InitEncodingControls( const MPEG2EncOptions &options)
@@ -697,6 +698,8 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 
     InitQuantMatrices( options );
     InitEncodingControls( options );
+
+    chapter_points.insert(chapter_points.end(),options.chapter_points.begin(),options.chapter_points.end());
 }
 
 

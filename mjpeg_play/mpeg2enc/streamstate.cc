@@ -62,7 +62,34 @@ void StreamState::Init(  )
 
 bool StreamState::NextGopClosed() const 
 { 
-    return gop_end_seq || encparams.closed_GOPs; 
+    return gop_end_seq || encparams.closed_GOPs || gop_start_frame + gop_length == GetNextChapter();
+}
+
+int StreamState::GetNextChapter() const
+{
+    // advance return value when gop_start_frame exceeds or equals current chapter point
+    while( !encparams.chapter_points.empty() ) {
+        int next_chapter=encparams.chapter_points.front();
+        if( next_chapter > gop_start_frame )
+            return next_chapter;
+        encparams.chapter_points.pop_front();
+    }
+    return -1;
+}
+
+bool StreamState::CanSplitHere(int offset) const
+{
+    int nc=GetNextChapter();
+
+    if( nc<0 )
+        return true;
+
+    if( offset>nc-frame_num )
+        return false;
+
+    nc-=frame_num+offset;
+    // it's important that the division occur first; rounding down is relied upon
+    return nc <= (nc/encparams.N_min) * encparams.N_max;
 }
 
 
@@ -195,6 +222,12 @@ void StreamState::GopStart(  )
     g_idx = 0;
     b_idx = 0;
     frame_type = I_TYPE;
+
+    /* Normally set closed_GOP in first GOP only...   */
+
+    closed_gop = NextGopClosed(); // must call this before the gop_end_seq code
+    gop_start_frame = frame_num;
+
     /* Sequence ended at end previous GOP so this one starts a new sequence */
     if( gop_end_seq )
     {
@@ -209,19 +242,18 @@ void StreamState::GopStart(  )
     }
     
 
-    /* Normally set closed_GOP in first GOP only...   */
-
-    closed_gop = s_idx == 0 || encparams.closed_GOPs;
-    gop_start_frame = frame_num;
-    
-
     // 
     // GOPs initially always start out maximum length - short GOPs occur when we notice
     // a P frame occurring after the minimum GOP lengthhas been reached
     //
+    // also shorten a GOP if we have an upcoming chapter point we are aiming for
+    //
 
-    gop_length = encparams.N_max;
-    mjpeg_info( "NEW GOP INIT length %d", gop_length );    
+    for( gop_length = encparams.N_max; gop_length > encparams.N_min; gop_length-- )
+        if( CanSplitHere(gop_length) )
+            break;
+
+    mjpeg_info( "NEW GOP INIT length %d", gop_length );
     /* First figure out how many B frames we're short from
        being able to achieve an even M-1 B's per I/P frame.
        

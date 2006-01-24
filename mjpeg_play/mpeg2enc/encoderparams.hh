@@ -58,6 +58,10 @@
 #include "mjpeg_types.h"
 #include "syntaxconsts.h"
 
+#include <deque>
+
+using std::deque;
+
 
 /*
   Ensure we don't bury a system in wild spawning of
@@ -254,6 +258,7 @@ public:
                                    zeroed.  < 0 implies DCT
                                    coefficient should be included. */
 
+    deque<int> chapter_points; /* Frame #'s for where chapters occur (I frames, closed GOP's) */
 
 };
 

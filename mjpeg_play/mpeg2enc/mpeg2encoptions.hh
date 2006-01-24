@@ -26,6 +26,10 @@
 #include "mpeg2encparams.h"
 #include "mpegconsts.h"
 
+#include <deque>
+
+using std::deque;
+
 
 struct MPEG2EncInVidParams
 {
@@ -47,6 +51,8 @@ public:
 
     uint16_t custom_intra_quantizer_matrix[64];
     uint16_t custom_nonintra_quantizer_matrix[64];
+
+    deque<int> chapter_points;
 };
 #endif
 
