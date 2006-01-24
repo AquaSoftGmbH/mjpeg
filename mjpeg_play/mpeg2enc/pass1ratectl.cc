@@ -56,7 +56,7 @@
 #include "mpeg2encoder.hh"
 #include "picture.hh"
 #include "pass1ratectl.hh"
-
+#include "cpu_accel.h"
 
 
 /*****************************

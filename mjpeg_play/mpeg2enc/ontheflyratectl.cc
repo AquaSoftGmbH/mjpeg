@@ -56,6 +56,7 @@
 #include "mpeg2encoder.hh"
 #include "picture.hh"
 #include "ontheflyratectl.hh"
+#include "cpu_accel.h"
 
 
 
