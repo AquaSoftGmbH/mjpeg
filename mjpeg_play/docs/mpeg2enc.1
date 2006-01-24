@@ -74,6 +74,8 @@ mpeg2enc \- MPEG-1/2 encoder
 .RB [ -A | --ratecontroller
 .IR 0..1 ]
 .RB [ -u | --cbr ]
+.RB [ --chapters
+.IR frame,... ]
 .RB [ -? | --help ]
 .B -o|--output
 .I filename
@@ -668,6 +670,14 @@ the use of the \fB-q\fP option!
 .sp
 It is an error to use this option and not specify a bitrate using \fB-b\fP
 since a constant bitrate of 0 makes no sense.
+.PP
+.BR --chapters \ frame,...
+.PP
+This flag allows you to define chapter points within the mpeg stream.
+This is most useful when generating DVD video.  Each chapter point is
+specified by frame number, with the first frame being number 0.  Every
+chapter point defined will end up at the beginning of a closed GOP as
+an I frame.
 .SH "SSE, 3D-Now!, MMX"!
 mpeg2enc makes extensive use of these SIMD instruction set extension
 on x86 family CPU's.  The routines used are determined dynamically at
@@ -682,9 +692,6 @@ where I/P frames come back to back or with only 1 B frame between them.
 There needs to be a facility for writing dummy user-data fields so
 that the multiplexer/imager can insert forward/backward pointers when
 muxing/imaging an SVCD.
-
-Is there some kind soul out there with source-code for a good SSE
-(not MMX) DCT and iDCT?
 .SH AUTHOR
 This man page was written by Andrew Stevens.
 If you have questions, remarks, problems or you just want to contact

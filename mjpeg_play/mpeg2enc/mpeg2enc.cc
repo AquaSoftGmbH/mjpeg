@@ -563,6 +563,9 @@ void MPEG2EncCmdLineOptions::Usage()
 "    The number of B frames to generate between each I/P frame\n"
 "--cbr|-u\n"
 "    For MPEG-2 force the use of (suboptimal) ConstantBitRate (CBR) encoding\n"
+"--chapters X[,Y[,...]]\n"
+"    Specifies which frames should be chapter points (first frame is 0)\n"
+"    Chapter points are I frames on closed GOP's.\n"
 "--help|-?\n"
 "    Print this lot out!\n"
 	);
