@@ -49,14 +49,6 @@ int med_post_Y_thres = 4;
 int med_post_U_thres = 8;
 int med_post_V_thres = 8;
 
-int spat_Y_thres = 0;
-int spat_U_thres = 0;
-int spat_V_thres = 0;
-
-int gauss_Y = 0;
-int gauss_U = 0;
-int gauss_V = 0;
-
 uint8_t *frame1[3];
 uint8_t *frame2[3];
 uint8_t *frame3[3];
@@ -458,49 +450,6 @@ init_gamma_transform_LUTs (void)
     }
 
   mjpeg_log (LOG_INFO, "16-Bit gamma-transformations initialized...");
-}
-
-// 3x3 gauss filter image-plane and overlay this with factor p (0...255) on the source
-// p=0       use source-pixels unfiltered
-// p=1...254 use mixed gauss and source-pixels
-// p=255     use gauss-filtered pixels
-void
-gauss_filter_plane (uint8_t * plane, int w, int h, int p)
-{
-  int x, y;
-  int g;
-  uint8_t *src = plane;
-  uint8_t *dst = scratchplane;
-
-  
-// If the gaussian filter is disabled why go thru all the data copying - just
-// return early and speed things up.
-  if (p == 0)
-    return;
-
-// fill first and last line content into out of bounds-region
-  memcpy (src - w, src, w);
-  memcpy (src + w * h, src + w * h - w, w);
-
-  for (y = 0; y < h; y++)
-    for (x = 0; x < w; x++)
-      {
-	g = *(src + (-1) + (-1) * w);
-	g += *(src + (-1) * w) * 2;
-	g += *(src + (+1) + (-1) * w);
-	g += *(src + (-1)) * 2;
-	g += *(src) * 4;
-	g += *(src + (+1)) * 2;
-	g += *(src + (-1) + (+1) * w);
-	g += *(src + (+1) * w) * 2;
-	g += *(src + (+1) + (+1) * w);
-	g /= 16;
-
-	*(dst) = (g * p + *(src) * (255 - p)) / 255;
-	dst++;
-	src++;
-      }
-  memcpy (plane, scratchplane, w * h);
 }
 
 void
@@ -1064,11 +1013,7 @@ main (int argc, char *argv[])
   y4m_frame_info_t oframeinfo;
   y4m_stream_info_t ostreaminfo;
 
-  mjpeg_log (LOG_INFO,
-	     "-----------------------------------------------------");
   mjpeg_log (LOG_INFO, "mjpeg-tools yuvdenoise version %s", VERSION);
-  mjpeg_log (LOG_INFO,
-	     "-----------------------------------------------------");
 
   while ((c = getopt (argc, argv, "hvs:t:g:m:M:r:")) != -1)
     {
@@ -1076,33 +1021,12 @@ main (int argc, char *argv[])
 	{
 	case 'h':
 	  {
-	    mjpeg_log (LOG_INFO, " Usage");
-	    mjpeg_log (LOG_INFO, " =====\n");
-	    mjpeg_log (LOG_INFO,
-		       " This is a spatio-temporal noise-filter for Y4M-video-streams. You can");
-	    mjpeg_log (LOG_INFO,
-		       " control its behaviour with the following options:\n");
-	    mjpeg_log (LOG_INFO,
-		       " -s y,u,v     This sets the thresholds [0..255] for the spatial noise-");
-	    mjpeg_log (LOG_INFO,
-		       "              filter. If you set this too high, expect blurring your");
-	    mjpeg_log (LOG_INFO, "              images.\n");
-	    mjpeg_log (LOG_INFO,
-		       " -g y,u,v     This sets the mixing-level [0..255] for the gauss-filter.");
-	    mjpeg_log (LOG_INFO,
-		       "              The default-values for the chroma-planes are sane. Believe");
-	    mjpeg_log (LOG_INFO,
-		       "              me. You only should change them, if you have noise-free");
-	    mjpeg_log (LOG_INFO,
-		       "              chroma-planes... It sometimes may be usefull, to smooth");
-	    mjpeg_log (LOG_INFO,
-		       "              the luma-plane, too. Default is to only smooth it very very");
-	    mjpeg_log (LOG_INFO,"              little, just to get rid of jaggies.\n");
+	    mjpeg_log (LOG_INFO," -m y,u,v     This sets the thresholds for the pre (prior to -t) median-noise-filter.\n");
 	    mjpeg_log (LOG_INFO," -t y,u,v     This sets the thresholds for the temporal noise-filter.");
 	    mjpeg_log (LOG_INFO,"              Values above 12 may introduce ghosts. But usually you can't");
 	    mjpeg_log (LOG_INFO,"              see them in a sequence of moving frames until you pass 18.");
 	    mjpeg_log (LOG_INFO,"              This is due to the fact that our brain supresses these.");
-	    mjpeg_log (LOG_INFO," -m y,u,v     This sets the thresholds for the (pseudo) median-noise-filter.\n");
+	    mjpeg_log (LOG_INFO," -M y,u,v     This sets the thresholds for the post (after -t) median-noise-filter.\n");
 	    mjpeg_log (LOG_INFO," -r y,u,v     add this amount of static noise to the denoised image.\n");
 
 	    exit (0);
@@ -1115,8 +1039,7 @@ main (int argc, char *argv[])
 	  }
 	case 's':
 	  {
-	    sscanf (optarg, "%i,%i,%i", &spat_Y_thres, &spat_U_thres,
-		    &spat_V_thres);
+	    mjpeg_log(LOG_WARN, "-s code removed, option accepted only for script compatiblity");
 	    break;
 	  }
 	case 't':
@@ -1127,7 +1050,7 @@ main (int argc, char *argv[])
 	  }
 	case 'g':
 	  {
-	    sscanf (optarg, "%i,%i,%i", &gauss_Y, &gauss_U, &gauss_V);
+	    mjpeg_log(LOG_WARN, "-g code removed, option accepted only for script compatiblity");
 	    break;
 	  }
 	case 'm':
