@@ -51,7 +51,7 @@ protected:
  *
  ******/
  
-class IBitStreamUndo : public BitStreamBuffering
+class IBitStreamUndo 
 {
 public:
 	IBitStreamUndo() :
@@ -104,7 +104,9 @@ protected:
  * needs to buffered to be flushed from the buffer (and buffer space
  * reclaimed!).
  *
+ *
  * INVARIANT: only data items up to the bit-level file-pointer can be 'read'
+ * It is possible to undo bit-level parsing calls back up the last flush.
  *
  * The actual source of the bit stream to be parsed/read is *abstract*
  * in this base class.  Access in derived classes is through the
@@ -119,7 +121,7 @@ protected:
 
 
 
-class IBitStream : public IBitStreamUndo 
+class IBitStream : public IBitStreamUndo, public BitStreamBuffering
 {
 public:
  	IBitStream() :

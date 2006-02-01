@@ -61,6 +61,7 @@ libmplex_include_HEADERS = \
 	videostrm.hpp
 
 libmplex2_la_LDFLAGS =  \
+	$(LT_STATIC) \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
 	-release $(LT_RELEASE)
 
