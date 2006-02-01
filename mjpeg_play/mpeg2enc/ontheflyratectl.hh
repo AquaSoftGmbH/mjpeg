@@ -139,16 +139,18 @@ class OnTheFlyRateCtl :  public Pass1RateCtl,  public OnTheFlyRateCtlState
 {
 public:
 	OnTheFlyRateCtl( EncoderParams &encoder );
-	virtual void InitSeq( bool reinit );
+    virtual void Init();
+	virtual void InitSeq();
 	virtual void InitGOP( int nb, int np );
-	virtual void InitNewPict (Picture &picture);
+	virtual void InitPict (Picture &picture);
 	virtual void UpdatePict ( Picture &picture, int &padding_needed );
 	virtual int  MacroBlockQuant( const MacroBlock &mb);
 	virtual int  InitialMacroBlockQuant(Picture &picture);
-	virtual void CalcVbvDelay (Picture &picture);
+
 
     double SumAvgActivity()  { return sum_avg_act; }
 private:
+    virtual void CalcVbvDelay (Picture &picture);
 	virtual void VbvEndOfPict (Picture &picture);
 
    	 int     cur_mquant;

@@ -24,6 +24,39 @@
 #include "ratectl.hh"
 
 
+class DummyPass2RCState :  public RateCtlState
+{
+public:
+    virtual ~DummyPass2RCState() {}
+    virtual RateCtlState *New() const { return new DummyPass2RCState; }
+    virtual void Set( const RateCtlState &state ) { *this = static_cast<const DummyPass2RCState &>(state); }
+    virtual const RateCtlState &Get() const { return *this; }
+};
+
+class DummyPass2RC :  public Pass2RateCtl, public DummyPass2RCState
+{
+public:
+    DummyPass2RC( EncoderParams &encoder ) :
+      Pass2RateCtl( encoder, *this)
+    {}
+    virtual void Init() {}
+    virtual void InitSeq() {}
+    virtual void InitGOP( std::deque<Picture *>::iterator gop_pics, int gop_len ) {}
+    virtual void InitPict (Picture &picture) {}
+    virtual void UpdatePict ( Picture &picture, int &padding_needed ) {}
+    virtual int  MacroBlockQuant( const MacroBlock &mb) { return -1; }
+    virtual int  InitialMacroBlockQuant(Picture &picture) { return -1;}
+    virtual void CalcVbvDelay (Picture &picture) {}
+
+    double TargetBits( const Picture &picture ) const { return 0.0; }
+    bool ReEncodeNeeded(const Picture &picture ) const { return false; }
+
+    double SumAvgActivity()  { return 0.0; }
+private:
+    virtual void VbvEndOfPict (Picture &picture) {}
+
+};
+
 /*
 	The parts of of the rate-controller's state neededfor save/restore if backing off
 	a partial encoding
@@ -47,7 +80,6 @@ public:
 	int32_t buffer_variation;
 	int64_t bits_transported;
 	int64_t bits_used;
-	int32_t gop_buffer_correction;
 
     int32_t target_bits;    // target bits for current frame
 
@@ -94,13 +126,17 @@ class XhiPass2RC :  public Pass2RateCtl,  public XhiPass2RCState
 {
 public:
 	XhiPass2RC( EncoderParams &encoder );
-	virtual void InitSeq( bool reinit );
+    virtual void Init();
+	virtual void InitSeq();
     virtual void InitGOP( std::deque<Picture *>::iterator gop_pics, int gop_len );
-	virtual void InitNewPict (Picture &picture);
+	virtual void InitPict (Picture &picture);
 	virtual void UpdatePict ( Picture &picture, int &padding_needed );
 	virtual int  MacroBlockQuant( const MacroBlock &mb);
 	virtual int  InitialMacroBlockQuant(Picture &picture);
 	virtual void CalcVbvDelay (Picture &picture);
+
+    double TargetBits( const Picture &picture ) const;
+    bool ReEncodeNeeded(const Picture &picture ) const;
 
     double SumAvgActivity()  { return sum_avg_act; }
 private:

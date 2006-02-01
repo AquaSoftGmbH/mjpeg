@@ -27,7 +27,7 @@
  * design.
  *
  */
-/* Modifications and enhancements (C) 2000/2001 Andrew Stevens */
+/* Modifications and enhancements (C) 2000/2001/2006 Andrew Stevens */
 
 /* These modifications are free software; you can redistribute it
  *  and/or modify it under the terms of the GNU General Public License
@@ -66,6 +66,8 @@
 #include "elemstrmwriter.hh"
 #include "quantize.hh"
 #include "ontheflyratectl.hh"
+#include "pass1ratectl.hh"
+#include "pass2ratectl.hh"
 #include "seqencoder.hh"
 #include "mpeg2coder.hh"
 #include "format_codes.h"
@@ -76,7 +78,7 @@
 #include "../utils/altivec/altivec_conf.h"
 #endif
 
-
+#define MPEG2ENC_VER "3.0.0-beta1"
 
 /**************************
  *
@@ -446,6 +448,7 @@ void MPEG2EncCmdLineOptions::ParseCustomOption(const char *arg)
 void MPEG2EncCmdLineOptions::Usage()
 {
 	fprintf(stderr,
+"mjpegtools mpeg2enc version " VERSION " (" MPEG2ENC_VER ")\n"
 "--verbose|-v num\n" 
 "    Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n"
 "--format|-f fmt\n"
@@ -1046,19 +1049,29 @@ YUV4MPEGEncoder::YUV4MPEGEncoder( MPEG2EncCmdLineOptions &cmd_options ) :
     
     if( cmd_options.rate_control == 0 )
     {
-        mjpeg_info( "Using one-pass rate controller" );
-        bitrate_controller = new OnTheFlyRateCtl( parms );
+        mjpeg_info( "Using one-pass rate control" );
+        pass1ratectl = new OnTheFlyRateCtl( parms );
+        pass2ratectl = new DummyPass2RC( parms );
     }
-    /* TODONOW
-    else 
+    else
     {
-        mjpeg_info( "Using Pass1 rate controller" );
-        bitrate_controller = new Pass1RateCtl( parms );
+#ifdef TEST_TWOPASS
+        mjpeg_info( "Using two-pass bitrate control" );
+        pass1ratectl = new VBufPass1RC( parms );
+        pass2ratectl = new XhiPass2RC( parms );
+#else
+        mjpeg_info( "Two-pass bitrate control in development: forcing one-pass rate control" );
+        pass1ratectl = new OnTheFlyRateCtl( parms );
+        pass2ratectl = new DummyPass2RC( parms );
+#endif
     }
-    */
+
 
     seqencoder = new SeqEncoder( parms, *reader, *quantizer,
-                                 *writer, *bitrate_controller);
+                                 *writer,
+                                 *pass1ratectl,
+                                 *pass2ratectl
+                                );
 
     // This order is important! Don't change...
     parms.Init( options );

@@ -5,7 +5,7 @@ AC_CONFIG_SRCDIR([lavtools/lav_io.c])
 
 MJPEG_MAJOR_VERSION=1
 MJPEG_MINOR_VERSION=9
-MJPEG_MICRO_VERSION=0
+MJPEG_MICRO_VERSION=1
 MJPEG_VERSION=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION.$MJPEG_MICRO_VERSION
 
 AC_CONFIG_HEADERS([config.h])
@@ -26,6 +26,7 @@ AC_SUBST(LT_RELEASE)
 AC_SUBST(LT_CURRENT)
 AC_SUBST(LT_REVISION)
 AC_SUBST(LT_AGE)
+AC_SUBST(LT_STATIC)
 
 dnl **********************************************************************
 dnl Options
@@ -36,6 +37,9 @@ AC_ARG_ENABLE(compile-warnings,
 AC_ARG_ENABLE(warnings_as_errors,   
               AC_HELP_STRING([--enable-warnings_as_errors],
                              [Compiler warnings are errors.]))
+AC_ARG_ENABLE(static-build,     
+              AC_HELP_STRING([--enable-static-build],
+                             [Force static linkage instead of shared libraries (useful for profiling etc).]))
 AC_ARG_ENABLE(simd-accel,
               AC_HELP_STRING([--enable-simd-accel],
                              [use SIMD multimedia instructions
@@ -493,6 +497,15 @@ if test "x$enable_zalpha" = "xyes" ; then
   use_zalpha=true
 fi
 AM_CONDITIONAL(HAVE_ZALPHA, test x$use_zalpha = xtrue)
+
+
+dnl **********************************************************************
+dnl Handle forcing static linkage in key places
+if test "x$enable_force_static" = "xyes" ; then
+  LT_STATIC=-all-static
+fi
+
+
 
 dnl **********************************************************************
 dnl All the conditional stuff for the Makefiles

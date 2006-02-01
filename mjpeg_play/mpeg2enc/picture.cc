@@ -439,6 +439,10 @@ void Picture::MotionSubSampledLum( )
 
 void Picture::QuantiseAndCode(RateCtl &ratectl)
 {
+    // Set rate control for new picture
+    ratectl.InitPict(*this);
+
+    // Generate Sequence/GOP/Picture headers for this picture
     PutHeaders();
 
     /* Now the actual quantisation and encoding->.. */     

@@ -34,6 +34,7 @@ liblavinclude_HEADERS = \
 	audiolib.h
 
 LAV_ALL_LIB_OPTS = \
+	$(LT_STATIC) \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
 	-release $(LT_RELEASE)
 

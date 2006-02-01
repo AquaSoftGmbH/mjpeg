@@ -139,9 +139,10 @@ class VBufPass1RC :  public Pass1RateCtl,  public VBufPass1RCState
 {
 public:
 	VBufPass1RC( EncoderParams &encoder );
-	virtual void InitSeq( bool reinit );
+    virtual void Init();
+	virtual void InitSeq();
     virtual void InitGOP( int nb, int np );
-	virtual void InitNewPict (Picture &picture);
+	virtual void InitPict (Picture &picture);
 	virtual void UpdatePict ( Picture &picture, int &padding_needed );
 	virtual int  MacroBlockQuant( const MacroBlock &mb);
 	virtual int  InitialMacroBlockQuant(Picture &picture);

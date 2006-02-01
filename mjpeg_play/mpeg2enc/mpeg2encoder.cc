@@ -44,7 +44,8 @@ MPEG2Encoder::MPEG2Encoder( MPEG2EncOptions &_options) :
     writer(0),
     quantizer(0),
     coder(0),
-    bitrate_controller(0)
+    pass1ratectl(0),
+    pass2ratectl(0)
 {
     if( !simd_init )
         SIMDInitOnce();
@@ -56,7 +57,8 @@ MPEG2Encoder::MPEG2Encoder( MPEG2EncOptions &_options) :
 MPEG2Encoder::~MPEG2Encoder()
 {
     delete seqencoder;
-    delete bitrate_controller;
+    delete pass1ratectl;
+    delete pass2ratectl;
     delete coder;
     delete quantizer;
     delete writer;

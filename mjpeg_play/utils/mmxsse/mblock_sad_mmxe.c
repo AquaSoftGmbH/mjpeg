@@ -31,6 +31,8 @@
 */
 
 #include <config.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "mjpeg_types.h"
 #include "mmx.h"
 #include "mmxsse_motion.h"
@@ -144,6 +146,56 @@ int sad_10_mmxe(uint8_t *blk1,uint8_t *blk2,int rowstride,int h)
     return rv;
 }
 
+
+
+int sad_11_mmxe_fast(uint8_t *blk1,uint8_t *blk2,int rowstride,int h)
+{
+    int l = h;
+    int32_t rv;
+    uint8_t *b1,*b2;
+
+    pxor_r2r(mm6,mm6); // zero accumulator
+
+    b1=blk1;
+    b2=blk2;
+    movq_m2r(b1[0],mm0);        // Invariant mm0mm1 - current row H interpolated
+    movq_m2r(b1[8],mm1);
+    pavgb_m2r(b1[1],mm0);
+    pavgb_m2r(b1[9],mm1);
+    b1 += rowstride;
+    do {
+
+        movq_m2r(b1[0],mm2);        // mm2mm3 := next row H interpolated
+        movq_m2r(b1[8],mm3);
+        pavgb_m2r(b1[1],mm2);
+        pavgb_m2r(b1[9],mm3);
+        b1+=rowstride;
+        
+        movq_r2r( mm2, mm4 );       // mm4mm5 := interpolate mm0mm1 and mm2mm3 
+        movq_r2r( mm3, mm5 );       // I.e. H and V interpolated pixels
+        pavgb_r2r( mm0, mm4 );      // Interleaved with mm0mm1 := mm2mm3
+        movq_r2r( mm2, mm0 );
+        pavgb_r2r( mm1, mm5 );
+        movq_r2r( mm3, mm1 );
+        
+        psadbw_m2r(b2[0],mm4);  // mm4mm5 := SAD H+H interpolated with block b1
+        psadbw_m2r(b2[8],mm5);
+        
+
+        b2+=rowstride;
+        
+        paddd_r2r(mm4,mm6);     // Accumulated SAD
+        paddd_r2r(mm5,mm6);
+
+        l--;
+    } while(l);
+
+    movd_r2g(mm6, rv);
+    emms();
+    return rv;
+}
+
+
 int sad_11_mmxe(uint8_t *blk1,uint8_t *blk2,int rowstride,int h)
 {
     int l;
@@ -167,18 +219,18 @@ int sad_11_mmxe(uint8_t *blk1,uint8_t *blk2,int rowstride,int h)
     SAD11_UNPACK(b1[0],mm6,mm7);
     SAD11_UNPACK(b1[1],mm2,mm3);
     paddw_r2r(mm2,mm6);
-    paddw_r2r(mm3,mm7);
+    paddw_r2r(mm3,mm7);             // mm6mm7 := 'sums of neighbouring pixels, prev row'
     b1+=rowstride;
 
     do {
-        SAD11_UNPACK(b1[0],mm2,mm3);
+        SAD11_UNPACK(b1[0],mm2,mm3); 
         SAD11_UNPACK(b1[1],mm4,mm5);
 
-        paddw_m2r(*two,mm6);
+        paddw_m2r(*two,mm6);    
         paddw_m2r(*two,mm7);
 
         paddw_r2r(mm4,mm2);
-        paddw_r2r(mm5,mm3);
+        paddw_r2r(mm5,mm3);    // mm2mm3 := 'sums of neighbouring pixels, cur row'
 
         paddw_r2r(mm2,mm6);
         paddw_r2r(mm3,mm7);
@@ -186,7 +238,7 @@ int sad_11_mmxe(uint8_t *blk1,uint8_t *blk2,int rowstride,int h)
         psrlw_i2r(2,mm6);
         psrlw_i2r(2,mm7);
 
-        packuswb_r2r(mm7,mm6);
+        packuswb_r2r(mm7,mm6);  //mm6mm7 := 'mean neighbouring pixels prev + cur row'
         psadbw_m2r(b2[0],mm6);
         paddd_r2r(mm6,mm0);
 
@@ -237,12 +289,16 @@ int sad_11_mmxe(uint8_t *blk1,uint8_t *blk2,int rowstride,int h)
        
         l--;
     } while(l);
+#undef SAD11_UNPACK
 
     movd_r2g(mm0, rv);
     emms();
+//    int nrv = sad_11_mmxe_fast( blk1, blk2, rowstride, h );
+//    if( abs(nrv-rv) > 8  )
+//        printf( "Ooops %d\n", nrv-rv );
     return rv;
-#undef SAD11_UNPACK
 }
+
 
 int sad_sub22_mmxe(uint8_t *blk1,uint8_t *blk2,int rowstride,int h)
 {

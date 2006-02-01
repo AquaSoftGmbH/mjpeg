@@ -102,7 +102,7 @@ public:
     Despatcher();
     ~Despatcher();
     void Init( unsigned int parallelism );
-    void Despatch( Picture *picture, void (MacroBlock::*encodingFunc)(),
+    void Despatch( Picture &picture, void (MacroBlock::*encodingFunc)(),
                    EncoderJob::JobPattern pattern = EncoderJob::INTERLEAVED );
     void ParallelWorker();
     void WaitForCompletion();
@@ -258,7 +258,7 @@ void Despatcher::ParallelWorker()
     }
 }
 
-void Despatcher::Despatch(  Picture *picture,
+void Despatcher::Despatch(  Picture &picture,
                             void (MacroBlock::*encodingFunc)(),
                             EncoderJob::JobPattern pattern 
                          )
@@ -277,14 +277,14 @@ void Despatcher::Despatch(  Picture *picture,
             job->working = false;
             job->pattern = pattern;
             job->encodingFunc = encodingFunc;
-            job->picture = picture;
+            job->picture = &picture;
             jobstodo.Put( job );
         }
     }
     else
     {
         vector<MacroBlock>::iterator mbi;
-        for( mbi = picture->mbinfo.begin(); mbi < picture->mbinfo.end(); ++mbi )
+        for( mbi = picture.mbinfo.begin(); mbi < picture.mbinfo.end(); ++mbi )
         {
             (*mbi.*encodingFunc)();
         }
@@ -319,12 +319,15 @@ SeqEncoder::SeqEncoder( EncoderParams &_encparams,
                         PictureReader &_reader,
                         Quantizer &_quantizer,
                         ElemStrmWriter &_writer,
-                        Pass1RateCtl    &_ratecontroller ) :
+                        Pass1RateCtl    &_p1ratectl,
+                        Pass2RateCtl   &_p2ratectl
+                       ) :
     encparams( _encparams ),
     reader( _reader ),
     quantizer( _quantizer ),
     writer( _writer ),
-    pass1ratectl( _ratecontroller ),
+    pass1ratectl( _p1ratectl ),
+    pass2ratectl( _p2ratectl ),
     despatcher( *new Despatcher ),
     pass1_ss( _encparams, _reader ),
     pass1_rcstate( pass1ratectl.NewState() )
@@ -351,8 +354,9 @@ void SeqEncoder::Init()
     //
     despatcher.Init( encparams.encoding_parallelism );
 
-    pass1ratectl.InitSeq(false);
-    pass1_ss.Init(  );
+    pass1ratectl.Init();
+    pass2ratectl.Init();
+    pass1_ss.Init();
     old_ref_picture = 0;
 
     // Lots of routines assume (for speed) that
@@ -362,18 +366,41 @@ void SeqEncoder::Init()
     free_pictures.push_back( new_ref_picture );
 }
 
-void SeqEncoder::Pass1RateCtlSetup()
+/*********************
+*
+* Pass1RateCtlNewFrame, Pass2RateCtlNewFrame
+* - Update rate controller for start of new frame.
+*
+* Note: since a frame may encode as more than one picture when field-based
+* encoding is active, this does not include the per-picture update!
+*
+********************/
+
+
+void SeqEncoder::Pass1RateCtlFrame(Picture &picture)
 {
     /* Handle splitting of output stream into sequences of desired size */
-    if(  pass1_ss.new_seq )
+    if(  picture.new_seq )
     {
-        pass1ratectl.InitSeq(true);
+        pass1ratectl.InitSeq();
     }
 
-    if( pass1_ss.g_idx == 0)
+    if( picture.gop_decode == 0)
     {
-        pass1ratectl.InitGOP( pass1_ss.np, pass1_ss.nb);
+        pass1ratectl.InitGOP( picture.np, picture.nb);
     }
+}
+
+
+void SeqEncoder::Pass2RateCtlGOP(std::deque<Picture *>::iterator gop_begin, int goppics)
+{
+    /* Handle splitting of output stream into sequences of desired size */
+    if(  (*gop_begin)->new_seq )
+    {
+        pass2ratectl.InitSeq();
+    }
+    assert( (*gop_begin)->gop_decode == 0 ); // DFEBUG currently only called at start of GOP
+    pass2ratectl.InitGOP( gop_begin, goppics );
 }
 
 /*
@@ -382,74 +409,105 @@ void SeqEncoder::Pass1RateCtlSetup()
 	using the best motion estimate available and buffer the result.
 */
 
-void SeqEncoder::Pass1EncodeFrame(Picture *picture)
+void SeqEncoder::Pass1EncodeFrame(Picture &picture)
 {
     pass1_rcstate->Set( pass1ratectl.GetState() );
-    picture->SetFrameParams(pass1_ss);
-    Pass1RateCtlSetup();
-    picture->MotionSubSampledLum();
+    picture.SetFrameParams(pass1_ss);
+    Pass1RateCtlFrame(picture);
+    picture.MotionSubSampledLum();
 
     EncodeFrame( &MacroBlock::Encode, picture, pass1ratectl);
 
     mjpeg_info("Enc1  %5d %5d(%2d) %c q=%3.2f %s [%.0f%% Intra]",
-               picture->decode, 
-               picture->present,
-               picture->temp_ref,
+               picture.decode, 
+               picture.present,
+               picture.temp_ref,
                pict_type_char[pass1_ss.frame_type],
-               picture->AQ,
-               picture->pad ? "PAD" : "   ",
-               picture->IntraCodedBlocks() * 100.0
+               picture.AQ,
+               picture.pad ? "PAD" : "   ",
+               picture.IntraCodedBlocks() * 100.0
         );
 			
 }
 
-/*
-	Re-Encode a picture after type or parameters have been revised
-    from scratch.
-    N.b. this means motion estimation is *RE-DONE* as it is only.
+/****************************************  
+*
+*	Re-Encode a picture after type or parameters have been revised
+*    from scratch.
+*    N.b. this means motion estimation is *RE-DONE* as it is only.
+*
+*
+*****************************************/
 
-
-*/
-
-void SeqEncoder::Pass1ReEncodeFrame(Picture *picture)
+void SeqEncoder::Pass1ReEncodeFrame(Picture &picture)
 {
 	// Flush any previous encoding
-	picture->DiscardCoding();
+	picture.DiscardCoding();
     pass1ratectl.SetState( pass1_rcstate->Get() );
 
-    picture->SetFrameParams(pass1_ss);
-    Pass1RateCtlSetup( );
+    picture.SetFrameParams(pass1_ss);
+    Pass1RateCtlFrame( picture );
     EncodeFrame( &MacroBlock::Encode, picture, pass1ratectl);
 
     mjpeg_info("Renc1 %5d %5d(%2d) %c q=%3.2f %s", 
-               picture->decode, 
-               picture->present,
-               picture->temp_ref,
+               picture.decode, 
+               picture.present,
+               picture.temp_ref,
                pict_type_char[pass1_ss.frame_type],
-               picture->AQ,
-               picture->pad ? "PAD" : "   ");
+               picture.AQ,
+               picture.pad ? "PAD" : "   ");
 
 }
 
-/*
-    Finally encode a picture based on pass-1 data.
-    If necessary, predict and transform raw input based on
-    pass-1 motion estimation.
-    Quantise, Code and Output
+/****************************************  
+*
+*    Finally encode a picture based on pass-1 data.
+*    If necessary, predict and transform raw input based on
+*    pass-1 motion estimation.
+*    Quantise, Code and Output
+*
+// *
+*****************************************/
 
-
-*/
-
-void SeqEncoder::Pass2EncodeFrame(Picture *picture)
+void SeqEncoder::Pass2EncodeFrame(Picture &picture)
 {
-  
-    abort();
-    // TODO nb,bp etc need to be adjusted to match pass-1 updates
-    // TODO pass2ratecontroller!!!
+    
+#ifdef TEST_TWOPASS
+  // Flush any previous encoding
+  mjpeg_info("Enc2  %5d %5d(%2d) %c t=%6.0f a=%6d.0",
+             picture.decode,
+             picture.present,
+             picture.temp_ref,
+             pict_type_char[picture.pict_type],
+             pass2ratectl.TargetBits(picture),
+             picture.SizeCodedMacroBlocks()
+            );
 
-            
+  if( pass2ratectl.ReEncodeNeeded(picture) )
+  {
+    picture.DiscardCoding();
+    EncodeFrame( &MacroBlock::Encode, picture, pass2ratectl);
+    mjpeg_info("Renc2 %5d %5d(%2d) %c q=%3.2f a=%6d.0",
+               picture.decode,
+               picture.present,
+               picture.temp_ref,
+               pict_type_char[picture.pict_type],
+               picture.AQ,
+               picture.SizeCodedMacroBlocks());
+  }
+  else
+  {
+    mjpeg_info("Skip2 %5d %5d(%2d) %c q=%3.2f a=%6d.0",
+               picture.decode,
+               picture.present,
+               picture.temp_ref,
+               pict_type_char[picture.pict_type],
+               picture.AQ,
+               picture.SizeCodedMacroBlocks());
+  }
+#endif
+
 }
-
 /*
     Encode a picture based on set picture parameters.
 
@@ -458,46 +516,43 @@ void SeqEncoder::Pass2EncodeFrame(Picture *picture)
 
 */
 
-void SeqEncoder::EncodeFrame( void (MacroBlock::*encodingFunc)(), Picture *picture,
+void SeqEncoder::EncodeFrame( void (MacroBlock::*encodingFunc)(), Picture &picture,
                               RateCtl &ratecontrol)
 {
-    picture->SetFieldParams( 0 );
+    picture.SetFieldParams( 0 );
     mjpeg_debug("Start %d %c %d %d",
-                picture->decode, 
-                pict_type_char[picture->pict_type],
-                picture->temp_ref,
-                picture->present);
-    if( picture->pict_struct != FRAME_PICTURE )
+                picture.decode, 
+                pict_type_char[picture.pict_type],
+                picture.temp_ref,
+                picture.present);
+    if( picture.pict_struct != FRAME_PICTURE )
         mjpeg_debug("Field %s (%d)",
-                   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
-                   picture->pict_struct
+                   (picture.pict_struct == TOP_FIELD) ? "top" : "bot",
+                   picture.pict_struct
             );
 
 
     despatcher.Despatch( picture, encodingFunc );
     despatcher.WaitForCompletion();
     // Setup rate control
-    ratecontrol.CalcVbvDelay(*picture);
-    ratecontrol.InitNewPict(*picture);
-    picture->QuantiseAndCode(ratecontrol);
-    picture->Reconstruct();
+
+    picture.QuantiseAndCode(ratecontrol);
+    picture.Reconstruct();
 
     /* Handle second field of a frame that is being field encoded */
     if( encparams.fieldpic )
     {
-        picture->SetFieldParams( 1);
+        picture.SetFieldParams( 1);
         mjpeg_debug("Field %s (%d)",
-                   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
-                   picture->pict_struct
+                   (picture.pict_struct == TOP_FIELD) ? "top" : "bot",
+                   picture.pict_struct
             );
 
 
         despatcher.Despatch( picture, encodingFunc );
         despatcher.WaitForCompletion();
-        ratecontrol.CalcVbvDelay(*picture);
-        ratecontrol.InitNewPict(*picture);
-        picture->QuantiseAndCode(ratecontrol);
-        picture->Reconstruct();
+        picture.QuantiseAndCode(ratecontrol);
+        picture.Reconstruct();
     }
 }
 
@@ -513,7 +568,7 @@ void SeqEncoder::EncodeFrame( void (MacroBlock::*encodingFunc)(), Picture *pictu
  * that despatches all the encoding work.  Encoding is always performed
  * two-papass1_ss. 
  * Pass 1: a first encoding that determines the GOP
- * structure, but may only do rough-and-ready bit allocatino that is 
+ * structure, but may only do rough-and-ready bit allocation that is
  * visually sub-optimal and/or may violate the specified maximum bit-rate.
  * 
  * Pass 2: Pictures from Pass1 are, if necessary, re-quantised and the results
@@ -576,10 +631,10 @@ Picture *SeqEncoder::GetFreshPicture()
     return fresh;
 }
 
-void SeqEncoder::ReleasePicture( Picture *picture )
+void SeqEncoder::ReleasePicture( Picture &picture )
 {
-    reader.ReleaseFrame( picture->present );
-    free_pictures.push_back( picture );
+    reader.ReleaseFrame( picture.present );
+    free_pictures.push_back( &picture );
 }
 
 /*********************
@@ -632,7 +687,7 @@ void SeqEncoder::Pass1Process()
 
    // Frames are presented at input in playback (presentation) order
     cur_picture->org_img = reader.ReadFrame( pass1_ss.PresentationNum() );
-    Pass1EncodeFrame( cur_picture );
+    Pass1EncodeFrame( *cur_picture );
 
 
     // Should this P frame really have been an I-frame ?
@@ -643,12 +698,9 @@ void SeqEncoder::Pass1Process()
         if( (!pass1_ss.NextGopClosed() || pass1_ss.BGroupLength() == 1) &&
             pass1_ss.CanSplitHere() )
         {
-            mjpeg_info( "DEVEL: GOP split point found here... %d %d %.0f%% intra coded",
-                        pass1_ss.NextGopClosed(), pass1_ss.BGroupLength(),
-                        cur_picture->IntraCodedBlocks() * 100.0 );
             pass1_ss.ForceIFrame();
             assert( cur_picture->present == old_present);
-            Pass1ReEncodeFrame( cur_picture );
+            Pass1ReEncodeFrame( *cur_picture );
         }
         else if( encparams.M_min == 1 )
         {
@@ -657,11 +709,9 @@ void SeqEncoder::Pass1Process()
             // the current P frame.
             // Solution: we need to back up and code the remainder of the GOP without
             // B frames to allow the I frame to be inserted at the right spot.
-            mjpeg_info( "DEVEL: GOP split forces P-frames only... %.0f%% intra coded", 
-                        cur_picture->IntraCodedBlocks() * 100.0 );
             pass1_ss.SuppressBFrames();
             cur_picture->org_img = reader.ReadFrame( cur_picture->present );
-            Pass1ReEncodeFrame( cur_picture );
+            Pass1ReEncodeFrame( *cur_picture );
         }
     }
     
@@ -740,8 +790,9 @@ uint64_t    SeqEncoder::BitsAfterMux() const
   
 void SeqEncoder::Pass2Process()
 {
-    deque<Picture *>::iterator i = pass2queue.begin()+1;
-    
+    // Find end of current GOP by find next I frame *after*
+    // 1st frame of GOP
+    std::deque<Picture *>::iterator i = pass2queue.begin()+1;
     while( i < pass2queue.end() )
     {
         if( (*i)->pict_type == I_TYPE )  // First frame of next GOP
@@ -754,19 +805,20 @@ void SeqEncoder::Pass2Process()
         if( !pass2queue.back()->end_seq)
             return;
     }
-    
-    // Here we estimate a good look-ahead coding 
-    
+
+    // Current GOP is [pass2queue.begin(), i )
+    // Here we estimate a good look-ahead coding
     int goppics = i-pass2queue.begin();
+    Pass2RateCtlGOP( pass2queue.begin(), goppics );
     for( int p =0; p < goppics; ++p )
     {
         // We have a GOP queue up!
         Picture *cur_pass2_picture = pass2queue.front();
     
         pass2queue.pop_front();
-        // Simple single-pass encoding (look-ahead coming soon)
+        Pass2EncodeFrame(*cur_pass2_picture);
         cur_pass2_picture->CommitCoding();
-        ReleasePicture( cur_pass2_picture );
+        ReleasePicture( *cur_pass2_picture );
     }
 }
 

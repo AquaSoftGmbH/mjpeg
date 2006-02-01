@@ -90,18 +90,15 @@ VBufPass1RC::VBufPass1RC(EncoderParams &encparams ) :
 
 /*********************
  *
- * Initialise rate control parameters
- * params:  reinit - Rate control is being re-initialised during the middle
- *                   of a run.  Don't reset adaptive parameters.
+ * Initialise rate control 
+ *
  *
  ********************/
 
-void VBufPass1RC::InitSeq(bool reinit)
+void VBufPass1RC::Init()
 {
 	double init_quant;
-	/* If its stills with a size we have to hit then make the
-	   guesstimates of for initial quantisation pessimistic...
-	*/
+
 	bits_transported = bits_used = 0;
 	field_rate = 2*encparams.decode_frame_rate;
 	fields_per_pict = encparams.fieldpic ? 1 : 2;
@@ -117,10 +114,6 @@ void VBufPass1RC::InitSeq(bool reinit)
 								 : encparams.bit_rate / encparams.decode_frame_rate
 				);
 	}
-
-	/* Everything else already set or adaptive */
-	if( reinit )
-		return;
 
 	first_gop = true;
 	K_AVG_WINDOW[I_TYPE] = 2.0;
@@ -197,6 +190,17 @@ void VBufPass1RC::InitSeq(bool reinit)
 	decoding_time = 0.0;
 }
 
+/*********************
+ *
+ * Reset rate control parameters at start of new sequence,
+ *
+ *
+ ********************/
+
+void VBufPass1RC::InitSeq()
+{
+    bits_transported = bits_used = 0;
+}
 
 void VBufPass1RC::InitGOP( int np, int nb )
 {
@@ -255,7 +259,7 @@ void VBufPass1RC::InitGOP( int np, int nb )
 /* Step 1a: compute target bits for current picture being coded, based
  * on predicting from past frames */
 
-void VBufPass1RC::InitNewPict(Picture &picture)
+void VBufPass1RC::InitPict(Picture &picture)
 {
 	double target_Q;
 	int available_bits;
@@ -535,6 +539,7 @@ void VBufPass1RC::UpdatePict( Picture &picture, int &padding_needed)
             (actual_Xhi + win*Xhi[picture.pict_type])/(win+1.0);
     }
 
+    picture.SetComplexity(actual_Xhi);
     mjpeg_debug( "Frame %c A=%6.0f %.2f: I = %6.0f P = %5.0f B = %5.0f",
                  pict_type_char[picture.pict_type],
                  actual_bits/8.0,

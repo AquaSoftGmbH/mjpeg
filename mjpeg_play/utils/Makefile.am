@@ -25,6 +25,7 @@ endif
 libmjpegutils_la_LIBADD = $(mmxsse_lib) $(altivec_lib)
 
 libmjpegutils_la_LDFLAGS = \
+	$(LT_STATIC) \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
 	-release $(LT_RELEASE)
 

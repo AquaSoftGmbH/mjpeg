@@ -67,12 +67,13 @@ libmpeg2encpp_include_HEADERS = elemstrmwriter.hh encoderparams.hh \
 	ontheflyratectl.hh pass2ratectl.hh
 
 libmpeg2encpp_la_LDFLAGS = \
+	$(LT_STATIC) \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
 	-release $(LT_RELEASE)
 
 libmpeg2encpp_la_DEPENDENCIES = $(LIBMJPEGUTILS)
 
-libmpeg2encpp_la_LIBADD = $(LIBMJPEGUTILS)
+libmpeg2encpp_la_LIBADD = 
 
 mpeg2enc_DEPENDENCIES = \
 	$(LIBMJPEGUTILS) \

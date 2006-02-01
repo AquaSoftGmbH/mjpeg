@@ -84,12 +84,17 @@ bool StreamState::CanSplitHere(int offset) const
     if( nc<0 )
         return true;
 
-    if( offset>nc-frame_num )
+    int nc_distance = nc - frame_num+offset;
+    if( nc_distance < 0 )
         return false;
 
-    nc-=frame_num+offset;
-    // it's important that the division occur first; rounding down is relied upon
-    return nc <= (nc/encparams.N_min) * encparams.N_max;
+    // Check that legal GOP sizes allow the the next chapter point to
+    // be hit exactly.  If it is between x and x+1 minimum GOPs away
+    // it must be x or less maximum gops away as only then can a mixture
+    // of gops sized somewhere between minimum and maximum sizes reach it
+    // exactly.
+    // Division must occur first; rounding down is relied upon!
+    return nc_distance <= (nc_distance/encparams.N_min) * encparams.N_max;
 }
 
 

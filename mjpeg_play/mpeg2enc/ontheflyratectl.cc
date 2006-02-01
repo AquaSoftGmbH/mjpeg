@@ -88,42 +88,39 @@ OnTheFlyRateCtl::OnTheFlyRateCtl(EncoderParams &encparams ) :
 
 }
 
+
 /*********************
  *
- * Initialise rate control parameters
- * params:  reinit - Rate control is being re-initialised during the middle
- *                   of a run.  Don't reset adaptive parameters.
+ * Initialise rate control 
+ *
  *
  ********************/
 
-void OnTheFlyRateCtl::InitSeq(bool reinit)
+void OnTheFlyRateCtl::Init()
 {
-	double init_quant;
-	/* If its stills with a size we have to hit then make the
-	   guesstimates of for initial quantisation pessimistic...
-	*/
-	bits_transported = bits_used = 0;
-	field_rate = 2*encparams.decode_frame_rate;
-	fields_per_pict = encparams.fieldpic ? 1 : 2;
-	if( encparams.still_size > 0 )
-	{
-		per_pict_bits = encparams.still_size * 8;
-	}
-	else
-	{
-		per_pict_bits = 
-			static_cast<int32_t>(encparams.fieldpic
-								 ? encparams.bit_rate / field_rate
-								 : encparams.bit_rate / encparams.decode_frame_rate
-				);
-	}
+    double init_quant;
+    /* If its stills with a size we have to hit then make the
+       guesstimates of for initial quantisation pessimistic...
+    */
+    bits_transported = bits_used = 0;
+    field_rate = 2*encparams.decode_frame_rate;
+    fields_per_pict = encparams.fieldpic ? 1 : 2;
+    if( encparams.still_size > 0 )
+    {
+        per_pict_bits = encparams.still_size * 8;
+    }
+    else
+    {
+        per_pict_bits = 
+            static_cast<int32_t>(encparams.fieldpic
+                                 ? encparams.bit_rate / field_rate
+                                 : encparams.bit_rate / encparams.decode_frame_rate
+                );
+    }
 
-	/* Everything else already set or adaptive */
-	if( reinit )
-		return;
 
-	first_gop = true;
-	K_AVG_WINDOW[I_TYPE] = 2.0;
+    first_gop = true;
+    K_AVG_WINDOW[I_TYPE] = 2.0;
     switch( encparams.M )
     {
     case 1 : // P
@@ -141,64 +138,74 @@ void OnTheFlyRateCtl::InitSeq(bool reinit)
     }        
 
 
-	/* Calculate reasonable margins for variation in the decoder
-	   buffer.  We assume that having less than 5 frame intervals
-	   worth buffered is cutting it fine for avoiding under-runs.
+    /* Calculate reasonable margins for variation in the decoder
+       buffer.  We assume that having less than 5 frame intervals
+       worth buffered is cutting it fine for avoiding under-runs.
 
-	   The gain values represent the fraction of the under/over shoot
-	   to be recovered during one second.  Gain is decreased if the
-	   buffer margin is large, gain is higher for avoiding overshoot.
+       The gain values represent the fraction of the under/over shoot
+       to be recovered during one second.  Gain is decreased if the
+       buffer margin is large, gain is higher for avoiding overshoot.
 
-	   Currently, for a 1-frame sized margin gain is set to recover
-	   an undershoot in half a second
-	*/
-	if( encparams.still_size > 0 )
-	{
-		undershoot_carry = 0;
-		overshoot_gain = 1.0;
-	}
-	else
-	{
-		int buffer_safe = 3 * per_pict_bits ;
-		undershoot_carry = (encparams.video_buffer_size - buffer_safe)/6;
-		if( undershoot_carry < 0 )
-			mjpeg_error_exit1("Rate control can't cope with a video buffer smaller 4 frame intervals");
-		overshoot_gain =  encparams.bit_rate / (encparams.video_buffer_size-buffer_safe);
-	}
-	bits_per_mb = (double)encparams.bit_rate / (encparams.mb_per_pict);
+       Currently, for a 1-frame sized margin gain is set to recover
+       an undershoot in half a second
+    */
+    if( encparams.still_size > 0 )
+    {
+        undershoot_carry = 0;
+        overshoot_gain = 1.0;
+    }
+    else
+    {
+        int buffer_safe = 3 * per_pict_bits ;
+        undershoot_carry = (encparams.video_buffer_size - buffer_safe)/6;
+        if( undershoot_carry < 0 )
+            mjpeg_error_exit1("Rate control can't cope with a video buffer smaller 4 frame intervals");
+        overshoot_gain =  encparams.bit_rate / (encparams.video_buffer_size-buffer_safe);
+    }
+    bits_per_mb = (double)encparams.bit_rate / (encparams.mb_per_pict);
 
-	/*
-	  Reaction paramer - i.e. quantisation feedback gain relative
-	  to bit over/undershoot.
-	  For normal frames it is fairly modest as we can compensate
-	  over multiple frames and can average out variations in image
-	  complexity.
+    /*
+      Reaction paramer - i.e. quantisation feedback gain relative
+      to bit over/undershoot.
+      For normal frames it is fairly modest as we can compensate
+      over multiple frames and can average out variations in image
+      complexity.
 
-	  For stills we set it a higher so corrections take place
-	  more rapidly *within* a single frame.
-	*/
-	if( encparams.still_size > 0 )
-		fb_gain = (int)floor(2.0*encparams.bit_rate/encparams.decode_frame_rate);
-	else
-		fb_gain = (int)floor(4.0*encparams.bit_rate/encparams.decode_frame_rate);
+      For stills we set it a higher so corrections take place
+      more rapidly *within* a single frame.
+    */
+    if( encparams.still_size > 0 )
+        fb_gain = (int)floor(2.0*encparams.bit_rate/encparams.decode_frame_rate);
+    else
+        fb_gain = (int)floor(4.0*encparams.bit_rate/encparams.decode_frame_rate);
 
 
-	/* Set the virtual buffers for per-frame rate control feedback to
-	   values corresponding to the quantisation floor (if specified)
-	   or a "reasonable" quantisation (6.0) if not.
-	*/
+    /* Set the virtual buffers for per-frame rate control feedback to
+       values corresponding to the quantisation floor (if specified)
+       or a "reasonable" quantisation (6.0) if not.
+    */
 
-	init_quant = (encparams.quant_floor > 0.0 ? encparams.quant_floor : 6.0);
+    init_quant = (encparams.quant_floor > 0.0 ? encparams.quant_floor : 6.0);
     int i;
     for( i = FIRST_PICT_TYPE; i <= LAST_PICT_TYPE; ++i )
         ratectl_vbuf[i] = static_cast<int>(init_quant * fb_gain / 62.0);
 
-	next_ip_delay = 0.0;
-	decoding_time = 0.0;
+    next_ip_delay = 0.0;
+    decoding_time = 0.0;
 
+}
 
+/*********************
+ *
+ * Reset rate control parameters at start of new sequence,
+ *
+ *
+ ********************/
 
-
+void OnTheFlyRateCtl::InitSeq()
+{
+    // Synchronisation run-in etc starts from scratch at a new sequence
+	bits_transported = bits_used = 0;
 }
 
 
@@ -259,7 +266,7 @@ void OnTheFlyRateCtl::InitGOP( int np, int nb )
 /* Step 1a: compute target bits for current picture being coded, based
  * on predicting from past frames */
 
-void OnTheFlyRateCtl::InitNewPict(Picture &picture)
+void OnTheFlyRateCtl::InitPict(Picture &picture)
 {
 	double target_Q;
 	int available_bits;
@@ -409,6 +416,8 @@ void OnTheFlyRateCtl::InitNewPict(Picture &picture)
 	cur_mquant = ScaleQuant( picture.q_scale_type, 
                              fmax( vbuf_fullness*62.0/fb_gain, encparams.quant_floor) );
     mquant_change_ctr = encparams.mb_width;
+
+    CalcVbvDelay( picture );
 }
 
 

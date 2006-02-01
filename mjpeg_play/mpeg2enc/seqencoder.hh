@@ -34,6 +34,7 @@ class PictureReader;
 class Despatcher;
 class RateCtlState;
 class Pass1RateCtl;
+class Pass2RateCtl;
 
 class SeqEncoder
 {
@@ -42,7 +43,8 @@ public:
                 PictureReader &reader,
                 Quantizer &quantizer,
                 ElemStrmWriter &writer,
-                Pass1RateCtl   &pass1ratectl
+                Pass1RateCtl   &pass1ratectl,
+                Pass2RateCtl   &pass2ratectl
         );
 	~SeqEncoder();
 
@@ -74,7 +76,7 @@ private:
      *********************************/
      
     Picture *GetFreshPicture();
-    void ReleasePicture( Picture *);
+    void ReleasePicture( Picture &);
       
     /**********************************
      *
@@ -106,12 +108,13 @@ private:
    
     void StreamEnd();
 
-    void Pass1RateCtlSetup();
+    void Pass1RateCtlFrame(Picture &picture);
+    void Pass2RateCtlGOP( std::deque<Picture *>::iterator gop_begin, int goppics);
             
-    void EncodeFrame( void (MacroBlock::*encodingFunc)(), Picture *picture, RateCtl &ratectl);
-    void Pass1EncodeFrame( Picture *picture );
-    void Pass1ReEncodeFrame( Picture *picture );
-    void Pass2EncodeFrame( Picture *picture );
+    void EncodeFrame( void (MacroBlock::*encodingFunc)(), Picture &picture, RateCtl &ratectl);
+    void Pass1EncodeFrame( Picture &picture );
+    void Pass1ReEncodeFrame( Picture &picture );
+    void Pass2EncodeFrame( Picture &picture );
     
     uint64_t BitsAfterMux() const;
     
@@ -120,6 +123,7 @@ private:
     Quantizer &quantizer;
     ElemStrmWriter &writer;
     Pass1RateCtl    &pass1ratectl;
+    Pass2RateCtl    &pass2ratectl;
     
     Despatcher &despatcher;
 	

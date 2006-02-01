@@ -31,6 +31,7 @@
 class EncoderParams;
 class PictureReader;
 class Pass1RateCtl;
+class Pass2RateCtl;
 class SeqEncoder;
 class Quantizer;
 class Transformer;
@@ -52,7 +53,8 @@ public:
     ElemStrmWriter *writer;
     Quantizer      *quantizer;
     MPEG2CodingBuf *coder;
-    Pass1RateCtl   *bitrate_controller;
+    Pass1RateCtl   *pass1ratectl;
+    Pass2RateCtl   *pass2ratectl;
     SeqEncoder     *seqencoder;
 };
 

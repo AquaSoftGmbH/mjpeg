@@ -52,8 +52,9 @@ class RateCtl
 {
 public:
     RateCtl( EncoderParams &_encparams, RateCtlState &_state );
-    virtual void InitSeq( bool reinit ) = 0;
-    virtual void InitNewPict (Picture &picture) = 0;
+    virtual void Init() = 0;
+    virtual void InitSeq() = 0;
+    virtual void InitPict (Picture &picture) = 0;
     virtual void UpdatePict (Picture &picture, int &padding_needed ) = 0;
     virtual int MacroBlockQuant(  const MacroBlock &mb) = 0;
     virtual int  InitialMacroBlockQuant(Picture &picture) = 0;
@@ -87,6 +88,8 @@ class Pass2RateCtl : public RateCtl
 public:
     Pass2RateCtl( EncoderParams &encoder, RateCtlState &state );
     virtual void InitGOP( std::deque<Picture *>::iterator gop_pics, int gop_len ) = 0;
+    virtual bool ReEncodeNeeded(const Picture &) const = 0;
+    virtual double TargetBits(const Picture &) const = 0;
 };
 
 /* 
