@@ -1,13 +1,6 @@
 #include "config.h"
 #include "mmxsse_motion.h"
 
-int (*pmblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
-									int ilow, int jlow,
-									int ihigh, int jhigh, 
-									int h, int rowstride, 
-									int threshold,
-									me_result_s *resvec);
-
 int build_sub44_mests_mmx( me_result_set *sub44set,
 						   int ilow, int jlow, int ihigh, int jhigh, 
 						   int i0, int j0,
