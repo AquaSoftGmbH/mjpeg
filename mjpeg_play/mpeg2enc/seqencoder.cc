@@ -612,7 +612,7 @@ void SeqEncoder::EncodeStream()
         {
             Pass2Process();
         }
-    } while( pass1coded.size() > 0 || pass2queue.size() > 0  );
+    } while( !pass1_ss.EndOfStream() || pass2queue.size() > 0  );
 
     StreamEnd();
 }
@@ -800,10 +800,9 @@ void SeqEncoder::Pass2Process()
         ++i;
     }
     
-    if( i == pass2queue.end() )
+    if( i == pass2queue.end() && !pass2queue.back()->end_seq )
     {
-        if( !pass2queue.back()->end_seq)
-            return;
+         return;
     }
 
     // Current GOP is [pass2queue.begin(), i )
