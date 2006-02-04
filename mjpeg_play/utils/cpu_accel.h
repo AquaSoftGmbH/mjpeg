@@ -46,6 +46,9 @@ extern "C" {
 #if	!defined(HAVE_FMAX)
 	double fmax(double, double);
 #endif
+#if	!defined(HAVE_FMIN)
+	double fmin(double, double);
+#endif
 
 extern const char *disable_simd_flags[];
 extern int disable_simd(char *);

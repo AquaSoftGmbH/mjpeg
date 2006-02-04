@@ -101,7 +101,7 @@ AX_PREFIXED_DEFINE([MJPEGTOOLS], [HAVE_INTTYPES_H])
 #maddog:  check for math lib, and add it to LIBS (needed for fmax, lround...)
 #maddog:  (How does this interact with cpml stuff below???????)
 AC_CHECK_LIB([m],[sin])
-AC_CHECK_FUNCS([posix_memalign memalign fmax lround])
+AC_CHECK_FUNCS([posix_memalign memalign fmax fmin lround])
 
 #maddog:  FIX UP?????????????
 AC_CHECK_FUNC(getopt_long,

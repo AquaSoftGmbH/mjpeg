@@ -315,7 +315,7 @@ memalign(size_t alignment, size_t size)
 #endif
 
 /***********************
- * Implement fmax() for systems which do not have it.  Not a strictly
+ * Implement fmax() and fmin() for systems which lack them.  Not a strictly
  * conforming implementation - we don't bother checking for NaN which if
  * mpeg2enc gets means big trouble I suspect ;)
 ************************/
@@ -325,6 +325,16 @@ double
 fmax(double x, double y)
 {
 	if	(x > y)
+		return(x);
+	return(y);
+}
+#endif
+
+#if	!defined(HAVE_FMIN)
+double
+fmin(double x, double y)
+{
+	if	(x < y)
 		return(x);
 	return(y);
 }
