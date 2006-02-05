@@ -401,7 +401,7 @@ static inline void mean8(unsigned char *refpix,unsigned char *pixel,int radius_c
 }
 #endif
 
-static inline void mean1(unsigned char *refpix,unsigned char *pixel,int radius_count,int row_stride,int threshold,char *diff,unsigned char *count)
+static inline void mean1(unsigned char *refpix,unsigned char *pixel,int radius_count,int row_stride,int threshold,int8_t *diff,unsigned char *count)
 {
     int reference = *refpix;
     int total = 0;
