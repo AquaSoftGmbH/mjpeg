@@ -307,6 +307,33 @@ void y4m_copy_stream_info(y4m_stream_info_t *dest,
   y4m_copy_xtag_list(&(dest->x_tags), &(src->x_tags));
 }
 
+// returns 0 if equal, nonzero if different
+static int y4m_compare_stream_info(const y4m_stream_info_t *s1,const y4m_stream_info_t *s2)
+{
+    int i,j;
+
+    if( s1->width          != s2->width          ||
+        s1->height         != s2->height         ||
+        s1->interlace      != s2->interlace      ||
+        s1->framerate.n    != s2->framerate.n    ||
+        s1->framerate.d    != s2->framerate.d    ||
+        s1->sampleaspect.n != s2->sampleaspect.n ||
+        s1->sampleaspect.d != s2->sampleaspect.d ||
+        s1->chroma         != s2->chroma         ||
+        s1->x_tags.count   != s2->x_tags.count   )
+        return 1;
+
+    // the tags may not be in the same order
+    for( i=0; i<s1->x_tags.count; i++ ) {
+        for( j=0; j<s2->x_tags.count; j++ )
+            if( !strncmp(s1->x_tags.tags[i],s2->x_tags.tags[j],Y4M_MAX_XTAG_SIZE) )
+                goto next;
+        return 1;
+    next:;
+    }
+    return 0;
+}
+
 void y4m_fini_stream_info(y4m_stream_info_t *info)
 {
   if (info == NULL) return;
@@ -728,33 +755,47 @@ static int y4m_parse_frame_tags(char *s, const y4m_stream_info_t *si,
  *************************************************************************/
 
 
-int y4m_read_stream_header_cb(y4m_cb_reader_t * fd, y4m_stream_info_t *i)
+static int y4m_read_stream_header_line_cb(y4m_cb_reader_t * fd, y4m_stream_info_t *i,char *line,int n)
 {
-   char line[Y4M_LINE_MAX];
-   char *p;
-   int n;
-   int err;
+    int err;
+    
+    /* start with a clean slate */
+    y4m_clear_stream_info(i);
+    /* read the header line */
+    for (; n < Y4M_LINE_MAX; n++) {
+        if (y4m_read_cb(fd, line+n, 1)) 
+            return Y4M_ERR_SYSTEM;
+        if (line[n] == '\n') {
+            line[n] = '\0';           /* Replace linefeed by end of string */
+            break;
+        }
+    }
+    /* look for keyword in header */
+    if (strncmp(line, Y4M_MAGIC, strlen(Y4M_MAGIC)))
+        return Y4M_ERR_MAGIC;
+    if (n >= Y4M_LINE_MAX)
+        return Y4M_ERR_HEADER;
+    if ((err = y4m_parse_stream_tags(line + strlen(Y4M_MAGIC), i)) != Y4M_OK)
+        return err;
 
-  /* start with a clean slate */
-  y4m_clear_stream_info(i);
-   /* read the header line */
-   for (n = 0, p = line; n < Y4M_LINE_MAX; n++, p++) {
-     if (y4m_read_cb(fd, p, 1)) 
-       return Y4M_ERR_SYSTEM;
-     if (*p == '\n') {
-       *p = '\0';           /* Replace linefeed by end of string */
-       break;
-     }
-   }
-   if (n >= Y4M_LINE_MAX)
-      return Y4M_ERR_HEADER;
-   /* look for keyword in header */
-   if (strncmp(line, Y4M_MAGIC, strlen(Y4M_MAGIC)))
-    return Y4M_ERR_MAGIC;
-   if ((err = y4m_parse_stream_tags(line + strlen(Y4M_MAGIC), i)) != Y4M_OK)
-     return err;
+    return Y4M_OK;
+}
 
-   return Y4M_OK;
+static int y4m_reread_stream_header_line_cb(y4m_cb_reader_t *fd,const y4m_stream_info_t *si,char *line,int n)
+{
+    y4m_stream_info_t i;
+    int err=y4m_read_stream_header_line_cb(fd,&i,line,n);
+    if( err==Y4M_OK && y4m_compare_stream_info(si,&i) )
+        err=Y4M_ERR_HEADER;
+    y4m_fini_stream_info(&i);
+    return err;
+}
+
+int y4m_read_stream_header_cb(y4m_cb_reader_t *fd, y4m_stream_info_t *i)
+{
+    char line[Y4M_LINE_MAX];
+
+    return y4m_read_stream_header_line_cb(fd,i,line,0);
 }
 
 int y4m_read_stream_header(int fd, y4m_stream_info_t *i)
@@ -829,7 +870,8 @@ int y4m_read_frame_header_cb(y4m_cb_reader_t * fd,
   char *p;
   int n;
   ssize_t remain;
-  
+
+ again:  
   /* start with a clean slate */
   y4m_clear_frame_info(fi);
   /* This is more clever than read_stream_header...
@@ -845,8 +887,12 @@ int y4m_read_frame_header_cb(y4m_cb_reader_t * fd,
     else
       return Y4M_ERR_BADEOF;
   }
-  if (strncmp(line, Y4M_FRAME_MAGIC, sizeof(Y4M_FRAME_MAGIC)-1))
-    return Y4M_ERR_MAGIC;
+  if (strncmp(line, Y4M_FRAME_MAGIC, sizeof(Y4M_FRAME_MAGIC)-1)) {
+      int err=y4m_reread_stream_header_line_cb(fd,si,line,sizeof(Y4M_FRAME_MAGIC)-1+1);
+      if( err!=Y4M_OK )
+          return err;
+      goto again;
+  }
   if (line[sizeof(Y4M_FRAME_MAGIC)-1] == '\n')
     return Y4M_OK; /* done -- no tags:  that was the end-of-line. */
 
