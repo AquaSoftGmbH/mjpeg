@@ -133,7 +133,6 @@ void rotate_buffers( void )
 int
 main (int argc, char *argv[])
 {
-  int cpucap = cpu_accel ();
   char c;
   int fd_in = 0;
   int fd_out = 1;
