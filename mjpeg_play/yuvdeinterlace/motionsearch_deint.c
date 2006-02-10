@@ -135,9 +135,9 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 #endif
 
 #if 1
-  for (y = 0; y < (h/2); y += 4)
+  for (y = 0; y < (h/2); y += 16)
     {
-      for (x = 0; x < w; x += 8)
+      for (x = 0; x < w; x += 32)
 	{
 		x -= 0;
 		y += (h/2)-2;
@@ -145,25 +145,34 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 	  fx = bx = ifx = ibx = 0;
 	  fy = by = ify = iby = 0;
 
-	  fmin = psad_sub22
-	    (f1 + (x) + (y) * w, f0 + (x) + (y) * w, w, 8);
+	fmin = psad_00
+	  (f1 + (x) + (y-8) * w,
+	   f0 + (x) + (y-8) * w, w, 32, 0x00ffffff);
+	fmin += psad_00
+	  (f1 + (x+16) + (y-8) * w,
+	   f0 + (x+16) + (y-8) * w, w, 32, 0x00ffffff);
 
-	  bmin = psad_sub22
-	    (f1 + (x) + (y) * w, f2 + (x) + (y) * w, w, 8);
+	bmin = psad_00
+	  (f1 + (x) + (y-8) * w,
+	   f2 + (x) + (y-8) * w, w, 32, 0x00ffffff);
+	bmin += psad_00
+	  (f1 + (x+16) + (y-8) * w,
+	   f2 + (x+16) + (y-8) * w, w, 32, 0x00ffffff);
 
-	  fmin *= 50;
-	  fmin /= 100;
-
-	  bmin *= 50;
-	  bmin /= 100;
-
-	  if(bmin>(thres*2) || fmin>(thres*2))
-	  for (dy = -4; dy <= +4; dy++)
-	    for (dx = -8; dx <= +8; dx++)
+	  //if(bmin>(thres*2) || fmin>(thres*2))
+	  for (dy = -8; dy <= +8; dy++)
+	    for (dx = -16; dx <= +16; dx++)
 	      {
-		sad = psad_sub22
-		  (f1 + (x) + (y) * w,
-		   f0 + (x + dx) + (y + dy) * w, w, 8);
+		sad = psad_00
+		  (f1 + (x) + (y-8) * w,
+		   f0 + (x + dx) + (y + dy-8) * w, w, 32, 0x00ffffff);
+		sad += psad_00
+		  (f1 + (x+16) + (y-8) * w,
+		   f0 + (x + dx+16) + (y + dy-8) * w, w, 32, 0x00ffffff);
+
+//		sad = psad_sub22
+//		  (f1 + (x) + (y-2) * w,
+//		   f0 + (x + dx) + (y + dy-2) * w, w, 8);
 
 		if (sad < fmin)
 		  {
@@ -172,9 +181,16 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 		    fy = dy;
 		  }
 
-		sad = psad_sub22
-		  (f1 + (x) + (y) * w,
-		   f2 + (x + dx) + (y + dy) * w, w, 8);
+		sad = psad_00
+		  (f1 + (x) + (y-8) * w,
+		   f2 + (x + dx) + (y + dy-8) * w, w, 32, 0x00ffffff);
+		sad += psad_00
+		  (f1 + (x+16) + (y-8) * w,
+		   f2 + (x + dx+16) + (y + dy-8) * w, w, 32, 0x00ffffff);
+
+//		sad = psad_sub22
+//		  (f1 + (x) + (y-2) * w,
+//		   f2 + (x + dx) + (y + dy-2) * w, w, 8);
 
 		if (sad < bmin)
 		  {
@@ -187,11 +203,12 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 		x += 0;
 		y -= (h/2)-2;
 		
+
 	mean += (bmin<fmin)? bmin:fmin;
 	mcnt += 1;
 
-	  for (dy = 0; dy < 4; dy++)
-	    for (dx = 0; dx < 8; dx++)
+	  for (dy = 0; dy < 16; dy++)
+	    for (dx = 0; dx < 32; dx++)
 	      {
 		// prev. field               next field
 		//      |      current field      |
@@ -222,6 +239,7 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 		// calculate temporal interpolation
 		b = (d+e)/2;
 
+#if 0
 		// check for that interpolation to be valid with a spatial median filter...
 		if( ( a<(b-4) && (b-4)>c ) || ( a>(b+4) && (b+4)<c ) )
 		{
@@ -302,7 +320,6 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 							}
 					}
 				}
-
 				if(field==0)
 				{
 					v  = *(f1 + (x+dx) + (y+dy) * w-w*4)*( -1);
@@ -332,6 +349,7 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 				b = (v+b)/2;
 			}
 		}
+#endif
 
 
 

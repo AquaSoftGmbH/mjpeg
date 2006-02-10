@@ -26,6 +26,62 @@ extern uint8_t *lp1;
 extern uint8_t *lp2;
 
 void
+prepare_field (uint8_t * frame, uint8_t * inframe, int w, int h,
+		    int field)
+{
+  int x, y, v;
+  uint8_t * s;
+  uint8_t * d;
+
+  for(y=field;y<h;y+=2)
+	{
+	memcpy ( frame+(y/2)*w, inframe+y*w, w);
+	}
+
+	if(field==0)
+		{
+		  	for(y=0;y<(h/2);y++)
+				for(x=0;x<w;x++)
+				{
+					v  = *(frame+x+y*w+w*4) * 0.07;
+					v += *(frame+x+y*w+w*3) * 0.38;
+					v += *(frame+x+y*w+w*2) * 0.71;
+					v += *(frame+x+y*w+w*1) * 0.94;
+					v += *(frame+x+y*w    ) * 0.99;
+        				v += *(frame+x+y*w-w*1) * 0.85;
+        				v += *(frame+x+y*w-w*2) * 0.56;
+        				v += *(frame+x+y*w-w*3) * 0.22;
+        				v += *(frame+x+y*w-w*4) * -.06;
+					v /= 4.66;
+					v = v<0? 0:v;
+					v = v>255? 255:v;
+					*(frame+x+(h/2+y)*w) = v;
+				}
+		}
+	else
+		{
+  			for(y=0;y<(h/2);y++)
+				for(x=0;x<w;x++)
+				{
+					v  = *(frame+x+y*w-w*4) * 0.07;
+					v += *(frame+x+y*w-w*3) * 0.38;
+					v += *(frame+x+y*w-w*2) * 0.71;
+					v += *(frame+x+y*w-w*1) * 0.94;
+					v += *(frame+x+y*w    ) * 0.99;
+        				v += *(frame+x+y*w+w*1) * 0.85;
+        				v += *(frame+x+y*w+w*2) * 0.56;
+        				v += *(frame+x+y*w+w*3) * 0.22;
+        				v += *(frame+x+y*w+w*4) * -.06;
+					v /= 4.66;
+					v = v<0? 0:v;
+					v = v>255? 255:v;
+					*(frame+x+(h/2+y)*w) = v;
+				}
+		}
+
+}
+
+void
 sinc_interpolation (uint8_t * frame, uint8_t * inframe, int w, int h,
 		    int field)
 {
@@ -69,6 +125,68 @@ sinc_interpolation (uint8_t * frame, uint8_t * inframe, int w, int h,
 	*(frame+x+(h/2+y)*w) = v;
 	}
 	}
+#if 0
+// lowpassfilter for GST-reconstruction
+  for(y=(h/2);y<(h);y++)
+	for(x=0;x<w;x++)
+	{
+	v  = *(frame+x+y*w-w-1);
+	v += *(frame+x+y*w-w-0);
+	v += *(frame+x+y*w-w+1);
+	v += *(frame+x+y*w  -1);
+	v += *(frame+x+y*w  -0);
+	v += *(frame+x+y*w  +1);
+	v += *(frame+x+y*w+w-1);
+	v += *(frame+x+y*w+w-0);
+	v += *(frame+x+y*w+w+1);
+	v /= 9;
+	*(frame+x+y*w) = v;
+	}
+
+// lowpassfilter for GST-reconstruction
+  for(y=(h/2);y<(h);y++)
+	for(x=0;x<w;x++)
+	{
+	v  = *(frame+x+y*w-w-1);
+	v += *(frame+x+y*w-w-0);
+	v += *(frame+x+y*w-w+1);
+	v += *(frame+x+y*w  -1);
+	v += *(frame+x+y*w  -0);
+	v += *(frame+x+y*w  +1);
+	v += *(frame+x+y*w+w-1);
+	v += *(frame+x+y*w+w-0);
+	v += *(frame+x+y*w+w+1);
+	v /= 9;
+	*(frame+x+y*w) = v;
+	}
+#else
+  for(y=(h/2);y<(h);y++)
+	for(x=0;x<w;x++)
+	{
+	v  = *(frame+x+y*w-w*3);
+	v += *(frame+x+y*w-w*2);
+	v += *(frame+x+y*w-w*1);
+	v += *(frame+x+y*w    );
+	v += *(frame+x+y*w+w*1);
+	v += *(frame+x+y*w+w*2);
+	v += *(frame+x+y*w+w*3);
+	v /= 7;
+	*(frame+x+y*w) = v;
+	}
+  for(y=(h/2);y<(h);y++)
+	for(x=0;x<w;x++)
+	{
+	v  = *(frame+x+y*w-w*3);
+	v += *(frame+x+y*w-w*2);
+	v += *(frame+x+y*w-w*1);
+	v += *(frame+x+y*w    );
+	v += *(frame+x+y*w+w*1);
+	v += *(frame+x+y*w+w*2);
+	v += *(frame+x+y*w+w*3);
+	v /= 7;
+	*(frame+x+y*w) = v;
+	}
+#endif
 
 #if 0
   for(y=field;y<h;y+=2)
