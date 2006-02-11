@@ -192,7 +192,7 @@ void make_histogram_desc(long number_of_frames)
 /* Here we draw the souroundings for the color points */
 void makepoint(int laeng, int winkel)
 {
-	int i, p1_x, p1_y, p2_x, p2_y;
+	int p1_x, p1_y, p2_x, p2_y;
 	int sm,la;
 
 	sm = 5;
