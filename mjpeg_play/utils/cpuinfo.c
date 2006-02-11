@@ -42,11 +42,13 @@ static cpuid_regs_t
 cpuid(int func) {
 	cpuid_regs_t regs;
 #define	CPUID	".byte 0x0f, 0xa2; "
-	asm("movl %4,%%eax; " CPUID
-	    "movl %%eax,%0; movl %%ebx,%1; movl %%ecx,%2; movl %%edx,%3"
-		: "=m" (regs.eax), "=m" (regs.ebx), "=m" (regs.ecx), "=m" (regs.edx)
-		: "g" (func)
-		: "%eax", "%ebx", "%ecx", "%edx");
+	asm("push %%ebx; "
+	    "movl %4,%%eax; " CPUID
+	    "movl %%eax,%0; movl %%ebx,%1; movl %%ecx,%2; movl %%edx,%3;"
+	    "pop %%ebx"
+	    : "=m" (regs.eax), "=m" (regs.ebx), "=m" (regs.ecx), "=m" (regs.edx)
+	    : "g" (func)
+	    : "%eax", "%ecx", "%edx");
 	return regs;
 }
 
