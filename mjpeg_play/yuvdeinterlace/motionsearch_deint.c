@@ -97,83 +97,101 @@ lowpass_plane_1D (uint8_t * d, uint8_t * s, int w, int h)
       }
 }
 
+median3 ( int a, int b, int c )
+{
+	return ((a<=b && b<=c)? b:
+	        (a<=c && c<=b)? c:a);
+}
+
+median3_l ( uint32_t a, uint32_t b, uint32_t c )
+{
+	return ((a<=b && b<=c)? b:
+	        (a<=c && c<=b)? c:a);
+}
+
 void
 motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 		   int w, int h, int field)
 {
+  static int mvx[512][512];
+  static int mvy[512][512];
+  static uint32_t sum[512][512];
+
+  int ix,iy;
+
   int x, y;
-  int dx, dy;
-  int fx, fy, ifx, ify;
-  int bx, by, ibx, iby;
+	int ox,oy;
+  int dx, dy, ds;
+  int fx, fy;
+  int bx, by;
   uint32_t sad;
-  uint32_t fmin, bmin;
-  int a, b, c, d, e;
+  uint32_t fmin, bmin, min;
+  int a, b, c, d, e, g, v;
+  static uint32_t mean_SAD=512;
+  uint32_t accu_SAD=0;
+  uint32_t thres1;
+  uint32_t thres2;
 
-  static uint32_t mean=0;
-  static int mcnt = 0;
-  static uint32_t thres=0;
+fx=fy=0;
 
-#if 0
-  // fill top out-off-range lines to avoid ringing
-  for (y = 1; y < 10; y++)
-    {
-      memcpy (f0 - w * y, f0, w);
-      memcpy (f1 - w * y, f0, w);
-      memcpy (f2 - w * y, f0, w);
-    }
-  // fill bottom out-off-range lines to avoid ringing
-  for (y = 0; y < 10; y++)
-    {
-      memcpy (f0 + w * (h + y), f0 + w * (h - 1), w);
-      memcpy (f1 + w * (h + y), f0 + w * (h - 1), w);
-      memcpy (f2 + w * (h + y), f0 + w * (h - 1), w);
-    }
-
-  lowpass_plane_2D (lp0, f0, w, h);
-  lowpass_plane_2D (lp1, f1, w, h);
-  lowpass_plane_2D (lp2, f2, w, h);
-#endif
-
-#if 1
-  for (y = 0; y < (h/2); y += 16)
-    {
-      for (x = 0; x < w; x += 32)
+for(y=0;y<h;y+=8)
+	for(x=0;x<w;x+=8)
 	{
-		x -= 0;
-		y += (h/2)-2;
+	ix = x/8;
+	iy = y/8;
 
-	  fx = bx = ifx = ibx = 0;
-	  fy = by = ify = iby = 0;
+	x -= 4;
+	y -= 4;
 
+	thres1 = median3_l ( sum[ix-1][iy-1],sum[ix][iy-1],sum[ix-1][iy] );
+	thres1 += (2*16*16)*4; // offset threshold with very good match
+	
+	// check zero-vector first
+	dx = 0;
+	dy = 0;
+	fx=0;
+	fy=0;
 	fmin = psad_00
-	  (f1 + (x) + (y-8) * w,
-	   f0 + (x) + (y-8) * w, w, 32, 0x00ffffff);
+	  (f1 + (x) + (y) * w,
+	   f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
+	
 	fmin += psad_00
-	  (f1 + (x+16) + (y-8) * w,
-	   f0 + (x+16) + (y-8) * w, w, 32, 0x00ffffff);
+	  (f1 + (x) + (y) * w,
+	   f2 + (x - dx) + (y - dy) * w, w, 16, 0x00ffffff);
+	
+	if(fmin>thres1 && ix>0 && iy>0)
+	{
+	// check median-vector
+	dx = median3( mvx[ix-1][iy-1],mvx[ix-1][iy],mvx[ix][iy-1] );
+	dy = median3( mvy[ix-1][iy-1],mvy[ix-1][iy],mvy[ix][iy-1] );
+	sad = psad_00
+	  (f1 + (x) + (y) * w,
+	   f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
+	
+	sad += psad_00
+	  (f1 + (x) + (y) * w,
+	   f2 + (x - dx) + (y - dy) * w, w, 16, 0x00ffffff);
+	
+	if (sad < fmin)
+	  {
+	    fmin = sad;
+	    fx = dx;
+	    fy = dy;
+	  }
 
-	bmin = psad_00
-	  (f1 + (x) + (y-8) * w,
-	   f2 + (x) + (y-8) * w, w, 32, 0x00ffffff);
-	bmin += psad_00
-	  (f1 + (x+16) + (y-8) * w,
-	   f2 + (x+16) + (y-8) * w, w, 32, 0x00ffffff);
-
-	  //if(bmin>(thres*2) || fmin>(thres*2))
-	  for (dy = -8; dy <= +8; dy++)
-	    for (dx = -16; dx <= +16; dx++)
-	      {
+	if(fmin>thres1 && ix>0 && iy>0)
+		{
+		// check left-vector
+		dx = mvx[ix-1][iy];
+		dy = mvy[ix-1][iy];
 		sad = psad_00
-		  (f1 + (x) + (y-8) * w,
-		   f0 + (x + dx) + (y + dy-8) * w, w, 32, 0x00ffffff);
+		  (f1 + (x) + (y) * w,
+		   f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
+		
 		sad += psad_00
-		  (f1 + (x+16) + (y-8) * w,
-		   f0 + (x + dx+16) + (y + dy-8) * w, w, 32, 0x00ffffff);
-
-//		sad = psad_sub22
-//		  (f1 + (x) + (y-2) * w,
-//		   f0 + (x + dx) + (y + dy-2) * w, w, 8);
-
+		  (f1 + (x) + (y) * w,
+		   f2 + (x - dx) + (y - dy) * w, w, 16, 0x00ffffff);
+		
 		if (sad < fmin)
 		  {
 		    fmin = sad;
@@ -181,213 +199,228 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 		    fy = dy;
 		  }
 
-		sad = psad_00
-		  (f1 + (x) + (y-8) * w,
-		   f2 + (x + dx) + (y + dy-8) * w, w, 32, 0x00ffffff);
-		sad += psad_00
-		  (f1 + (x+16) + (y-8) * w,
-		   f2 + (x + dx+16) + (y + dy-8) * w, w, 32, 0x00ffffff);
-
-//		sad = psad_sub22
-//		  (f1 + (x) + (y-2) * w,
-//		   f2 + (x + dx) + (y + dy-2) * w, w, 8);
-
-		if (sad < bmin)
-		  {
-		    bmin = sad;
-		    bx = dx;
-		    by = dy;
-		  }
-
-	      }
-		x += 0;
-		y -= (h/2)-2;
-		
-
-	mean += (bmin<fmin)? bmin:fmin;
-	mcnt += 1;
-
-	  for (dy = 0; dy < 16; dy++)
-	    for (dx = 0; dx < 32; dx++)
-	      {
-		// prev. field               next field
-		//      |      current field      |
-		//      |            |            |
-		//      |  --------  a  --------- |
-		//      d  --------  |  --------- e
-		//	|  --------  c  --------- |
-		//
-		//	previous and next field are motion-compensated!
-		//      the missing pixel can be interpolated temporaly (b) or spatialy (f)
-		//	but which one is the better?
-		//
-
-		a = *(f1 + (x+dx) + (y+dy) * w  );
-
-		// because of using no intra-field interpolation anymore, which speeds 
-		// things and makes 'em more noise robust, we need to switch the lines
-		// to interpolate/check correctly between spatial neighbouring lines.
-		if(field==0)
-			c = *(f1 + (x+dx) + (y+dy) * w-w);
-		else
-			c = *(f1 + (x+dx) + (y+dy) * w+w);
-
-		d = *(f0 + (x + dx + fx) + (y + dy + fy) * w);
-
-		e = *(f2 + (x + dx + bx) + (y + dy + by) * w);
-
-		// calculate temporal interpolation
-		b = (d+e)/2;
-
-#if 0
-		// check for that interpolation to be valid with a spatial median filter...
-		if( ( a<(b-4) && (b-4)>c ) || ( a>(b+4) && (b+4)<c ) )
-		{
-			// hmm, if we reach this point, spatial check says it might be a miss-hit.
-			// but we can assume, that, if it only varies a little in time, it is correct.
-			// so we check abs(d-e)...
-			if( abs(d-e)>12)
+		if(fmin>thres1 && ix>0 && iy>0)
 			{
-				// OK then, we have no choice left. We cant interpolate that pixel temporaly.
-				// We only can interpolate this one spatialy, so we do so...
+			// check top-vector
+			dx = mvx[ix][iy-1];
+			dy = mvy[ix][iy-1];
+			sad = psad_00
+			  (f1 + (x) + (y) * w,
+			   f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
+			
+			sad += psad_00
+			  (f1 + (x) + (y) * w,
+			   f2 + (x - dx) + (y - dy) * w, w, 16, 0x00ffffff);
+			
+			if (sad < fmin)
+			  {
+			    fmin = sad;
+			    fx = dx;
+			    fy = dy;
+			  }
 
-				// This is quite intense in terms of calculation-time but it is far better
-				// than any other spatial interpolation method I was able to find. The trick
-				// here is to interpolate along the isophotes of the field (the simpler SINC
-				// interpolator sometimes interpolates across them which leads to a lot more
-				// jaggies...
-				if(field==0)
+			if(fmin>thres1 && ix>0 && iy>0)
 				{
-					min = 0x00ffffff;
-					b = *(f1+(x+dx)+(y+dy)*w)+*(f1+(x+dx)+(y+dy)*w-w);
-					b /= 2;
-					for(ds=1;ds<16;ds++)
-					{
-						g = *(f1+(x+dx-ds)+(y+dy)*w)-*(f1+(x+dx+ds)+(y+dy)*w-w);
-						sad = g*g;
-
-						v = *(f1+(x+dx-ds)+(y+dy)*w)+*(f1+(x+dx+ds)+(y+dy)*w-w);
-						v /= 2;
-
-						if(min>sad && ( (a<v && v<c) || (a>v && v>c) ) )
-							{
-							b = v;
-							min = sad;
-							}
-
-						g = *(f1+(x+dx+ds)+(y+dy)*w)-*(f1+(x+dx-ds)+(y+dy)*w-w);
-						sad = g*g;
-
-						v = *(f1+(x+dx+ds)+(y+dy)*w)+*(f1+(x+dx-ds)+(y+dy)*w-w);
-						v /= 2;
-
-						if(min>sad && ( (a<v && v<c) || (a>v && v>c) ) )
-							{
-							b = v;
-							min = sad;
-							}
-					}
+				// check top-left--vector
+				dx = mvx[ix-1][iy-1];
+				dy = mvy[ix-1][iy-1];
+				sad = psad_00
+				  (f1 + (x) + (y) * w,
+				   f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
+				
+				sad += psad_00
+				  (f1 + (x) + (y) * w,
+				   f2 + (x - dx) + (y - dy) * w, w, 16, 0x00ffffff);
+				
+				if (sad < fmin)
+				  {
+				    fmin = sad;
+				    fx = dx;
+				    fy = dy;
+				  }
 				}
-				else
-				{
-					min = 0x00ffffff;
-					b = *(f1+(x+dx)+(y+dy)*w)+*(f1+(x+dx)+(y+dy)*w+w);
-					b /= 2;
-					for(ds=1;ds<16;ds++)
-					{
-						g = *(f1+(x+dx-ds)+(y+dy)*w)-*(f1+(x+dx+ds)+(y+dy)*w+w);
-						sad = g*g;
-
-						v = *(f1+(x+dx-ds)+(y+dy)*w)+*(f1+(x+dx+ds)+(y+dy)*w+w);
-						v /= 2;
-
-						if(min>sad && ( (a<v && v<c) || (a>v && v>c) ) )
-							{
-							b = v;
-							min = sad;
-							}
-
-						g = *(f1+(x+dx+ds)+(y+dy)*w)-*(f1+(x+dx-ds)+(y+dy)*w+w);
-						sad = g*g;
-
-						v = *(f1+(x+dx+ds)+(y+dy)*w)+*(f1+(x+dx-ds)+(y+dy)*w+w);
-						v /= 2;
-
-						if(min>sad && ( (a<v && v<c) || (a>v && v>c) ) )
-							{
-							b = v;
-							min = sad;
-							}
-					}
-				}
-				if(field==0)
-				{
-					v  = *(f1 + (x+dx) + (y+dy) * w-w*4)*( -1);
-					v += *(f1 + (x+dx) + (y+dy) * w-w*3)*( +4);
-					v += *(f1 + (x+dx) + (y+dy) * w-w*2)*(-16);
-					v += *(f1 + (x+dx) + (y+dy) * w-w*1)*(+64);
-					v += *(f1 + (x+dx) + (y+dy) * w    )*(+64);
-					v += *(f1 + (x+dx) + (y+dy) * w+w*1)*(-16);
-					v += *(f1 + (x+dx) + (y+dy) * w+w*2)*( +4);
-					v += *(f1 + (x+dx) + (y+dy) * w+w*3)*( -1);
-				}
-				else
-				{
-					v  = *(f1 + (x+dx) + (y+dy) * w-w*3)*( -1);
-					v += *(f1 + (x+dx) + (y+dy) * w-w*2)*( +4);
-					v += *(f1 + (x+dx) + (y+dy) * w-w*1)*(-16);
-					v += *(f1 + (x+dx) + (y+dy) * w    )*(+64);
-					v += *(f1 + (x+dx) + (y+dy) * w+w*1)*(+64);
-					v += *(f1 + (x+dx) + (y+dy) * w+w*2)*(-16);
-					v += *(f1 + (x+dx) + (y+dy) * w+w*3)*( +4);
-					v += *(f1 + (x+dx) + (y+dy) * w+w*4)*( -1);
-				}
-				v /= 102;
-				v = v<0? 0:v;
-				v = v>255? 255:v;
-
-				b = (v+b)/2;
 			}
 		}
-#endif
+	}
 
 
-
-		if(field==0)
-			{
-			  *(r + (x + dx) + (y + dy ) * w*2  ) = b;
-			  *(r + (x + dx) + (y + dy ) * w*2+w) = a;
-			}
-		else
-			{
-			  *(r + (x + dx) + (y + dy ) * w*2  ) = a;
-			  *(r + (x + dx) + (y + dy ) * w*2+w) = b;
-			}
+	if(fmin>thres1)
+	{
+	oy=fy;
+	ox=fx;
+	// as the center allready was checked, check only -16 and +16 offsets...
+	  for (dy = (oy-16); dy <= (oy+16); dy+=32)
+	    for (dx = (ox-16); dx <= (ox+16); dx+=32)
+	      {
+		sad = psad_00
+		  (f1 + (x) + (y) * w,
+		   f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
+	
+		sad += psad_00
+		  (f1 + (x) + (y) * w,
+		   f2 + (x - dx) + (y - dy) * w, w, 16, 0x00ffffff);
+	
+		if (sad < fmin)
+		  {
+		    fmin = sad;
+		    fx = dx;
+		    fy = dy;
+		  }
 	      }
+	oy=fy;
+	ox=fx;
+	  for (dy = (oy-8); dy <= (oy+8); dy+=16)
+	    for (dx = (ox-8); dx <= (ox+8); dx+=16)
+	      {
+		sad = psad_00
+		  (f1 + (x) + (y) * w,
+		   f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
+	
+		sad += psad_00
+		  (f1 + (x) + (y) * w,
+		   f2 + (x - dx) + (y - dy) * w, w, 16, 0x00ffffff);
+	
+		if (sad < fmin)
+		  {
+		    fmin = sad;
+		    fx = dx;
+		    fy = dy;
+		  }
+	      }
+	oy=fy;
+	ox=fx;
+	  for (dy = (oy-4); dy <= (oy+4); dy+=8)
+	    for (dx = (ox-4); dx <= (ox+4); dx+=8)
+	      {
+		sad = psad_00
+		  (f1 + (x) + (y) * w,
+		   f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
+	
+		sad += psad_00
+		  (f1 + (x) + (y) * w,
+		   f2 + (x - dx) + (y - dy) * w, w, 16, 0x00ffffff);
+	
+		if (sad < fmin)
+		  {
+		    fmin = sad;
+		    fx = dx;
+		    fy = dy;
+		  }
+	      }
+	oy=fy;
+	ox=fx;
+	  for (dy = (oy-2); dy <= (oy+2); dy+=4)
+	    for (dx = (ox-2); dx <= (ox+2); dx+=4)
+	      {
+		sad = psad_00
+		  (f1 + (x) + (y) * w,
+		   f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
+	
+		sad += psad_00
+		  (f1 + (x) + (y) * w,
+		   f2 + (x - dx) + (y - dy) * w, w, 16, 0x00ffffff);
+	
+		if (sad < fmin)
+		  {
+		    fmin = sad;
+		    fx = dx;
+		    fy = dy;
+		  }
+	      }
+	oy=fy;
+	ox=fx;
+	  for (dy = (oy-1); dy <= (oy+1); dy+=2)
+	    for (dx = (ox-1); dx <= (ox+1); dx+=2)
+	      {
+		sad = psad_00
+		  (f1 + (x) + (y) * w,
+		   f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
+	
+		sad += psad_00
+		  (f1 + (x) + (y) * w,
+		   f2 + (x - dx) + (y - dy) * w, w, 16, 0x00ffffff);
+	
+		if (sad < fmin)
+		  {
+		    fmin = sad;
+		    fx = dx;
+		    fy = dy;
+		  }
+	      }
+//		fprintf(stderr,"f");
 	}
-    }
-    if (mcnt>32000)
+	else
 	{
-	    thres = mean/mcnt;
-	    mcnt=mean=0;
+	oy=fy;
+	ox=fx;
+	  for (dy = (oy-2); dy <= (oy+2); dy+=2)
+	    for (dx = (ox-2); dx <= (ox+2); dx+=2)
+	      {
+		sad = psad_00
+		  (f1 + (x) + (y) * w,
+		   f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
+	
+		sad += psad_00
+		  (f1 + (x) + (y) * w,
+		   f2 + (x - dx) + (y - dy) * w, w, 16, 0x00ffffff);
+	
+		if (sad < fmin)
+		  {
+		    fmin = sad;
+		    fx = dx;
+		    fy = dy;
+		  }
+	      }
+	oy=fy;
+	ox=fx;
+	  for (dy = (oy-1); dy <= (oy+1); dy+=2)
+	    for (dx = (ox-1); dx <= (ox+1); dx+=2)
+	      {
+		sad = psad_00
+		  (f1 + (x) + (y) * w,
+		   f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
+	
+		sad += psad_00
+		  (f1 + (x) + (y) * w,
+		   f2 + (x - dx) + (y - dy) * w, w, 16, 0x00ffffff);
+	
+		if (sad < fmin)
+		  {
+		    fmin = sad;
+		    fx = dx;
+		    fy = dy;
+		  }
+	      }
+//		fprintf(stderr,"e");
 	}
 
-	//fprintf(stderr,"thres:%i mcnt:%i\n",thres,mcnt);
-#endif
+	x += 4;
+	y += 4;
 
-#if 1
-// finally do a linear blend to get rid of the last combing and video artefacts
-  for (y = 1; y < (h - 1); y++)
-    {
-      for (x = 0; x < w; x++)
-	{
-  	*(r + x + y * w) =
-			(
-			*(r + x + y * w - w) * 1 +
-	     		*(r + x + y * w)     * 1 + 
-			*(r + x + y * w + w) * 1
-			) / 3;
-	}
+	//quantize y-displacement to field-locations
+	fy /= 2;
+	fy *= 2;
+
+	sum[ix][iy]=fmin;
+	mvx[ix][iy]=fx;
+	mvy[ix][iy]=fy;
+	
+	// process the matched block
+	  for (dy = 0; dy < 8; dy++)
+	    for (dx = 0; dx < 8; dx++)
+	      {
+		a = *(f0+(x+dx+fx)+(y+dy+fy)*w);
+		b = *(f1+(x+dx   )+(y+dy   )*w);
+		c = *(f2+(x+dx-fx)+(y+dy-fy)*w);
+
+		d = (a+b+c)/3;
+		e = (d-b)<0? b-d:d-b;
+		e = (48-e)<0 ? 0:48-e; // this makes an error of approx. +/- 24 visable...
+
+		v = e*d + (48-e)*b;
+		v /= 48;
+
+		*(r+(x+dx)+(y+dy)*w) = v;
+	      }
     }
-#endif
 }

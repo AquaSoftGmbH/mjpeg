@@ -133,6 +133,7 @@ void rotate_buffers( void )
 int
 main (int argc, char *argv[])
 {
+  int cpucap = cpu_accel ();
   char c;
   int fd_in = 0;
   int fd_out = 1;
@@ -391,28 +392,14 @@ main (int argc, char *argv[])
 	rotate_buffers();
 
       if (field_order == BOTTOM_FIRST)
-	{			
-	  /* bottom field first processing
-	   * 
-           * prepare_field(...) 
-	   * take the two fields contained in inframe and create a
-           * planar image with only one field. In the top half of
-           * that image there is just the original field data. In 
-           * the bottom half image there is the same data but shifted
-           * down- respectively upwards by a quarter pixel. This allows
-           * for a direct comparision between fields to give more 
-           * precise motion-vectors. This bottom half image is then
-	   * lowpass-filtered verticaly to reduce aliasing, which would
-	   * additionaly confuse the ME...
-	   *  
-           */
-	  prepare_field (frame1[0], inframe[0], lwidth, lheight, 0);
-	  prepare_field (frame1[1], inframe[1], cwidth, cheight, 0);
-	  prepare_field (frame1[2], inframe[2], cwidth, cheight, 0);
+	{
+	  sinc_interpolation (frame1[0], inframe[0], lwidth, lheight, 0);
+	  sinc_interpolation (frame1[1], inframe[1], cwidth, cheight, 0);
+	  sinc_interpolation (frame1[2], inframe[2], cwidth, cheight, 0);
 
-	  prepare_field (frame2[0], inframe[0], lwidth, lheight, 1);
-	  prepare_field (frame2[1], inframe[1], cwidth, cheight, 1);
-	  prepare_field (frame2[2], inframe[2], cwidth, cheight, 1);
+	  sinc_interpolation (frame2[0], inframe[0], lwidth, lheight, 1);
+	  sinc_interpolation (frame2[1], inframe[1], cwidth, cheight, 1);
+	  sinc_interpolation (frame2[2], inframe[2], cwidth, cheight, 1);
 
 	  motion_compensate (r0[0],frame1[0], frame2[0], frame3[0], lwidth, lheight, 0);
 	  motion_compensate (r0[1],frame1[1], frame2[1], frame3[1], cwidth, cheight, 0);
@@ -420,21 +407,33 @@ main (int argc, char *argv[])
 	}
       else
 	{			// top field first
-	  prepare_field (frame1[0], inframe[0], lwidth, lheight, 1);
-	  prepare_field (frame1[1], inframe[1], cwidth, cheight, 1);
-	  prepare_field (frame1[2], inframe[2], cwidth, cheight, 1);
+	  sinc_interpolation (frame1[0], inframe[0], lwidth, lheight, 1);
+	  sinc_interpolation (frame1[1], inframe[1], cwidth, cheight, 1);
+	  sinc_interpolation (frame1[2], inframe[2], cwidth, cheight, 1);
 
-	  prepare_field (frame2[0], inframe[0], lwidth, lheight, 0);
-	  prepare_field (frame2[1], inframe[1], cwidth, cheight, 0);
-	  prepare_field (frame2[2], inframe[2], cwidth, cheight, 0);
+	  sinc_interpolation (frame2[0], inframe[0], lwidth, lheight, 0);
+	  sinc_interpolation (frame2[1], inframe[1], cwidth, cheight, 0);
+	  sinc_interpolation (frame2[2], inframe[2], cwidth, cheight, 0);
+
+	  motion_compensate (r0[0],frame1[0], frame2[0], frame3[0], lwidth, lheight, 0);
+	  motion_compensate (r0[1],frame1[1], frame2[1], frame3[1], cwidth, cheight, 0);
+	  motion_compensate (r0[2],frame1[2], frame2[2], frame3[2], cwidth, cheight, 0);
 	}
 
-//	memset (r0[1],128,width*height);
-//	memset (r0[2],128,width*height);
+	if(framenr>0)
+	{
+		// blank the first 2 lines as these cannot be reconstructed...
+		memset(r0[0],0,lwidth*2);
+		memset(r0[1],128,cwidth);
+		memset(r0[2],128,cwidth);
+		// blank the last 2 lines as ...
+		memset(r0[0]+(lwidth*lheight-2*lwidth),0,lwidth*2);
+		memset(r0[1]+(cwidth*cheight-cwidth),128,cwidth);
+		memset(r0[2]+(cwidth*cheight-cwidth),128,cwidth);
 
-//        y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame2);	
-//        y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);	
-        y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r0);	
+	        y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r0);	
+	}
+
 	framenr++;
 
     }
