@@ -84,17 +84,8 @@ uint8_t *frame1[3];
 uint8_t *frame2[3];
 uint8_t *frame3[3];
 uint8_t *frame4[3];
-uint8_t *frame5[3];
-uint8_t *frame6[3];
-uint8_t *frame7[3];
-uint8_t *frame8[3];
-uint8_t *lp0;
-uint8_t *lp1;
-uint8_t *lp2;
 uint8_t *r0[3];
 uint8_t *r1[3];
-uint8_t *sr[3];
-uint8_t *out[3];
 
 int buff_offset;
 int buff_size;
@@ -133,7 +124,6 @@ void rotate_buffers( void )
 int
 main (int argc, char *argv[])
 {
-  int cpucap = cpu_accel ();
   char c;
   int fd_in = 0;
   int fd_out = 1;
@@ -342,26 +332,6 @@ main (int argc, char *argv[])
     frame4[1] = buff_offset + (uint8_t *) malloc (buff_size);
     frame4[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    frame5[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame5[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame5[2] = buff_offset + (uint8_t *) malloc (buff_size);
-
-    frame6[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame6[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame6[2] = buff_offset + (uint8_t *) malloc (buff_size);
-
-    frame7[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame7[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame7[2] = buff_offset + (uint8_t *) malloc (buff_size);
-
-    frame8[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame8[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame8[2] = buff_offset + (uint8_t *) malloc (buff_size);
-
-    lp0 = buff_offset + (uint8_t *) malloc (buff_size);
-    lp1 = buff_offset + (uint8_t *) malloc (buff_size);
-    lp2 = buff_offset + (uint8_t *) malloc (buff_size);
-
     r0[0] = buff_offset + (uint8_t *) malloc (buff_size);
     r0[1] = buff_offset + (uint8_t *) malloc (buff_size);
     r0[2] = buff_offset + (uint8_t *) malloc (buff_size);
@@ -369,10 +339,6 @@ main (int argc, char *argv[])
     r1[0] = buff_offset + (uint8_t *) malloc (buff_size);
     r1[1] = buff_offset + (uint8_t *) malloc (buff_size);
     r1[2] = buff_offset + (uint8_t *) malloc (buff_size);
-
-    sr[0] = buff_offset + (uint8_t *) malloc (buff_size * 4);
-    sr[1] = buff_offset + (uint8_t *) malloc (buff_size * 4);
-    sr[2] = buff_offset + (uint8_t *) malloc (buff_size * 4);
 
     mjpeg_log (LOG_INFO, "Buffers allocated.");
   }
@@ -393,13 +359,13 @@ main (int argc, char *argv[])
 
       if (field_order == BOTTOM_FIRST)
 	{
-	  sinc_interpolation (frame1[0], inframe[0], lwidth, lheight, 0);
-	  sinc_interpolation (frame1[1], inframe[1], cwidth, cheight, 0);
-	  sinc_interpolation (frame1[2], inframe[2], cwidth, cheight, 0);
+	  interpolate_field (frame1[0], inframe[0], lwidth, lheight, 0);
+	  interpolate_field (frame1[1], inframe[1], cwidth, cheight, 0);
+	  interpolate_field (frame1[2], inframe[2], cwidth, cheight, 0);
 
-	  sinc_interpolation (frame2[0], inframe[0], lwidth, lheight, 1);
-	  sinc_interpolation (frame2[1], inframe[1], cwidth, cheight, 1);
-	  sinc_interpolation (frame2[2], inframe[2], cwidth, cheight, 1);
+	  interpolate_field (frame2[0], inframe[0], lwidth, lheight, 1);
+	  interpolate_field (frame2[1], inframe[1], cwidth, cheight, 1);
+	  interpolate_field (frame2[2], inframe[2], cwidth, cheight, 1);
 
 	  motion_compensate (r0[0],frame1[0], frame2[0], frame3[0], lwidth, lheight, 0);
 	  motion_compensate (r0[1],frame1[1], frame2[1], frame3[1], cwidth, cheight, 0);
@@ -407,13 +373,13 @@ main (int argc, char *argv[])
 	}
       else
 	{			// top field first
-	  sinc_interpolation (frame1[0], inframe[0], lwidth, lheight, 1);
-	  sinc_interpolation (frame1[1], inframe[1], cwidth, cheight, 1);
-	  sinc_interpolation (frame1[2], inframe[2], cwidth, cheight, 1);
+	  interpolate_field (frame1[0], inframe[0], lwidth, lheight, 1);
+	  interpolate_field (frame1[1], inframe[1], cwidth, cheight, 1);
+	  interpolate_field (frame1[2], inframe[2], cwidth, cheight, 1);
 
-	  sinc_interpolation (frame2[0], inframe[0], lwidth, lheight, 0);
-	  sinc_interpolation (frame2[1], inframe[1], cwidth, cheight, 0);
-	  sinc_interpolation (frame2[2], inframe[2], cwidth, cheight, 0);
+	  interpolate_field (frame2[0], inframe[0], lwidth, lheight, 0);
+	  interpolate_field (frame2[1], inframe[1], cwidth, cheight, 0);
+	  interpolate_field (frame2[2], inframe[2], cwidth, cheight, 0);
 
 	  motion_compensate (r0[0],frame1[0], frame2[0], frame3[0], lwidth, lheight, 0);
 	  motion_compensate (r0[1],frame1[1], frame2[1], frame3[1], cwidth, cheight, 0);
@@ -460,26 +426,6 @@ main (int argc, char *argv[])
     free (frame4[1] - buff_offset);
     free (frame4[2] - buff_offset);
 
-    free (frame5[0] - buff_offset);
-    free (frame5[1] - buff_offset);
-    free (frame5[2] - buff_offset);
-
-    free (frame6[0] - buff_offset);
-    free (frame6[1] - buff_offset);
-    free (frame6[2] - buff_offset);
-
-    free (frame7[0] - buff_offset);
-    free (frame7[1] - buff_offset);
-    free (frame7[2] - buff_offset);
-
-    free (frame8[0] - buff_offset);
-    free (frame8[1] - buff_offset);
-    free (frame8[2] - buff_offset);
-
-    free (lp0 - buff_offset);
-    free (lp1 - buff_offset);
-    free (lp2 - buff_offset);
-
     free (r0[0] - buff_offset);
     free (r0[1] - buff_offset);
     free (r0[2] - buff_offset);
@@ -487,10 +433,6 @@ main (int argc, char *argv[])
     free (r1[0] - buff_offset);
     free (r1[1] - buff_offset);
     free (r1[2] - buff_offset);
-
-    free (sr[0] - buff_offset);
-    free (sr[1] - buff_offset);
-    free (sr[2] - buff_offset);
 
     mjpeg_log (LOG_INFO, "Buffers freed.");
   }
@@ -634,67 +576,5 @@ upscale (uint8_t * dst, uint8_t * src, int w, int h)
 
 	*(dst + x + y * w) = m;
       }
-
-  // only very little lowpass-filtering...
-#if 0
-  for (y = 0; y <= h; y++)
-    for (x = 0; x <= w; x++)
-      {
-	a = *(dst + (x - 1) + (y - 1) * w);
-	b = *(dst + (x + 1) + (y - 1) * w);
-	c = *(dst + (x - 1) + (y + 1) * w);
-	d = *(dst + (x + 1) + (y + 1) * w);
-
-	m = (a + b + c + d) / 4;
-	m += *(dst + x + y * w) * 3;
-	m /= 4;
-
-	*(dst + x + y * w) = m;
-      }
-#endif
 }
 
-void antialias (uint8_t * src[3])
-{
-	int x,y;
-
-	upscale (sr[0], src[0], lwidth, lheight);
-	upscale (sr[1], src[1], cwidth, cheight);
-	upscale (sr[2], src[2], cwidth, cheight);
-
-	for(y=0;y<lheight;y++)
-		for(x=0;x<lwidth;x++)
-		{
-			*(src[0]+(x+0)+(y+0)*(lwidth))=
-				(
-					*(sr[0]+(x*2+0)+(y*2+0)*(lwidth*2))+
-					*(sr[0]+(x*2+1)+(y*2+0)*(lwidth*2))+
-					*(sr[0]+(x*2+0)+(y*2+1)*(lwidth*2))+
-					*(sr[0]+(x*2+1)+(y*2+1)*(lwidth*2))
-				)/4;
-		}
-
-	for(y=0;y<cheight;y++)
-		for(x=0;x<cwidth;x++)
-		{
-			*(src[1]+(x+0)+(y+0)*(cwidth))=
-				(
-					*(sr[1]+(x*2+0)+(y*2+0)*(cwidth*2))+
-					*(sr[1]+(x*2+1)+(y*2+0)*(cwidth*2))+
-					*(sr[1]+(x*2+0)+(y*2+1)*(cwidth*2))+
-					*(sr[1]+(x*2+1)+(y*2+1)*(cwidth*2))
-				)/4;
-		}
-
-	for(y=0;y<cheight;y++)
-		for(x=0;x<cwidth;x++)
-		{
-			*(src[2]+(x+0)+(y+0)*(cwidth))=
-				(
-					*(sr[2]+(x*2+0)+(y*2+0)*(cwidth*2))+
-					*(sr[2]+(x*2+1)+(y*2+0)*(cwidth*2))+
-					*(sr[2]+(x*2+0)+(y*2+1)*(cwidth*2))+
-					*(sr[2]+(x*2+1)+(y*2+1)*(cwidth*2))
-				)/4;
-		}
-}

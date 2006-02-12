@@ -23,87 +23,13 @@
 #include "transform_block.h"
 #include "vector.h"
 
-extern uint8_t *lp0;
-extern uint8_t *lp1;
-extern uint8_t *lp2;
-
-void
-lowpass_plane_2D (uint8_t * d, uint8_t * s, int w, int h)
-{
-  int x, y, v;
-
-  for (y = 0; y < h; y++)
-    for (x = 0; x < w; x++)
-      {
-	v  = *(s + (x) + (y - 6) * w)*1;
-	v += *(s + (x) + (y - 5) * w)*6;
-	v += *(s + (x) + (y - 4) * w)*11;
-	v += *(s + (x) + (y - 3) * w)*17;
-	v += *(s + (x) + (y - 2) * w)*21;
-	v += *(s + (x) + (y - 1) * w)*24;
-	v += *(s + (x) + (y - 0) * w)*25;
-	v += *(s + (x) + (y + 1) * w)*24;
-	v += *(s + (x) + (y + 2) * w)*21;
-	v += *(s + (x) + (y + 3) * w)*17;
-	v += *(s + (x) + (y + 4) * w)*11;
-	v += *(s + (x) + (y + 5) * w)*6;
-	v += *(s + (x) + (y + 6) * w)*1;
-	v /= 185;
-	
-	*(d + x + y * w) = v;
-
-      }
-
-  for (y = 0; y < h; y++)
-    for (x = 0; x < w; x++)
-      {
-	v  = *(d + (x - 6) + y * w)*1;
-	v += *(d + (x - 5) + y * w)*6;
-	v += *(d + (x - 4) + y * w)*11;
-	v += *(d + (x - 3) + y * w)*17;
-	v += *(d + (x - 2) + y * w)*21;
-	v += *(d + (x - 1) + y * w)*24;
-	v += *(d + (x - 0) + y * w)*25;
-	v += *(d + (x + 1) + y * w)*24;
-	v += *(d + (x + 2) + y * w)*21;
-	v += *(d + (x + 3) + y * w)*17;
-	v += *(d + (x + 4) + y * w)*11;
-	v += *(d + (x + 5) + y * w)*6;
-	v += *(d + (x + 6) + y * w)*1;
-	v /= 185;
-	
-	*(d + x + y * w) = v;
-
-      }
-
-}
-
-void
-lowpass_plane_1D (uint8_t * d, uint8_t * s, int w, int h)
-{
-  int x, y, v;
-
-  for (y = 0; y < h; y++)
-    for (x = 0; x < w; x++)
-      {
-	v  = *(s + (x    ) + (y -2 ) * w);
-	v += *(s + (x    ) + (y -1 ) * w);
-	v += *(s + (x    ) + (y    ) * w);
-	v += *(s + (x    ) + (y +1 ) * w);
-	v += *(s + (x    ) + (y +2 ) * w);
-	v /= 5;
-	
-	*(d + x + y * w) = v;
-      }
-}
-
-median3 ( int a, int b, int c )
+int median3 ( int a, int b, int c )
 {
 	return ((a<=b && b<=c)? b:
 	        (a<=c && c<=b)? c:a);
 }
 
-median3_l ( uint32_t a, uint32_t b, uint32_t c )
+uint32_t median3_l ( uint32_t a, uint32_t b, uint32_t c )
 {
 	return ((a<=b && b<=c)? b:
 	        (a<=c && c<=b)? c:a);
@@ -121,16 +47,12 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 
   int x, y;
 	int ox,oy;
-  int dx, dy, ds;
+  int dx, dy;
   int fx, fy;
-  int bx, by;
   uint32_t sad;
-  uint32_t fmin, bmin, min;
-  int a, b, c, d, e, g, v;
-  static uint32_t mean_SAD=512;
-  uint32_t accu_SAD=0;
+  uint32_t fmin;
+  int a, b, c, d, e, v;
   uint32_t thres1;
-  uint32_t thres2;
 
 fx=fy=0;
 
