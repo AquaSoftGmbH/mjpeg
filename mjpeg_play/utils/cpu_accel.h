@@ -50,6 +50,9 @@ extern "C" {
 	double fmin(double, double);
 #endif
 
+/* take a pointer, and force it to be aligned on a particular boundary */
+#define ALIGN_PTR(p,a) ((void *)( (((size_t)(p))+(a)-1)&~((size_t)(a)-1)))
+
 extern const char *disable_simd_flags[];
 extern int disable_simd(char *);
 

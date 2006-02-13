@@ -1,4 +1,5 @@
 #include <config.h>
+#include "cpu_accel.h"
 #include "mjpeg_types.h"
 #include "mmx.h"
 
@@ -80,7 +81,6 @@ static int32_t idct_mmx_col_round[2]={
 
 #define RPT4(x) x, x, x, x
 #define SSEMAT(A,B,C,D) RPT4((A)/(B)), RPT4(((D)*(A))/(C)-(B)), RPT4((B)), RPT4((C)/(A))
-#define ALIGN_PTR(x,a) ((void *)( (((size_t)(x))+(a)-1)&(-(a))))
 #define SHUFFLEMAP(A,B,C,D) ((A)*1+(B)*4+(C)*16+(D)*64)
 
 static float idct_sse_table[64] __attribute__ ((aligned (16)))={

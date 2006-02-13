@@ -1,9 +1,9 @@
 #include <config.h>
 #include <math.h>
+#include "cpu_accel.h"
 #include "mjpeg_types.h"
 #include "mmx.h"
 
-#define ALIGN_PTR(x,a) ((void *)( (((size_t)(x))+(a)-1)&(-(a))))
 #define SHUFFLEMAP(A,B,C,D) ((A)*1+(B)*4+(C)*16+(D)*64)
 
 #define NC_COS6      0.382683432365089771728459984030399//cos(6*pi/16)
