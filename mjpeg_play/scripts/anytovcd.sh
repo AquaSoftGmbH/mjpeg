@@ -50,7 +50,7 @@ YUVFPS="yuvfps"
 YUVMEDIANFILTER="yuvmedianfilter"
 
 SCRIPT_NAME="anytovcd.sh"
-SCRIPT_VERSION="12"
+SCRIPT_VERSION="13"
 
 
 # custom quant. matrices
@@ -215,9 +215,7 @@ AUD_BITRATE_SRC="`${FFMPEG} -i "${AUDIO_SRC}" 2>&1 | awk '/Audio:/ {print $8}' |
 AUD_FMT_SRC="`${FFMPEG} -i "${AUDIO_SRC}" 2>&1 | awk '/Audio:/ {print $4}' | sed s/,// | head -${AUD_TRACK} | tail -1`"
 AUD_FREQ_SRC="`${FFMPEG} -i "${AUDIO_SRC}" 2>&1 | awk '/Audio:/ {print $5}' | sed s/,// | head -${AUD_TRACK} | tail -1`"
 
-${FFMPEG} -i "${VIDEO_SRC}" -f yuv4mpegpipe -pix_fmt yuv420p -t 1 -y /tmp/tmp.y4m >/dev/null 2>&1
-Y4M_HEADER="`head -1 /tmp/tmp.y4m`"
-rm -f /tmp/tmp.y4m
+Y4M_HEADER="`${FFMPEG} -i "${VIDEO_SRC}" -f yuv4mpegpipe -pix_fmt yuv420p -t 1 -y /dev/stdout 2>/dev/null | head -1`"
 
 VID_FMT_SRC="`${FFMPEG} -i "${VIDEO_SRC}" 2>&1 | awk '/Video:/ {print $4}' | sed s/,// | head -1`"
 VID_WIDTH_SRC="`echo ${Y4M_HEADER} | awk '{print $2}' | sed s/W//`"
