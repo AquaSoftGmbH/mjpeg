@@ -56,17 +56,18 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 
   uint32_t sad;
   uint32_t fmin, bmin;
-  int a, b, c, d, e, v, f;
+  int a, b, c;
   uint32_t thres;
 
   fx = fy = 0;
+  bx = by = 0;
 
-  for (y = 0; y < h; y += 8)
-    for (x = 0; x < w; x += 8)
+  for (y = 0; y < h; y += 16)
+    for (x = 0; x < w; x += 16)
       {
 	// create index numbers for motion-lookup-table
-	ix = x / 8;
-	iy = y / 8;
+	ix = x / 16;
+	iy = y / 16;
 
 // -------------------------------------------------------------------------------------------------------- //
 // -------------------------------------------------------------------------------------------------------- //
@@ -99,8 +100,9 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 	    fx = dx;
 	    fy = dy;
 
-	    fmin = psad_sub22
-	      (f1 + (x) + (y) * w, f0 + (x + dx) + (y + dy) * w, w, 8);
+	    fmin = psad_00
+	      (f1 + (x) + (y) * w, f0 + (x + dx) + (y + dy) * w, w, 16,
+	       0x00ffffff);
 
 	    if (fmin > thres)	// Still not good enough...
 	      {
@@ -108,8 +110,9 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 		dx = 0;
 		dy = 0;
 
-		sad = psad_sub22
-		  (f1 + (x) + (y) * w, f0 + (x + dx) + (y + dy) * w, w, 8);
+		sad = psad_00
+		  (f1 + (x) + (y) * w, f0 + (x + dx) + (y + dy) * w, w, 16,
+		   0x00ffffff);
 
 		if (sad < fmin)
 		  {
@@ -124,9 +127,9 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 		    dx = mv_fx[ix - 1][iy];
 		    dy = mv_fy[ix - 1][iy];
 
-		    sad = psad_sub22
+		    sad = psad_00
 		      (f1 + (x) + (y) * w,
-		       f0 + (x + dx) + (y + dy) * w, w, 8);
+		       f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
 
 		    if (sad < fmin)
 		      {
@@ -141,9 +144,9 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 			dx = mv_fx[ix][iy - 1];
 			dy = mv_fy[ix][iy - 1];
 
-			sad = psad_sub22
+			sad = psad_00
 			  (f1 + (x) + (y) * w,
-			   f0 + (x + dx) + (y + dy) * w, w, 8);
+			   f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
 
 			if (sad < fmin)
 			  {
@@ -158,9 +161,10 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 			    dx = mv_fx[ix - 1][iy - 1];
 			    dy = mv_fy[ix - 1][iy - 1];
 
-			    sad = psad_sub22
+			    sad = psad_00
 			      (f1 + (x) + (y) * w,
-			       f0 + (x + dx) + (y + dy) * w, w, 8);
+			       f0 + (x + dx) + (y + dy) * w, w, 16,
+			       0x00ffffff);
 
 			    if (sad < fmin)
 			      {
@@ -175,9 +179,10 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 				dx = mv_fx[ix + 1][iy - 1];
 				dy = mv_fy[ix + 1][iy - 1];
 
-				sad = psad_sub22
+				sad = psad_00
 				  (f1 + (x) + (y) * w,
-				   f0 + (x + dx) + (y + dy) * w, w, 8);
+				   f0 + (x + dx) + (y + dy) * w, w, 16,
+				   0x00ffffff);
 
 				if (sad < fmin)
 				  {
@@ -201,9 +206,10 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 				    dy += mv_fy[ix - 1][iy];
 				    dy /= 4;
 
-				    sad = psad_sub22
+				    sad = psad_00
 				      (f1 + (x) + (y) * w,
-				       f0 + (x + dx) + (y + dy) * w, w, 8);
+				       f0 + (x + dx) + (y + dy) * w, w, 16,
+				       0x00ffffff);
 
 				    if (sad < fmin)
 				      {
@@ -218,10 +224,10 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 					dx = mv_fx[ix][iy];
 					dy = mv_fy[ix][iy];
 
-					sad = psad_sub22
+					sad = psad_00
 					  (f1 + (x) + (y) * w,
 					   f0 + (x + dx) + (y + dy) * w, w,
-					   8);
+					   16, 0x00ffffff);
 
 					if (sad < fmin)
 					  {
@@ -257,11 +263,12 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 	  DO_LARGE_SEARCH:
 	    ox = oy = 0;	// center is the best guess we have, now
 	    fmin = 0x00ffffff;	// reset min
-	    for (dy = (oy - 8); dy <= (oy + 8); dy += 4)
-	      for (dx = (ox - 8); dx <= (ox + 8); dx += 2)
+	    for (dy = (oy - 8); dy <= (oy + 8); dy += 2)
+	      for (dx = (ox - 8); dx <= (ox + 8); dx += 1)
 		{
-		  sad = psad_sub22
-		    (f1 + (x) + (y) * w, f0 + (x + dx) + (y + dy) * w, w, 8);
+		  sad = psad_00
+		    (f1 + (x) + (y) * w, f0 + (x + dx) + (y + dy) * w, w, 16,
+		     0x00ffffff);
 
 		  if (sad < fmin)
 		    {
@@ -270,7 +277,8 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 		      fy = dy;
 		    }
 		}
-	    // Stage 2
+//        goto END_SEARCH;
+
 	  DO_SMALL_SEARCH:
 	    if (fmin > 256)
 	      {
@@ -279,9 +287,9 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 		for (dy = (oy - 4); dy <= (oy + 4); dy += 2)
 		  for (dx = (ox - 4); dx <= (ox + 4); dx += 1)
 		    {
-		      sad = psad_sub22
+		      sad = psad_00
 			(f1 + (x) + (y) * w,
-			 f0 + (x + dx) + (y + dy) * w, w, 8);
+			 f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
 
 		      if (sad < fmin)
 			{
@@ -291,7 +299,14 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 			}
 		    }
 	      }
+//        END_SEARCH:
 	  }
+
+	// clip invalid motion-vectors
+	fx = (fx + x) > w ? 0 : fx;
+	fx = (fx + x) < 0 ? 0 : fx;
+	fy = (fy + y) > h ? 0 : fy;
+	fy = (fy + y) < 0 ? 0 : fy;
 
 	f_sum[ix][iy] = fmin;
 	mv_fx[ix][iy] = fx;
@@ -334,8 +349,9 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 	    bx = dx;
 	    by = dy;
 
-	    bmin = psad_sub22
-	      (f1 + (x) + (y) * w, f2 + (x + dx) + (y + dy) * w, w, 8);
+	    bmin = psad_00
+	      (f1 + (x) + (y) * w, f2 + (x + dx) + (y + dy) * w, w, 16,
+	       0x00ffffff);
 
 	    if (bmin > thres)	// Still not good enough...
 	      {
@@ -343,8 +359,9 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 		dx = 0;
 		dy = 0;
 
-		sad = psad_sub22
-		  (f1 + (x) + (y) * w, f2 + (x + dx) + (y + dy) * w, w, 8);
+		sad = psad_00
+		  (f1 + (x) + (y) * w, f2 + (x + dx) + (y + dy) * w, w, 16,
+		   0x00ffffff);
 
 		if (sad < bmin)
 		  {
@@ -359,9 +376,9 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 		    dx = mv_bx[ix - 1][iy];
 		    dy = mv_by[ix - 1][iy];
 
-		    sad = psad_sub22
+		    sad = psad_00
 		      (f1 + (x) + (y) * w,
-		       f2 + (x + dx) + (y + dy) * w, w, 8);
+		       f2 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
 
 		    if (sad < bmin)
 		      {
@@ -376,9 +393,9 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 			dx = mv_bx[ix][iy - 1];
 			dy = mv_by[ix][iy - 1];
 
-			sad = psad_sub22
+			sad = psad_00
 			  (f1 + (x) + (y) * w,
-			   f2 + (x + dx) + (y + dy) * w, w, 8);
+			   f2 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
 
 			if (sad < bmin)
 			  {
@@ -393,9 +410,10 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 			    dx = mv_bx[ix - 1][iy - 1];
 			    dy = mv_by[ix - 1][iy - 1];
 
-			    sad = psad_sub22
+			    sad = psad_00
 			      (f1 + (x) + (y) * w,
-			       f2 + (x + dx) + (y + dy) * w, w, 8);
+			       f2 + (x + dx) + (y + dy) * w, w, 16,
+			       0x00ffffff);
 
 			    if (sad < bmin)
 			      {
@@ -410,9 +428,10 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 				dx = mv_bx[ix + 1][iy - 1];
 				dy = mv_by[ix + 1][iy - 1];
 
-				sad = psad_sub22
+				sad = psad_00
 				  (f1 + (x) + (y) * w,
-				   f2 + (x + dx) + (y + dy) * w, w, 8);
+				   f2 + (x + dx) + (y + dy) * w, w, 16,
+				   0x00ffffff);
 
 				if (sad < bmin)
 				  {
@@ -436,9 +455,10 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 				    dy += mv_by[ix - 1][iy];
 				    dy /= 4;
 
-				    sad = psad_sub22
+				    sad = psad_00
 				      (f1 + (x) + (y) * w,
-				       f2 + (x + dx) + (y + dy) * w, w, 8);
+				       f2 + (x + dx) + (y + dy) * w, w, 16,
+				       0x00ffffff);
 
 				    if (sad < bmin)
 				      {
@@ -453,10 +473,10 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 					dx = mv_bx[ix][iy];
 					dy = mv_by[ix][iy];
 
-					sad = psad_sub22
+					sad = psad_00
 					  (f1 + (x) + (y) * w,
 					   f2 + (x + dx) + (y + dy) * w, w,
-					   8);
+					   16, 0x00ffffff);
 
 					if (sad < bmin)
 					  {
@@ -492,11 +512,12 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 	  DO_LARGE_SEARCH_B:
 	    ox = oy = 0;	// center is the best guess we have, now
 	    bmin = 0x00ffffff;	// reset min
-	    for (dy = (oy - 8); dy <= (oy + 8); dy += 4)
-	      for (dx = (ox - 8); dx <= (ox + 8); dx += 2)
+	    for (dy = (oy - 8); dy <= (oy + 8); dy += 2)
+	      for (dx = (ox - 8); dx <= (ox + 8); dx += 1)
 		{
-		  sad = psad_sub22
-		    (f1 + (x) + (y) * w, f2 + (x + dx) + (y + dy) * w, w, 8);
+		  sad = psad_00
+		    (f1 + (x) + (y) * w, f2 + (x + dx) + (y + dy) * w, w, 16,
+		     0x00ffffff);
 
 		  if (sad < bmin)
 		    {
@@ -505,7 +526,8 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 		      by = dy;
 		    }
 		}
-	    // Stage 2
+//        goto END_B_SEARCH;
+
 	  DO_SMALL_SEARCH_B:
 	    if (bmin > 256)
 	      {
@@ -514,9 +536,9 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 		for (dy = (oy - 4); dy <= (oy + 4); dy += 2)
 		  for (dx = (ox - 4); dx <= (ox + 4); dx += 1)
 		    {
-		      sad = psad_sub22
+		      sad = psad_00
 			(f1 + (x) + (y) * w,
-			 f2 + (x + dx) + (y + dy) * w, w, 8);
+			 f2 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
 
 		      if (sad < bmin)
 			{
@@ -526,7 +548,14 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 			}
 		    }
 	      }
+//            END_B_SEARCH:
 	  }
+
+	// clip invalid motion-vectors
+	bx = (bx + x) > w ? 0 : bx;
+	bx = (bx + x) < 0 ? 0 : bx;
+	by = (by + y) > h ? 0 : by;
+	by = (by + y) < 0 ? 0 : by;
 
 	b_sum[ix][iy] = bmin;
 	mv_bx[ix][iy] = bx;
@@ -538,42 +567,48 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 // -------------------------------------------------------------------------------------------------------- //
 // -------------------------------------------------------------------------------------------------------- //
 
-	// clip invalid motion-vectors
-	fx = (fx + x) > w ? 0 : fx;
-	fx = (fx + x) < 0 ? 0 : fx;
-	fy = (fy + y) > h ? 0 : fy;
-	fy = (fy + y) < 0 ? 0 : fy;
-	bx = (bx + x) > w ? 0 : bx;
-	bx = (bx + x) < 0 ? 0 : bx;
-	by = (by + y) > h ? 0 : by;
-	by = (by + y) < 0 ? 0 : by;
+      }
+
+  for (y = 0; y < h; y += 8)
+    for (x = 0; x < w; x += 8)
+      {
+	// create index numbers for motion-lookup-table
+	ix = x / 16;
+	iy = y / 16;
+
+	fx = mv_fx[ix][iy];
+	fy = mv_fy[ix][iy];
+
+	bx = mv_bx[ix][iy];
+	by = mv_by[ix][iy];
 
 	// process the matched block for video
-	for (dy = 0; dy < 8; dy++)
-	  for (dx = 0; dx < 8; dx++)
+	for (dy = 0; dy < 16; dy++)
+	  for (dx = 0; dx < 16; dx++)
 	    {
 	      // we only need to reconstruct that lines missing in the current field
 	      // the idea behind is, that the typical reconstruction-filter only lacks
 	      // the high frequencies. We add these from the previous and past fields
 	      // but leave all the other information intact.
-              //
-              // This will give a good reconstruction without visable motion-errors.
-              // That is if the high-pass-information is out of phase it is graduately
+	      //
+	      // This will give a good reconstruction without visable motion-errors.
+	      // That is if the high-pass-information is out of phase it is graduately
 	      // discarded, so in the worst case there just remains a linear-approximation
-              // but where ever possible the full spectrum is reconstructed...
+	      // but where ever possible the full spectrum is reconstructed...
 	      if (((dy + y) & 1) == field)
 		{
 		  // high-pass-information of previous field
-		  a = 2 * *(f0 + (x + dx + fx) + (y + dy + fy) * w);
-		  a -= *(f0 + (x + dx + fx) + (y + dy + fy - 1) * w);
-		  a -= *(f0 + (x + dx + fx) + (y + dy + fy + 1) * w);
-		  a /= 4;
+		  a = *(f0 + (x + dx + fx) + (y + dy + fy - 1) * w);
+		  a += *(f0 + (x + dx + fx) + (y + dy + fy + 1) * w);
+		  a /= 2;
+		  a -= *(f0 + (x + dx + fx) + (y + dy + fy) * w);
 
 		  // high-pass-information of next field
-		  b = 2 * *(f2 + (x + dx + bx) + (y + dy + by) * w);
-		  b -= *(f2 + (x + dx + bx) + (y + dy + by - 1) * w);
-		  b -= *(f2 + (x + dx + bx) + (y + dy + by + 1) * w);
-		  b /= 4;
+		  b = *(f2 + (x + dx + bx) + (y + dy + by - 1) * w);
+		  b += *(f2 + (x + dx + bx) + (y + dy + by + 1) * w);
+		  b /= 2;
+		  b -= *(f2 + (x + dx + bx) + (y + dy + by) * w);
+
 
 		  // low-pass-information of current field
 		  c = *(f1 + (x + dx) + (y + dy - 1) * w);
@@ -581,7 +616,9 @@ motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
 		  c /= 2;
 
 		  // combine both HP-images with the LP-image
-		  a = a + b + c;
+		  a = c - (a + b) * 5 / 8;
+		  // the high frequencies are boosted a little...
+
 		  a = a > 255 ? 255 : a;
 		  a = a < 0 ? 0 : a;
 

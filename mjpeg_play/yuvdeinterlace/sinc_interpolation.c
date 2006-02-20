@@ -25,12 +25,8 @@ void
 interpolate_field (uint8_t * frame, uint8_t * inframe, int w, int h,
 		   int field)
 {
-  int x, y, v, i;
-  int dx, vx;
-  uint32_t min;
+  int x, y, v;
   int a, b, c, d;
-  int e;
-  uint32_t sqd;
 
   for (y = field; y < h; y += 2)
     {
