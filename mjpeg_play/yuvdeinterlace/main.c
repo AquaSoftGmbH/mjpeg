@@ -97,24 +97,25 @@ int buff_size;
 void (*blend_fields) (uint8_t * dst[3], uint8_t * src[3]);
 void upscale (uint8_t * dst, uint8_t * src, int w, int h);
 void antialias (uint8_t * src[3]);
-void rotate_buffers( void )
-	{
-	int i;
-	uint8_t * p1;
-	uint8_t * p2;
+void
+rotate_buffers (void)
+{
+  int i;
+  uint8_t *p1;
+  uint8_t *p2;
 
-	for(i=0;i<3;i++)
-	{
-		p1 = frame3[i];
-		p2 = frame4[i];
+  for (i = 0; i < 3; i++)
+    {
+      p1 = frame3[i];
+      p2 = frame4[i];
 
-		frame4[i] = frame2[i];
-		frame3[i] = frame1[i];
+      frame4[i] = frame2[i];
+      frame3[i] = frame1[i];
 
-		frame1[i] = p1;
-		frame2[i] = p2;
-	}
-	}
+      frame1[i] = p1;
+      frame2[i] = p2;
+    }
+}
 
 
 /***********************************************************
@@ -348,14 +349,14 @@ main (int argc, char *argv[])
 					    &istreaminfo,
 					    &iframeinfo, inframe)))
     {
-	/* rotate frames...
-	 * the deinterlacer heavily relies on knowing past fields, so
-         * we need to save them. But instead of copying it is better to
-         * just rotate the buffers, as this saves a lot cycles on the 
-         * bus. memory transfer would cause a rather high load on the
-         * machine...
-         */
-	rotate_buffers();
+      /* rotate frames...
+       * the deinterlacer heavily relies on knowing past fields, so
+       * we need to save them. But instead of copying it is better to
+       * just rotate the buffers, as this saves a lot cycles on the 
+       * bus. memory transfer would cause a rather high load on the
+       * machine...
+       */
+      rotate_buffers ();
 
       if (field_order == BOTTOM_FIRST)
 	{
@@ -367,9 +368,22 @@ main (int argc, char *argv[])
 	  interpolate_field (frame2[1], inframe[1], cwidth, cheight, 1);
 	  interpolate_field (frame2[2], inframe[2], cwidth, cheight, 1);
 
-	  motion_compensate (r0[0],frame1[0], frame2[0], frame3[0], lwidth, lheight, 0);
-	  motion_compensate (r0[1],frame1[1], frame2[1], frame3[1], cwidth, cheight, 0);
-	  motion_compensate (r0[2],frame1[2], frame2[2], frame3[2], cwidth, cheight, 0);
+	  motion_compensate (r0[0], frame1[0], frame2[0], frame3[0], lwidth,
+			     lheight, 0);
+	  motion_compensate (r0[1], frame1[1], frame2[1], frame3[1], cwidth,
+			     cheight, 0);
+	  motion_compensate (r0[2], frame1[2], frame2[2], frame3[2], cwidth,
+			     cheight, 0);
+
+	  if (both_fields)
+	    {
+	      motion_compensate (r1[0], frame2[0], frame3[0], frame4[0],
+				 lwidth, lheight, 1);
+	      motion_compensate (r1[1], frame2[1], frame3[1], frame4[1],
+				 cwidth, cheight, 1);
+	      motion_compensate (r1[2], frame2[2], frame3[2], frame4[2],
+				 cwidth, cheight, 1);
+	    }
 	}
       else
 	{			// top field first
@@ -381,26 +395,51 @@ main (int argc, char *argv[])
 	  interpolate_field (frame2[1], inframe[1], cwidth, cheight, 0);
 	  interpolate_field (frame2[2], inframe[2], cwidth, cheight, 0);
 
-	  motion_compensate (r0[0],frame1[0], frame2[0], frame3[0], lwidth, lheight, 0);
-	  motion_compensate (r0[1],frame1[1], frame2[1], frame3[1], cwidth, cheight, 0);
-	  motion_compensate (r0[2],frame1[2], frame2[2], frame3[2], cwidth, cheight, 0);
+	  motion_compensate (r0[0], frame1[0], frame2[0], frame3[0], lwidth,
+			     lheight, 1);
+	  motion_compensate (r0[1], frame1[1], frame2[1], frame3[1], cwidth,
+			     cheight, 1);
+	  motion_compensate (r0[2], frame1[2], frame2[2], frame3[2], cwidth,
+			     cheight, 1);
+
+	  if (both_fields)
+	    {
+	      motion_compensate (r1[0], frame2[0], frame3[0], frame4[0],
+				 lwidth, lheight, 0);
+	      motion_compensate (r1[1], frame2[1], frame3[1], frame4[1],
+				 cwidth, cheight, 0);
+	      motion_compensate (r1[2], frame2[2], frame3[2], frame4[2],
+				 cwidth, cheight, 0);
+	    }
 	}
 
-	if(framenr>0)
+      // blank 4 lines on top and bottom, as this algorithm can not recon-
+      // struct them...
+      memset (r0[0], 0, lwidth * 4);
+      memset (r0[0] + (lwidth * lheight - 4 * lwidth), 0, lwidth * 4);
+      memset (r0[1], 128, cwidth * 2);
+      memset (r0[1] + (cwidth * cheight - 2 * cwidth), 128, cwidth * 2);
+      memset (r0[2], 128, cwidth * 2);
+      memset (r0[2] + (cwidth * cheight - 2 * cwidth), 128, cwidth * 2);
+
+      if (both_fields)
 	{
-		// blank the first 2 lines as these cannot be reconstructed...
-		memset(r0[0],0,lwidth*2);
-		memset(r0[1],128,cwidth);
-		memset(r0[2],128,cwidth);
-		// blank the last 2 lines as ...
-		memset(r0[0]+(lwidth*lheight-2*lwidth),0,lwidth*2);
-		memset(r0[1]+(cwidth*cheight-cwidth),128,cwidth);
-		memset(r0[2]+(cwidth*cheight-cwidth),128,cwidth);
-
-	        y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r0);	
+	  memset (r1[0], 0, lwidth * 4);
+	  memset (r1[0] + (lwidth * lheight - 4 * lwidth), 0, lwidth * 4);
+	  memset (r1[1], 128, cwidth * 2);
+	  memset (r1[1] + (cwidth * cheight - 2 * cwidth), 128, cwidth * 2);
+	  memset (r1[2], 128, cwidth * 2);
+	  memset (r1[2] + (cwidth * cheight - 2 * cwidth), 128, cwidth * 2);
 	}
 
-	framenr++;
+      if (framenr > 0)
+	{
+	  if (both_fields)
+	    y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r1);
+	  y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r0);
+	}
+
+      framenr++;
 
     }
 
@@ -577,4 +616,3 @@ upscale (uint8_t * dst, uint8_t * src, int w, int h)
 	*(dst + x + y * w) = m;
       }
 }
-
