@@ -361,7 +361,7 @@ case $host_cpu in
        PROGRAM_NOPIC="-mdynamic-no-pic" # dynamic-no-pic is an Apple gcc option
        ;;
       *)
-       PROGRAM_NOPIC=""
+       PROGRAM_NOPIC="-fno-PIC"
        ;;
     esac
     ;;
