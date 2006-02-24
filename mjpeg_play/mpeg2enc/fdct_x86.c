@@ -199,7 +199,7 @@ void fdct_basis(int16_t *block)
 void fdct_sse(int16_t *block)
 {
     float *dataptr,*aanptr;
-    float data[67];
+    float data[67] __attribute__((aligned(16)));
     int16_t *blkptr;
     int i;
 

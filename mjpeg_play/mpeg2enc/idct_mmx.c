@@ -483,7 +483,8 @@ void idct_mmx(int16_t *block)
 
 void idct_sse(int16_t *block)
 {
-    float temp[64+3], *dst, *altemp;
+    float temp[64+3] __attribute__((aligned(16)));
+    float *dst, *altemp;
     int i;
     int16_t *src;
 
