@@ -356,14 +356,7 @@ case $host_cpu in
     AC_MSG_RESULT(IA32)
     AC_DEFINE(HAVE_X86CPU,1, [Compiling for x86 architecture CPU])
     have_x86cpu=true
-    case $host in
-      *-apple-darwin*)
-       PROGRAM_NOPIC="-mdynamic-no-pic" # dynamic-no-pic is an Apple gcc option
-       ;;
-      *)
-       PROGRAM_NOPIC="-fno-PIC"
-       ;;
-    esac
+    PROGRAM_NOPIC="-fno-PIC"
     ;;
   x86_64*)
     AC_MSG_RESULT(x86_64)
@@ -376,19 +369,20 @@ case $host_cpu in
     AC_MSG_RESULT(PowerPC)
     AC_DEFINE(HAVE_PPCCPU,1, [Compiling for PowerPC CPU])
     have_ppccpu=true
-    case $host in
-      *-apple-darwin*)
-       PROGRAM_NOPIC="-mdynamic-no-pic" # dynamic-no-pic is an Apple gcc option
-       ;;
-      *)
-       PROGRAM_NOPIC=""
-       ;;
-    esac
+    PROGRAM_NOPIC=""
     ;;
   *)
     AC_MSG_RESULT(unknown)
     PROGRAM_NOPIC=""
     ;;
+esac
+
+dnl Apple's darwin works on multiple hosts now, so add a catchall override
+dnl after processing normal hosts
+case $host in
+  *-apple-darwin*)
+   PROGRAM_NOPIC="-mdynamic-no-pic" # dynamic-no-pic is an Apple gcc option
+   ;;
 esac
 
 dnl This flag is used for PROGRAMS not SHARED LIBRARIES.  PIC code is required
