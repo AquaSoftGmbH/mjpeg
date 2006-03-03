@@ -102,8 +102,7 @@ noinst_HEADERS = \
 	glav.h \
 	pipelist.h \
 	subsample.h \
-	lav_common.h \
-	lav2wav.h
+	lav_common.h
 
 mjpeg_simd_helper_SOURCES = mjpeg_simd_helper.c
 mjpeg_simd_helper_LDADD = $(LIBMJPEGUTILS)

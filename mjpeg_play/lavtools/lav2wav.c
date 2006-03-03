@@ -30,7 +30,42 @@
 #include "lav_io.h"
 #include "editlist.h"
 #include "mjpeg_logging.h"
-#include "lav2wav.h"
+
+#define WAVE_FORMAT_PCM  0x0001
+#define FORMAT_MULAW     0x0101
+#define IBM_FORMAT_ALAW  0x0102
+#define IBM_FORMAT_ADPCM 0x0103
+
+struct riff_struct 
+{
+  uint8_t id[4];   /* RIFF */
+  uint32_t len;
+  uint8_t wave_id[4]; /* WAVE */
+};
+
+struct chunk_struct 
+{
+	uint8_t id[4];
+	uint32_t len;
+};
+
+struct common_struct 
+{
+	uint16_t wFormatTag;
+	uint16_t wChannels;
+	uint32_t dwSamplesPerSec;
+	uint32_t dwAvgBytesPerSec;
+	uint16_t wBlockAlign;
+	uint16_t wBitsPerSample;  /* Only for PCM */
+};
+
+struct wave_header 
+{
+	struct riff_struct   riff;
+	struct chunk_struct  format;
+	struct common_struct common;
+	struct chunk_struct  data;
+};
 
 struct wave_header wave;
 int verbose = 1;
@@ -54,9 +89,7 @@ static size_t do_write( int fd, void *buf, size_t count )
 	{
 		written = write( fd, cbuf, count_left );
 		if( written < 0 )
-		{
 			return count-count_left;
-		}
 		count_left -= written;
 		cbuf += written;
 	}
@@ -125,9 +158,7 @@ static void wav_close(int fd)
 	if (size < 0 ) 
 	{
 		if( fd > 2 )
-		{
 			mjpeg_error("lseek failed - wav-header is corrupt");
-		}
 		goto EXIT;
 	}
 
@@ -152,7 +183,6 @@ static void wav_close(int fd)
 		goto EXIT;
 	}
 	mjpeg_info("WAV done");
-
 EXIT:
 	close(fd);
 }
@@ -183,34 +213,27 @@ int i;
 i = (sscanf (optarg, "%i,%i,%i", &u1, &u2, &u3));
 
 if (i != 3) 
-  {
-    mjpeg_error("Wrong number of arguments given to the -r option");
-    exit(1);
-  }
+    mjpeg_error_exit1("Wrong number of arguments given to the -r option");
 else /*Setting user chosen values */
   {
     if ( (u1 == 32000) || (u1 == 44100) || (u1 == 48000) )
-      silence_sr = u1;
-    else {
-      mjpeg_error("Wrong sampelrate use: 32000,44100,48000, exiting");
-      exit(1); }
+        silence_sr = u1;
+    else
+        mjpeg_error_exit1("Wrong sampelrate use: 32000,44100,48000, exiting");
    
     if ( (u2 == 8) || (u2 == 16) )
-      silence_bs = u2;
-    else {
-      mjpeg_error("Wrong audio bitsize use 8 or 16, exiting");
-      exit(1); }
+        silence_bs = u2;
+    else
+        mjpeg_error_exit1("Wrong audio bitsize use 8 or 16, exiting");
 
     if ( (u3 == 1) || (u3 == 2) )
-      silence_ch = u3;
-    else {
-      mjpeg_error("Wrong number of chanels use 1 or 2, exiting");
-      exit(1); }
+        silence_ch = u3;
+    else
+        mjpeg_error_exit1("Wrong number of chanels use 1 or 2, exiting");
   }
 
 mjpeg_info("Setting silence to %i sampelrate, %i bitsize, %i chanels",
      silence_sr, silence_bs, silence_ch);
-
 }
 
 int
@@ -277,10 +300,7 @@ silence_bs=0; silence_ch=0;
     if(!el.has_audio)
     {
       if (silence_sr == 0) 
-        {   
-          mjpeg_error("Input file(s) have no audio, use the -r option to generate silence"); 
-          exit(1);
-        }
+          mjpeg_error_exit1("Input file(s) have no audio, use -r to generate silence"); 
      else
         {
 
@@ -324,11 +344,8 @@ silence_bs=0; silence_ch=0;
 
     if (!ignore_bitrate) 
       {
-        if(el.audio_bits!=16)
-          {
-		  mjpeg_error("Input file(s) must have 16 bit audio!");
-		  exit(1);
-	  }
+        if (el.audio_bits!=16)
+		  mjpeg_error_exit1("Input file(s) must have 16 bit audio!");
 
 	switch (el.audio_rate) {
 		case 48000 : 
@@ -336,9 +353,7 @@ silence_bs=0; silence_ch=0;
 		case 32000 :
 			break;
 		default:
-			mjpeg_error("Audio rate is %ld Hz",el.audio_rate);
-			mjpeg_error("Audio rate must be 32000, 44100 or 48000 !");
-			exit(1);
+			mjpeg_error_exit1("Audio rate is %ld Hz - must be 32000, 44100 or 48000!", el.audio_rate);
 	}
       }
 
@@ -346,10 +361,8 @@ silence_bs=0; silence_ch=0;
 	    case 1:
 	    case 2:
 		    break;
-
 	    default:
-		    mjpeg_error("Audio channels %d not allowed",el.audio_chans);
-		    exit(1);
+		    mjpeg_error_exit1("Audio channels %d not allowed",el.audio_chans);
     }
 
     /* Create wav header (skeleton) on stdout ... */
@@ -366,23 +379,18 @@ silence_bs=0; silence_ch=0;
     for( ; f < num_frames; ++f )
     {
 	    n = el_get_audio_data(audio_buff, f, &el, 0);
-	    if( n < 0 )
-	    {
-		    mjpeg_error_exit1( "%s: Couldn't get audio for frame %d!", argv[0], f );
-	    }
+	    if (n < 0)
+	       mjpeg_error_exit1( "Couldn't get audio for frame %d!", f);
 	    if( n != 0 )
 	    {
 		    res = do_write( 1, audio_buff, n );
-		    if( res != n )
-		    {
-			    mjpeg_error_exit1( "%s: Couldn't write audio for frame %d!", argv[0], f );
-			    exit(1);
-		    }
+		    if (res != n)
+		      mjpeg_error_exit1("Couldn't write audio for frame %d!",f);
 	    }
 
 	    else if( f < num_frames && ! warned )
 	    {
-		    mjpeg_warn( "%s: audio ends early at frame %d", argv[0], f );
+		    mjpeg_warn("audio ends early at frame %d", f);
 		    warned = 1;
 	    }
     }
@@ -390,5 +398,3 @@ silence_bs=0; silence_ch=0;
     wav_close(1);
     exit(0);
 }
-
-
