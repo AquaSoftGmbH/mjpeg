@@ -51,7 +51,6 @@ int main (int argc, char *argv[])
   int stream0;   /* read from input 1 */
   int stream1;   /* read from input 2 */
   int outstream = 1;  /* output to stdout */
-  int w, h;
   int fstarg;
   unsigned char *yuv0[3];
   unsigned char *yuv1[3];
@@ -69,6 +68,8 @@ int main (int argc, char *argv[])
   y4m_init_frame_info(&finfo0);
   y4m_init_frame_info(&finfo1);
   
+  y4m_accept_extensions(1);
+
   if ((argc != 3) && (argc != 5)) 
     usage(argv[0]);
   
@@ -118,14 +119,14 @@ int main (int argc, char *argv[])
   if (y4m_si_get_interlace(&sinfo0) != y4m_si_get_interlace(&sinfo1))
     mjpeg_error_exit1("Interlace mismatch");
   
-  w = y4m_si_get_width(&sinfo0);
-  h = y4m_si_get_height(&sinfo0);
-  
   y4m_copy_stream_info(&osinfo, &sinfo0);
   
-  yuv0[0] = malloc (w*h);   yuv1[0] = malloc (w*h);
-  yuv0[1] = malloc (w*h/4); yuv1[1] = malloc (w*h/4);
-  yuv0[2] = malloc (w*h/4); yuv1[2] = malloc (w*h/4);
+  yuv0[0] = malloc(y4m_si_get_plane_length(&sinfo0, 0));
+  yuv1[0] = malloc(y4m_si_get_plane_length(&sinfo0, 0));
+  yuv0[1] = malloc(y4m_si_get_plane_length(&sinfo0, 1));
+  yuv1[1] = malloc(y4m_si_get_plane_length(&sinfo0, 1));
+  yuv0[2] = malloc(y4m_si_get_plane_length(&sinfo0, 2));
+  yuv1[2] = malloc(y4m_si_get_plane_length(&sinfo0, 2));
   
   if ((err = y4m_write_stream_header(outstream, &sinfo0)) != Y4M_OK)
     mjpeg_error_exit1("Failed to write output header:  %s",
