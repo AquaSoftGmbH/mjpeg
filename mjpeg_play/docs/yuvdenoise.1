@@ -51,6 +51,10 @@ disables/bypasses the filter.  This filter is applied \fBafter\fP the
 temporal (\-t) filter.
 .br
 (default=4,8,8)
+.br
+\fBNOTE:\fP The default has been changed to 0,0,0 because the median filters
+\fBcorrupt\fP the top and bottom edges.  When this is fixed the default can
+be set back to 4,8,8
 
 .SH HOW IT WORKS
 To Be Written (maybe) in the future.
@@ -65,7 +69,7 @@ lav2yuv my-video.avi | yuvdenoise | mpeg2enc -t 1 -o my-video.m1v
 This man page was written by Stefan Fendt <stefan@lionfish.ping.de> and 
 revised by Steven Schultz.
 
-.SH FURTHER INFOS
+.SH ADDITIONAL INFO
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:
 

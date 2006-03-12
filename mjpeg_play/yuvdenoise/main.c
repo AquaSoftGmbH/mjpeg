@@ -45,9 +45,10 @@ int med_pre_Y_thres = 0;
 int med_pre_U_thres = 0;
 int med_pre_V_thres = 0;
 
-int med_post_Y_thres = 4;
-int med_post_U_thres = 8;
-int med_post_V_thres = 8;
+/* Disable these until the corruption at the top and bottom edges is fixed */
+int med_post_Y_thres = 0;	/* 4 */
+int med_post_U_thres = 0;	/* 8 */
+int med_post_V_thres = 0;	/* 8 */
 
 uint8_t *frame1[3];
 uint8_t *frame2[3];
