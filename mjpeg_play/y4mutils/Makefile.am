@@ -20,11 +20,15 @@ bin_PROGRAMS = \
 	y4mtoyuv \
 	y4minterlace \
 	yuv4mpeg \
+	y4mivtc \
 	yuyvtoy4m
 
 if HAVE_LIBQUICKTIME
 bin_PROGRAMS += y4mtoqt qttoy4m
 endif
+
+y4mivtc_SOURCES = y4mivtc.c
+y4mivtc_LDADD = $(LIBMJPEGUTILS)
 
 yuvmedianfilter_SOURCES = yuvmedianfilter.c
 yuvmedianfilter_LDADD = $(LIBMJPEGUTILS)
