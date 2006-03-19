@@ -25,6 +25,7 @@
  *      and vice versa.
  *		 
  *   -i/--input [pPnNsStTa] --- Input Source:
+ *   -i/--input input[:norm]
  *      'p': PAL       Composite Input or first Bt8x8 input
  *      'P': PAL       SVHS-Input or second Bt8x8 input
  *      't': PAL       TV tuner input or third Bt8x8 input
@@ -34,7 +35,9 @@
  *      's': SECAM     Composite Input or first Bt8x8 input
  *      'S': SECAM     SVHS-Input or second Bt8x8 input
  *      'f': SECAM     TV tuner input or third Bt8x8 input
- *      'a': (or every other letter) Autosense (default)
+ *      'a': Autosense (default)
+ *      input - a number, 1-10
+ *      norm  - pal, ntsc or secam
  *
  *   -d/--decimation num --- Frame recording decimation:
  *      must be either 1, 2 or 4 for identical decimation
@@ -228,7 +231,7 @@ static void Usage(char *progname)
            ""
 #endif
            "]         Format AVI/Quicktime\n");
-	fprintf(stderr, "  -i/--input [pPnNsStTfa]     Input Source\n");
+	fprintf(stderr, "  -i/--input [pPnNsStTfa]     Input Source or 1-10:norm see manpage\n");
 	fprintf(stderr, "  -d/--decimation num         Decimation (either 1,2,4 or two digit number)\n");
 	fprintf(stderr, "  -g/--geometry WxH+X+Y       X-style geometry string (part of 768/720x576/480)\n");
 	fprintf(stderr, "  -q/--quality num            Quality [%%]\n");
@@ -573,6 +576,8 @@ static int set_option(const char *name, char *value)
 {
 	/* return 1 means error, return 0 means okay */
 	int nerr = 0;
+	int i = 0;
+	char *norm_i = NULL;
 
 	if (strcmp(name, "format")==0 || strcmp(name, "f")==0)
 	{
@@ -604,7 +609,42 @@ static int set_option(const char *name, char *value)
 			case 't': info->video_norm = 0 /* PAL */; info->video_src = 2 /* TV-tuner */; break;
 			case 'T': info->video_norm = 1 /* NTSC */; info->video_src = 2 /* TV-tuner */; break;
 			case 'f': info->video_norm = 2 /* SECAM */; info->video_src = 2 /* TV-tuner */; break;
-			default:  info->video_norm = 3 /* auto */; info->video_src = 3 /* auto */; break;
+			case 'a':  info->video_norm = 3 /* auto */; info->video_src = -1 /* auto */; break;
+			default:
+				i = atoi(value);
+				if (i>0 && i<11)
+					{
+					info->video_norm = 3 /* auto */; info->video_src = i - 1 /* input */;
+					norm_i = strstr(value, ":");
+					if(norm_i != NULL && strlen(norm_i) > 1)
+						{
+							if (strcasecmp(norm_i + 1, "pal") == 0)
+								{
+									info->video_norm = 0;
+								}
+							else if (strcasecmp(norm_i + 1, "ntsc") == 0)
+								{
+									info->video_norm = 1;
+								}
+							else if (strcasecmp(norm_i + 1, "secam") == 0)
+								{
+									info->video_norm = 0;
+								}
+							else
+								{
+									mjpeg_error("unknown norm: '%s'", norm_i + 1);
+									nerr++;
+									break;
+								}
+						}
+					} 
+				else 
+					{
+						mjpeg_error("numeric input must be between 1 and 10");
+						nerr++;
+					}
+			break;
+
 		}
 		input_source = value[0];
 	}
@@ -995,6 +1035,7 @@ static void lavrec_print_properties(void)
 		case 't': source = info->software_encoding?"BT8x8 3rd input PAL\n":"PAL TV-tuner\n"; break;
 		case 'T': source = info->software_encoding?"BT8x8 3rd input PAL\n":"NTSC TV-tuner\n"; break;
 		case 'f': source = info->software_encoding?"BT8x8 3rd input PAL\n":"SECAM TV-tuner\n"; break;
+//sam Fix numeric source
 		default:  source = "Auto detect\n";
 	}
 	mjpeg_info("Input Source:       %s", source);

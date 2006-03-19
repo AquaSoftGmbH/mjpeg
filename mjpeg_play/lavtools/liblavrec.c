@@ -405,14 +405,14 @@ static int lavrec_autodetect_signal(lavrec_t *info)
 
    lavrec_msg(LAVREC_MSG_INFO, info, "Auto detecting input and norm ...");
 
-   if (info->software_encoding && (info->video_norm==3 || info->video_src==3))
+   if (info->software_encoding && (info->video_norm==3 || info->video_src==-1))
    {
       lavrec_msg(LAVREC_MSG_DEBUG, info,
          "Using current input signal settings for non-MJPEG card");
       return 1;
    }
 
-   if (info->video_src == 3) /* detect video_src && norm */
+   if (info->video_src == -1) /* detect video_src && norm */
    {
       int n = 0;
 
@@ -1436,12 +1436,12 @@ static int lavrec_init(lavrec_t *info)
    if (lavrec_autodetect_signal(info) == 0)
       return 0;
 
-   if (info->software_encoding && info->video_src == 3)
+   if (info->software_encoding && info->video_src == -1)
       vch.channel = 0;
    else
       vch.channel = info->video_src;
    vch.norm = info->video_norm;
-   if (info->video_norm != 3 && info->video_src != 3)
+   if (info->video_norm != 3 && info->video_src != -1)
    {
       if (ioctl(settings->video_fd, VIDIOCSCHAN, &vch) < 0)
       {
@@ -2279,7 +2279,7 @@ lavrec_t *lavrec_malloc(void)
    /* let's set some default values now */
    info->video_format = '\0';
    info->video_norm = 3;
-   info->video_src = 3;
+   info->video_src = -1;
    info->software_encoding = 0;
    info->num_encoders = 0; /* this should be set to the number of processors */
    info->horizontal_decimation = 4;

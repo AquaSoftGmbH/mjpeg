@@ -49,6 +49,9 @@ By default, lavrec will look at the extension of the first file
 
 .TP 8
 .BR \-i/\-\-input " [" p | P | n | N | s | S | t | T | f | a ]
+or
+.TP 8 
+.BR \-i/\-\-input " input[:norm]
 The recording source and the video source standard format.
  p - PAL through Composite or 1st Bt8x8 input
  P - PAL through SVHS- or 2nd Bt8x8 input
@@ -60,6 +63,17 @@ The recording source and the video source standard format.
  S - SECAM through SVHS- or 2nd Bt8x8 input
  f - SECAM through TV-tuner- or 3rd Bt8x8 input
  a - (or every other letter) Autosense (default)
+.br
+The input can be specified using either single letters or an input number 
+with an optional norm, where the number specifies the n'th input of the 
+card, ranging from 1 to 10. Using a numerical input is necessary when 
+using input four or higher with a card that has more than three inputs, 
+for instance the AverMedia 6 Eyes.
+When using numeric input with the norm it must contain the whole norm name; 
+valid names are pal, ntsc and secam. You can use numeric input selection 
+for cards with only three inputs, too, which most Zoran based cards has. 
+"-i\ 2:pal" used with a Buz would be equivalent to "-i\ P", recording from 
+the S-Video input in PAL format.
 
 .TP 8
 .BI  \-d/\-\-decimation " num"
