@@ -81,7 +81,7 @@ for(y=0;y<h;y+=8)
 
 	ox=vx;
 	oy=vy;
-	for(dy=(oy-2);dy<=(oy+2);dy+=1) 
+	for(dy=(oy-2);dy<=(oy+2);dy+=2) 
 	for(dx=(ox-2);dx<=(ox+2);dx+=1)
 		{
 		sad = psad_00 ( f+x+y*w, r+(x+dx)+(y+dy)*w, w, 16, 0x00ffffff);
