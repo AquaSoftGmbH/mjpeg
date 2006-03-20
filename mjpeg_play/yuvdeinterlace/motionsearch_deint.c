@@ -97,6 +97,12 @@ for(y=0;y<h;y+=8)
 	x += 4;
 	y += 4;
 
+	// set illegal MVs to zero...
+	vx = ((vx+x+8)>w)? 0:vx;
+	vx = ((vx+x  )<0)? 0:vx;
+	vy = ((vy+y+8)>h)? 0:vy;
+	vy = ((vy+y  )<0)? 0:vy;
+
 	for(dy=(field+1);dy<=8;dy+=2)
 	for(dx=0;dx<8;dx++)
 		{
@@ -121,7 +127,7 @@ for(y=field;y<h;y+=2)
 		c = *(r+x+y*w+2*w); 		// original field-line;
 		d = *(f+x+y*w+w); 		// edge-interpolated;
 
-		b = (d+2*b)/3;
+		b = (d+b)/2;
 
 		*(r+x+y*w+w) = median (a,b,c);
 	}
