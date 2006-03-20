@@ -23,612 +23,130 @@
 #include "transform_block.h"
 #include "vector.h"
 
-int
-median3 (int a, int b, int c)
+extern uint8_t * scratch;
+
+int median ( int a, int b, int c)
 {
-  return ((a <= b && b <= c) ? b : (a <= c && c <= b) ? c : a);
+	return 	((a<=b && b<=c)||(a>=b && b>=c))? b:
+		((a<=c && c<=b)||(a>=c && c>=b))? c:a;
 }
 
-uint32_t
-median3_l (uint32_t a, uint32_t b, uint32_t c)
+void motion_compensate (uint8_t * r, uint8_t * f , int w, int h, int field)
 {
-  return ((a <= b && b <= c) ? b : (a <= c && c <= b) ? c : a);
-}
+int x,y;
+int dx,dy;
+int vx,vy;
+int oy,ox;
+uint32_t sad;
+uint32_t min;
+int a,b,c,d,e;
 
-void
-motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
-		   int w, int h, int field)
-{
-  static int mv_fx[512][512];
-  static int mv_fy[512][512];
-  static uint32_t f_sum[512][512];
-  static int mv_bx[512][512];
-  static int mv_by[512][512];
-  static uint32_t b_sum[512][512];
+for(y=0;y<h;y+=8)
+	for(x=0;x<w;x+=8)
+	{
+	x -= 4;
+	y -= 4;
 
-  int ix, iy;
+	min=psad_00 ( f+x+y*w, r+x+y*w, w, 16, 0x00ffffff);
+	vx=0;
+	vy=0;
 
-  int x, y;
-  int ox, oy;
-  int dx, dy;
-  int fx, fy;
-  int bx, by;
-
-  uint32_t sad;
-  uint32_t fmin, bmin;
-  int a, b, c;
-  uint32_t thres;
-
-  fx = fy = 0;
-  bx = by = 0;
-
-  for (y = 0; y < h; y += 16)
-    for (x = 0; x < w; x += 16)
-      {
-	// create index numbers for motion-lookup-table
-	ix = x / 16;
-	iy = y / 16;
-
-// -------------------------------------------------------------------------------------------------------- //
-// -------------------------------------------------------------------------------------------------------- //
-// ---[ start of field0-processing ]----------------------------------------------------------------------- //
-// -------------------------------------------------------------------------------------------------------- //
-// -------------------------------------------------------------------------------------------------------- //
-
-	//if the index indicates that there do exist some previous motion-vectors
-	// use them as candidates to do a fast estimation of the new ones...
-	if (ix > 0 && iy > 0)
-	  {
-	    // define the early termination-threshold
-	    thres =
-	      median3_l (f_sum[ix - 1][iy - 1], f_sum[ix][iy - 1],
-			 f_sum[ix - 1][iy]);
-
-	    // its unlikely to find something better than Pixels_In_Block*Noise, so
-	    // we limit 'thres' to the lower bound of 512. This is an extremly
-	    // good match and even if it is not optimal, it is refined later, so we
-	    // can leave all other estimates, if we find something below it...
-	    thres = thres < 512 ? 512 : thres;
-
-	    // test for the median-vector first (this usually is the best vector to be found...)
-	    dx =
-	      median3 (mv_fx[ix - 1][iy - 1], mv_fx[ix][iy - 1],
-		       mv_fx[ix - 1][iy]);
-	    dy =
-	      median3 (mv_fy[ix - 1][iy - 1], mv_fy[ix][iy - 1],
-		       mv_fy[ix - 1][iy]);
-	    fx = dx;
-	    fy = dy;
-
-	    fmin = psad_00
-	      (f1 + (x) + (y) * w, f0 + (x + dx) + (y + dy) * w, w, 16,
-	       0x00ffffff);
-
-	    if (fmin > thres)	// Still not good enough...
-	      {
-		// test for the center
-		dx = 0;
-		dy = 0;
-
-		sad = psad_00
-		  (f1 + (x) + (y) * w, f0 + (x + dx) + (y + dy) * w, w, 16,
-		   0x00ffffff);
-
-		if (sad < fmin)
-		  {
-		    fmin = sad;
-		    fx = dx;
-		    fy = dy;
-		  }
-
-		if (fmin > thres)	// Still not good enough...
-		  {
-		    // test for the left-neighbor
-		    dx = mv_fx[ix - 1][iy];
-		    dy = mv_fy[ix - 1][iy];
-
-		    sad = psad_00
-		      (f1 + (x) + (y) * w,
-		       f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
-
-		    if (sad < fmin)
-		      {
-			fmin = sad;
-			fx = dx;
-			fy = dy;
-		      }
-
-		    if (fmin > thres)	// Still not good enough...
-		      {
-			// test for the top-neighbor
-			dx = mv_fx[ix][iy - 1];
-			dy = mv_fy[ix][iy - 1];
-
-			sad = psad_00
-			  (f1 + (x) + (y) * w,
-			   f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
-
-			if (sad < fmin)
-			  {
-			    fmin = sad;
-			    fx = dx;
-			    fy = dy;
-			  }
-
-			if (fmin > thres)	// Still not good enough...
-			  {
-			    // test for the top-left-neighbor
-			    dx = mv_fx[ix - 1][iy - 1];
-			    dy = mv_fy[ix - 1][iy - 1];
-
-			    sad = psad_00
-			      (f1 + (x) + (y) * w,
-			       f0 + (x + dx) + (y + dy) * w, w, 16,
-			       0x00ffffff);
-
-			    if (sad < fmin)
-			      {
-				fmin = sad;
-				fx = dx;
-				fy = dy;
-			      }
-
-			    if (fmin > thres)	// Still not good enough...
-			      {
-				// test for the top-right-neighbor
-				dx = mv_fx[ix + 1][iy - 1];
-				dy = mv_fy[ix + 1][iy - 1];
-
-				sad = psad_00
-				  (f1 + (x) + (y) * w,
-				   f0 + (x + dx) + (y + dy) * w, w, 16,
-				   0x00ffffff);
-
-				if (sad < fmin)
-				  {
-				    fmin = sad;
-				    fx = dx;
-				    fy = dy;
-				  }
-
-				if (fmin > thres)	// Still not good enough...
-				  {
-				    // test for the mean-of-neighbors
-				    dx = mv_fx[ix - 1][iy - 1];
-				    dx += mv_fx[ix][iy - 1];
-				    dx += mv_fx[ix + 1][iy - 1];
-				    dx += mv_fx[ix - 1][iy];
-				    dx /= 4;
-
-				    dy = mv_fy[ix - 1][iy - 1];
-				    dy += mv_fy[ix][iy - 1];
-				    dy += mv_fy[ix + 1][iy - 1];
-				    dy += mv_fy[ix - 1][iy];
-				    dy /= 4;
-
-				    sad = psad_00
-				      (f1 + (x) + (y) * w,
-				       f0 + (x + dx) + (y + dy) * w, w, 16,
-				       0x00ffffff);
-
-				    if (sad < fmin)
-				      {
-					fmin = sad;
-					fx = dx;
-					fy = dy;
-				      }
-
-				    if (fmin > thres)	// Still not good enough...
-				      {
-					// test for the temporal-neighbor
-					dx = mv_fx[ix][iy];
-					dy = mv_fy[ix][iy];
-
-					sad = psad_00
-					  (f1 + (x) + (y) * w,
-					   f0 + (x + dx) + (y + dy) * w, w,
-					   16, 0x00ffffff);
-
-					if (sad < fmin)
-					  {
-					    fmin = sad;
-					    fx = dx;
-					    fy = dy;
-					  }
-				      }
-				  }
-			      }
-			  }
-		      }
-		  }
-	      }
-
-	    if (fmin > thres)
-	      {
-		// the match is bad, do a large search arround the center.
-		goto DO_LARGE_SEARCH;
-	      }
-	    else
-	      {
-		// the match is good, just do a small search arround to refine it.
-		goto DO_SMALL_SEARCH;
-	      }
-	  }
-	else
-	  {
-	    // as we don't have candidates, for these blocks on the image-rim, we do a multi-stage-search
-	    // (to be replaced by something better...)
-	    //
-	    // Stage 1
-	  DO_LARGE_SEARCH:
-	    ox = oy = 0;	// center is the best guess we have, now
-	    fmin = 0x00ffffff;	// reset min
-	    for (dy = (oy - 8); dy <= (oy + 8); dy += 2)
-	      for (dx = (ox - 8); dx <= (ox + 8); dx += 1)
+	for(dy=-8;dy<=8;dy+=8) 
+	for(dx=-8;dx<=8;dx+=8)
 		{
-		  sad = psad_00
-		    (f1 + (x) + (y) * w, f0 + (x + dx) + (y + dy) * w, w, 16,
-		     0x00ffffff);
+		sad = psad_00 ( f+x+y*w, r+(x+dx)+(y+dy)*w, w, 16, 0x00ffffff);
 
-		  if (sad < fmin)
-		    {
-		      fmin = sad;
-		      fx = dx;
-		      fy = dy;
-		    }
-		}
-//        goto END_SEARCH;
-
-	  DO_SMALL_SEARCH:
-	    if (fmin > 256)
-	      {
-		ox = fx;	// take the best guess so far as the new center
-		oy = fy;
-		for (dy = (oy - 4); dy <= (oy + 4); dy += 2)
-		  for (dx = (ox - 4); dx <= (ox + 4); dx += 1)
-		    {
-		      sad = psad_00
-			(f1 + (x) + (y) * w,
-			 f0 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
-
-		      if (sad < fmin)
+		if(sad<min)
 			{
-			  fmin = sad;
-			  fx = dx;
-			  fy = dy;
+			vx=dx;
+			vy=dy;
+			min=sad;
 			}
-		    }
-	      }
-//        END_SEARCH:
-	  }
-
-	// clip invalid motion-vectors
-	fx = (fx + x) > w ? 0 : fx;
-	fx = (fx + x) < 0 ? 0 : fx;
-	fy = (fy + y) > h ? 0 : fy;
-	fy = (fy + y) < 0 ? 0 : fy;
-
-	f_sum[ix][iy] = fmin;
-	mv_fx[ix][iy] = fx;
-	mv_fy[ix][iy] = fy;
-
-// -------------------------------------------------------------------------------------------------------- //
-// -------------------------------------------------------------------------------------------------------- //
-// ---[ end of field0-processing ]------------------------------------------------------------------------- //
-// -------------------------------------------------------------------------------------------------------- //
-// -------------------------------------------------------------------------------------------------------- //
-
-// -------------------------------------------------------------------------------------------------------- //
-// -------------------------------------------------------------------------------------------------------- //
-// ---[ start of field2-processing ]----------------------------------------------------------------------- //
-// -------------------------------------------------------------------------------------------------------- //
-// -------------------------------------------------------------------------------------------------------- //
-
-	//if the index indicates that there do exist some previous motion-vectors
-	// use them as candidates to do a fast estimation of the new ones...
-	if (ix > 0 && iy > 0)
-	  {
-	    // define the early termination-threshold
-	    thres =
-	      median3_l (b_sum[ix - 1][iy - 1], b_sum[ix][iy - 1],
-			 b_sum[ix - 1][iy]);
-
-	    // its unlikely to find something better than Pixels_In_Block*Noise, so
-	    // we limit 'thres' to the lower bound of 512. This is an extremly
-	    // good match and even if it is not optimal, it is refined later, so we
-	    // can leave all other estimates, if we find something below it...
-	    thres = thres < 512 ? 512 : thres;
-
-	    // test for the median-vector first (this usually is the best vector to be found...)
-	    dx =
-	      median3 (mv_bx[ix - 1][iy - 1], mv_bx[ix][iy - 1],
-		       mv_bx[ix - 1][iy]);
-	    dy =
-	      median3 (mv_by[ix - 1][iy - 1], mv_by[ix][iy - 1],
-		       mv_by[ix - 1][iy]);
-	    bx = dx;
-	    by = dy;
-
-	    bmin = psad_00
-	      (f1 + (x) + (y) * w, f2 + (x + dx) + (y + dy) * w, w, 16,
-	       0x00ffffff);
-
-	    if (bmin > thres)	// Still not good enough...
-	      {
-		// test for the center
-		dx = 0;
-		dy = 0;
-
-		sad = psad_00
-		  (f1 + (x) + (y) * w, f2 + (x + dx) + (y + dy) * w, w, 16,
-		   0x00ffffff);
-
-		if (sad < bmin)
-		  {
-		    bmin = sad;
-		    bx = dx;
-		    by = dy;
-		  }
-
-		if (bmin > thres)	// Still not good enough...
-		  {
-		    // test for the left-neighbor
-		    dx = mv_bx[ix - 1][iy];
-		    dy = mv_by[ix - 1][iy];
-
-		    sad = psad_00
-		      (f1 + (x) + (y) * w,
-		       f2 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
-
-		    if (sad < bmin)
-		      {
-			bmin = sad;
-			bx = dx;
-			by = dy;
-		      }
-
-		    if (bmin > thres)	// Still not good enough...
-		      {
-			// test for the top-neighbor
-			dx = mv_bx[ix][iy - 1];
-			dy = mv_by[ix][iy - 1];
-
-			sad = psad_00
-			  (f1 + (x) + (y) * w,
-			   f2 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
-
-			if (sad < bmin)
-			  {
-			    bmin = sad;
-			    bx = dx;
-			    by = dy;
-			  }
-
-			if (bmin > thres)	// Still not good enough...
-			  {
-			    // test for the top-left-neighbor
-			    dx = mv_bx[ix - 1][iy - 1];
-			    dy = mv_by[ix - 1][iy - 1];
-
-			    sad = psad_00
-			      (f1 + (x) + (y) * w,
-			       f2 + (x + dx) + (y + dy) * w, w, 16,
-			       0x00ffffff);
-
-			    if (sad < bmin)
-			      {
-				bmin = sad;
-				bx = dx;
-				by = dy;
-			      }
-
-			    if (bmin > thres)	// Still not good enough...
-			      {
-				// test for the top-right-neighbor
-				dx = mv_bx[ix + 1][iy - 1];
-				dy = mv_by[ix + 1][iy - 1];
-
-				sad = psad_00
-				  (f1 + (x) + (y) * w,
-				   f2 + (x + dx) + (y + dy) * w, w, 16,
-				   0x00ffffff);
-
-				if (sad < bmin)
-				  {
-				    bmin = sad;
-				    bx = dx;
-				    by = dy;
-				  }
-
-				if (bmin > thres)	// Still not good enough...
-				  {
-				    // test for the mean-of-neighbors
-				    dx = mv_bx[ix - 1][iy - 1];
-				    dx += mv_bx[ix][iy - 1];
-				    dx += mv_bx[ix + 1][iy - 1];
-				    dx += mv_bx[ix - 1][iy];
-				    dx /= 4;
-
-				    dy = mv_by[ix - 1][iy - 1];
-				    dy += mv_by[ix][iy - 1];
-				    dy += mv_by[ix + 1][iy - 1];
-				    dy += mv_by[ix - 1][iy];
-				    dy /= 4;
-
-				    sad = psad_00
-				      (f1 + (x) + (y) * w,
-				       f2 + (x + dx) + (y + dy) * w, w, 16,
-				       0x00ffffff);
-
-				    if (sad < bmin)
-				      {
-					bmin = sad;
-					bx = dx;
-					by = dy;
-				      }
-
-				    if (bmin > thres)	// Still not good enough...
-				      {
-					// test for the temporal-neighbor
-					dx = mv_bx[ix][iy];
-					dy = mv_by[ix][iy];
-
-					sad = psad_00
-					  (f1 + (x) + (y) * w,
-					   f2 + (x + dx) + (y + dy) * w, w,
-					   16, 0x00ffffff);
-
-					if (sad < bmin)
-					  {
-					    bmin = sad;
-					    bx = dx;
-					    by = dy;
-					  }
-				      }
-				  }
-			      }
-			  }
-		      }
-		  }
-	      }
-
-	    if (bmin > thres)
-	      {
-		// the match is bad, do a large search arround the center.
-		goto DO_LARGE_SEARCH_B;
-	      }
-	    else
-	      {
-		// the match is good, just do a small search arround to refine it.
-		goto DO_SMALL_SEARCH_B;
-	      }
-	  }
-	else
-	  {
-	    // as we don't have candidates, for these blocks on the image-rim, we do a multi-stage-search
-	    // (to be replaced by something better...)
-	    //
-	    // Stage 1
-	  DO_LARGE_SEARCH_B:
-	    ox = oy = 0;	// center is the best guess we have, now
-	    bmin = 0x00ffffff;	// reset min
-	    for (dy = (oy - 8); dy <= (oy + 8); dy += 2)
-	      for (dx = (ox - 8); dx <= (ox + 8); dx += 1)
-		{
-		  sad = psad_00
-		    (f1 + (x) + (y) * w, f2 + (x + dx) + (y + dy) * w, w, 16,
-		     0x00ffffff);
-
-		  if (sad < bmin)
-		    {
-		      bmin = sad;
-		      bx = dx;
-		      by = dy;
-		    }
 		}
-//        goto END_B_SEARCH;
 
-	  DO_SMALL_SEARCH_B:
-	    if (bmin > 256)
-	      {
-		ox = bx;	// take the best guess so far as the new center
-		oy = by;
-		for (dy = (oy - 4); dy <= (oy + 4); dy += 2)
-		  for (dx = (ox - 4); dx <= (ox + 4); dx += 1)
-		    {
-		      sad = psad_00
-			(f1 + (x) + (y) * w,
-			 f2 + (x + dx) + (y + dy) * w, w, 16, 0x00ffffff);
+	ox=vx;
+	oy=vy;
+	for(dy=(oy-4);dy<=(oy+4);dy+=4) 
+	for(dx=(ox-4);dx<=(ox+4);dx+=4)
+		{
+		sad = psad_00 ( f+x+y*w, r+(x+dx)+(y+dy)*w, w, 16, 0x00ffffff);
 
-		      if (sad < bmin)
+		if(sad<min)
 			{
-			  bmin = sad;
-			  bx = dx;
-			  by = dy;
+			vx=dx;
+			vy=dy;
+			min=sad;
 			}
-		    }
-	      }
-//            END_B_SEARCH:
-	  }
-
-	// clip invalid motion-vectors
-	bx = (bx + x) > w ? 0 : bx;
-	bx = (bx + x) < 0 ? 0 : bx;
-	by = (by + y) > h ? 0 : by;
-	by = (by + y) < 0 ? 0 : by;
-
-	b_sum[ix][iy] = bmin;
-	mv_bx[ix][iy] = bx;
-	mv_by[ix][iy] = by;
-
-// -------------------------------------------------------------------------------------------------------- //
-// -------------------------------------------------------------------------------------------------------- //
-// ---[ end of field2-processing ]------------------------------------------------------------------------- //
-// -------------------------------------------------------------------------------------------------------- //
-// -------------------------------------------------------------------------------------------------------- //
-
-      }
-
-  for (y = 0; y < h; y += 8)
-    for (x = 0; x < w; x += 8)
-      {
-	// create index numbers for motion-lookup-table
-	ix = x / 16;
-	iy = y / 16;
-
-	fx = mv_fx[ix][iy];
-	fy = mv_fy[ix][iy];
-
-	bx = mv_bx[ix][iy];
-	by = mv_by[ix][iy];
-
-	// process the matched block for video
-	for (dy = 0; dy < 16; dy++)
-	  for (dx = 0; dx < 16; dx++)
-	    {
-	      // we only need to reconstruct that lines missing in the current field
-	      // the idea behind is, that the typical reconstruction-filter only lacks
-	      // the high frequencies. We add these from the previous and past fields
-	      // but leave all the other information intact.
-	      //
-	      // This will give a good reconstruction without visable motion-errors.
-	      // That is if the high-pass-information is out of phase it is graduately
-	      // discarded, so in the worst case there just remains a linear-approximation
-	      // but where ever possible the full spectrum is reconstructed...
-	      if (((dy + y) & 1) == field)
-		{
-		  // high-pass-information of previous field
-		  a = *(f0 + (x + dx + fx) + (y + dy + fy - 1) * w);
-		  a += *(f0 + (x + dx + fx) + (y + dy + fy + 1) * w);
-		  a /= 2;
-		  a -= *(f0 + (x + dx + fx) + (y + dy + fy) * w);
-
-		  // high-pass-information of next field
-		  b = *(f2 + (x + dx + bx) + (y + dy + by - 1) * w);
-		  b += *(f2 + (x + dx + bx) + (y + dy + by + 1) * w);
-		  b /= 2;
-		  b -= *(f2 + (x + dx + bx) + (y + dy + by) * w);
-
-
-		  // low-pass-information of current field
-		  c = *(f1 + (x + dx) + (y + dy - 1) * w);
-		  c += *(f1 + (x + dx) + (y + dy + 1) * w);
-		  c /= 2;
-
-		  // combine both HP-images with the LP-image
-		  a = c - (a + b) * 5 / 8;
-		  // the high frequencies are boosted a little...
-
-		  a = a > 255 ? 255 : a;
-		  a = a < 0 ? 0 : a;
-
-		  *(r + (x + dx) + (y + dy) * w) = a;
 		}
-	      else
+
+	ox=vx;
+	oy=vy;
+	for(dy=(oy-2);dy<=(oy+2);dy+=1) 
+	for(dx=(ox-2);dx<=(ox+2);dx+=1)
 		{
-		  *(r + (x + dx) + (y + dy) * w) =
-		    *(f1 + (x + dx) + (y + dy) * w);
+		sad = psad_00 ( f+x+y*w, r+(x+dx)+(y+dy)*w, w, 16, 0x00ffffff);
+
+		if(sad<min)
+			{
+			vx=dx;
+			vy=dy;
+			min=sad;
+			}
 		}
-	    }
-      }
+
+	x += 4;
+	y += 4;
+
+	for(dy=(field+1);dy<=8;dy+=2)
+	for(dx=0;dx<8;dx++)
+		{
+		*(scratch+(x+dx)+(y+dy)*w)=*(r+(x+dx+vx)+(y+dy+vy)*w);
+		}
+	}	
+
+// copy field lines
+for(y=field;y<h;y+=2)
+	memcpy ( scratch+y*w, f+y*w, w);
+
+// update outframe
+memcpy (r,scratch,w*h);
+
+// protect outframe against motion-mismatches and leak in some spatial interpolation to make
+// motion-compensation a little more robust...
+for(y=field;y<h;y+=2)
+	for(x=0;x<w;x++)
+	{
+		a = *(r+x+y*w); 		// original field-line;
+		b = *(r+x+y*w+w); 		// motion-based interpolation;
+		c = *(r+x+y*w+2*w); 		// original field-line;
+		d = *(f+x+y*w+w); 		// edge-interpolated;
+
+		b = (d+2*b)/3;
+
+		*(r+x+y*w+w) = median (a,b,c);
+	}
+
+// blend fields to fullfill Kell-Factor and supress ALIAS...
+// this is important! do *NOT* deactivate unless you want to see bad 
+// flicker on TV and alias/line-stripes on PC. The algorithm heavyly
+// relies on this filter.
+//
+// If you think this is wrong, please read how (good) interlaced cameras
+// generate one field from the CCD-chip. There is no resolution above.
+// And I don't like it either, but I repeat: there is no resolution above
+// to be reconstructed. Only badly computer-generated interlaced frames
+// do have frequencies above and this looks really, really bad on an
+// interlaced screen, too...
+
+#if 1
+for(y=1;y<(h-1);y++)
+	for(x=0;x<w;x++)
+	{
+		a  = *(r+x+y*w-w); 	
+		a += *(r+x+y*w)*2; 	
+		a += *(r+x+y*w+w); 	
+
+		*(r+x+y*w) = a/4;
+	}
+#endif
 }

@@ -14,3 +14,5 @@
 
 void interpolate_field (uint8_t * frame, uint8_t * inframe, int w, int h,
 			 int field);
+void bandpass_field (uint8_t * frame, uint8_t * inframe, int w, int h);
+void downsample_to_framesize (uint8_t * out, uint8_t * in, int w, int h);

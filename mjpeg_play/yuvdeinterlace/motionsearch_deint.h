@@ -12,5 +12,4 @@
  *                                                         *
  ***********************************************************/
 
-void motion_compensate (uint8_t * r, uint8_t * f0, uint8_t * f1, uint8_t * f2,
-			int w, int h, int field);
+void motion_compensate (uint8_t * r, uint8_t * f , int w, int h, int field);

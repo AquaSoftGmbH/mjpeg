@@ -57,8 +57,8 @@
 #include "cpu_accel.h"
 #include "motionsearch.h"
 #include "sinc_interpolation.h"
-#include "blend_fields.h"
-#include "motionsearch_deint.h"
+//#include "blend_fields.h"
+//#include "motionsearch_deint.h"
 
 #define BOTTOM_FIRST 0
 #define TOP_FIRST 1
@@ -80,12 +80,11 @@ int non_interleaved_fields = 0;
 int use_film_fx = 0;
 
 uint8_t *inframe[3];
-uint8_t *frame1[3];
-uint8_t *frame2[3];
-uint8_t *frame3[3];
-uint8_t *frame4[3];
-uint8_t *r0[3];
-uint8_t *r1[3];
+uint8_t *field0[3];
+uint8_t *field1[3];
+uint8_t *reconstructed[3];
+uint8_t *outframe[3];
+uint8_t *scratch;
 
 int buff_offset;
 int buff_size;
@@ -93,29 +92,6 @@ int buff_size;
 /***********************************************************
  * helper-functions                                        *
  ***********************************************************/
-
-void (*blend_fields) (uint8_t * dst[3], uint8_t * src[3]);
-void upscale (uint8_t * dst, uint8_t * src, int w, int h);
-void antialias (uint8_t * src[3]);
-void
-rotate_buffers (void)
-{
-  int i;
-  uint8_t *p1;
-  uint8_t *p2;
-
-  for (i = 0; i < 3; i++)
-    {
-      p1 = frame3[i];
-      p2 = frame4[i];
-
-      frame4[i] = frame2[i];
-      frame3[i] = frame1[i];
-
-      frame1[i] = p1;
-      frame2[i] = p2;
-    }
-}
 
 
 /***********************************************************
@@ -134,8 +110,6 @@ main (int argc, char *argv[])
   y4m_frame_info_t oframeinfo;
   y4m_stream_info_t ostreaminfo;
   static uint32_t framenr;
-
-  blend_fields = &blend_fields_non_accel;
 
   mjpeg_log (LOG_INFO, "-------------------------------------------------");
   mjpeg_log (LOG_INFO, "       Motion-Compensating-Deinterlacer          ");
@@ -310,36 +284,30 @@ main (int argc, char *argv[])
      * functions to overshot. The biggest overshot is needed for the
      * MC-functions, so we'll use 8*width...
      */
-    buff_offset = width * 8;
-    buff_size = buff_offset * 2 + width * height;
+    buff_offset = width * 16;
+    buff_size = buff_offset * 2 + width * height*2;
 
     inframe[0] = buff_offset + (uint8_t *) malloc (buff_size);
     inframe[1] = buff_offset + (uint8_t *) malloc (buff_size);
     inframe[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    frame1[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame1[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame1[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    field0[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    field0[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    field0[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    frame2[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame2[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame2[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    field1[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    field1[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    field1[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    frame3[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame3[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame3[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    reconstructed[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    reconstructed[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    reconstructed[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    frame4[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame4[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    frame4[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    outframe[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    outframe[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    outframe[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    r0[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    r0[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    r0[2] = buff_offset + (uint8_t *) malloc (buff_size);
-
-    r1[0] = buff_offset + (uint8_t *) malloc (buff_size);
-    r1[1] = buff_offset + (uint8_t *) malloc (buff_size);
-    r1[2] = buff_offset + (uint8_t *) malloc (buff_size);
+    scratch = buff_offset + (uint8_t *) malloc (buff_size);
 
     mjpeg_log (LOG_INFO, "Buffers allocated.");
   }
@@ -349,98 +317,54 @@ main (int argc, char *argv[])
 					    &istreaminfo,
 					    &iframeinfo, inframe)))
     {
-      /* rotate frames...
-       * the deinterlacer heavily relies on knowing past fields, so
-       * we need to save them. But instead of copying it is better to
-       * just rotate the buffers, as this saves a lot cycles on the 
-       * bus. memory transfer would cause a rather high load on the
-       * machine...
-       */
-      rotate_buffers ();
 
-      if (field_order == BOTTOM_FIRST)
+	interpolate_field ( field0[0],inframe[0], lwidth, lheight, 0);
+      	interpolate_field ( field0[1],inframe[1], cwidth, cheight, 0);
+      	interpolate_field ( field0[2],inframe[2], cwidth, cheight, 0);
+
+	interpolate_field ( field1[0],inframe[0], lwidth, lheight, 1);
+      	interpolate_field ( field1[1],inframe[1], cwidth, cheight, 1);
+      	interpolate_field ( field1[2],inframe[2], cwidth, cheight, 1);
+
+	//y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, field1);
+	//y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, field0);
+
+#if 1
+	if(field_order==BOTTOM_FIRST)
 	{
-	  interpolate_field (frame1[0], inframe[0], lwidth, lheight, 0);
-	  interpolate_field (frame1[1], inframe[1], cwidth, cheight, 0);
-	  interpolate_field (frame1[2], inframe[2], cwidth, cheight, 0);
+		motion_compensate ( outframe[0],field1[0], lwidth,lheight, 1);
+		motion_compensate ( outframe[1],field1[1], cwidth,cheight, 1);
+		motion_compensate ( outframe[2],field1[2], cwidth,cheight, 1);
 
-	  interpolate_field (frame2[0], inframe[0], lwidth, lheight, 1);
-	  interpolate_field (frame2[1], inframe[1], cwidth, cheight, 1);
-	  interpolate_field (frame2[2], inframe[2], cwidth, cheight, 1);
+		if(both_fields)
+			{
+			y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, outframe);
+			}
+		motion_compensate ( outframe[0],field0[0], lwidth,lheight, 0);
+		motion_compensate ( outframe[1],field0[1], cwidth,cheight, 0);
+		motion_compensate ( outframe[2],field0[2], cwidth,cheight, 0);
 
-	  motion_compensate (r0[0], frame1[0], frame2[0], frame3[0], lwidth,
-			     lheight, 0);
-	  motion_compensate (r0[1], frame1[1], frame2[1], frame3[1], cwidth,
-			     cheight, 0);
-	  motion_compensate (r0[2], frame1[2], frame2[2], frame3[2], cwidth,
-			     cheight, 0);
-
-	  if (both_fields)
-	    {
-	      motion_compensate (r1[0], frame2[0], frame3[0], frame4[0],
-				 lwidth, lheight, 1);
-	      motion_compensate (r1[1], frame2[1], frame3[1], frame4[1],
-				 cwidth, cheight, 1);
-	      motion_compensate (r1[2], frame2[2], frame3[2], frame4[2],
-				 cwidth, cheight, 1);
-	    }
-	}
-      else
-	{			// top field first
-	  interpolate_field (frame1[0], inframe[0], lwidth, lheight, 1);
-	  interpolate_field (frame1[1], inframe[1], cwidth, cheight, 1);
-	  interpolate_field (frame1[2], inframe[2], cwidth, cheight, 1);
-
-	  interpolate_field (frame2[0], inframe[0], lwidth, lheight, 0);
-	  interpolate_field (frame2[1], inframe[1], cwidth, cheight, 0);
-	  interpolate_field (frame2[2], inframe[2], cwidth, cheight, 0);
-
-	  motion_compensate (r0[0], frame1[0], frame2[0], frame3[0], lwidth,
-			     lheight, 1);
-	  motion_compensate (r0[1], frame1[1], frame2[1], frame3[1], cwidth,
-			     cheight, 1);
-	  motion_compensate (r0[2], frame1[2], frame2[2], frame3[2], cwidth,
-			     cheight, 1);
-
-	  if (both_fields)
-	    {
-	      motion_compensate (r1[0], frame2[0], frame3[0], frame4[0],
-				 lwidth, lheight, 0);
-	      motion_compensate (r1[1], frame2[1], frame3[1], frame4[1],
-				 cwidth, cheight, 0);
-	      motion_compensate (r1[2], frame2[2], frame3[2], frame4[2],
-				 cwidth, cheight, 0);
-	    }
+		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, outframe);
 	}
 
-      // blank 4 lines on top and bottom, as this algorithm can not recon-
-      // struct them...
-      memset (r0[0], 0, lwidth * 4);
-      memset (r0[0] + (lwidth * lheight - 4 * lwidth), 0, lwidth * 4);
-      memset (r0[1], 128, cwidth * 2);
-      memset (r0[1] + (cwidth * cheight - 2 * cwidth), 128, cwidth * 2);
-      memset (r0[2], 128, cwidth * 2);
-      memset (r0[2] + (cwidth * cheight - 2 * cwidth), 128, cwidth * 2);
-
-      if (both_fields)
+	if(field_order==TOP_FIRST)
 	{
-	  memset (r1[0], 0, lwidth * 4);
-	  memset (r1[0] + (lwidth * lheight - 4 * lwidth), 0, lwidth * 4);
-	  memset (r1[1], 128, cwidth * 2);
-	  memset (r1[1] + (cwidth * cheight - 2 * cwidth), 128, cwidth * 2);
-	  memset (r1[2], 128, cwidth * 2);
-	  memset (r1[2] + (cwidth * cheight - 2 * cwidth), 128, cwidth * 2);
+		motion_compensate ( outframe[0],field0[0], lwidth,lheight, 0);
+		motion_compensate ( outframe[1],field0[1], cwidth,cheight, 0);
+		motion_compensate ( outframe[2],field0[2], cwidth,cheight, 0);
+
+		if(both_fields)
+			{
+			y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, reconstructed);
+			}
+
+		motion_compensate ( outframe[0],field1[0], lwidth,lheight, 1);
+		motion_compensate ( outframe[1],field1[1], cwidth,cheight, 1);
+		motion_compensate ( outframe[2],field1[2], cwidth,cheight, 1);
+
+		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, reconstructed);
 	}
-
-      if (framenr > 0)
-	{
-	  if (both_fields)
-	    y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r1);
-	  y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, r0);
-	}
-
-      framenr++;
-
+#endif
     }
 
   /* free allocated buffers */
@@ -449,29 +373,23 @@ main (int argc, char *argv[])
     free (inframe[1] - buff_offset);
     free (inframe[2] - buff_offset);
 
-    free (frame1[0] - buff_offset);
-    free (frame1[1] - buff_offset);
-    free (frame1[2] - buff_offset);
+    free (field0[0] - buff_offset);
+    free (field0[1] - buff_offset);
+    free (field0[2] - buff_offset);
 
-    free (frame2[0] - buff_offset);
-    free (frame2[1] - buff_offset);
-    free (frame2[2] - buff_offset);
+    free (field1[0] - buff_offset);
+    free (field1[1] - buff_offset);
+    free (field1[2] - buff_offset);
 
-    free (frame3[0] - buff_offset);
-    free (frame3[1] - buff_offset);
-    free (frame3[2] - buff_offset);
+    free (reconstructed[0] - buff_offset);
+    free (reconstructed[1] - buff_offset);
+    free (reconstructed[2] - buff_offset);
 
-    free (frame4[0] - buff_offset);
-    free (frame4[1] - buff_offset);
-    free (frame4[2] - buff_offset);
+    free (outframe[0] - buff_offset);
+    free (outframe[1] - buff_offset);
+    free (outframe[2] - buff_offset);
 
-    free (r0[0] - buff_offset);
-    free (r0[1] - buff_offset);
-    free (r0[2] - buff_offset);
-
-    free (r1[0] - buff_offset);
-    free (r1[1] - buff_offset);
-    free (r1[2] - buff_offset);
+    free (scratch - buff_offset);
 
     mjpeg_log (LOG_INFO, "Buffers freed.");
   }
@@ -484,135 +402,3 @@ main (int argc, char *argv[])
   return (0);
 }
 
-void
-upscale (uint8_t * dst, uint8_t * src, int w, int h)
-{
-  // triangulation scaler
-  int x, y;
-  int m;
-  int a, b, c, d;
-  int ae, be, ce, de, me;
-
-  for (y = 0; y <= h; y++)
-    for (x = 0; x <= w; x++)
-      {
-	*(dst + (x * 2) + (y * 2) * (w * 2)) = *(src + x + y * w);
-      }
-
-  w *= 2;
-  h *= 2;
-
-  for (y = 1; y <= h; y += 2)
-    for (x = 1; x <= w; x += 2)
-      {
-	// fill in the four neighbor-pixels
-	a = *(dst + (x - 1) + (y - 1) * w);
-	b = *(dst + (x + 1) + (y - 1) * w);
-	c = *(dst + (x - 1) + (y + 1) * w);
-	d = *(dst + (x + 1) + (y + 1) * w);
-
-	// calculate the mean of the neighbors
-	m = (a + b + c + d) / 4;
-
-	// calculate the error for every neighbor-pixel
-	ae = (m - a) * (m - a);
-	be = (m - b) * (m - b);
-	ce = (m - c) * (m - c);
-	de = (m - d) * (m - d);
-
-	// find the maximum error-value
-	me = ae;
-	me = (me < be) ? be : me;
-	me = (me < ce) ? ce : me;
-	me = (me < de) ? de : me;
-
-
-	// generate mixing coefficients
-	ae = me - ae;
-	be = me - be;
-	ce = me - ce;
-	de = me - de;
-	me = ae + be + ce + de;
-
-	if (me != 0)
-	  m = (a * ae + b * be + c * ce + d * de) / me;
-
-	*(dst + x + y * w) = m;
-      }
-
-  for (y = 0; y <= h; y += 2)
-    for (x = 1; x <= w; x += 2)
-      {
-	// fill in the four neighbor-pixels
-	a = *(dst + (x - 1) + y * w);
-	b = *(dst + (x + 1) + y * w);
-	c = *(dst + x + (y - 1) * w);
-	d = *(dst + x + (y + 1) * w);
-
-	// calculate the mean of the neighbors
-	m = (a + b + c + d) / 4;
-
-	// calculate the error for every neighbor-pixel
-	ae = (m - a) * (m - a);
-	be = (m - b) * (m - b);
-	ce = (m - c) * (m - c);
-	de = (m - d) * (m - d);
-
-	// find the maximum error-value
-	me = ae;
-	me = (me < be) ? be : me;
-	me = (me < ce) ? ce : me;
-	me = (me < de) ? de : me;
-
-
-	// generate mixing coefficients
-	ae = me - ae;
-	be = me - be;
-	ce = me - ce;
-	de = me - de;
-	me = ae + be + ce + de;
-
-	if (me != 0)
-	  m = (a * ae + b * be + c * ce + d * de) / me;
-
-	*(dst + x + y * w) = m;
-      }
-
-  for (y = 1; y <= h; y += 2)
-    for (x = 0; x <= w; x += 2)
-      {
-	// fill in the four neighbor-pixels
-	a = *(dst + (x - 1) + y * w);
-	b = *(dst + (x + 1) + y * w);
-	c = *(dst + x + (y - 1) * w);
-	d = *(dst + x + (y + 1) * w);
-
-	// calculate the mean of the neighbors
-	m = (a + b + c + d) / 4;
-
-	// calculate the error for every neighbor-pixel
-	ae = (m - a) * (m - a);
-	be = (m - b) * (m - b);
-	ce = (m - c) * (m - c);
-	de = (m - d) * (m - d);
-
-	// find the maximum error-value
-	me = ae;
-	me = (me < be) ? be : me;
-	me = (me < ce) ? ce : me;
-	me = (me < de) ? de : me;
-
-
-	// generate mixing coefficients
-	ae = me - ae;
-	be = me - be;
-	ce = me - ce;
-	de = me - de;
-	me = ae + be + ce + de;
-
-	if (me != 0)
-	  m = (a * ae + b * be + c * ce + d * de) / me;
-
-	*(dst + x + y * w) = m;
-      }
-}
