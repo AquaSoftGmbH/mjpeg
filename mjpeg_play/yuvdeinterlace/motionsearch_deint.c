@@ -127,7 +127,7 @@ for(y=field;y<h;y+=2)
 		c = *(r+x+y*w+2*w); 		// original field-line;
 		d = *(f+x+y*w+w); 		// edge-interpolated;
 
-		b = (d+b)/2;
+		b = (d+3*b)/4;
 
 		*(r+x+y*w+w) = median (a,b,c);
 	}
