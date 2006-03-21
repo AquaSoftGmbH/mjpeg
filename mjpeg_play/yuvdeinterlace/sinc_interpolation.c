@@ -126,10 +126,11 @@ interpolate_field (uint8_t * frame, uint8_t * inframe, int w, int h,
 		memcpy (frame+(w*h-w),inframe+(w*h-w),w);
 }
 
+void
 bandpass_field (uint8_t * frame, uint8_t * inframe, int w, int h)
 {
-  int x, y, v;
-  int a, b, c;
+  int x, y;
+  int b;
 
   for (y = 0; y < h; y++)
     {
