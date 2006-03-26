@@ -235,6 +235,18 @@ int main(int argc, char *argv[])
    if (param_interlace < 0) {
        param_interlace = y4m_si_get_interlace(&streaminfo);
     }
+
+#ifdef HAVE_LIBQUICKTIME
+	char *dotptr;
+	dotptr = strrchr(param_output, '.');
+	if (!strcasecmp(dotptr+1, "mov"))
+		param_format = 'q';
+#endif
+	if (param_format == 'a')
+		mjpeg_info("creating AVI output format");
+	else if (param_format == 'q')
+		mjpeg_info("creating Quicktime output format");
+
    if (param_interlace == Y4M_ILACE_TOP_FIRST  && param_format == 'A')
       param_format = 'a';
    else if (param_interlace == Y4M_ILACE_BOTTOM_FIRST && param_format == 'a')
