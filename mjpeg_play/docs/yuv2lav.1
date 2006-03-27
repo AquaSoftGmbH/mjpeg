@@ -55,6 +55,10 @@ This sets the output file format, which has to be one of
 AVI with reversed field of course only makes sense if yuv2lav's
 feed is an interlaced video source and should only be needed if
 you experience frame reversal problems in your output.
+If you don't use that option yuv2lav will set the output format
+to AVI if the last 3 char are avi, or to Quicktime if you use 
+mov. If you use the -f option it overides the setting in the 
+filename
 .TP
 .BI -q \ num
 This option specifies the JPEG encoding quality as passed through

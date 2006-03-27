@@ -43,7 +43,7 @@
 
 
 static int   param_quality = 80;
-static char  param_format = 'a';
+static char  param_format = 'x'; /* a format we don't know */
 static char *param_output = 0;
 static char *param_inputwav = NULL;
 static int   param_bufsize = 256*1024; /* 256 kBytes */
@@ -116,6 +116,10 @@ int main(int argc, char *argv[])
 
    y4m_frame_info_t frameinfo;
    y4m_stream_info_t streaminfo;
+
+#ifdef HAVE_LIBQUICKTIME
+	char *dotptr;
+#endif 
 
    while ((n = getopt(argc, argv, "v:f:I:q:b:m:o:w:")) != -1) {
       switch (n) {
@@ -236,16 +240,23 @@ int main(int argc, char *argv[])
        param_interlace = y4m_si_get_interlace(&streaminfo);
     }
 
-#ifdef HAVE_LIBQUICKTIME
-	char *dotptr;
+/* If no desired format option was given, we try to detect the format with */
+/* the last 4 char of the filename */
+#ifdef HAVE_LIBQUICKTIME 
 	dotptr = strrchr(param_output, '.');
-	if (!strcasecmp(dotptr+1, "mov"))
+	if ( (!strcasecmp(dotptr+1, "mov")) && (param_format == 'x') )
 		param_format = 'q';
 #endif
+	if ( (!strcasecmp(dotptr+1, "avi")) && (param_format == 'x') )
+		param_format = 'a';
+
+/* Telling the people which format we really use */
 	if (param_format == 'a')
 		mjpeg_info("creating AVI output format");
 	else if (param_format == 'q')
 		mjpeg_info("creating Quicktime output format");
+	else 
+		mjpeg_error_exit1("No format specified add the -f option");
 
    if (param_interlace == Y4M_ILACE_TOP_FIRST  && param_format == 'A')
       param_format = 'a';
