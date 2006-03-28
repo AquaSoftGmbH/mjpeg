@@ -76,6 +76,7 @@ static void usage(void)
 	  "   -q num      JPEG encoding quality [%d%%]\n"
 	  "   -b num      size of MJPEG buffer [%d kB]\n"
           "   -m num      maimum size per file [%d MB]\n"
+	  "   -w file     WAVE file - audio data to be added to output file\n"
 	  "   -o file     output mjpeg file (REQUIRED!)\n",
 	  param_format, param_quality, param_bufsize/1024, param_maxfilesize);
 }

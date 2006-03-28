@@ -16,6 +16,8 @@ yuv2lav \- encodes lavtool's raw YUV frame streams into MJPEG files
 .IR num ]
 .RB [ -v
 .IR num ]
+.RB [ -w
+.IR file ]
 .B -o
 .I output-file
 
@@ -88,6 +90,11 @@ Force a specific interlacing type. 0 means no interlacing, 1 means
 top-field-first, 2 means bottom-field-first.
 
 .TP
+.BI -w \ file
+This is the WAV file containing audio data to be combined with the video
+stream into the output file.
+
+.TP
 .BI -v \ num
 Verbosity level. 0 means only print error messages, 2 prints full
 debug output.
@@ -97,7 +104,6 @@ debug output.
 Display a synopsis of the command syntax.
 
 .SH "EXAMPLES"
-
 .TP
 lav2yuv movie.avi | yuv2lav -fq -q 30 lowbitrate.qt
 would recompress movie.avi as a low bit rate Quicktime file.
