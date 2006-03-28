@@ -109,6 +109,7 @@ int main(int argc, char *argv[])
    lav_file_t *output = 0;
    int filenum = 0;
    unsigned long filesize_cur = 0;
+	char *dotptr;
    
    uint8_t *jpeg;
    int   jpegsize = 0;
@@ -117,9 +118,6 @@ int main(int argc, char *argv[])
    y4m_frame_info_t frameinfo;
    y4m_stream_info_t streaminfo;
 
-#ifdef HAVE_LIBQUICKTIME
-	char *dotptr;
-#endif 
 
    while ((n = getopt(argc, argv, "v:f:I:q:b:m:o:w:")) != -1) {
       switch (n) {
