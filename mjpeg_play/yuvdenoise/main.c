@@ -638,18 +638,13 @@ temporal_filter_planes (int idx, int w, int h, int t)
 
 void renoise (uint8_t * frame, int w, int h, int level )
 {
-static int initialized=0;
-static uint8_t random[8192];
+uint8_t random[8192];
 int i;
+static int cnt=0;
 
-if(level==0) return;
-
-if(initialized!=1)
-{
-	for(i=0;i<8192;i++)
-		random[i]=(i+i+i+i*i*i+1-random[i-1]+random[i-20]*random[i-5]*random[i-25])&255;
-	initialized=1;
-}
+for(i=0;i<8192;i++)
+	random[(i+cnt/2)&8191]=(i+i+i+i*i*i+1-random[i-1]+random[i-20]*random[i-5]*random[i-25])&255;
+cnt++;
 
 for(i=0;i<(w*h);i++)
 	*(frame+i)=(*(frame+i)*(255-level)+random[i&8191]*level)/255;
@@ -702,9 +697,14 @@ void filter_plane_median ( uint8_t * plane, int w, int h, int level)
 	min=(min>*(p+w+1))? *(p+w+1):min;
 	max=(max<*(p+w+1))? *(p+w+1):max;
 
-	if(*(p)<(min) || *(p)>(max))
+	if( *(p)<(min) )
 	{
-	*(d)= (*(p-w-1)+*(p-w  )+*(p-w+1)+*(p  -1)+*(p  +1)+*(p+w-1)+*(p+w  )+*(p+w+1))/8;
+	*(d)=min;
+	}
+	else
+	if( *(p)>(max) )
+	{
+	*(d)=max;
 	}
 	else
 	{
@@ -722,6 +722,7 @@ void filter_plane_median ( uint8_t * plane, int w, int h, int level)
 
 	p = scratchplane1;
 	d = scratchplane2;
+
 	for(i=0;i<=(w*h);i++)
 	{
 		avg=*(p)*level;
