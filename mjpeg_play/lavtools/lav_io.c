@@ -1364,6 +1364,7 @@ static int check_DV2_input(lav_file_t *lav_fd)
 	   /* FIXME */
 	   break;
 	}
+	free(frame);
 	dv_decoder_free(decoder);
 	lav_set_video_position(lav_fd,0);
 	return 0;
