@@ -1094,9 +1094,9 @@ static void print_summary(void)
     ((info->video_norm==1)?(30000/1001):25.));
 
   printf("Recording time  : %2d.%2.2d.%2.2d:%2.2d\n"
-         "Lost frames     : %3.3d\n"
-         "A/V sync ins/del: %3.3d/%3.3d\n"
-         "Audio errors    : %3.3d\n",
+         "Lost frames     : %d\n"
+         "A/V sync ins/del: %d/%d\n"
+         "Audio errors    : %d\n",
     tc.h, tc.m, tc.s, tc.f,
     num_lost, num_ins, num_del, num_aerr);
 }
