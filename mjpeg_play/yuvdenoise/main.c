@@ -72,483 +72,6 @@ uint8_t transform_G8[65536];
  * helper-functions                                        *
  ***********************************************************/
 
-// if we want any visualy correct threshold to be applied we need to linearize
-// the data. As YUV 8Bit is compressed in the shaddows, we would need to uncompress
-// this first by applying a gamma-correction of 2.8 for PAL and 2.2 for NTSC...
-// we instead actualy use 1.8 (which is incorrect for both but more "real")
-#if 0
-#define CMP(a,b) {int temp;if(a<b){temp=a;a=b;b=temp;}}
-
-int median3 ( int a, int b, int c )
-{
-	CMP(a,b);
-	CMP(b,c);
-	CMP(a,b);
-
-	return b;
-}
-
-int median5 ( int a, int b, int c, int d, int e )
-{
-	CMP(a,b);
-	CMP(b,c);
-	CMP(c,d);
-	CMP(d,e);
-
-	CMP(a,b);
-	CMP(b,c);
-	CMP(c,d);
-
-	CMP(a,b);
-	CMP(b,c);
-
-	return c;
-}
-
-int median7 ( int a, int b, int c, int d, int e, int f, int g )
-{
-	CMP(a,b);
-	CMP(b,c);
-	CMP(c,d);
-	CMP(d,e);
-	CMP(e,f);
-	CMP(f,g);
-
-	CMP(a,b);
-	CMP(b,c);
-	CMP(c,d);
-	CMP(d,e);
-	CMP(e,f);
-
-	CMP(a,b);
-	CMP(b,c);
-	CMP(c,d);
-	CMP(d,e);
-
-	CMP(a,b);
-	CMP(b,c);
-	CMP(c,d);
-
-	return c;
-}
-
-int median9 ( int value[9] )
-{
-	CMP(value[0],value[1]);
-	CMP(value[1],value[2]);
-	CMP(value[2],value[3]);
-	CMP(value[3],value[4]);
-	CMP(value[4],value[5]);
-	CMP(value[5],value[6]);
-	CMP(value[6],value[7]);
-	CMP(value[7],value[8]);
-
-	CMP(value[0],value[1]);
-	CMP(value[1],value[2]);
-	CMP(value[2],value[3]);
-	CMP(value[3],value[4]);
-	CMP(value[4],value[5]);
-	CMP(value[5],value[6]);
-	CMP(value[6],value[7]);
-
-	CMP(value[0],value[1]);
-	CMP(value[1],value[2]);
-	CMP(value[2],value[3]);
-	CMP(value[3],value[4]);
-	CMP(value[4],value[5]);
-	CMP(value[5],value[6]);
-
-	CMP(value[0],value[1]);
-	CMP(value[1],value[2]);
-	CMP(value[2],value[3]);
-	CMP(value[3],value[4]);
-	CMP(value[4],value[5]);
-
-	CMP(value[0],value[1]);
-	CMP(value[1],value[2]);
-	CMP(value[2],value[3]);
-	CMP(value[3],value[4]);
-
-	return value[4];
-}
-
-int median27 (uint8_t value[27] )
-{
-	CMP(value[ 0],value[ 1]);
-	CMP(value[ 1],value[ 2]);
-	CMP(value[ 2],value[ 3]);
-	CMP(value[ 3],value[ 4]);
-	CMP(value[ 4],value[ 5]);
-	CMP(value[ 5],value[ 6]);
-	CMP(value[ 6],value[ 7]);
-	CMP(value[ 7],value[ 8]);
-	CMP(value[ 8],value[ 9]);
-	CMP(value[ 9],value[10]);
-	CMP(value[10],value[11]);
-	CMP(value[11],value[12]);
-	CMP(value[12],value[13]);
-	CMP(value[13],value[14]);
-	CMP(value[14],value[15]);
-	CMP(value[15],value[16]);
-	CMP(value[16],value[17]);
-	CMP(value[17],value[18]);
-	CMP(value[18],value[19]);
-	CMP(value[19],value[20]);
-	CMP(value[20],value[21]);
-	CMP(value[21],value[22]);
-	CMP(value[22],value[23]);
-	CMP(value[23],value[24]);
-	CMP(value[24],value[25]);
-	CMP(value[25],value[26]);
-	CMP(value[26],value[27]);
-
-	CMP(value[ 0],value[ 1]);
-	CMP(value[ 1],value[ 2]);
-	CMP(value[ 2],value[ 3]);
-	CMP(value[ 3],value[ 4]);
-	CMP(value[ 4],value[ 5]);
-	CMP(value[ 5],value[ 6]);
-	CMP(value[ 6],value[ 7]);
-	CMP(value[ 7],value[ 8]);
-	CMP(value[ 8],value[ 9]);
-	CMP(value[ 9],value[10]);
-	CMP(value[10],value[11]);
-	CMP(value[11],value[12]);
-	CMP(value[12],value[13]);
-	CMP(value[13],value[14]);
-	CMP(value[14],value[15]);
-	CMP(value[15],value[16]);
-	CMP(value[16],value[17]);
-	CMP(value[17],value[18]);
-	CMP(value[18],value[19]);
-	CMP(value[19],value[20]);
-	CMP(value[20],value[21]);
-	CMP(value[21],value[22]);
-	CMP(value[22],value[23]);
-	CMP(value[23],value[24]);
-	CMP(value[24],value[25]);
-	CMP(value[25],value[26]);
-
-	CMP(value[ 0],value[ 1]);
-	CMP(value[ 1],value[ 2]);
-	CMP(value[ 2],value[ 3]);
-	CMP(value[ 3],value[ 4]);
-	CMP(value[ 4],value[ 5]);
-	CMP(value[ 5],value[ 6]);
-	CMP(value[ 6],value[ 7]);
-	CMP(value[ 7],value[ 8]);
-	CMP(value[ 8],value[ 9]);
-	CMP(value[ 9],value[10]);
-	CMP(value[10],value[11]);
-	CMP(value[11],value[12]);
-	CMP(value[12],value[13]);
-	CMP(value[13],value[14]);
-	CMP(value[14],value[15]);
-	CMP(value[15],value[16]);
-	CMP(value[16],value[17]);
-	CMP(value[17],value[18]);
-	CMP(value[18],value[19]);
-	CMP(value[19],value[20]);
-	CMP(value[20],value[21]);
-	CMP(value[21],value[22]);
-	CMP(value[22],value[23]);
-	CMP(value[23],value[24]);
-	CMP(value[24],value[25]);
-
-	CMP(value[ 0],value[ 1]);
-	CMP(value[ 1],value[ 2]);
-	CMP(value[ 2],value[ 3]);
-	CMP(value[ 3],value[ 4]);
-	CMP(value[ 4],value[ 5]);
-	CMP(value[ 5],value[ 6]);
-	CMP(value[ 6],value[ 7]);
-	CMP(value[ 7],value[ 8]);
-	CMP(value[ 8],value[ 9]);
-	CMP(value[ 9],value[10]);
-	CMP(value[10],value[11]);
-	CMP(value[11],value[12]);
-	CMP(value[12],value[13]);
-	CMP(value[13],value[14]);
-	CMP(value[14],value[15]);
-	CMP(value[15],value[16]);
-	CMP(value[16],value[17]);
-	CMP(value[17],value[18]);
-	CMP(value[18],value[19]);
-	CMP(value[19],value[20]);
-	CMP(value[20],value[21]);
-	CMP(value[21],value[22]);
-	CMP(value[22],value[23]);
-	CMP(value[23],value[24]);
-
-	CMP(value[ 0],value[ 1]);
-	CMP(value[ 1],value[ 2]);
-	CMP(value[ 2],value[ 3]);
-	CMP(value[ 3],value[ 4]);
-	CMP(value[ 4],value[ 5]);
-	CMP(value[ 5],value[ 6]);
-	CMP(value[ 6],value[ 7]);
-	CMP(value[ 7],value[ 8]);
-	CMP(value[ 8],value[ 9]);
-	CMP(value[ 9],value[10]);
-	CMP(value[10],value[11]);
-	CMP(value[11],value[12]);
-	CMP(value[12],value[13]);
-	CMP(value[13],value[14]);
-	CMP(value[14],value[15]);
-	CMP(value[15],value[16]);
-	CMP(value[16],value[17]);
-	CMP(value[17],value[18]);
-	CMP(value[18],value[19]);
-	CMP(value[19],value[20]);
-	CMP(value[20],value[21]);
-	CMP(value[21],value[22]);
-
-	CMP(value[ 0],value[ 1]);
-	CMP(value[ 1],value[ 2]);
-	CMP(value[ 2],value[ 3]);
-	CMP(value[ 3],value[ 4]);
-	CMP(value[ 4],value[ 5]);
-	CMP(value[ 5],value[ 6]);
-	CMP(value[ 6],value[ 7]);
-	CMP(value[ 7],value[ 8]);
-	CMP(value[ 8],value[ 9]);
-	CMP(value[ 9],value[10]);
-	CMP(value[10],value[11]);
-	CMP(value[11],value[12]);
-	CMP(value[12],value[13]);
-	CMP(value[13],value[14]);
-	CMP(value[14],value[15]);
-	CMP(value[15],value[16]);
-	CMP(value[16],value[17]);
-	CMP(value[17],value[18]);
-	CMP(value[18],value[19]);
-	CMP(value[19],value[20]);
-	CMP(value[20],value[21]);
-
-	CMP(value[ 0],value[ 1]);
-	CMP(value[ 1],value[ 2]);
-	CMP(value[ 2],value[ 3]);
-	CMP(value[ 3],value[ 4]);
-	CMP(value[ 4],value[ 5]);
-	CMP(value[ 5],value[ 6]);
-	CMP(value[ 6],value[ 7]);
-	CMP(value[ 7],value[ 8]);
-	CMP(value[ 8],value[ 9]);
-	CMP(value[ 9],value[10]);
-	CMP(value[10],value[11]);
-	CMP(value[11],value[12]);
-	CMP(value[12],value[13]);
-	CMP(value[13],value[14]);
-	CMP(value[14],value[15]);
-	CMP(value[15],value[16]);
-	CMP(value[16],value[17]);
-	CMP(value[17],value[18]);
-	CMP(value[18],value[19]);
-
-	CMP(value[ 0],value[ 1]);
-	CMP(value[ 1],value[ 2]);
-	CMP(value[ 2],value[ 3]);
-	CMP(value[ 3],value[ 4]);
-	CMP(value[ 4],value[ 5]);
-	CMP(value[ 5],value[ 6]);
-	CMP(value[ 6],value[ 7]);
-	CMP(value[ 7],value[ 8]);
-	CMP(value[ 8],value[ 9]);
-	CMP(value[ 9],value[10]);
-	CMP(value[10],value[11]);
-	CMP(value[11],value[12]);
-	CMP(value[12],value[13]);
-	CMP(value[13],value[14]);
-	CMP(value[14],value[15]);
-	CMP(value[15],value[16]);
-	CMP(value[16],value[17]);
-	CMP(value[17],value[18]);
-
-	CMP(value[ 0],value[ 1]);
-	CMP(value[ 1],value[ 2]);
-	CMP(value[ 2],value[ 3]);
-	CMP(value[ 3],value[ 4]);
-	CMP(value[ 4],value[ 5]);
-	CMP(value[ 5],value[ 6]);
-	CMP(value[ 6],value[ 7]);
-	CMP(value[ 7],value[ 8]);
-	CMP(value[ 8],value[ 9]);
-	CMP(value[ 9],value[10]);
-	CMP(value[10],value[11]);
-	CMP(value[11],value[12]);
-	CMP(value[12],value[13]);
-	CMP(value[13],value[14]);
-	CMP(value[14],value[15]);
-	CMP(value[15],value[16]);
-
-	CMP(value[ 0],value[ 1]);
-	CMP(value[ 1],value[ 2]);
-	CMP(value[ 2],value[ 3]);
-	CMP(value[ 3],value[ 4]);
-	CMP(value[ 4],value[ 5]);
-	CMP(value[ 5],value[ 6]);
-	CMP(value[ 6],value[ 7]);
-	CMP(value[ 7],value[ 8]);
-	CMP(value[ 8],value[ 9]);
-	CMP(value[ 9],value[10]);
-	CMP(value[10],value[11]);
-	CMP(value[11],value[12]);
-	CMP(value[12],value[13]);
-	CMP(value[13],value[14]);
-	CMP(value[14],value[15]);
-
-	CMP(value[ 0],value[ 1]);
-	CMP(value[ 1],value[ 2]);
-	CMP(value[ 2],value[ 3]);
-	CMP(value[ 3],value[ 4]);
-	CMP(value[ 4],value[ 5]);
-	CMP(value[ 5],value[ 6]);
-	CMP(value[ 6],value[ 7]);
-	CMP(value[ 7],value[ 8]);
-	CMP(value[ 8],value[ 9]);
-	CMP(value[ 9],value[10]);
-	CMP(value[10],value[11]);
-	CMP(value[11],value[12]);
-	CMP(value[12],value[13]);
-	CMP(value[13],value[14]);
-
-
-	return value[14];
-}
-uint8_t get_median ( uint8_t * pix_list, int max_index )
-{
-	int i;
-	int j;
-	int n = max_index;
-
-	for(i=0;i<max_index;i++)
-	{
-		for(j=0;j<n;j++)
-		{
-			CMP ( pix_list[j],pix_list[j+1] );
-		}
-		n--;
-	}
-	return pix_list[max_index/2];
-}
-
-
-void
-init_gamma_transform_LUTs (void)
-{
-  int i;
-
-  for (i = 0; i < 256; i++)
-    {
-      transform_L16[i] = pow ((float) i / 256.f, 1 / 1.8) * 65536.f;
-      //fprintf(stderr,"%i ",transform_L16[i]);
-    }
-
-  for (i = 0; i < 65536; i++)
-    {
-      transform_G8[i] = pow ((float) i / 65536.f, 1.8) * 256.f;
-      //fprintf(stderr,"%i ",transform_G8[i]);
-    }
-
-  mjpeg_log (LOG_INFO, "16-Bit gamma-transformations initialized...");
-}
-
-void
-adaptive_filter_plane (uint8_t * ref, int w, int h, uint16_t t)
-{
-  uint8_t *ff = ref;		// reference buffer
-
-  uint32_t x, m;
-  int32_t d;
-
-  t *= 256;
-
-  if (w == lwidth)
-    for (x = 0; x < (w * h); x++)
-      {
-
-	m = transform_L16[*(ff - 2 - w * 2)];
-	m += transform_L16[*(ff - 1 - w * 2)];
-	m += transform_L16[*(ff - w * 2)];
-	m += transform_L16[*(ff + 1 - w * 2)];
-	m += transform_L16[*(ff + 2 - w * 2)];
-	m += transform_L16[*(ff - 2 - w)];
-	m += transform_L16[*(ff - 1 - w)];
-	m += transform_L16[*(ff - w)] * 2;
-	m += transform_L16[*(ff + 1 - w)];
-	m += transform_L16[*(ff + 2 - w)];
-	m += transform_L16[*(ff - 2)];
-	m += transform_L16[*(ff - 1)] * 2;
-	m += transform_L16[*(ff)] * 4;
-	m += transform_L16[*(ff + 1)] * 2;
-	m += transform_L16[*(ff + 2)];
-	m += transform_L16[*(ff - 2 + w)];
-	m += transform_L16[*(ff - 1 + w)];
-	m += transform_L16[*(ff + w)] * 2;
-	m += transform_L16[*(ff + 1 + w)];
-	m += transform_L16[*(ff + 2 + w)];
-	m += transform_L16[*(ff - 2 + w * 2)];
-	m += transform_L16[*(ff - 1 + w * 2)];
-	m += transform_L16[*(ff + w * 2)];
-	m += transform_L16[*(ff + 1 + w * 2)];
-	m += transform_L16[*(ff + 2 + w * 2)];
-	m /= 32;
-
-	d = t - abs (transform_L16[*(ff)] - m);
-	d = d < 0 ? 0 : d;
-
-	m *= d;
-	m += transform_L16[*(ff)];
-	m /= d + 1;
-
-	*(ff) = transform_G8[m];
-
-	ff++;
-      }
-  else
-    for (x = 0; x < (w * h); x++)
-      {
-
-	m = 256 * *(ff - 2 - w * 2);
-	m += 256 * *(ff - 1 - w * 2);
-	m += 256 * *(ff - w * 2);
-	m += 256 * *(ff + 1 - w * 2);
-	m += 256 * *(ff + 2 - w * 2);
-	m += 256 * *(ff - 2 - w);
-	m += 256 * *(ff - 1 - w);
-	m += 256 * *(ff - w) * 2;
-	m += 256 * *(ff + 1 - w);
-	m += 256 * *(ff + 2 - w);
-	m += 256 * *(ff - 2);
-	m += 256 * *(ff - 1) * 2;
-	m += 256 * *(ff) * 4;
-	m += 256 * *(ff + 1) * 2;
-	m += 256 * *(ff + 2);
-	m += 256 * *(ff - 2 + w);
-	m += 256 * *(ff - 1 + w);
-	m += 256 * *(ff + w) * 2;
-	m += 256 * *(ff + 1 + w);
-	m += 256 * *(ff + 2 + w);
-	m += 256 * *(ff - 2 + w * 2);
-	m += 256 * *(ff - 1 + w * 2);
-	m += 256 * *(ff + w * 2);
-	m += 256 * *(ff + 1 + w * 2);
-	m += 256 * *(ff + 2 + w * 2);
-	m /= 32;
-#if 1
-	d = t - abs ((256 * *(ff)) - m);
-	d = d < 0 ? 0 : d;
-
-	m = m * d;
-	m += *(ff) * 256;
-	m /= (d + 1);
-#endif
-	*(ff) = m / 256;
-
-	ff++;
-      }
-}
-#endif
 
 void
 temporal_filter_planes (int idx, int w, int h, int t)
@@ -578,7 +101,7 @@ temporal_filter_planes (int idx, int w, int h, int t)
 	  r  = *(f4-1-w)+*(f4  -w)+*(f4+1-w)+*(f4-1)+*(f4  )+*(f4+1)+*(f4-1+w)+*(f4  +w)+*(f4+1+w);
 	  r /= 9;
 
-	  m = *(f4)*(t+1);
+	  m = *(f4)*(t+1)*2;
 	  c = t+1;
 
 	  d  = *(f3-1-w)+*(f3  -w)+*(f3+1-w)+*(f3-1)+*(f3  )+*(f3+1)+*(f3-1+w)+*(f3  +w)+*(f3+1+w);
@@ -586,44 +109,44 @@ temporal_filter_planes (int idx, int w, int h, int t)
 	  d = t - abs (r-d);
 	  d = d<0? 0:d;
 	  c += d;
-          m += *(f3)*d;
+          m += *(f3)*d*2;
 
 	  d  = *(f2-1-w)+*(f2  -w)+*(f2+1-w)+*(f2-1)+*(f2  )+*(f2+1)+*(f2-1+w)+*(f2  +w)+*(f2+1+w);
 	  d /= 9;
 	  d = t - abs (r-d);
 	  d = d<0? 0:d;
 	  c += d;
-          m += *(f2)*d;
+          m += *(f2)*d*2;
 
 	  d  = *(f1+1-w)+*(f1  -w)+*(f1+1-w)+*(f1-1)+*(f1  )+*(f1+1)+*(f1-1+w)+*(f1  +w)+*(f1+1+w);
 	  d /= 9;
 	  d = t - abs (r-d);
 	  d = d<0? 0:d;
 	  c += d;
-          m += *(f1)*d;
+          m += *(f1)*d*2;
 
 	  d  = *(f5-1-w)+*(f5  -w)+*(f5+1-w)+*(f5-1)+*(f5  )+*(f5+1)+*(f5-1+w)+*(f5  +w)+*(f5+1+w);
 	  d /= 9;
 	  d = t - abs (r-d);
 	  d = d<0? 0:d;
 	  c += d;
-          m += *(f5)*d;
+          m += *(f5)*d*2;
 
 	  d  = *(f6-1-w)+*(f6  -w)+*(f6+1-w)+*(f6-1)+*(f6  )+*(f6+1)+*(f6-1+w)+*(f6  +w)+*(f6+1+w);
 	  d /= 9;
 	  d = t - abs (r-d);
 	  d = d<0? 0:d;
 	  c += d;
-          m += *(f6)*d;
+          m += *(f6)*d*2;
 
 	  d  = *(f7-1-w)+*(f7  -w)+*(f7+1-w)+*(f7-1)+*(f7  )+*(f7+1)+*(f7-1+w)+*(f7  +w)+*(f7+1+w);
 	  d /= 9;
 	  d = t - abs (r-d);
 	  d = d<0? 0:d;
 	  c += d;
-          m += *(f7)*d;
+          m += *(f7)*d*2;
 
-	  *(of) = m/c;
+	  *(of) = ((m/c)+1)/2;
 
 	  f1++;
 	  f2++;
@@ -723,279 +246,172 @@ void filter_plane_median ( uint8_t * plane, int w, int h, int level)
 	p = scratchplane1;
 	d = scratchplane2;
 
+	// this filter needs values outside of the imageplane, so we just copy the first line 
+	// and the last line into the out-of-range area...
+
+	memcpy ( p-w  , p, w );
+	memcpy ( p-w*2, p, w );
+
+	memcpy ( p+(w*h)  , p+(w*h)-w, w );
+	memcpy ( p+(w*h)+w, p+(w*h)-w, w );
+
 	for(i=0;i<=(w*h);i++)
 	{
-		avg=*(p)*level;
+		avg=*(p)*level*2;
 		cnt=level;
 
 		c = *(p-w*2-2);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p-w*2-1);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p-w*2);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p-w*2+1);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p-w*2+2);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p-w*1-2);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p-w*1-1);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p-w*1);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p-w*1+1);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p-w*1+2);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p-2);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p-1);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p+1);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p+2);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p+w*1-2);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p+w*1-1);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p+w*1);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p+w*1+1);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p+w*1+2);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p+w*2-2);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p+w*2-1);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p+w*2);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p+w*2+1);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
 		c = *(p+w*2+2);
 		e = abs(c-*(p));
 		e = ((level-e)<0)? 0:level-e;
-		avg += e*c;
+		avg += e*c*2;
 		cnt += e;
 
-		*(d)=avg/cnt;
+		*(d)=(((avg/cnt)+1)/2);
+
 		d++;
 		p++;
 	}
 
 	memcpy(plane,scratchplane2,w*h);
 }
-
-#if 0
-void filter_plane_median ( uint8_t * plane, int w, int h, int level)
-{
-	int x,y;
-	int sx,sy;
-	int i;
-	uint32_t median;
-	int t;
-	uint16_t ref_pixel;
-	uint16_t chk_pixel;
-	uint32_t accu=0;
-	uint32_t cnt=0;
-	int pcnt=0;
-	uint8_t * p;
-	uint8_t * dest = scratchplane1;
-	int32_t a;
-	int v[9];
-	int min;
-	int max;
-
-	if(level==0) return;
-
-	t = level;	
-	for(y=0;y<h;y++)
-		for(x=0;x<w;x++)
-		{
-		p = plane+(x)+(y)*w;
-		median=(*(p-w-1)+*(p-w)+*(p-w+1)+*(p-1)+*(p+1)+*(p+w-1)+*(p+w)+*(p+w+1))/8;
-		ref_pixel = *(plane+(x  )+(y  )*w);
-
-		if(abs(ref_pixel-median)<t) 	// there is not much detail we can loose this way
-						// but we damn need some "denoised" reference!
-						// and this is the only one we can get here..
-		{
-		ref_pixel = median;
-		}
-
-		cnt=0;
-		pcnt=0;
-		accu=0;
-
-		p = plane+(x-8)+(y-8)*w;
-		// hmm, the searchwindow must be rather large to get rid of interference noise
-		// this slows the things a lot... :-(
-		for(sy=0;sy<=16;sy++)
-		{
-			for(sx=0;sx<=16;sx++)
-			{
-			chk_pixel  = *(p+sx);
-
-			if(abs(chk_pixel-ref_pixel)<t)
-				{
-				accu += chk_pixel;
-				cnt ++;
-				}
-			}
-		p += w;
-		}
-		if( cnt!=0 ) median = (accu/cnt);
-
-		// if a pixel is different because it shows some image detail it is at least correlated to 4 neighbours
-		// and to itself (this is why we check against 5 and not 4...)
-		if(cnt<5) 
-		{
-			// hmm, this is bad. this pixel could be single-pixel-noise... AKA "salt'n'pepper"-noise
-			// let's see if we can remove it or if it is detail we better leave in...
-			
-			p = plane+(x-1)+(y-1)*w;
-
-			min=255;
-			max=0;
-
-			// check the minimum/maximum values of the surrounding 8 pixels...
-			min = (min>*(p))? *(p):min;
-			max = (max<*(p))? *(p):max;
-			p++;
-
-			min = (min>*(p))? *(p):min;
-			max = (max<*(p))? *(p):max;
-			p++;
-
-			min = (min>*(p))? *(p):min;
-			max = (max<*(p))? *(p):max;
-			p+=w-2;
-
-			min = (min>*(p))? *(p):min;
-			max = (max<*(p))? *(p):max;
-			p+=2;
-
-			min = (min>*(p))? *(p):min;
-			max = (max<*(p))? *(p):max;
-			p+=w-2;
-
-			min = (min>*(p))? *(p):min;
-			max = (max<*(p))? *(p):max;
-			p++;
-
-			min = (min>*(p))? *(p):min;
-			max = (max<*(p))? *(p):max;
-			p++;
-
-			min = (min>*(p))? *(p):min;
-			max = (max<*(p))? *(p):max;
-
-			if(ref_pixel>max || ref_pixel<min)
-				{
-				p = plane+(x)+(y)*w;
-				median=(*(p-w-1)+*(p-w)+*(p-w+1)+*(p-1)+*(p+1)+*(p+w-1)+*(p+w)+*(p+w+1))/8;
-				}
-		}
-
-		*(dest+x+y*w) = median;
-		}
-	memcpy ( plane,scratchplane1,w*h );
-}
-#endif
 
 /***********************************************************
  * Main Loop                                               *
@@ -1017,7 +433,7 @@ main (int argc, char *argv[])
 
   mjpeg_log (LOG_INFO, "mjpeg-tools yuvdenoise version %s", VERSION);
 
-  while ((c = getopt (argc, argv, "hvs:t:g:m:M:r:")) != -1)
+  while ((c = getopt (argc, argv, "hvs:t:g:m:M:r:G:")) != -1)
     {
       switch (c)
 	{
@@ -1029,6 +445,9 @@ main (int argc, char *argv[])
 	    mjpeg_log (LOG_INFO,"              see them in a sequence of moving frames until you pass 18.");
 	    mjpeg_log (LOG_INFO,"              This is due to the fact that our brain supresses these.");
 	    mjpeg_log (LOG_INFO," -M y,u,v     This sets the thresholds for the post (after -t) median-noise-filter.\n");
+	    mjpeg_log (LOG_INFO," -G y,u,v     This sets all the thresholds for all the filters to the same values.\n");
+	    mjpeg_log (LOG_INFO,"              That is it sets -m y,u,v -t y,u,v -M y,u,v for shorter(quicker) \n");	
+	    mjpeg_log (LOG_INFO,"              value tweaking. The temporal-thresholds are raised by a factor of 2.\n");
 	    mjpeg_log (LOG_INFO," -r y,u,v     add this amount of static noise to the denoised image.\n");
 
 	    exit (0);
@@ -1063,6 +482,17 @@ main (int argc, char *argv[])
 	case 'M':
 	  {
 	    sscanf (optarg, "%i,%i,%i", &med_post_Y_thres, &med_post_U_thres, &med_post_V_thres);
+	    break;
+	  }
+	case 'G':
+	  {
+	    sscanf (optarg, "%i,%i,%i", &med_pre_Y_thres, &med_pre_U_thres, &med_pre_V_thres);
+	    med_post_Y_thres = temp_Y_thres = med_pre_Y_thres;
+	    med_post_U_thres = temp_U_thres = med_pre_U_thres;
+	    med_post_V_thres = temp_V_thres = med_pre_V_thres;
+	    temp_Y_thres *= 2;
+	    temp_U_thres *= 2;
+	    temp_V_thres *= 2;
 	    break;
 	  }
 	case 'r':
@@ -1210,6 +640,7 @@ main (int argc, char *argv[])
 					    &istreaminfo,
 					    &iframeinfo, frame1)))
     {
+
       static uint32_t frame_nr = 0;
       uint8_t *temp[3];
 
