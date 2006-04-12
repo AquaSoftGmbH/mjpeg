@@ -58,7 +58,7 @@
 #include "motionsearch.h"
 #include "sinc_interpolation.h"
 //#include "blend_fields.h"
-//#include "motionsearch_deint.h"
+#include "motionsearch_deint.h"
 
 #define BOTTOM_FIRST 0
 #define TOP_FIRST 1
@@ -109,7 +109,6 @@ main (int argc, char *argv[])
   y4m_stream_info_t istreaminfo;
   y4m_frame_info_t oframeinfo;
   y4m_stream_info_t ostreaminfo;
-  static uint32_t framenr;
 
   mjpeg_log (LOG_INFO, "-------------------------------------------------");
   mjpeg_log (LOG_INFO, "       Motion-Compensating-Deinterlacer          ");
