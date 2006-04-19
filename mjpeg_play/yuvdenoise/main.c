@@ -37,18 +37,21 @@ int renoise_Y=0;
 int renoise_U=0;
 int renoise_V=0;
 
-int temp_Y_thres = 4;
-int temp_U_thres = 8;
-int temp_V_thres = 8;
+int temp_Y_thres = 0;
+int temp_U_thres = 0;
+int temp_V_thres = 0;
 
 int med_pre_Y_thres = 0;
 int med_pre_U_thres = 0;
 int med_pre_V_thres = 0;
 
-/* Disable these until the corruption at the top and bottom edges is fixed */
-int med_post_Y_thres = 0;	/* 4 */
-int med_post_U_thres = 0;	/* 8 */
-int med_post_V_thres = 0;	/* 8 */
+int med_post_Y_thres = 0;
+int med_post_U_thres = 0;
+int med_post_V_thres = 0;
+
+int gauss_Y = 0;
+int gauss_U = 0;
+int gauss_V = 0;
 
 uint8_t *frame1[3];
 uint8_t *frame2[3];
@@ -72,6 +75,57 @@ uint8_t transform_G8[65536];
  * helper-functions                                        *
  ***********************************************************/
 
+
+void
+gauss_filter_plane (uint8_t * frame, int w, int h, int t)
+{
+int i;
+int v;
+uint8_t * src = frame;
+uint8_t * dst = scratchplane1;
+
+if(t==0) return;
+
+memcpy ( src-w*2, src, w );
+memcpy ( src-w  , src, w );
+
+memcpy ( src+(w*h)  , src+(w*h)-w, w );
+memcpy ( src+(w*h)+w, src+(w*h)-w, w );
+
+for(i=0;i<(w*h);i++)
+	{
+
+	v  = *(src    -2)*1;
+
+	v += *(src-w  -1)*1;
+	v += *(src    -1)*2;
+	v += *(src+w  -1)*1;
+
+	v += *(src-w*2  )*1;
+	v += *(src-w    )*2;
+	v += *(src      )*4;
+	v += *(src+w    )*2;
+	v += *(src+w*2  )*1;
+
+	v += *(src-w  +1)*1;
+	v += *(src    +1)*2;
+	v += *(src+w  +1)*1;
+
+	v += *(src    +2)*1;
+
+	v /= 20;
+
+	v = *(src)*(256-t) + (v)*(t);
+	v /= 256;
+
+	*(dst)=v;
+
+	dst++;
+	src++;
+	}
+
+memcpy ( frame,scratchplane1,w*h );
+}
 
 void
 temporal_filter_planes (int idx, int w, int h, int t)
@@ -98,49 +152,111 @@ temporal_filter_planes (int idx, int w, int h, int t)
       for (x = 0; x < (w * h); x++)
 	{
 
-	  r  = *(f4-1-w)+*(f4  -w)+*(f4+1-w)+*(f4-1)+*(f4  )+*(f4+1)+*(f4-1+w)+*(f4  +w)+*(f4+1+w);
-	  r /= 9;
+	  r  = *(f4-1-w);
+	  r += *(f4  -w)*2;
+	  r += *(f4+1-w);
+          r += *(f4-1  )*2;
+	  r += *(f4    )*4;
+          r += *(f4+1  )*2;
+	  r += *(f4-1+w);
+          r += *(f4  +w)*2;
+          r += *(f4+1+w);
+	  r /= 16;
 
 	  m = *(f4)*(t+1)*2;
 	  c = t+1;
 
-	  d  = *(f3-1-w)+*(f3  -w)+*(f3+1-w)+*(f3-1)+*(f3  )+*(f3+1)+*(f3-1+w)+*(f3  +w)+*(f3+1+w);
-	  d /= 9;
+	  d  = *(f3-1-w);
+	  d += *(f3  -w)*2;
+	  d += *(f3+1-w);
+          d += *(f3-1  )*2;
+	  d += *(f3    )*4;
+          d += *(f3+1  )*2;
+	  d += *(f3-1+w);
+          d += *(f3  +w)*2;
+          d += *(f3+1+w);
+	  d /= 16;
+
 	  d = t - abs (r-d);
 	  d = d<0? 0:d;
 	  c += d;
           m += *(f3)*d*2;
 
-	  d  = *(f2-1-w)+*(f2  -w)+*(f2+1-w)+*(f2-1)+*(f2  )+*(f2+1)+*(f2-1+w)+*(f2  +w)+*(f2+1+w);
-	  d /= 9;
+	  d  = *(f2-1-w);
+	  d += *(f2  -w)*2;
+	  d += *(f2+1-w);
+          d += *(f2-1  )*2;
+	  d += *(f2    )*4;
+          d += *(f2+1  )*2;
+	  d += *(f2-1+w);
+          d += *(f2  +w)*2;
+          d += *(f2+1+w);
+	  d /= 16;
+
 	  d = t - abs (r-d);
 	  d = d<0? 0:d;
 	  c += d;
           m += *(f2)*d*2;
 
-	  d  = *(f1+1-w)+*(f1  -w)+*(f1+1-w)+*(f1-1)+*(f1  )+*(f1+1)+*(f1-1+w)+*(f1  +w)+*(f1+1+w);
-	  d /= 9;
+	  d  = *(f1-1-w);
+	  d += *(f1  -w)*2;
+	  d += *(f1+1-w);
+          d += *(f1-1  )*2;
+	  d += *(f1    )*4;
+          d += *(f1+1  )*2;
+	  d += *(f1-1+w);
+          d += *(f1  +w)*2;
+          d += *(f1+1+w);
+	  d /= 16;
+
 	  d = t - abs (r-d);
 	  d = d<0? 0:d;
 	  c += d;
           m += *(f1)*d*2;
 
-	  d  = *(f5-1-w)+*(f5  -w)+*(f5+1-w)+*(f5-1)+*(f5  )+*(f5+1)+*(f5-1+w)+*(f5  +w)+*(f5+1+w);
-	  d /= 9;
+	  d  = *(f5-1-w);
+	  d += *(f5  -w)*2;
+	  d += *(f5+1-w);
+          d += *(f5-1  )*2;
+	  d += *(f5    )*4;
+          d += *(f5+1  )*2;
+	  d += *(f5-1+w);
+          d += *(f5  +w)*2;
+          d += *(f5+1+w);
+	  d /= 16;
+
 	  d = t - abs (r-d);
 	  d = d<0? 0:d;
 	  c += d;
           m += *(f5)*d*2;
 
-	  d  = *(f6-1-w)+*(f6  -w)+*(f6+1-w)+*(f6-1)+*(f6  )+*(f6+1)+*(f6-1+w)+*(f6  +w)+*(f6+1+w);
-	  d /= 9;
+	  d  = *(f6-1-w);
+	  d += *(f6  -w)*2;
+	  d += *(f6+1-w);
+          d += *(f6-1  )*2;
+	  d += *(f6    )*4;
+          d += *(f6+1  )*2;
+	  d += *(f6-1+w);
+          d += *(f6  +w)*2;
+          d += *(f6+1+w);
+	  d /= 16;
+
 	  d = t - abs (r-d);
 	  d = d<0? 0:d;
 	  c += d;
           m += *(f6)*d*2;
 
-	  d  = *(f7-1-w)+*(f7  -w)+*(f7+1-w)+*(f7-1)+*(f7  )+*(f7+1)+*(f7-1+w)+*(f7  +w)+*(f7+1+w);
-	  d /= 9;
+	  d  = *(f7-1-w);
+	  d += *(f7  -w)*2;
+	  d += *(f7+1-w);
+          d += *(f7-1  )*2;
+	  d += *(f7    )*4;
+          d += *(f7+1  )*2;
+	  d += *(f7-1+w);
+          d += *(f7  +w)*2;
+          d += *(f7+1+w);
+	  d /= 16;
+
 	  d = t - abs (r-d);
 	  d = d<0? 0:d;
 	  c += d;
@@ -431,7 +547,9 @@ main (int argc, char *argv[])
   y4m_frame_info_t oframeinfo;
   y4m_stream_info_t ostreaminfo;
 
+  mjpeg_log (LOG_INFO, "--------------------------------------------------------------------------------");
   mjpeg_log (LOG_INFO, "mjpeg-tools yuvdenoise version %s", VERSION);
+  mjpeg_log (LOG_INFO, "--------------------------------------------------------------------------------");
 
   while ((c = getopt (argc, argv, "hvs:t:g:m:M:r:G:")) != -1)
     {
@@ -439,16 +557,49 @@ main (int argc, char *argv[])
 	{
 	case 'h':
 	  {
-	    mjpeg_log (LOG_INFO," -m y,u,v     This sets the thresholds for the pre (prior to -t) median-noise-filter.\n");
-	    mjpeg_log (LOG_INFO," -t y,u,v     This sets the thresholds for the temporal noise-filter.");
-	    mjpeg_log (LOG_INFO,"              Values above 12 may introduce ghosts. But usually you can't");
-	    mjpeg_log (LOG_INFO,"              see them in a sequence of moving frames until you pass 18.");
-	    mjpeg_log (LOG_INFO,"              This is due to the fact that our brain supresses these.");
-	    mjpeg_log (LOG_INFO," -M y,u,v     This sets the thresholds for the post (after -t) median-noise-filter.\n");
-	    mjpeg_log (LOG_INFO," -G y,u,v     This sets all the thresholds for all the filters to the same values.\n");
-	    mjpeg_log (LOG_INFO,"              That is it sets -m y,u,v -t y,u,v -M y,u,v for shorter(quicker) \n");	
-	    mjpeg_log (LOG_INFO,"              value tweaking. The temporal-thresholds are raised by a factor of 2.\n");
-	    mjpeg_log (LOG_INFO," -r y,u,v     add this amount of static noise to the denoised image.\n");
+  	    mjpeg_log (LOG_INFO, "                                                                                ");
+  	    mjpeg_log (LOG_INFO, "... | yuvdenoise [OPTIONS] | ...                                                ");
+  	    mjpeg_log (LOG_INFO, "                                                                                ");
+  	    mjpeg_log (LOG_INFO, "Brief description of the accepted options:                                      ");
+  	    mjpeg_log (LOG_INFO, "                                                                                ");
+  	    mjpeg_log (LOG_INFO, "-g [Y=0...255],[U=0...255],[V=0...255]                                          ");
+  	    mjpeg_log (LOG_INFO, "                                                                                ");
+  	    mjpeg_log (LOG_INFO, "This sets the parameters [Y,U,V] for the gauss-filter. 0 means no filtering,    ");
+  	    mjpeg_log (LOG_INFO, "which is the default, 255 is maximum gaussfiltering. Some camera manufacturers  ");
+  	    mjpeg_log (LOG_INFO, "think it's a good idea to sharpen the frames extremly. This however will raise  ");
+  	    mjpeg_log (LOG_INFO, "typical video-compression-artefacts (ringing, blocking, alias, etc...). If you  ");
+  	    mjpeg_log (LOG_INFO, "desire to have a video free of these, you can raise the gauss-filter-values     ");
+  	    mjpeg_log (LOG_INFO, "until your image is undesirable soft... (Short: setting decent values helps     ");
+  	    mjpeg_log (LOG_INFO, "both: the viewer and the encoder -- setting too high values is ugly.) This may  ");
+  	    mjpeg_log (LOG_INFO, "also help with extremly noisy images from a weak air-captured signal...         ");
+  	    mjpeg_log (LOG_INFO, "Unlike y4mspatialfilter this will not boost ringing artefacts.                  ");
+  	    mjpeg_log (LOG_INFO, "                                                                                ");
+  	    mjpeg_log (LOG_INFO, "-m [0...255],[0...255],[0...255]                                                ");
+  	    mjpeg_log (LOG_INFO, "                                                                                ");
+  	    mjpeg_log (LOG_INFO, "Spatial-Pre-Filter. This one helps with really noisy signals. You should not    ");
+  	    mjpeg_log (LOG_INFO, "use this with moderate to low noise material. Used with care it helps the tem-  ");
+  	    mjpeg_log (LOG_INFO, "poral-filter a lot. Misuse will lead to rather dull images (like an overly me-  ");
+  	    mjpeg_log (LOG_INFO, "dian-filtered image...                                                          ");
+  	    mjpeg_log (LOG_INFO, "                                                                                ");
+  	    mjpeg_log (LOG_INFO, "-t [0...255],[0...255],[0...255]                                                ");
+  	    mjpeg_log (LOG_INFO, "                                                                                ");
+  	    mjpeg_log (LOG_INFO, "Temporal-Noise-Filter. This one dramaticaly reduces noise without loosing sharp-");
+  	    mjpeg_log (LOG_INFO, "ness. If set too high, however, it may introduce visable ghost-images or smear. ");
+  	    mjpeg_log (LOG_INFO, "                                                                                ");
+  	    mjpeg_log (LOG_INFO, "-M [0...255],[0...255],[0...255]                                                ");
+  	    mjpeg_log (LOG_INFO, "                                                                                ");
+  	    mjpeg_log (LOG_INFO, "Spatial-Post-Filter. This one removes spatial noise left by the temporal-filter.");
+  	    mjpeg_log (LOG_INFO, "Used with care it can dramaticaly lower the bitrate. Using it with to high set- ");
+  	    mjpeg_log (LOG_INFO, "tings will lead to the same artefacts as the spatial-pre-filter produces.       ");
+  	    mjpeg_log (LOG_INFO, "                                                                                ");
+  	    mjpeg_log (LOG_INFO, "-G [0...255],[0...255],[0...255]                                                ");
+  	    mjpeg_log (LOG_INFO, "                                                                                ");
+  	    mjpeg_log (LOG_INFO, "Set -m,-t,-M values at once. -t is boosted by a factor of 2. Useful if you do   ");
+  	    mjpeg_log (LOG_INFO, "not want to tweak all the values by hand... which is better.                    ");
+  	    mjpeg_log (LOG_INFO, "                                                                                ");
+  	    mjpeg_log (LOG_INFO, "-r [0...255],[0...255],[0...255]                                                ");
+  	    mjpeg_log (LOG_INFO, "                                                                                ");
+  	    mjpeg_log (LOG_INFO, "Add some static masking noise. Might be used as an effect, too... *g*           ");
 
 	    exit (0);
 	    break;
@@ -471,7 +622,7 @@ main (int argc, char *argv[])
 	  }
 	case 'g':
 	  {
-	    mjpeg_log(LOG_WARN, "-g code removed, option accepted only for script compatiblity");
+	    sscanf (optarg, "%i,%i,%i", &gauss_Y, &gauss_U, &gauss_V);
 	    break;
 	  }
 	case 'm':
@@ -506,7 +657,9 @@ main (int argc, char *argv[])
 	}
     }
 
-  mjpeg_log (LOG_INFO, "Using the following thresholds:");
+  mjpeg_log (LOG_INFO, "Using the following thresholds/settings:");
+  mjpeg_log (LOG_INFO, "Gauss-Pre-Filter      [Y,U,V] : [%i,%i,%i]",
+	     gauss_Y, gauss_U, gauss_V);
   mjpeg_log (LOG_INFO, "Median-Pre-Filter     [Y,U,V] : [%i,%i,%i]",
 	     med_pre_Y_thres, med_pre_U_thres, med_pre_V_thres);
   mjpeg_log (LOG_INFO, "Temporal-Noise-Filter [Y,U,V] : [%i,%i,%i]",
@@ -645,6 +798,10 @@ main (int argc, char *argv[])
       uint8_t *temp[3];
 
       frame_nr++;
+
+	gauss_filter_plane (frame1[0], lwidth, lheight, gauss_Y);
+	gauss_filter_plane (frame1[1], cwidth, cheight, gauss_U);
+	gauss_filter_plane (frame1[2], cwidth, cheight, gauss_V);
 
 	filter_plane_median (frame1[0], lwidth, lheight, med_pre_Y_thres);
 	filter_plane_median (frame1[1], cwidth, cheight, med_pre_U_thres);
