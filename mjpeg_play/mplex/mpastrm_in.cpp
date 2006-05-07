@@ -155,6 +155,10 @@ void MPAStream::Init ( const int stream_num )
 		access_unit.length = size_frames[padding_bit];
 	  
 		samples_per_second = mpa_freq_table[version_id][frequency];
+		if (!samples_per_second) {
+			mjpeg_error ( "Invalid frequency in MPEG Audio stream header.");
+			exit(1);
+		}
 
 		/* Presentation time-stamping  */
 		access_unit.PTS = static_cast<clockticks>(decoding_order) * 
