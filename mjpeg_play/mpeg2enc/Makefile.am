@@ -64,7 +64,7 @@ libmpeg2encpp_include_HEADERS = elemstrmwriter.hh encoderparams.hh \
 	encodertypes.h macroblock.hh mpeg2coder.hh mpeg2encoder.hh mpeg2encoptions.hh \
 	mpeg2encparams.h picture.hh picturereader.hh quantize.hh quantize_ref.h ratectl.hh \
 	streamstate.h seqencoder.hh synchrolib.h syntaxconsts.h $(mpeg2enc_inst_header_REF) \
-	ontheflyratectl.hh pass2ratectl.hh
+	ontheflyratectl.hh pass1ratectl.hh pass2ratectl.hh
 
 libmpeg2encpp_la_LDFLAGS = \
 	$(LT_STATIC) \
