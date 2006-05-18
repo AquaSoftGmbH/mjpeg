@@ -8,15 +8,9 @@
  * This is strictly an  output program, stdin is ignored.
 */
 
-#ifdef	HAVE_CONFIG_H
 #include "config.h"
-#endif
-
 #include <stdio.h>
 #include <errno.h>
-#include <sys/types.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 
 #include "yuv4mpeg.h"

@@ -7,16 +7,9 @@
  * counts.
 */
 
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#else
-#define HAVE_STDINT_H
-#include <stdint.h>
-#endif
 #include <stdio.h>
-#include <sys/types.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 
 #include <yuv4mpeg.h>
