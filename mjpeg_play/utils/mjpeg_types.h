@@ -40,20 +40,4 @@ typedef unsigned long long uint64_t;
 typedef long long int int64_t;
 #endif /* HAVE_STDINT_H */
 
-#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4)
-#define GNUC_PRINTF( format_idx, arg_idx )    \
-  __attribute__((format (printf, format_idx, arg_idx)))
-#else   /* !__GNUC__ */
-#define GNUC_PRINTF( format_idx, arg_idx )
-#endif  /* !__GNUC__ */
-
 #endif /* __MJPEG_TYPES_H__ */
-
-
-/* 
- * Local variables:
- *  c-file-style: "gnu"
- *  tab-width: 8
- *  indent-tabs-mode: nil
- * End:
- */

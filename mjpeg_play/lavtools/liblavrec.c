@@ -71,7 +71,6 @@
 #include <videodev_mjpeg.h>
 #include <pthread.h>
 
-#include "mjpeg_types.h"
 #include "mjpeg_logging.h"
 #include "liblavrec.h"
 #include "lav_io.h"

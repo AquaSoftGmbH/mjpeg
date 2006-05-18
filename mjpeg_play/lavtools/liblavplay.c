@@ -83,11 +83,9 @@
 #include <SDL/SDL.h>
 #endif
 
-#include "mjpeg_types.h"
+#include "mjpeg_logging.h"
 #include "liblavplay.h"
 #include "audiolib.h"
-/*#include "lav_io.h" */
-/*#include "editlist.h" */
 #include "jpegutils.h"
 
 #ifdef	HAVE_LIBDV

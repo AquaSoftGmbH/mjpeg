@@ -23,6 +23,13 @@
 
 #include <mjpeg_types.h>
 
+#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4)
+#define GNUC_PRINTF( format_idx, arg_idx )    \
+  __attribute__((format (printf, format_idx, arg_idx)))
+#else   /* !__GNUC__ */
+#define GNUC_PRINTF( format_idx, arg_idx )
+#endif  /* !__GNUC__ */
+
 typedef enum {
   LOG_NONE = 0,
   LOG_DEBUG,
@@ -68,13 +75,6 @@ mjpeg_error_exit1(const char format[], ...) GNUC_PRINTF(1,2);
 #ifdef __cplusplus
 }
 #endif
-#endif /* __MJPEG_LOGGING_H__ */
 
-
-/* 
- * Local variables:
- *  c-file-style: "gnu"
- *  tab-width: 8
- *  indent-tabs-mode: nil
- * End:
- */
+
+#endif /* __MJPEG_LOGGING_H__ */
