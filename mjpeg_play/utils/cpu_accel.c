@@ -24,9 +24,6 @@
 #include <signal.h>
 #include <setjmp.h>
 #include <stdlib.h>
-#ifdef	HAVE_MALLOC_H
-#include <malloc.h>
-#endif
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>

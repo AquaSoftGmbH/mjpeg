@@ -52,9 +52,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
-#ifdef HAVE_FENV_H
-#include <fenv.h>
-#endif
 #include "syntaxconsts.h"
 #include "fastintfns.h"
 #include "cpu_accel.h"

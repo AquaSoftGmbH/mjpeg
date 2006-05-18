@@ -93,17 +93,13 @@ if test x"$with_extra_cflags" != "x"; then
 fi
 
 dnl maddog:  What about CHECK-ALLOCA????
-AC_CHECK_HEADERS([fenv.h stdint.h inttypes.h sys/types.h getopt.h alloca.h sys/soundcard.h malloc.h])
-
-AX_PREFIXED_DEFINE([MJPEGTOOLS], [HAVE_STDINT_H])
-AX_PREFIXED_DEFINE([MJPEGTOOLS], [HAVE_INTTYPES_H])
+AC_CHECK_HEADERS([stdint.h inttypes.h sys/types.h getopt.h sys/soundcard.h])
 
 #maddog:  check for math lib, and add it to LIBS (needed for fmax, lround...)
 #maddog:  (How does this interact with cpml stuff below???????)
 AC_CHECK_LIB([m],[sin])
 AC_CHECK_FUNCS([posix_memalign memalign fmax fmin lround])
 
-#maddog:  FIX UP?????????????
 AC_CHECK_FUNC(getopt_long,
               [AC_DEFINE(HAVE_GETOPT_LONG, 1, [long getopt support])],
               [ # FreeBSD and BSD/OS have a gnugetopt library for this:
