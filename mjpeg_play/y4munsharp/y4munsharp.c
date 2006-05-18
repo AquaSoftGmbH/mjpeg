@@ -35,11 +35,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-#ifdef	HAVE_CONFIG_H
 #include "config.h"
-#else
-#define HAVE_STDINT_H
-#endif
 #include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
