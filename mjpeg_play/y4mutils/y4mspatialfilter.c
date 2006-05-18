@@ -9,9 +9,7 @@
  *                                   [-C chroma_Xtaps,chroma_XBW,chroma_Ytaps,chroma_YBW]
 */
 
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 
 #include <stdio.h>
 #include <string.h>

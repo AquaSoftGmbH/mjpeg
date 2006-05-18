@@ -31,16 +31,9 @@
  * 2006/3/13 - Initial release.
 */
 
-#ifdef	HAVE_CONFIG_H
 #include "config.h"
-#else
-#define	HAVE_STDINT_H
-#endif
-
 #include <stdio.h>
-#include <sys/types.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 
 #include "yuv4mpeg.h"

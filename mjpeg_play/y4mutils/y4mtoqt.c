@@ -13,14 +13,9 @@
  *   -X enables 10bit packed output, 2vuy becomes v210 and v308 becomes v410.
 */
 
-#ifdef	HAVE_CONFIG_H
 #include "config.h"
-#else
-#define HAVE_STDINT_H
-#endif
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <quicktime.h>
 #include <lqt.h>
 #include <colormodels.h>

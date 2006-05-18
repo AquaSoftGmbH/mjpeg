@@ -31,15 +31,11 @@
  *	"-x chroma_tag" option or chaos and/or a program crash will occur.
 */
 
-#if defined(HAVE_CONFIG_H)
 #include "config.h"
-#endif
 
 #include <stdio.h>
-#include <sys/types.h>
 #include <ctype.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 
 #include "yuv4mpeg.h"
