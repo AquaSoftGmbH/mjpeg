@@ -365,34 +365,42 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 
     horizontal_size = options.in_img_width;
     vertical_size = options.in_img_height;
-	switch( options.format )
-	{
-	case MPEG_FORMAT_SVCD_STILL :
-	case MPEG_FORMAT_SVCD_NSR :
-	case MPEG_FORMAT_SVCD :
-    case MPEG_FORMAT_DVD :
-    case MPEG_FORMAT_DVD_NAV :
-        /* It would seem DVD and perhaps SVCD demand a 540 pixel display size
-           for 4:3 aspect video. However, many players expect 480 and go weird
-           if this isn't set...
-        */
-        if( options.hack_svcd_hds_bug )
-        {
-            display_horizontal_size  = options.in_img_width;
-            display_vertical_size    = options.in_img_height;
-        }
-        else
-        {
-            display_horizontal_size  = aspectratio == 2 ? 540 : 720;
-            display_vertical_size    = options.in_img_height;
-        }
+
+    switch (options.format)
+	   {
+	   case MPEG_FORMAT_SVCD_STILL:
+	   case MPEG_FORMAT_SVCD_NSR:
+	   case MPEG_FORMAT_SVCD:
+/* It would seem DVD and perhaps SVCD players demand a 540 pixel display size
+   for 4:3 aspect video. However, many players expect 480 and go weird
+   if this isn't set...
+   NOTE: IS THIS STILL RELEVANT?   Was it ever a problem except for one 
+         particular (and now long obsolete) player?  Can the hds code be 
+         considered cruft now?  And where did the number 540 come from??
+
+   In any event do NOT include the DVD formats in this 'case' -- 1) DVDs are NOT
+   SVCDs and  2) DVDs can, for good or ill, allow the hsize and vsize options
+   to be effective (seems some camcorders create "DVD"s with a hds greater than
+   the coded frame size.  Commentary about MPEG2 as acquisition format elided.
+*/
+        	if  (options.hack_svcd_hds_bug)
+            	    {
+            	    display_horizontal_size  = options.in_img_width;
+            	    display_vertical_size    = options.in_img_height;
+            	    }
+        	else
+            	    {
+            	    display_horizontal_size  = aspectratio == 2 ? 540 : 720;
+            	    display_vertical_size    = options.in_img_height;
+            	    }
 		break;
-  
+
       // ATSC 1080i is unusual in that it *requires* display of 1080 lines
       // when 1088 are coded 
+
      case MPEG_FORMAT_ATSC1080i :
-         display_vertical_size = 1080;
-         break;
+          display_vertical_size = 1080;
+           break;
      
      default:
         if( options.display_hsize <= 0 )
