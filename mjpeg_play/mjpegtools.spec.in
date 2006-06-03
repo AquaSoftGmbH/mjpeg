@@ -15,7 +15,6 @@ License:	GPL
 Url:		http://mjpeg.sourceforge.net/
 Group:		Video
 Source0:	http://prdownloads.sourceforge.net/mjpeg/mjpegtools-%{version}.tar.gz
-Source1:	http://prdownloads.sourceforge.net/mjpeg/jpeg-mmx-0.1.6.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-buildroot-%{version}-%{release}
 
 Requires:	xorg-x11 SDL
@@ -54,15 +53,7 @@ mkdir -p $tmp_prefix/{include,lib,bin,share}
 CFLAGS="${CFLAGS:-%optflags}" ; export CFLAGS
 CXXFLAGS="${CXXFLAGS:-%optflags}" ; export CXXFLAGS
 
-(cd jpeg-mmx && ./configure)
-make -C jpeg-mmx libjpeg-mmx.a
-
-CONF_ARGS="--with-jpeg-mmx=`pwd`/jpeg-mmx"
-
-./configure \
-	$CONF_ARGS \
-	--enable-large-file \
-	--prefix=%{_prefix}
+./configure --prefix=%{_prefix}
 make
 
 %install
@@ -130,6 +121,11 @@ of the mjpegtools package.
 %{_libdir}/*.so
 
 %changelog
+* Fri Jun 02 2006 Steven Schultz <sms@2bsd.com>
+  jpeg-mmx is not supported, it crashes on IA32 systems, will not build on
+  X86_64 or PPC systems and even when it did work didn't provide  much of
+  a speedup (jpeg decoding is a small portion of the overall encoding process).
+
 * Fri Dec 19 2003 Ronald Bultje <rbultje@ronald.bitfreak.net>
 - add everything for mpeg2enc/mplex libs (dev headers and so on)
 

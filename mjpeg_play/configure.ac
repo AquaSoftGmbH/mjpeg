@@ -62,10 +62,6 @@ AC_ARG_WITH(libdv,
 AC_ARG_WITH(libpng,
             AC_HELP_STRING([--without-libpng], [Do not use libpng.]),
             [], [with_libpng=yes])
-AC_ARG_WITH(jpeg-mmx,
-            AC_HELP_STRING([--with-jpeg-mmx=PFX],
-                           [Prefix where jpeg-mmx is installed (optional).]))
-
 AC_GNU_SOURCE
 
 dnl Initialize libtool
@@ -185,53 +181,17 @@ AC_CHECK_FUNC(pthread_attr_getstacksize,
                          [pthread stack sizes accesible])])
 LIBS="$oldLIBS"
 
-dnl *********************************************************************
-dnl Check for the special mmx accelerated jpeg library
-dnl At the end of this mess, JPEG_LIBS will contain the libraries and 
-dnl flags needed to link with the jpeg library and JPEG_CFLAGS will 
-dnl have the needed flags to compile against said library
+AC_CHECK_LIB(jpeg, jpeg_start_compress,
+	    [ JPEG_LIBS="-ljpeg"
+	      JPEG_CFLAGS=""
+	    have_libjpeg=true ],,)
+
+if test x$have_libjpeg != "xtrue"; then
+   AC_MSG_ERROR([JPEG 6b library missing - Go to http://www.ijg.org/])
+fi
+
 AC_SUBST(JPEG_LIBS)
 AC_SUBST(JPEG_CFLAGS)
-have_jpeg=false
-if test x$with_jpeg_mmx = xyes ; then
-  AC_MSG_ERROR([
-*** A directory must be specified for --with-jpeg-mmx option.])
-fi
-if test x$with_jpeg_mmx = x ; then
-  dnl Special case for building .deb's
-  if test -d ../jpeg-mmx ; then
-    with_jpeg_mmx=`pwd`/../jpeg-mmx
-  else
-    with_jpeg_mmx=/usr/local/src/jpeg-mmx
-  fi
-fi
-
-dnl
-dnl Look for the installed/specified copy
-dnl
-
-OLD_CFLAGS="$CFLAGS"
-OLD_LIBS="$LIBS"
-LIBS="$LIBS -L$with_jpeg_mmx"
-CFLAGS="$CFLAGS -I$with_jpeg_mmx"
-AC_CHECK_LIB(jpeg-mmx, jpeg_start_compress,
-   [ JPEG_LIBS="$LIBS -ljpeg-mmx"
-     JPEG_CFLAGS="-I$with_jpeg_mmx"
-       have_jpeg=true ],,)
-  LIBS="$OLD_LIBS"
-  CFLAGS="$OLD_CFLAGS"
-
-dnl 
-dnl Look for _a_ jpeg lib that will work.
-dnl
-if test x$have_jpeg = xfalse ; then
-  AC_CHECK_HEADER(jpeglib.h,,
-    AC_MSG_ERROR([jpeglib.h not found - please install the libjpeg headers]))
-  AC_CHECK_LIB(jpeg, jpeg_start_compress,
-    [ JPEG_LIBS="-ljpeg"
-      JPEG_CFLAGS=""
-      have_jpeg=true ],,)
-fi
 
 have_libquicktime=false
 if test x$with_libquicktime != xno ; then
