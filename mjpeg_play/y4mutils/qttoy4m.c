@@ -242,9 +242,9 @@ int main(int argc, char *argv[])
 			interlace = Y4M_ILACE_NONE;
 		else if	(nfields == 2)
 			{
-			if	(dominance == 14)
+			if	(dominance == 14 || dominance == 6)
 				interlace = Y4M_ILACE_BOTTOM_FIRST;
-			else if	(dominance == 9)
+			else if	(dominance == 9 || dominance == 1)
 				interlace = Y4M_ILACE_TOP_FIRST;
 			else
 				mjpeg_error_exit1("Unknown fiel dominance %d",
