@@ -42,10 +42,12 @@ liblavfile_la_SOURCES = editlist.c lav_io.c avilib.c
 liblavfile_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS) $(JPEG_CFLAGS) $(LIBQUICKTIME_CFLAGS)
 liblavfile_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) \
 	$(LIBQUICKTIME_LIBS) $(JPEG_LIBS) $(LIBDV_LIBS)
+liblavfile_la_LIBADD = $(LIBMJPEGUTILS)
 
 liblavjpeg_la_SOURCES = jpegutils.c
 liblavjpeg_la_CPPFLAGS = $(AM_CPPFLAGS) $(JPEG_CFLAGS)
 liblavjpeg_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) $(JPEG_LIBS)
+liblavjpeg_la_LIBADD = $(LIBMJPEGUTILS)
 
 liblavrec_la_SOURCES = liblavrec.c audiolib.c frequencies.c
 liblavrec_la_CPPFLAGS = $(AM_CPPFLAGS) # so automake doesn't complain about audiolib & frequencies
