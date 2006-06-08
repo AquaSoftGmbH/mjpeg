@@ -39,7 +39,7 @@ int vx,vy;
 int oy,ox;
 uint32_t sad;
 uint32_t min;
-int a,b,c,d,e;
+int a,b,c,d;
 
 for(y=0;y<h;y+=8)
 	for(x=0;x<w;x+=8)
