@@ -69,7 +69,7 @@ libmpeg2encpp_include_HEADERS = elemstrmwriter.hh encoderparams.hh \
 libmpeg2encpp_la_LDFLAGS = \
 	$(LT_STATIC) \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
-	-release $(LT_RELEASE)
+	-release $(LT_RELEASE) $(EXTRA_LDFLAGS)
 
 libmpeg2encpp_la_DEPENDENCIES = $(LIBMJPEGUTILS)
 

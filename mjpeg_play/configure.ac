@@ -130,6 +130,13 @@ esac
 dnl *********************************************************************
 dnl Some host-specific tweaks:
 dnl  o OS-X/Darwin needs "-no-cpp-precomp" to avoid compile errors.
+dnl  o (e.g) Cygwin shared libs cannot have undefined symbols, libtool only
+dnl   builds them if really given flag to force this (see ltmain.sh)
+dnl   This also requires inter-library dependency to be indicated in _LIBADD;
+dnl   (probably good libtool practice in any case) to have all symbols satisfied
+dnl  o Linux handles with or without this flag, but at least on OS-X/Darwin
+dnl   altivec (utils) can cause circular library dependency (with mpeg2enc),
+dnl   so better limit this flag
 dnl *********************************************************************
 case $host in
   *-apple-darwin*)
@@ -138,7 +145,10 @@ case $host in
   *-unknown-netbsdelf2.*)
    LIBS="-lossaudio"
    ;;
+  *-*-cygwin* | *-*-mingw* | *-*-pw32* | *-*-os2*) SHARED_LDFLAGS="-no-undefined"
+   ;;
 esac
++AC_SUBST(EXTRA_LDFLAGS)
 
 dnl *********************************************************************
 dnl Test whether we're linux or not. If so, define HAVE_V4L and build the

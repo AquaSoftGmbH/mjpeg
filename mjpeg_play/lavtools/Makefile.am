@@ -36,7 +36,7 @@ liblavinclude_HEADERS = \
 LAV_ALL_LIB_OPTS = \
 	$(LT_STATIC) \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
-	-release $(LT_RELEASE)
+	-release $(LT_RELEASE) $(EXTRA_LDFLAGS)
 
 liblavfile_la_SOURCES = editlist.c lav_io.c avilib.c
 liblavfile_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS) $(JPEG_CFLAGS) $(LIBQUICKTIME_CFLAGS)
