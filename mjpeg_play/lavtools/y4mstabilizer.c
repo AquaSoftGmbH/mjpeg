@@ -8,7 +8,7 @@
  * Program to stabilize a video stream.
  * Works only non-interlaced yuv4mpeg streams for now.
  *
- * Usage: y4mstab [-v] [-a <alpha>] [-r <srchRadius>]
+ * Usage: y4mstabilizer [-v] [-a <alpha>] [-r <srchRadius>]
  *
  *	-v		Verbose.   Move -vs make it more verbose.
  *	-a <alpha>	The alpha value is a "viscosity" measure (see below).
@@ -306,7 +306,7 @@ usage (void)
 "Program to stabilize a video stream.\n"
 "Works only non-interlaced yuv4mpeg streams for now.\n"
 "\n"
-"Usage: y4mstab [-v] [-a <alpha>] [-r <srchRadius>]\n"
+"Usage: y4mstabilizer [-v] [-a <alpha>] [-r <srchRadius>]\n"
 "\n"
 "	-v		Verbose.   Move -vs make it more verbose.\n"
 "	-a <alpha>	A \"viscosity\" measure (see below).\n"
@@ -341,7 +341,7 @@ usage (void)
 "Very good results can be obtained with the following pipeline:\n"
 "    ... | yuvdeinterlace | \\\n"
 "	   y4mscaler -v 0 -O sar=src -O chromass=444 | \\\n"
-"	   y4mstab | \\\n"
+"	   y4mstabilizer | \\\n"
 "	   y4mscaler -v 0 -O sar=src -O chromass=420_MPEG2 | ...\n"
 , stderr);
 exit(1);
