@@ -145,10 +145,10 @@ case $host in
   *-unknown-netbsdelf2.*)
    LIBS="-lossaudio"
    ;;
-  *-*-cygwin* | *-*-mingw* | *-*-pw32* | *-*-os2*) SHARED_LDFLAGS="-no-undefined"
+  *-*-cygwin* | *-*-mingw* | *-*-pw32* | *-*-os2*) EXTRA_LDFLAGS="-no-undefined"
    ;;
 esac
-+AC_SUBST(EXTRA_LDFLAGS)
+AC_SUBST(EXTRA_LDFLAGS)
 
 dnl *********************************************************************
 dnl Test whether we're linux or not. If so, define HAVE_V4L and build the
