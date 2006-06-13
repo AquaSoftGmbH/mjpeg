@@ -25,90 +25,83 @@
 
 
 /*
-	The parts of of the rate-controller's state neededfor save/restore if backing off
-	a partial encoding
+    The parts of of the rate-controller's state neededfor save/restore if backing off
+    a partial encoding
 */
 
-class VBufPass1RCState :  public RateCtlState
+class LookaheadRCPass1State :  public RateCtlState
 {
 public:
-	virtual ~VBufPass1RCState() {}
-	virtual RateCtlState *New() const { return new VBufPass1RCState; }
-	virtual void Set( const RateCtlState &state ) { *this = static_cast<const VBufPass1RCState &>(state); }
-	virtual const RateCtlState &Get() const { return *this; }
-	int32_t target_bits; // target_bits
-	int32_t vbuf_fullness;
-    	int32_t ratectl_vbuf[NUM_PICT_TYPES];
+    virtual ~LookaheadRCPass1State() {}
+    virtual RateCtlState *New() const { return new LookaheadRCPass1State; }
+    virtual void Set( const RateCtlState &state ) { *this = static_cast<const LookaheadRCPass1State &>(state); }
+    virtual const RateCtlState &Get() const { return *this; }
+    int target_bits; // target_bits
+    int vbuf_fullness;
+        int ratectl_vbuf[NUM_PICT_TYPES];
 
-	int32_t per_pict_bits;
-	int     fields_in_gop;
-	double  field_rate;
-	int     fields_per_pict;
+    int per_pict_bits;
+    int     fields_in_gop;
+    double  field_rate;
+    int     fields_per_pict;
 
-	int32_t buffer_variation;
-	int64_t bits_transported;
-	int64_t bits_used;
-	int32_t gop_buffer_correction;
+    int buffer_variation;
+    int64_t bits_transported;
+    int64_t bits_used;
+    int gop_buffer_correction;
 
-    /* bitcnt_EOP - Position in generated bit-stream for latest
-	   end-of-picture Comparing these values with the
-	   bit-stream position for when the picture is due to be
-	   displayed allows us to see what the vbv buffer is up
-	   to.
-	*/
 
-	int frame_overshoot_margin;
-	int undershoot_carry;
-	double overshoot_gain;
+    int frame_overshoot_margin;
+    int undershoot_carry;
+    double overshoot_gain;
 
     /*
-	  actsum - Total activity (sum block variances) in frame
-	  actcovered - Activity macroblocks so far quantised (used to
-	  fine tune quantisation to avoid starving highly
-	  active blocks appearing late in frame...) UNUSED
-	  avg_act - Current average activity...
-	*/
-	double actsum;
-	double actcovered;
-	double sum_avg_act;
-	double avg_act;
-	double avg_var;
-	double sum_avg_var;
-	double sum_avg_quant;
-	double sum_vbuf_Q;
+      actsum - Total activity (sum block variances) in frame
+      actcovered - Activity macroblocks so far quantised (used to
+      fine tune quantisation to avoid starving highly
+      active blocks appearing late in frame...) UNUSED
+      avg_act - Current average activity...
+    */
+    double actsum;
+    double actcovered;
+    double sum_avg_act;
+    double avg_act;
+    double avg_var;
+    double sum_avg_var;
+    double sum_avg_quant;
+
 
     int N[NUM_PICT_TYPES];
 
 
-	int min_d, max_d;
-	int min_q, max_q;
+    int min_d, max_d;
+    int min_q, max_q;
 
-	double bits_per_mb;
-	bool fast_tune;
-	bool first_gop;
-	
+    bool fast_tune;
+    bool first_gop;
+    
 
     /* X's measure global complexity (Chi! not X!) of frame types.
-	* Actually: X = average quantisation * bits allocated in *previous* frame
-	* N.b. the choice of measure is *not* arbitrary.  The feedback bit
-	* rate control gets horribly messed up if it is *not* proportionate
-	* to bit demand i.e. bits used scaled for quantisation.  
-	* d's are virtual reciever buffer fullness 
-	* r is Rate control feedback gain (in* bits/frame) 
-	*/
+    * Actually: X = average quantisation * bits allocated in *previous* frame
+    * N.b. the choice of measure is *not* arbitrary.  The feedback bit
+    * rate control gets horribly messed up if it is *not* proportionate
+    * to bit demand i.e. bits used scaled for quantisation.  
+    * d's are virtual reciever buffer fullness 
+    * r is Rate control feedback gain (in* bits/frame) 
+    */
     
     double Xhi[NUM_PICT_TYPES];
 
-	/* The average complexity of frames of the different types is used
+    /* The average complexity of frames of the different types is used
      * to predict a reasonable bit-allocation for these types.
-	 * The AVG_WINDOW set the size of the sliding window for these
+     * The AVG_WINDOW set the size of the sliding window for these
      * averages.  Basically I Frames respond very quickly.
      * B / P frames more or less quickly depending on the target number
      * of B frames per P frame.
-	 */
+     */
     double K_AVG_WINDOW[NUM_PICT_TYPES];
 
-	/*
+    /*
      * 'Typical' sizes of the different types of picture in a GOP - these
      * sizes are needed so that buffer management can compensate for the
      * 'normal' ebb and flow of buffer space in a GOP (low after a big I frame)
@@ -118,15 +111,6 @@ public:
     int32_t pict_base_bits[NUM_PICT_TYPES];
     bool first_encountered[NUM_PICT_TYPES];
 
-    
-    /*
-     * Reinitialisation data for recoding pictures where prediction is too
-     * far off.
-     *
-     */
-    double actual_Xhi;
-    double actual_avg_Q;
-
 
     // Some statistics for measuring if things are going well.
     double sum_size[NUM_PICT_TYPES];
@@ -135,40 +119,54 @@ public:
 };
 
 
-class VBufPass1RC :  public Pass1RateCtl,  public VBufPass1RCState
+class LookaheadRCPass1 :  public Pass1RateCtl,  public LookaheadRCPass1State
 {
 public:
-	VBufPass1RC( EncoderParams &encoder );
-    virtual void Init();
-	virtual void InitSeq();
-    virtual void InitGOP( int nb, int np );
-	virtual void InitPict (Picture &picture);
-	virtual void UpdatePict ( Picture &picture, int &padding_needed );
-	virtual int  MacroBlockQuant( const MacroBlock &mb);
-	virtual int  InitialMacroBlockQuant(Picture &picture);
-	virtual void CalcVbvDelay (Picture &picture);
+    LookaheadRCPass1( EncoderParams &encoder );
+    virtual void Init() ;
+
+    virtual void GopSetup( int nb, int np );
+    virtual void PictUpdate (Picture &picture, int &padding_needed );
+
+
+    virtual int  MacroBlockQuant( const MacroBlock &mb);
+    virtual int  InitialMacroBlockQuant();
+
 
     double SumAvgActivity()  { return sum_avg_act; }
+protected:
+    virtual int  TargetPictureEncodingSize();
+
+    virtual void InitSeq( );
+    virtual void InitGOP( ) ;
+    virtual bool InitPict( Picture &picture );
+
 private:
-	virtual void VbvEndOfPict (Picture &picture);
 
-   	 int     cur_mquant;
-    	int     mquant_change_ctr;
+    double  cur_base_Q;       // Current base quantisation (before adjustments
+                              // for relative macroblock activity
+    int     cur_mquant;       // Current macroblock quantisation
+    int     mquant_change_ctr;
+
+
+    double  sum_base_Q;       // Accumulates base quantisations encoding
+    int     sum_actual_Q;     // Accumulates actual quantisation
+
+    // inverse feedback gain: its in weird units 
+    // The quantisation is porportionate to the
+    // buffer bit overshoot (virtual buffer fullness)
+    // *divided* by fb_gain  A 
+    int32_t fb_gain;        
     
-	// inverse feedback gain: its in weird units 
-	// The quantisation is porportionate to the
-	// buffer bit overshoot (virtual buffer fullness)
-	// *divided* by fb_gain  A 
-	int32_t fb_gain;		
-	
 
 
-	// VBV calculation data
-	double picture_delay;
-	double next_ip_delay; /* due to frame reordering delay */
-	double decoding_time;
+    // VBV calculation data
+    double picture_delay;
+    double next_ip_delay; /* due to frame reordering delay */
+    double decoding_time;
 
 };
+
 
 
 /* 

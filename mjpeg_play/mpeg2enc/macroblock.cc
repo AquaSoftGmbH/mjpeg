@@ -27,10 +27,15 @@
 
 void MacroBlock::Encode()
 { 
-    MotionEstimate();
-    SelectCodingModeOnVariance();
     Predict();
     Transform();
+}
+
+
+void MacroBlock::MotionEstimateAndModeSelect()
+{ 
+    MotionEstimate();
+    SelectCodingModeOnVariance();
 }
 
 void MacroBlock::MotionEstimate()

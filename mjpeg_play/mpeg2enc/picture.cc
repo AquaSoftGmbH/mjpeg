@@ -137,7 +137,7 @@ void Picture::Reconstruct()
  *
  ******************************************/
 
-void Picture::SetFrameParams( const StreamState &ss )
+void Picture::SetFrameParams( const StreamState &ss, int field )
 {
     new_seq = ss.new_seq;
     end_seq = ss.end_seq;
@@ -151,6 +151,7 @@ void Picture::SetFrameParams( const StreamState &ss )
     np = ss.np;
     closed_gop = ss.closed_gop;
     dc_prec = encparams.dc_prec;
+    SetFieldParams( field );
 }
 
 
@@ -176,6 +177,8 @@ void Picture::SetFieldParams(int field)
                 gop_start = true;
                 ipflag = 0;
                 pict_type = I_TYPE;
+                if( encparams.fieldpic )
+                  end_seq = false;
 
             }
             else // P field of I-frame
@@ -183,6 +186,7 @@ void Picture::SetFieldParams(int field)
                 gop_start = false;
                 ipflag = 1;
                 pict_type = P_TYPE;
+                new_seq = false;
             }
         }
         else 
@@ -439,18 +443,12 @@ void Picture::MotionSubSampledLum( )
 
 void Picture::QuantiseAndCode(RateCtl &ratectl)
 {
-    // Set rate control for new picture
-    ratectl.InitPict(*this);
-
-    // Generate Sequence/GOP/Picture headers for this picture
-    PutHeaders();
-
-    /* Now the actual quantisation and encoding->.. */     
+    /* Now the actual quantisation and encoding->.. */
  
     int i, j, k;
     int MBAinc;
     MacroBlock *cur_mb = 0;
-	int mquant_pred = ratectl.InitialMacroBlockQuant(*this);
+	int mquant_pred = ratectl.InitialMacroBlockQuant();
 
 	k = 0;
     
@@ -514,6 +512,7 @@ void Picture::QuantiseAndCode(RateCtl &ratectl)
                 }
 
 
+
                 if (cur_mb->best_me->mb_type & MB_FORWARD)
                 {
                     /* forward motion vectors, update predictors */
@@ -547,31 +546,73 @@ void Picture::QuantiseAndCode(RateCtl &ratectl)
             ++k;
         } /* Slice MB loop */
     } /* Slice loop */
-	int padding_needed;
-    bool recoding_suggested;
-    ratectl.UpdatePict( *this, padding_needed);
-    coding->AlignBits();
+
+}
+
+
+
+/* **********************************
+ * 
+ * PutHeaders - Put sequence of headers and user data elements that 'belong'
+ * to this frame.  We count sequence and GOP headers as belong to the first
+ * following picture.
+ * 
+ * ********************************/
+ 
+void Picture::PutHeaders()
+{
+    /* Sequence header if new sequence or we're generating for a
+       format like (S)VCD that mandates sequence headers every GOP to
+       do fast forward, rewind etc.
+    */
+    if( new_seq || decode == 0 || (gop_start && encparams.seq_hdr_every_gop) )
+    {
+      coding->PutSeqHdr();
+    }
+   
+    if( gop_start )
+    {
+      coding->PutGopHdr( decode,  closed_gop );
+    }
+    
+    /* picture header and picture coding extension */
+    PutHeader();
+
+   if( encparams.svcd_scan_data && pict_type == I_TYPE )
+   {
+      coding->PutUserData( dummy_svcd_scan_data, sizeof(dummy_svcd_scan_data) );
+   }
+}
+
+/* **********************************
+ * 
+ * PutHeaders - Put padding and sequence ending markers that 'belong' to this picture.
+ * 
+ * ********************************/
+ 
+
+void Picture::PutTrailers( int padding_needed )
+{    coding->AlignBits();
     if( padding_needed > 0 )
     {
-        mjpeg_debug( "Padding coded picture to size: %d extra bytes", 
+        mjpeg_debug( "Padding coded picture to size: %d extra bytes",
                      padding_needed );
-        for( i = 0; i < padding_needed; ++i )
+        for( int i = 0; i < padding_needed; ++i )
         {
             coding->PutBits(0, 8);
         }
     }
-    
+
     /* Handle splitting of output stream into sequences of desired size */
     if( end_seq )
     {
         coding->PutSeqEnd();
     }
-    
 }
 
 
 
-int Picture::SizeCodedMacroBlocks() const
+int Picture::EncodedSize() const
 { 
     return coding->ByteCount() * 8; 
 }

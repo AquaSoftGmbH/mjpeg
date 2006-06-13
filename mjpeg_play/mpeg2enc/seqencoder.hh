@@ -76,7 +76,7 @@ private:
      *********************************/
      
     Picture *GetFreshPicture();
-    void ReleasePicture( Picture &);
+    void ReleasePicture( Picture *);
       
     /**********************************
      *
@@ -108,13 +108,18 @@ private:
    
     void StreamEnd();
 
-    void Pass1RateCtlFrame(Picture &picture);
-    void Pass2RateCtlGOP( std::deque<Picture *>::iterator gop_begin, int goppics);
-            
-    void EncodeFrame( void (MacroBlock::*encodingFunc)(), Picture &picture, RateCtl &ratectl);
-    void Pass1EncodeFrame( Picture &picture );
-    void Pass1ReEncodeFrame( Picture &picture );
-    void Pass2EncodeFrame( Picture &picture );
+    void Pass1RateCtlSetup( Picture &picture );
+    void Pass2RateCtlSetup( Picture &picture );
+
+    Picture *NextFramePicture0();
+    Picture *Picture1(Picture *picture0);
+    void EncodePicture( Picture &picture, RateCtl &ratectl);
+    void RetainPicture( Picture &picture, RateCtl &ratectl);
+
+    void Pass1GopSplitting( Picture &picture);
+    void Pass1EncodePicture( Picture &picture, int field );
+    void Pass1ReEncodePicture( Picture &picture, int field );
+    bool Pass2EncodePicture( Picture &picture, bool force_reencode );
     
     uint64_t BitsAfterMux() const;
     
@@ -124,8 +129,12 @@ private:
     ElemStrmWriter &writer;
     Pass1RateCtl    &pass1ratectl;
     Pass2RateCtl    &pass2ratectl;
-    
-    Despatcher &despatcher;
+
+    // Worker thread despatchers for the two passes
+    //
+
+    Despatcher &p1_despatcher;
+    //Despatcher &p2_despatcher;
 	
     // The state of the pass 1 rate controller before encoding.
     // We need to restore this if we decide to re-encode it in
@@ -146,7 +155,6 @@ private:
 	// Internal state of encoding...
 	StreamState pass1_ss;
 
-	Picture *cur_picture, *old_picture;
 	Picture *new_ref_picture, *old_ref_picture;
 };
 

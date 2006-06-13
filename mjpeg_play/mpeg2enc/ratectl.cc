@@ -67,6 +67,24 @@ RateCtl::RateCtl( EncoderParams &_encparams, RateCtlState &_state ) :
 {
 }
 
+bool RateCtl::PictSetup( Picture &picture)
+{
+    /* Handle splitting of output stream into sequences of desired size */
+    if(  picture.new_seq )
+    {
+        InitSeq();
+    }
+
+    if( picture.gop_decode == 0)
+    {
+        InitGOP();
+    }
+
+
+    return InitPict( picture );
+
+}
+
 double RateCtl::ScaleQuantf( int q_scale_type, double quant )
 {
 	double quantf;

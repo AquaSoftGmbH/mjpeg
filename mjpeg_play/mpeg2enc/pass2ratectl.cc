@@ -90,95 +90,81 @@ XhiPass2RC::XhiPass2RC(EncoderParams &encparams ) :
 
 }
 
-
 /*********************
  *
- * Initialise rate control 
- *
+ * Initialise rate control parameters
+ * params:  reinit - Rate control is being re-initialised during the middle
+ *                   of a run.  Don't reset adaptive parameters.
  *
  ********************/
-void XhiPass2RC::Init()
+
+void XhiPass2RC::InitSeq(bool reinit)
 {
-    double init_quant;
+	double init_quant;
+	/* If its stills with a size we have to hit then make the
+	   guesstimates of for initial quantisation pessimistic...
+	*/
+	bits_transported = bits_used = 0;
+	field_rate = 2*encparams.decode_frame_rate;
+	fields_per_pict = encparams.fieldpic ? 1 : 2;
+	if( encparams.still_size > 0 )
+	{
+		per_pict_bits = encparams.still_size * 8;
+	}
+	else
+	{
+		per_pict_bits = 
+			static_cast<int32_t>(encparams.fieldpic
+								 ? encparams.bit_rate / field_rate
+								 : encparams.bit_rate / encparams.decode_frame_rate
+				);
+	}
 
-    bits_transported = bits_used = 0;
-    field_rate = 2*encparams.decode_frame_rate;
-    fields_per_pict = encparams.fieldpic ? 1 : 2;
-    if( encparams.still_size > 0 )
-    {
-        per_pict_bits = encparams.still_size * 8;
-    }
-    else
-    {
-        per_pict_bits = 
-            static_cast<int32_t>(encparams.fieldpic
-                                 ? encparams.bit_rate / field_rate
-                                 : encparams.bit_rate / encparams.decode_frame_rate
-                );
-    }
+	/* Everything else already set or adaptive */
+	if( reinit )
+		return;
 
 
 
-    /* Calculate reasonable margins for variation in the decoder
-       buffer.  We assume that having less than 5 frame intervals
-       worth buffered is cutting it fine for avoiding under-runs.
+	/* Calculate reasonable margins for variation in the decoder
+	   buffer.  We assume that having less than 5 frame intervals
+	   worth buffered is cutting it fine for avoiding under-runs.
 
-       The gain values represent the fraction of the under/over shoot
-       to be recovered during one second.  Gain is decreased if the
-       buffer margin is large, gain is higher for avoiding overshoot.
+	   The gain values represent the fraction of the under/over shoot
+	   to be recovered during one second.  Gain is decreased if the
+	   buffer margin is large, gain is higher for avoiding overshoot.
 
-       Currently, for a 1-frame sized margin gain is set to recover
-       an undershoot in half a second
-    */
+	   Currently, for a 1-frame sized margin gain is set to recover
+	   an undershoot in half a second
+	*/
     int buffer_safe = 3 * per_pict_bits ;
     overshoot_gain =  encparams.bit_rate / (encparams.video_buffer_size-buffer_safe);
-    bits_per_mb = (double)encparams.bit_rate / (encparams.mb_per_pict);
+	bits_per_mb = (double)encparams.bit_rate / (encparams.mb_per_pict);
 
-    /*
-      Reaction paramer - i.e. quantisation feedback gain relative
-      to bit over/undershoot.
-      For normal frames it is fairly modest as we can compensate
-      over multiple frames and can average out variations in image
-      complexity.
+	/*
+	  Reaction paramer - i.e. quantisation feedback gain relative
+	  to bit over/undershoot.
+	  For normal frames it is fairly modest as we can compensate
+	  over multiple frames and can average out variations in image
+	  complexity.
 
-      For stills we set it a higher so corrections take place
-      more rapidly *within* a single frame.
-    */
-    if( encparams.still_size > 0 )
-        fb_gain = (int)floor(2.0*encparams.bit_rate/encparams.decode_frame_rate);
-    else
-        fb_gain = (int)floor(4.0*encparams.bit_rate/encparams.decode_frame_rate);
+	  For stills we set it a higher so corrections take place
+	  more rapidly *within* a single frame.
+	*/
+	if( encparams.still_size > 0 )
+		fb_gain = (int)floor(2.0*encparams.bit_rate/encparams.decode_frame_rate);
+	else
+		fb_gain = (int)floor(4.0*encparams.bit_rate/encparams.decode_frame_rate);
 
 
-    /* Set the virtual buffers for per-frame rate control feedback to
-       values corresponding to the quantisation floor (if specified)
-       or a "reasonable" quantisation (6.0) if not.
-    */
+	/* Set the virtual buffers for per-frame rate control feedback to
+	   values corresponding to the quantisation floor (if specified)
+	   or a "reasonable" quantisation (6.0) if not.
+	*/
 
-    init_quant = (encparams.quant_floor > 0.0 ? encparams.quant_floor : 6.0);
+	init_quant = (encparams.quant_floor > 0.0 ? encparams.quant_floor : 6.0);
 }
 
-/*********************
- *
- * Initialise rate control parameters for new sequence.
- * A new run-in is assumed, hence the buffer models are reset.
- *
- ********************/
-
-void XhiPass2RC::InitSeq()
-{
-    bits_transported = bits_used = 0;
-}
-
-/*********************
- *
- * Initialise rate control parameters for new GOP.
- *
- * The complexity of the GOP's component frames and based on this and
- * complexity statistics gather so far and/or complexity of neighbouring
- * GOPs and the buffer model state a bit allocation for the GOP calculated. 
- *
- ********************/
 
 void XhiPass2RC::InitGOP( std::deque<Picture *>::iterator gop_pics, int gop_len )
 {
@@ -190,6 +176,7 @@ void XhiPass2RC::InitGOP( std::deque<Picture *>::iterator gop_pics, int gop_len 
 	  undershoot due to the I_frame of the previous GOP
 	  should by now have been caught up.
     */
+	gop_buffer_correction = 0;
     mjpeg_debug( "PASS2 GOP INIT" );
     double recovery_fraction = field_rate/(overshoot_gain * fields_in_gop);
 
@@ -225,75 +212,61 @@ void XhiPass2RC::InitGOP( std::deque<Picture *>::iterator gop_pics, int gop_len 
 }
 
 
-/*********************
- *
- * Initialise rate control parameters for new Picture.
- *
- * The complexity of the frame in the GOP and the current under/overshoot in
- * bit allocation is used to work out the pictures bit allocation and
- * from this via the rate model its base quantisation.
- *
- ********************/
+/* Step 1a: compute target bits for current picture being coded, based
+ * on predicting from past frames */
 
-void XhiPass2RC::InitPict(Picture &picture)
+void XhiPass2RC::InitNewPict(Picture &picture)
 {
-    // Work out base quantisation of frame based on feedback on bits consumed
-    double target_bits = TargetBits(picture );
-    base_quant = fmax( encparams.quant_floor, picture.Complexity()/target_bits );
 
+    double target_Q;
+    double Xsum,varsum;
+
+    actsum = picture.ActivityBestMotionComp();
+    varsum = picture.VarSumBestMotionComp();
+    avg_act = actsum/(double)(encparams.mb_per_pict);
+    avg_var = varsum/(double)(encparams.mb_per_pict);
+    sum_avg_act += avg_act;
+    sum_avg_var += avg_var;
+    actcovered = 0.0;
+    sum_vbuf_Q = 0.0;
+
+    // Bitrate model:  bits_picture(i) =  K(i) / quantisation
+    // Hence use Complexity metric = bits * quantisation
+    // TODO: naive constant-quality = constant-quantisation
+    // model allocate bits proportionate to complexity.
+    // Soon something smarter...
+    
+
+    
+    double feedback_correction = buffer_variation * overshoot_gain;
+    double available_bits = (gop_bitrate+feedback_correction)
+                            * fields_in_gop/field_rate;
+    
+    // Work out base quantisation of frame based on feedback on bits consumed
+    double Xhi = picture.Complexity();
+    target_bits = static_cast<int32_t>(available_bits*Xhi/gop_Xhi);
+    target_bits = min( target_bits, encparams.video_buffer_size*3/4 );
+    base_quant = fmax( encparams.quant_floor, Xhi/target_bits );
+
+
+    /*
+       To account for the wildly different sizes of frames
+       we compute a correction to the current instantaneous
+       buffer state that accounts for the fact that all other
+       thing being equal buffer will go down a lot after the I-frame
+       decode but fill up again through the B and P frames.
+    */
+
+    gop_buffer_correction += (target_bits-per_pict_bits);
+
+    picture.avg_act = avg_act;
+    picture.sum_avg_act = sum_avg_act;
     mquant_change_ctr = encparams.mb_width;
     cur_mquant = ScaleQuant( picture.q_scale_type, base_quant );
 
 }
 
 
-/*********************
- *
- * Calculate bit allocation for picture in current GOP.
- *
- * The complexity of the frame in the GOP and the current under/overshoot in
- * bit allocation is used to work out the pictures bit allocation
- *
- ********************/
-
-double XhiPass2RC::TargetBits( const Picture &picture ) const
-{
-    // Bitrate model:  bits_picture(i) =  K(i) / quantisation
-    // Hence use Complexity metric = bits * quantisation
-    // TODO: naive constant-quality = constant-quantisation
-    // model allocate bits proportionate to complexity.
-    // Soon something smarter...
-
-    double feedback_correction = buffer_variation * overshoot_gain;
-    double available_bits = (gop_bitrate+feedback_correction)
-                            * fields_in_gop/field_rate;
-    double Xhi = picture.Complexity();
-    double target_bits = static_cast<int32_t>(available_bits*Xhi/gop_Xhi);
-    return fmin( target_bits, encparams.video_buffer_size*3/4 );
-}
-
-
-/*********************
- *
- * Calculate if it is worth re-encoding the pass-1 encoding of a frame.
- *
- * RETURN true iff If no pass-1 encoding is available (true 2-pass coding) or if the
- * bit allocation in pass-1 is greatly different from the pass-2 bit allocation
- * so that it is worth re-encoding.
- *
- * Note: TODO the quantisation floor of the current place-holder allocation scheme
- * is ignored as the final algorithm will not use a simple fixed quantisation floor.
- *
- ********************/
-
-
-bool XhiPass2RC::ReEncodeNeeded(const Picture &picture ) const
-{
-  double target_size = TargetBits(picture );
-  double actual_size = picture.SizeCodedMacroBlocks();
-
-  return actual_size < 0.8 * target_size || actual_size > 1.2 * target_size;
-}
 
 /*
  * Update rate-controls statistics after pictures has ended..
@@ -309,7 +282,7 @@ void XhiPass2RC::UpdatePict( Picture &picture, int &padding_needed)
 	int    i;
 	int    Qsum;
 	int frame_overshoot;
-	actual_bits = picture.SizeCodedMacroBlocks();
+	actual_bits = picture.EncodedSize();
 	frame_overshoot = (int)actual_bits-(int)target_bits;
 
 	/*
@@ -367,15 +340,14 @@ void XhiPass2RC::UpdatePict( Picture &picture, int &padding_needed)
     padding_needed = 0;
 }
 
-/* compute initial quantization stepsize (at the beginning of picture) 
-   encparams.quant_floor != 0 is the VBR case where we set a bitrate as a (high)
-   maximum and then put a floor on quantisation to achieve a reasonable
-   overall size.
- */
-
-int XhiPass2RC::InitialMacroBlockQuant(Picture &picture)
+int XhiPass2RC::InitialMacroBlockQuant()
 {
     return cur_mquant;
+}
+
+int XhiPass2RC::TargetPictureEncodingSize()
+{
+    return target_bits;
 }
 
 

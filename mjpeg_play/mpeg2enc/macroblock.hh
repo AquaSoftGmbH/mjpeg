@@ -99,19 +99,6 @@ public:
         qdctblocks(_qdctblocks)
         {
         }
-    void Encode();
-    void MotionEstimate();
-    void SelectCodingModeOnVariance();
-    void FrameME();            // In motionest.cc
-    void FrameMEs();
-    void FieldME();
-    void Predict();            // In predict.cc
-    void Quantize( Quantizer &quant);             // In quantize.cc
-    void IQuantize( Quantizer &quant);
-    void Transform();          // In transfrm.cc
-    void ITransform();
-    void PutBlocks();           // In putpic.cc
-    void SkippedCoding( bool slice_begin_end );
 
     inline Picture &ParentPicture() const { return *picture; }
     inline int BaseLumVariance() const { return lum_variance; }
@@ -120,6 +107,25 @@ public:
     inline const int TopleftY() const { return j; }
     inline DCTblock *RawDCTblocks() const { return dctblocks; }
     inline DCTblock *QuantDCTblocks() const { return qdctblocks; }
+
+
+    void Encode();
+    void MotionEstimateAndModeSelect();
+    void Quantize( Quantizer &quant);             // In quantize.cc
+    void IQuantize( Quantizer &quant);
+    void Transform();          // In transfrm.cc
+    void ITransform();
+    void PutBlocks();           // In putpic.cc
+    void SkippedCoding( bool slice_begin_end );
+
+protected:
+    void MotionEstimate();
+    void SelectCodingModeOnVariance();
+    void FrameME();            // In motionest.cc
+    void FrameMEs();
+    void FieldME();
+    void Predict();            // In predict.cc
+
 
 
 private:

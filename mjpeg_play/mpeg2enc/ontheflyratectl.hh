@@ -29,33 +29,27 @@
 	a partial encoding
 */
 
-class OnTheFlyRateCtlState :  public RateCtlState
+class OnTheFlyPass1State :  public RateCtlState
 {
 public:
-	virtual ~OnTheFlyRateCtlState() {}
-	virtual RateCtlState *New() const { return new OnTheFlyRateCtlState; }
-	virtual void Set( const RateCtlState &state ) { *this = static_cast<const OnTheFlyRateCtlState &>(state); }
+	virtual ~OnTheFlyPass1State() {}
+	virtual RateCtlState *New() const { return new OnTheFlyPass1State; }
+	virtual void Set( const RateCtlState &state ) { *this = static_cast<const OnTheFlyPass1State &>(state); }
 	virtual const RateCtlState &Get() const { return *this; }
-	int32_t target_bits; // target_bits
-	int32_t vbuf_fullness;
-    	int32_t ratectl_vbuf[NUM_PICT_TYPES];
+	int target_bits; // target_bits
+	int vbuf_fullness;
+    	int ratectl_vbuf[NUM_PICT_TYPES];
 
-	int32_t per_pict_bits;
+	int per_pict_bits;
 	int     fields_in_gop;
 	double  field_rate;
 	int     fields_per_pict;
 
-	int32_t buffer_variation;
+	int buffer_variation;
 	int64_t bits_transported;
 	int64_t bits_used;
-	int32_t gop_buffer_correction;
+	int gop_buffer_correction;
 
-    /* bitcnt_EOP - Position in generated bit-stream for latest
-	   end-of-picture Comparing these values with the
-	   bit-stream position for when the picture is due to be
-	   displayed allows us to see what the vbv buffer is up
-	   to.
-	*/
 
 	int frame_overshoot_margin;
 	int undershoot_carry;
@@ -75,7 +69,7 @@ public:
 	double avg_var;
 	double sum_avg_var;
 	double sum_avg_quant;
-	double sum_vbuf_Q;
+
 
     int N[NUM_PICT_TYPES];
 
@@ -118,15 +112,6 @@ public:
     int32_t pict_base_bits[NUM_PICT_TYPES];
     bool first_encountered[NUM_PICT_TYPES];
 
-    
-    /*
-     * Reinitialisation data for recoding pictures where prediction is too
-     * far off.
-     *
-     */
-    double actual_Xhi;
-    double actual_avg_Q;
-
 
     // Some statistics for measuring if things are going well.
     double sum_size[NUM_PICT_TYPES];
@@ -135,27 +120,39 @@ public:
 };
 
 
-class OnTheFlyRateCtl :  public Pass1RateCtl,  public OnTheFlyRateCtlState
+class OnTheFlyPass1 :  public Pass1RateCtl,  public OnTheFlyPass1State
 {
 public:
-	OnTheFlyRateCtl( EncoderParams &encoder );
-    virtual void Init();
-	virtual void InitSeq();
-	virtual void InitGOP( int nb, int np );
-	virtual void InitPict (Picture &picture);
-	virtual void UpdatePict ( Picture &picture, int &padding_needed );
+	OnTheFlyPass1( EncoderParams &encoder );
+    virtual void Init() ;
+
+    virtual void GopSetup( int nb, int np );
+    virtual void PictUpdate (Picture &picture, int &padding_needed );
+
+
 	virtual int  MacroBlockQuant( const MacroBlock &mb);
-	virtual int  InitialMacroBlockQuant(Picture &picture);
+	virtual int  InitialMacroBlockQuant();
 
 
     double SumAvgActivity()  { return sum_avg_act; }
-private:
-    virtual void CalcVbvDelay (Picture &picture);
-	virtual void VbvEndOfPict (Picture &picture);
+protected:
+    virtual int  TargetPictureEncodingSize();
 
-   	 int     cur_mquant;
-    	int     mquant_change_ctr;
-    
+    virtual void InitSeq( );
+    virtual void InitGOP( ) ;
+    virtual bool InitPict( Picture &picture );
+
+private:
+
+    double  cur_base_Q;       // Current base quantisation (before adjustments
+                              // for relative macroblock activity
+    int     cur_mquant;       // Current macroblock quantisation
+    int     mquant_change_ctr;
+
+
+    double  sum_base_Q;       // Accumulates base quantisations encoding
+    int     sum_actual_Q;     // Accumulates actual quantisation
+
 	// inverse feedback gain: its in weird units 
 	// The quantisation is porportionate to the
 	// buffer bit overshoot (virtual buffer fullness)
@@ -171,6 +168,123 @@ private:
 
 };
 
+
+/*
+        The parts of of the rate-controller's state neededfor save/restore if backing off
+        a partial encoding
+*/
+
+class OnTheFlyPass2State :  public RateCtlState
+{
+public:
+    virtual ~OnTheFlyPass2State() {}
+    virtual RateCtlState *New() const { return new OnTheFlyPass2State; }
+    virtual void Set( const RateCtlState &state ) { *this = static_cast<const OnTheFlyPass2State &>(state); }
+    virtual const RateCtlState &Get() const { return *this; }
+
+
+    int32_t per_pict_bits;
+    int     fields_in_gop;
+    double  field_rate;
+    int     fields_per_pict;
+
+    double overshoot_gain;
+    int32_t buffer_variation;
+    int64_t bits_transported;
+    int64_t bits_used;
+    int32_t gop_buffer_correction;
+
+    int32_t target_bits;    // target bits for current frame
+
+    double base_quant;
+    double gop_Xhi;
+    double gop_bitrate;
+
+
+    /*
+      actsum - Total activity (sum block variances) in frame
+      actcovered - Activity macroblocks so far quantised (used to
+      fine tune quantisation to avoid starving highly
+      active blocks appearing late in frame...) UNUSED
+      avg_act - Current average activity...
+    */
+    double actsum;
+    double actcovered;
+    double sum_avg_act;
+    double avg_act;
+    double avg_var;
+    double sum_avg_var;
+    double sum_avg_quant;
+
+
+  /*
+    Total complexity of pictures in current GOP
+  */
+
+    int min_d, max_d;
+    int min_q, max_q;
+
+    double bits_per_mb;
+
+
+
+    // Some statistics for measuring if things are going well.
+    double sum_size[NUM_PICT_TYPES];
+    int pict_count[NUM_PICT_TYPES];
+
+};
+
+
+class OnTheFlyPass2 :  public Pass2RateCtl,  public OnTheFlyPass2State
+{
+public:
+    OnTheFlyPass2( EncoderParams &encoder );
+    virtual void Init() ;
+
+    virtual void GopSetup( std::deque<Picture *>::iterator gop_begin,
+                           std::deque<Picture *>::iterator gop_end );
+    virtual void PictUpdate (Picture &picture, int &padding_needed );
+
+    virtual int  MacroBlockQuant( const MacroBlock &mb);
+    virtual int  InitialMacroBlockQuant();
+
+    double SumAvgActivity()  { return sum_avg_act; }
+protected:
+    virtual int  TargetPictureEncodingSize();
+
+    virtual void InitSeq( );
+    virtual void InitGOP( ) ;
+    virtual bool InitPict( Picture &picture );
+
+private:
+
+#if 0   // TODO: Do we need VBV checking? currently left to muxer
+    virtual void CalcVbvDelay (Picture &picture);
+    virtual void VbvEndOfPict (Picture &picture);
+#endif
+
+    double  base_Q;           // Base quantisation (before adjustments
+                              // for relative macroblock activity
+    double  cur_int_base_Q;   // Current rounded base quantisation
+    double  rnd_error;        // Cumulative rounding error from base
+                              // quantisation rounding
+
+    int     cur_mquant;       // Current macroblock quantisation
+    int     mquant_change_ctr;
+
+
+
+    double sum_base_Q;        // Accumulates base quantisations encoding
+    int sum_actual_Q;         // Accumulates actual quantisation
+
+    // inverse feedback gain: its in weird units
+    // The quantisation is porportionate to the
+    // buffer bit overshoot (virtual buffer fullness)
+    // *divided* by fb_gain  A
+    int32_t fb_gain;
+};
+
+
 
 /* 
  * Local variables:

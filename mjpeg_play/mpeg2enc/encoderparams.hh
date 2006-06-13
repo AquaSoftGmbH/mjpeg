@@ -258,6 +258,11 @@ public:
                                    zeroed.  < 0 implies DCT
                                    coefficient should be included. */
 
+    double coding_tolerance;  /* Fraction of bit allocation that
+                                      actual coding size may deviate from
+                                      target set by rate controller before
+                                      a re-encoding is forced */
+
     deque<int> chapter_points; /* Frame #'s for where chapters occur (I frames, closed GOP's) */
 
 };

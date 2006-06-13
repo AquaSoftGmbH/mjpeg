@@ -356,42 +356,6 @@ void Picture::PutSliceHdr( int slice_mb_y, int mquant )
 } 
 
 
-
-/* **********************************
- * 
- * PutHeaders - Put sequence of headers and user data elements that 'belong'
- * to this frame.  We count sequence and GOP headers as belong to the first
- * following picture.
- * 
- * ********************************/
- 
-void Picture::PutHeaders()
-{
-    /* Sequence header if new sequence or we're generating for a
-       format like (S)VCD that mandates sequence headers every GOP to
-       do fast forward, rewind etc.
-    */
-    if( new_seq || decode == 0 || (gop_start && encparams.seq_hdr_every_gop) )
-    {
-      coding->PutSeqHdr();
-    }
-   
-    if( gop_start )
-    {
-      coding->PutGopHdr( decode,  closed_gop );
-    }
-    
-    /* picture header and picture coding extension */
-    PutHeader();
-
-    /* TODO: This should really be a member of the picture object */
-   if( encparams.svcd_scan_data && pict_type == I_TYPE )
-   {
-      coding->PutUserData( dummy_svcd_scan_data, sizeof(dummy_svcd_scan_data) );
-   }
-}
-
-
 /* 
  * Local variables:
  *  c-file-style: "stroustrup"

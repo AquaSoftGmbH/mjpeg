@@ -52,14 +52,38 @@ class RateCtl
 {
 public:
     RateCtl( EncoderParams &_encparams, RateCtlState &_state );
+
+    /*********************
+    *
+    * Initialise rate control parameters for start of encoding
+    * based on encoding parameters
+    *
+    ********************/
+
     virtual void Init() = 0;
-    virtual void InitSeq() = 0;
-    virtual void InitPict (Picture &picture) = 0;
-    virtual void UpdatePict (Picture &picture, int &padding_needed ) = 0;
+
+    /*********************
+    *
+    * Setup rate control for a new picture
+    * IF it is first of sequence new seq. is initialized first
+    * IF it is first of GOP new GOP is initialized 2nd
+    * Finally Picture specific initialization is done.
+    *
+    ********************/
+
+    virtual bool PictSetup (Picture &picture);
+
+    /*********************
+    *
+    * Update rate control after coding of new picture (minus padding)
+    *
+    ********************/
+    virtual void PictUpdate (Picture &picture, int &padding_needed ) = 0;
+
+
     virtual int MacroBlockQuant(  const MacroBlock &mb) = 0;
-    virtual int  InitialMacroBlockQuant(Picture &picture) = 0;
-    virtual void CalcVbvDelay (Picture &picture) = 0;
-    
+    virtual int  InitialMacroBlockQuant() = 0;
+
     inline RateCtlState *NewState() const { return state.New(); }
     inline void SetState( const RateCtlState &toset) { state.Set( toset ); }
     inline const RateCtlState &GetState() const { return state.Get(); }
@@ -70,7 +94,34 @@ public:
     static double InvScaleQuant(  int q_scale_type, int raw_code );
     static int ScaleQuant( int q_scale_type, double quant );
 protected:
-	virtual void VbvEndOfPict (Picture &picture) = 0;
+
+    /*********************
+    *
+    * Reinitialize rate control parameters for start of new sequence
+    *
+    ********************/
+
+    virtual void InitSeq( ) = 0;
+
+    /*********************
+    *
+    * Reinitialize rate control parameters for start of new GOP
+    *
+    ********************/
+
+    virtual void InitGOP( ) = 0;
+
+    /* ****************************
+    *
+    * Reinitialize rate control parameters for start of new Picture
+    *
+    * @return (re)encoding of picture necessary to achieve rate-control
+    *
+    * ****************************/
+
+    virtual bool InitPict( Picture &picture ) = 0;
+
+
     double ScaleQuantf( int q_scale_type, double quant );
     EncoderParams &encparams;
     RateCtlState &state;
@@ -80,16 +131,29 @@ class Pass1RateCtl : public RateCtl
 {    
 public:
     Pass1RateCtl( EncoderParams &encoder, RateCtlState &state );
-    virtual void InitGOP( int nb, int np ) = 0;
+
+    /*********************
+    *
+    * Setup GOP structure for coding from nominal GOP size parameters
+    *
+    ********************/
+
+    virtual void GopSetup( int nb, int np ) = 0;
+
 };
 
 class Pass2RateCtl : public RateCtl
 {
 public:
     Pass2RateCtl( EncoderParams &encoder, RateCtlState &state );
-    virtual void InitGOP( std::deque<Picture *>::iterator gop_pics, int gop_len ) = 0;
-    virtual bool ReEncodeNeeded(const Picture &) const = 0;
-    virtual double TargetBits(const Picture &) const = 0;
+
+    /*********************
+    *
+    * Setup GOP structure for coding based on look-ahead data from pass-1
+    *
+    ********************/
+    virtual void GopSetup( std::deque<Picture *>::iterator gop_begin,
+                           std::deque<Picture *>::iterator gop_end ) = 0;
 };
 
 /* 

@@ -91,18 +91,19 @@ public:
     void CommitCoding();
     void DiscardCoding();
     
-    void SetFrameParams( const StreamState &ss );
-    void SetFieldParams(int field);
+    void SetFrameParams( const StreamState &ss, int field );
+
     
     // Metrics used for stearing the encoding
     inline double Complexity() const { return Xhi; }
     void SetComplexity( double _Xhi ) { Xhi = _Xhi; }
-    int SizeCodedMacroBlocks() const;
+    int EncodedSize() const;
     double IntraCodedBlocks() const;   // Proportion of Macroblocks coded Intra
 
-    
-    // In putpic..c
-    void PutHeaders();
+
+    void PutHeaders();                // Picture/Gop/Sequence headers
+    void PutTrailers( int padding );  // Stuff after picture but before next picture
+
     void PutHeader(); 
 
     double ActivityBestMotionComp();
@@ -135,7 +136,7 @@ public:
 
 protected:
     
-
+    void SetFieldParams(int field);
     void PutSliceHdr( int slice_mb_y, int mquant );
     void PutMVs( MotionEst &me, bool back );
     void PutCodingExt(); 
@@ -227,10 +228,16 @@ public:
     
     double Xhi;                 /* Complexity ... product of bits needed to code and
                                    quantisation */
+
+    /* Rate control statistics  */
+    double AQ;       // Mean actual quantisation of encoding (if any)
+    double ABQ;      // Mean base quantisation of encoding (if any)
+
+
 	/* Statistics... */
 	int pad;
-	int split;
-	double AQ;
+	//int split;
+
 	double SQ;
 	double avg_act;
 	double sum_avg_act;
