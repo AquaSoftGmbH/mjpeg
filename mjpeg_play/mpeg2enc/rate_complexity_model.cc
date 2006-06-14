@@ -13,6 +13,7 @@
 //
 
 #include "rate_complexity_model.hh"
+#include "cpu_accel.h"
 #include <cassert>
 #include <math.h>
 

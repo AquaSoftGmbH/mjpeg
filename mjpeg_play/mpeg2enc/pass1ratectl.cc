@@ -475,7 +475,7 @@ void LookaheadRCPass1::PictUpdate( Picture &picture, int &padding_needed)
 
     
 
-    sum_avg_quant += picture.AQ;/
+    sum_avg_quant += picture.AQ;
 
     
     /* X (Chi - Complexity!) is an estimate of "bit-demand" for the
