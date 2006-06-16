@@ -266,7 +266,7 @@ const char CmdLineMultiplexJob::short_options[] =
 #if defined(HAVE_GETOPT_LONG)
 struct option CmdLineMultiplexJob::long_options[] = 
 {
-    { "verbose",           0, 0, 'v' },
+    { "verbose",           1, 0, 'v' },
     { "vdr-index",         1, 0, 'i' },
     { "format",            1, 0, 'f' },
     { "mux-bitrate",       1, 0, 'r' },
