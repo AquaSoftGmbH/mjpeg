@@ -253,7 +253,7 @@ do
     esac
 done
 let MOPTIND=OPTIND-LAVRC_COUNT
-shift `expr $MOPTIND-1`
+shift `expr $MOPTIND - 1`
 
 if [ "${QUIETLOG}" != "" ]; then
    logfile=${QUIETLOG}
@@ -401,7 +401,7 @@ if [ $video_width -gt $output_width -o $video_width -eq $output_width ]; then
    fi
 fi
 
-if [ $video_inter -eq 1 ]; then
+if [ "$video_inter" == "1" ]; then
    yuvdenoise_flags="$yuvdenoise_flags -F"
 fi
 
