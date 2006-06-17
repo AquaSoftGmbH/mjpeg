@@ -20,7 +20,6 @@
  *
  */
 
-#include <config.h>
 #include "mjpeg_types.h"
 
 class EncoderParams;

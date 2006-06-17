@@ -22,7 +22,6 @@
 #ifndef _PICTURE_HH
 #define _PICTURE_HH
 
-#include "config.h"
 #include "mjpeg_types.h"
 #include "encoderparams.hh"
 #include "synchrolib.h"

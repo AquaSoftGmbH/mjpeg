@@ -20,7 +20,6 @@
  *
  */
 
-#include <config.h>
 #include <deque>
 #include "mjpeg_types.h"
 #include "mpeg2syntaxcodes.h"

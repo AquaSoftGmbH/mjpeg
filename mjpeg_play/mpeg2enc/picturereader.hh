@@ -21,7 +21,6 @@
  *
  */
 
-#include <config.h>
 #include <pthread.h>
 #include <deque>
 #include "mjpeg_types.h"

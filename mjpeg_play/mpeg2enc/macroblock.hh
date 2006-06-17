@@ -48,7 +48,6 @@
  *
  */
 
-#include "config.h"
 #include <vector>
 #include "mjpeg_types.h"
 #include "encodertypes.h"

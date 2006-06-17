@@ -23,7 +23,6 @@
  *
  */
 
-#include <config.h>
 #include <stdlib.h>
 #include "mjpeg_types.h"
 #include "synchrolib.h"

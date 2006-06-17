@@ -20,9 +20,7 @@
  *
  */
 
-#include <config.h>
 #include "ratectl.hh"
-
 
 /*
 	The parts of of the rate-controller's state needed for save/restore if backing off

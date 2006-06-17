@@ -24,9 +24,6 @@
  *
  */
 
-#include "config.h"
-
-
 
 class Parity
 {
