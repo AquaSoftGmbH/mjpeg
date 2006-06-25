@@ -264,6 +264,7 @@ int main(int argc, char *argv[])
 */
 	if	(Y4M_RATIO_EQL(sar, y4m_sar_UNKNOWN))
 		{
+		memset(&pasp, 0, sizeof (pasp));
 		lqt_get_pasp(file, vtrack, &pasp);
 		if	(pasp.hSpacing && pasp.vSpacing)
 			{
