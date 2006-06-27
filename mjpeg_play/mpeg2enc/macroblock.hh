@@ -110,12 +110,12 @@ public:
 
     void Encode();
     void MotionEstimateAndModeSelect();
+    void ForceIFrame();
+    void ForcePFrame();
     void Quantize( Quantizer &quant);             // In quantize.cc
     void IQuantize( Quantizer &quant);
     void Transform();          // In transfrm.cc
     void ITransform();
-    void PutBlocks();           // In putpic.cc
-    void SkippedCoding( bool slice_begin_end );
 
 protected:
     void MotionEstimate();

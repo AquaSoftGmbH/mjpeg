@@ -215,16 +215,6 @@ public:
     double sum_avg_quant;
 
 
-  /*
-    Total complexity of pictures in current GOP
-  */
-
-    int min_d, max_d;
-    int min_q, max_q;
-
-    double bits_per_mb;
-
-
 
     // Some statistics for measuring if things are going well.
     double sum_size[NUM_PICT_TYPES];
@@ -275,11 +265,7 @@ private:
     double sum_base_Q;        // Accumulates base quantisations encoding
     int sum_actual_Q;         // Accumulates actual quantisation
 
-    // inverse feedback gain: its in weird units
-    // The quantisation is porportionate to the
-    // buffer bit overshoot (virtual buffer fullness)
-    // *divided* by fb_gain  A
-    int32_t fb_gain;
+
 };
 
 

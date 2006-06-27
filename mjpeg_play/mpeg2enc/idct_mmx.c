@@ -483,15 +483,15 @@ void idct_mmx(int16_t *block)
 
 void idct_sse(int16_t *block)
 {
-    float temp[64+3] __attribute__((aligned(16)));
-    float *dst, *altemp;
+    float temp[64] __attribute__((aligned(16)));
+    float *dst;
     int i;
     int16_t *src;
 
-    altemp=ALIGN_PTR(temp,16);
+    
 
     src=block;
-    dst=altemp;
+    dst=temp;
     for( i=0; i<2; src+=32, dst+=4, i++) {
 #define MM2XMMl(mm,x0,x1)          \
         movq_r2r     ( mm,  mm6);  \
@@ -579,7 +579,7 @@ void idct_sse(int16_t *block)
     }
 
     src=block;
-    dst=altemp;
+    dst=temp;
     for( i=0; i<2; src+=4, dst+=32, i++) {
 
 #define LOADROTATEff(src, t, x0, x1, x2, x3)           \

@@ -81,11 +81,15 @@ bool StreamState::CanSplitHere(int offset) const
 {
     int nc=GetNextChapter();
 
-    if( nc<0 )
-        return true;
+    // Enforce GOP dimensioning.
+    if( g_idx+offset < encparams.N_min )
+        return false;
 
-    int nc_distance = nc - frame_num+offset;
-    if( nc_distance < 0 )
+    // Enforce chapter splits...
+    if( nc < 0 )
+        return true;
+    int nc_distance = nc - (frame_num+offset);
+    if( nc_distance < 0 || g_idx+offset < encparams.N_min)
         return false;
 
     // Check that legal GOP sizes allow the the next chapter point to
@@ -95,6 +99,7 @@ bool StreamState::CanSplitHere(int offset) const
     // exactly.
     // Division must occur first; rounding down is relied upon!
     return nc_distance <= (nc_distance/encparams.N_min) * encparams.N_max;
+
 }
 
 

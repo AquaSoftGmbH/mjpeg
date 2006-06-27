@@ -174,97 +174,27 @@ void Picture::PutMVs( MotionEst &me, bool back )
 	}
 }
 
-void MacroBlock::PutBlocks( )
+void Picture::PutDCTBlocks( MacroBlock &mb, int mb_type )
 {
     int comp;
     int cc;
     for (comp=0; comp<BLOCK_COUNT; comp++)
     {
         /* block loop */
-        if( cbp & (1<<(BLOCK_COUNT-1-comp)))
+        if( mb.cbp & (1<<(BLOCK_COUNT-1-comp)))
         {
-            if (best_me->mb_type & MB_INTRA)
+            if (mb_type & MB_INTRA)
             {
                 // TODO: 420 Only?
                 cc = (comp<4) ? 0 : (comp&1)+1;
-                picture->coding->PutIntraBlk(picture, qdctblocks[comp],cc);
+                coding->PutIntraBlk(this, mb.QuantDCTblocks()[comp],cc);
             }
             else
             {
-                picture->coding->PutNonIntraBlk(picture,qdctblocks[comp]);
+                coding->PutNonIntraBlk(this,mb.QuantDCTblocks()[comp]);
             }
         }
     }
-}
-
-void MacroBlock::SkippedCoding( bool slice_begin_end )
-{
-    skipped = false;
-    if( slice_begin_end || cbp )
-    {
-        /* there's no VLC for 'No MC, Not Coded':
-         * we have to transmit (0,0) motion vectors
-         */
-        if (picture->pict_type==P_TYPE && !cbp)
-            best_me->mb_type|= MB_FORWARD;
-        return;
-    }
-
-    MacroBlock *prev_mb = picture->prev_mb;
-    /* P picture, no motion vectors -> skip */
-    if (picture->pict_type==P_TYPE && !(best_me->mb_type&MB_FORWARD))
-    {
-        /* reset predictors */
-        picture->Reset_DC_DCT_Pred();
-        picture->Reset_MV_Pred();
-        skipped = true;
-        return;
-    }
-    
-    if(picture->pict_type==B_TYPE )
-    {
-        /* B frame picture with same prediction type
-         * (forward/backward/interp.)  and same active vectors
-         * as in previous macroblock -> skip
-         */
-
-        if (  picture->pict_struct==FRAME_PICTURE
-              && best_me->motion_type==MC_FRAME
-              && ((prev_mb->best_me->mb_type ^ best_me->mb_type) &(MB_FORWARD|MB_BACKWARD))==0
-              && (!(best_me->mb_type&MB_FORWARD) ||
-                  (picture->PMV[0][0][0]==best_me->MV[0][0][0] &&
-                   picture->PMV[0][0][1]==best_me->MV[0][0][1]))
-              && (!(best_me->mb_type&MB_BACKWARD) ||
-                  (picture->PMV[0][1][0]==best_me->MV[0][1][0] &&
-                   picture->PMV[0][1][1]==best_me->MV[0][1][1])))
-        {
-            skipped = true;
-            return;
-        }
-
-        /* B field picture macroblock with same prediction
-         * type (forward/backward/interp.) and active
-         * vectors as previous macroblock and same
-         * vertical field selects as current field -> skio
-         */
-
-        if (picture->pict_struct!=FRAME_PICTURE
-            && best_me->motion_type==MC_FIELD
-            && ((prev_mb->best_me->mb_type^best_me->mb_type)&(MB_FORWARD|MB_BACKWARD))==0
-            && (!(best_me->mb_type&MB_FORWARD) ||
-                (picture->PMV[0][0][0]==best_me->MV[0][0][0] &&
-                 picture->PMV[0][0][1]==best_me->MV[0][0][1] &&
-                 best_me->field_sel[0][0]==(picture->pict_struct==BOTTOM_FIELD)))
-            && (!(best_me->mb_type&MB_BACKWARD) ||
-                (picture->PMV[0][1][0]==best_me->MV[0][1][0] &&
-                 picture->PMV[0][1][1]==best_me->MV[0][1][1] &&
-                 best_me->field_sel[0][1]==(picture->pict_struct==BOTTOM_FIELD))))
-        {
-            skipped = true;
-            return;
-        }
-    }
-
 }
 
 

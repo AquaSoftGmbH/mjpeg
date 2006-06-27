@@ -111,13 +111,13 @@ private:
     void Pass2RateCtlSetup( Picture &picture );
 
     Picture *NextFramePicture0();
-    Picture *Picture1(Picture *picture0);
+    Picture *NextFramePicture1(Picture *picture0);
     void EncodePicture( Picture &picture, RateCtl &ratectl);
     void RetainPicture( Picture &picture, RateCtl &ratectl);
 
     void Pass1GopSplitting( Picture &picture);
     void Pass1EncodePicture( Picture &picture, int field );
-    void Pass1ReEncodePicture( Picture &picture, int field );
+    void Pass1ReEncodePicture0( Picture &picture, void (MacroBlock::*modeMotionAdjustFunc)() );
     bool Pass2EncodePicture( Picture &picture, bool force_reencode );
     
     uint64_t BitsAfterMux() const;

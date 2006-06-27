@@ -138,7 +138,9 @@ protected:
     void SetFieldParams(int field);
     void PutSliceHdr( int slice_mb_y, int mquant );
     void PutMVs( MotionEst &me, bool back );
+    void PutDCTBlocks( MacroBlock &mb, int mb_type );
     void PutCodingExt(); 
+    bool SkippableMotionMode( MotionEst &cur_mb_mm, MotionEst &prev_mb_mm);
 
 public:
 

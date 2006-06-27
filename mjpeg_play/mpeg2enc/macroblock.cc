@@ -58,6 +58,8 @@ void MacroBlock::SelectCodingModeOnVariance()
     int best_fwd_score = INT_MAX;
     int cur_score;
 
+
+    assert( best_of_kind_me.begin()->mb_type == MB_INTRA );
     //
     // Select motion estimate with lowest variance
     // Penalise the INTRA motion type slightly because it can't be
@@ -77,7 +79,35 @@ void MacroBlock::SelectCodingModeOnVariance()
         }
     }
 
-} 
+}
+
+/**********************************************
+ *
+ * ForceIFrame - Force selection of intra-coding so that that macroblock
+ *             can be correctly coded in an I Frame.
+ *
+ *********************************************/
+
+void MacroBlock::ForceIFrame()
+{
+    vector<MotionEst>::iterator i = best_of_kind_me.begin();
+    assert( i->mb_type == MB_INTRA );
+    best_me = &*i;
+}
+
+/**********************************************
+ *
+ * ForcePFrame - Force selection of motion-estimation so that that macroblock
+ *             can be correctly coded in an P Frame.  I.e. use only forward
+ *             motion estimatino.
+ *
+ *********************************************/
+
+void MacroBlock::ForcePFrame()
+{
+    vector<MotionEst>::iterator i = best_of_kind_me.begin();
+    best_me = best_fwd_me;
+}
 
 
 /* 

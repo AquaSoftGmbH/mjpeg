@@ -424,6 +424,65 @@ void Picture::MotionSubSampledLum( )
 }
 
 
+//
+// TODO Coders internal state (.e.g prev_mb) should be taken out of Picture object state
+//
+
+bool Picture::SkippableMotionMode( MotionEst &cur_mb_mm, MotionEst &prev_mb_mm)
+{
+
+    if (pict_type==P_TYPE && !(cur_mb_mm.mb_type&MB_FORWARD))
+    {
+        /* P picture, no motion vectors -> skipable */
+        return true;
+    }
+    else if(pict_type==B_TYPE )
+    {
+        /* B frame picture with same prediction type
+         * (forward/backward/interp.)  and same active vectors
+         * as in previous macroblock -> skippable
+         */
+
+        if (  pict_struct==FRAME_PICTURE
+              && cur_mb_mm.motion_type==MC_FRAME
+              && ((prev_mb_mm.mb_type ^ cur_mb_mm.mb_type) &(MB_FORWARD|MB_BACKWARD))==0
+              && (!(cur_mb_mm.mb_type&MB_FORWARD) ||
+                  (PMV[0][0][0]==cur_mb_mm.MV[0][0][0] &&
+                   PMV[0][0][1]==cur_mb_mm.MV[0][0][1]))
+              && (!(cur_mb_mm.mb_type&MB_BACKWARD) ||
+                  (PMV[0][1][0]==cur_mb_mm.MV[0][1][0] &&
+                   PMV[0][1][1]==cur_mb_mm.MV[0][1][1])))
+        {
+            return true;
+        }
+
+        /* B field picture macroblock with same prediction
+         * type (forward/backward/interp.) and active
+         * vectors as previous macroblock and same
+         * vertical field selects as current field -> skippable
+         */
+
+        if (pict_struct!=FRAME_PICTURE
+            && cur_mb_mm.motion_type==MC_FIELD
+            && ((prev_mb_mm.mb_type^cur_mb_mm.mb_type)&(MB_FORWARD|MB_BACKWARD))==0
+            && (!(cur_mb_mm.mb_type&MB_FORWARD) ||
+                (PMV[0][0][0]==cur_mb_mm.MV[0][0][0] &&
+                 PMV[0][0][1]==cur_mb_mm.MV[0][0][1] &&
+                 cur_mb_mm.field_sel[0][0]==(pict_struct==BOTTOM_FIELD)))
+            && (!(cur_mb_mm.mb_type&MB_BACKWARD) ||
+                (PMV[0][1][0]==cur_mb_mm.MV[0][1][0] &&
+                 PMV[0][1][1]==cur_mb_mm.MV[0][1][1] &&
+                 cur_mb_mm.field_sel[0][1]==(pict_struct==BOTTOM_FIELD))))
+        {
+            return true;
+        }
+    }
+
+    return false;
+
+}
+
+
 /* ************************************************
  *
  * QuantiseAndEncode - Quantise and Encode a picture.
@@ -464,7 +523,7 @@ void Picture::QuantiseAndCode(RateCtl &ratectl)
 
         MBAinc = 1; /* first MBAinc denotes absolute position */
 
-        /* Slice macroblocks... */
+        /* Slice of macroblocks... */
 		for (i=0; i<encparams.mb_width; i++)
 		{
             prev_mb = cur_mb;
@@ -472,39 +531,59 @@ void Picture::QuantiseAndCode(RateCtl &ratectl)
 
             int suggested_mquant = ratectl.MacroBlockQuant( *cur_mb );
             cur_mb->mquant = suggested_mquant;
-			/* Quantize macroblock : N.b. the MB_PATTERN bit may be
-               set as a side-effect of this call. */
+
+			/* Quantize macroblock : N.b. cbp is also set as side-effect of call. */
             cur_mb->Quantize( quantizer);
-            
-            /* Output mquant and update prediction if it changed in this macroblock */
-            if( cur_mb->cbp && suggested_mquant != mquant_pred )
-            {
-                mquant_pred = suggested_mquant;
-                cur_mb->best_me->mb_type |= MB_QUANT;
-            }
-                
-            /* Check to see if Macroblock is skippable, this may set
-               the MB_FORWARD bit... */
-            bool slice_begin_or_end = (i==0 || i==encparams.mb_width-1);
-            cur_mb->SkippedCoding(slice_begin_or_end);
-            if( cur_mb->skipped )
+
+            /*
+             * Macroblocks that don't end or begin a slice, don't have a coded DCT block and
+             * whose motion compensation is predicted and doesn't need coding can be skipped.
+             *
+             */
+
+
+            if( i!=0 && i!=encparams.mb_width-1 && !cur_mb->cbp
+                && SkippableMotionMode( *cur_mb->best_me, *prev_mb->best_me ) )
             {
                 ++MBAinc;
+                if( pict_type == P_TYPE )
+                {
+                    /* reset predictors */
+                    Reset_DC_DCT_Pred();
+                    Reset_MV_Pred();
+                }
             }
             else
             {
+                int mb_type = cur_mb->best_me->mb_type;
+
+                /* Code mquant and update prediction if it changed in this macroblock */
+                if( cur_mb->cbp && suggested_mquant != mquant_pred )
+                {
+                    mquant_pred = suggested_mquant;
+                    mb_type |= MB_QUANT;
+                }
+
+                /* Inter-coded MB with some coded DCT blocks ===> PATTERN to code */
+                if ( cur_mb->cbp && !(mb_type & MB_INTRA) )
+                    mb_type|= MB_PATTERN;
+                /* For P frames there's no VLC for 'No MC, Not Coded':
+                * we have to transmit (0,0) motion vectors
+                */
+                if ( pict_type==P_TYPE && !cur_mb->cbp)
+                    mb_type|= MB_FORWARD;
                 coding->PutAddrInc(MBAinc); /* macroblock_address_increment */
                 MBAinc = 1;
                 
-                coding->PutMBType(pict_type,cur_mb->best_me->mb_type); /* macroblock type */
+                coding->PutMBType(pict_type,mb_type); /* macroblock type */
 
-                if ( (cur_mb->best_me->mb_type & (MB_FORWARD|MB_BACKWARD)) && !frame_pred_dct)
+                if ( (mb_type & (MB_FORWARD|MB_BACKWARD)) && !frame_pred_dct)
                     coding->PutBits(cur_mb->best_me->motion_type,2);
 
                 if (pict_struct==FRAME_PICTURE 	&& cur_mb->cbp && !frame_pred_dct)
                     coding->PutBits(cur_mb->field_dct,1);
 
-                if (cur_mb->best_me->mb_type & MB_QUANT)
+                if (mb_type & MB_QUANT)
                 {
                     coding->PutBits(q_scale_type 
                             ? map_non_linear_mquant[cur_mb->mquant]
@@ -513,32 +592,31 @@ void Picture::QuantiseAndCode(RateCtl &ratectl)
 
 
 
-                if (cur_mb->best_me->mb_type & MB_FORWARD)
+                if (mb_type & MB_FORWARD)
                 {
                     /* forward motion vectors, update predictors */
                     PutMVs( *cur_mb->best_me, false );
                 }
 
-                if (cur_mb->best_me->mb_type & MB_BACKWARD)
+                if (mb_type & MB_BACKWARD)
                 {
                     /* backward motion vectors, update predictors */
                     PutMVs( *cur_mb->best_me,  true );
                 }
 
-                if (cur_mb->best_me->mb_type & MB_PATTERN)
+                if (mb_type & MB_PATTERN)
                 {
                     coding->PutCPB((cur_mb->cbp >> (BLOCK_COUNT-6)) & 63);
                 }
             
                 /* Output VLC DCT Blocks for Macroblock */
 
-                cur_mb->PutBlocks( );
+                PutDCTBlocks( *cur_mb, mb_type );
                 /* reset predictors */
-                if (!(cur_mb->best_me->mb_type & MB_INTRA))
+                if (!(mb_type & MB_INTRA))
                     Reset_DC_DCT_Pred();
 
-                if (cur_mb->best_me->mb_type & MB_INTRA || 
-                    (pict_type==P_TYPE && !(cur_mb->best_me->mb_type & MB_FORWARD)))
+                if (mb_type & MB_INTRA || (pict_type==P_TYPE && !(mb_type & MB_FORWARD)))
                 {
                     Reset_MV_Pred();
                 }

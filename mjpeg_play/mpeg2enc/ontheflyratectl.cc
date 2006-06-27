@@ -121,17 +121,20 @@ void OnTheFlyPass1::Init()
     }        
 
 
-    /* Calculate reasonable margins for variation in the decoder
-       buffer.  We assume that having less than 5 frame intervals
-       worth buffered is cutting it fine for avoiding under-runs.
 
-       The gain values represent the fraction of the under/over shoot
-       to be recovered during one second.  Gain is decreased if the
-       buffer margin is large, gain is higher for avoiding overshoot.
+  /*
+     We assume that having less than 3 frame intervals
+     worth buffered is cutting it fine for avoiding under-runs.
+    This is the buffer_safe margin.
 
-       Currently, for a 1-frame sized margin gain is set to recover
-       an undershoot in half a second
-    */
+     The gain values represent the fraction of the under/over shoot
+     to be recovered during one second.  Gain is lower if the
+     buffer space above the buffer safe margin is large.
+
+    Gain is currently set to so that if the buffer is down to the buffer_safe
+    margin the deficit should be recovered in one second.
+
+  */
     if( encparams.still_size > 0 )
     {
         undershoot_carry = 0;
@@ -145,7 +148,6 @@ void OnTheFlyPass1::Init()
             mjpeg_error_exit1("Rate control can't cope with a video buffer smaller 4 frame intervals");
         overshoot_gain =  encparams.bit_rate / (encparams.video_buffer_size-buffer_safe);
     }
-    bits_per_mb = (double)encparams.bit_rate / (encparams.mb_per_pict);
 
     /*
       Reaction paramer - i.e. quantisation feedback gain relative
@@ -325,7 +327,6 @@ bool OnTheFlyPass1::InitPict(Picture &picture)
 	   bit-pool to a one-GOP bit-pool.
 	*/
 
-	
 	if( encparams.still_size > 0 )
 		available_bits = per_pict_bits;
 	else
@@ -737,38 +738,25 @@ OnTheFlyPass2::OnTheFlyPass2(EncoderParams &encparams ) :
 void OnTheFlyPass2::Init()
 {
 
-
-  /* Calculate reasonable margins for variation in the decoder
-     buffer.  We assume that having less than 5 frame intervals
+  /*
+     We assume that having less than 3 frame intervals
      worth buffered is cutting it fine for avoiding under-runs.
+    This is the buffer_safe margin.
 
      The gain values represent the fraction of the under/over shoot
-     to be recovered during one second.  Gain is decreased if the
-     buffer margin is large, gain is higher for avoiding overshoot.
+     to be recovered during one second.  Gain is lower if the
+     buffer space above the buffer safe margin is large.
 
-     Currently, for a 1-frame sized margin gain is set to recover
-     an undershoot in half a second
+    Gain is currently set to so that if the buffer is down to the buffer_safe
+    margin the deficit should be recovered in three seconds.  This is *much* lower than
+    the pass-1 gain because in pass-2 we allocate bitsbased on the known complexity of
+    pictures in a GOP and choose quantisations that should roughly hit those bit allocations.
+    Feedback must thus cope only with the difference between the bit allocation chosen and that
+    actually produced by the selected quantisation.
   */
 
   int buffer_safe = 3 * per_pict_bits ;
-  overshoot_gain =  encparams.bit_rate / (encparams.video_buffer_size-buffer_safe);
-  bits_per_mb = (double)encparams.bit_rate / (encparams.mb_per_pict);
-
-  /*
-    Reaction paramer - i.e. quantisation feedback gain relative
-    to bit over/undershoot.
-    For normal frames it is fairly modest as we can compensate
-    over multiple frames and can average out variations in image
-    complexity.
-
-    For stills we set it a higher so corrections take place
-    more rapidly *within* a single frame.
-  */
-  if( encparams.still_size > 0 )
-    fb_gain = (int)floor(2.0*encparams.bit_rate/encparams.decode_frame_rate);
-  else
-    fb_gain = (int)floor(4.0*encparams.bit_rate/encparams.decode_frame_rate);
-
+  overshoot_gain =  (1.0/3.0) * encparams.bit_rate /  (encparams.video_buffer_size-buffer_safe);
 
 }
 
@@ -823,10 +811,22 @@ void OnTheFlyPass2::GopSetup( std::deque<Picture *>::iterator gop_begin,
   gop_Xhi = 0.0;
   for( i = gop_begin; i < gop_end; ++i )
   {
-    gop_Xhi += (*i)->Complexity();
+    //mjpeg_info( "P2RC: %d xhi = %.0f", (*i)->decode, (*i)->ABQ * (*i)->EncodedSize() );
+    gop_Xhi += (*i)->ABQ * (*i)->EncodedSize();
   }
   int gop_len = gop_end - gop_begin;
   fields_in_gop = 2 * gop_len;
+
+  double total_size = 0.0;
+  for( i = gop_begin; i < gop_end; ++i )
+  {
+    total_size += (*i)->EncodedSize();
+  }
+
+  //mjpeg_info( "P2RC: GOP actual size %.0f total xhi = %0.f",total_size, gop_Xhi);
+  // Sanity check complexity based allocation to ensure it doesn't cause
+  // buffer underflow
+  
 }
 
 /* ****************************
@@ -843,7 +843,9 @@ void OnTheFlyPass2::InitGOP(  )
                           * fields_in_gop/field_rate;
 
   double gop_quant = fmax( encparams.quant_floor, gop_Xhi / available_bits );
-  gop_bitrate = gop_Xhi / gop_quant * field_rate/fields_in_gop;
+  gop_bitrate = gop_Xhi / gop_quant;
+  //mjpeg_info( "P2RC: GOP bv %d avail %.0f gq = %0.f gbr %.0f",
+  //            buffer_variation, available_bits, gop_quant, gop_bitrate );
 }
 
 
@@ -883,25 +885,17 @@ bool OnTheFlyPass2::InitPict(Picture &picture)
 
 
   double feedback_correction = buffer_variation * overshoot_gain;
-  double available_bits = (gop_bitrate+feedback_correction)
-                          * fields_in_gop/field_rate;
+  double available_bits = (gop_bitrate+feedback_correction);
 
   // Work out target bit allocation of frame based complexity statistics
-  double Xhi = picture.Complexity();
+  double Xhi = picture.ABQ * picture.EncodedSize(); // picture.Complexity();
   target_bits = static_cast<int32_t>(available_bits*Xhi/gop_Xhi);
   target_bits = min( target_bits, encparams.video_buffer_size*3/4 );
 
 
+  //mjpeg_info( "P2RC: %d bv=%d av=%.0f xhi=%.0f/%.0f", picture.decode,
+  //buffer_variation,available_bits,picture.ABQ * picture.EncodedSize(), gop_Xhi );
 
-  /*
-     To account for the wildly different sizes of frames
-     we compute a correction to the current instantaneous
-     buffer state that accounts for the fact that all other
-     thing being equal buffer will go down a lot after the I-frame
-     decode but fill up again through the B and P frames.
-  */
-
-  gop_buffer_correction += (target_bits-per_pict_bits);
 
   picture.avg_act = avg_act;
   picture.sum_avg_act = sum_avg_act;
@@ -909,10 +903,10 @@ bool OnTheFlyPass2::InitPict(Picture &picture)
 
 
   int actual_bits = picture.EncodedSize();
-  double bit_error = (actual_bits-target_bits) / static_cast<double>(target_bits);
+  double rel_error = (actual_bits-target_bits) / static_cast<double>(target_bits);
   bool reenc_needed =
-        bit_error  > encparams.coding_tolerance
-    || (bit_error < -encparams.coding_tolerance && picture.ABQ > encparams.quant_floor * 1.01 );
+        rel_error  > encparams.coding_tolerance
+    || (rel_error < -encparams.coding_tolerance && picture.ABQ > encparams.quant_floor * 1.01 );
 
 
 
@@ -1000,8 +994,8 @@ void OnTheFlyPass2::PictUpdate( Picture &picture, int &padding_needed)
   picture.SQ = sum_avg_quant;
 
   pict_count[picture.pict_type] += 1;
-    mjpeg_info( "UPDT: %d - actual %d (%.1f) target %d (%.1f) ",
-                picture.decode, actual_bits, picture.ABQ, target_bits, base_Q );
+  mjpeg_info( "UPDT: %d - actual %d (%.1f) target %d (%.1f) ",
+               picture.decode, actual_bits, picture.ABQ, target_bits, base_Q );
   mjpeg_debug( "Frame %c A=%6.0f %.2f: I = %6.0f P = %5.0f B = %5.0f",
                pict_type_char[picture.pict_type],
                actual_bits/8.0,

@@ -140,7 +140,10 @@ static int unit_coeff_elimination(DCTblock &block,
     return (block[0] == 0);
 }
 
-
+//
+// TODO for efficiency the qdctblocks should be an external buffer managed by the calling slice/picture
+// coder.
+//
 void MacroBlock::Quantize( Quantizer &quant  )
 {
     if (best_me->mb_type & MB_INTRA)
@@ -174,8 +177,6 @@ void MacroBlock::Quantize( Quantizer &quant  )
                 cbp &= ~(zero<<(BLOCK_COUNT-1-block));
             }
         }
-        if (cbp)
-            best_me->mb_type|= MB_PATTERN;
     }
 }
 

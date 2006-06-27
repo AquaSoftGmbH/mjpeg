@@ -199,14 +199,14 @@ void fdct_basis(int16_t *block)
 void fdct_sse(int16_t *block)
 {
     float *dataptr,*aanptr;
-    float data[67] __attribute__((aligned(16)));
+    float data[64] __attribute__((aligned(16)));
     int16_t *blkptr;
     int i;
 
     /* Pass 1: process rows. */
 
     blkptr = block;
-    dataptr = ALIGN_PTR(data,16);
+    dataptr = data;
     for (i = 0; i < 2; i++)
     {
         // mm0=0a,1a,2a,3a
@@ -403,7 +403,7 @@ void fdct_sse(int16_t *block)
 
     /* Pass 2: process columns. */
 
-    dataptr = ALIGN_PTR(data,16);
+    dataptr = data;
     aanptr  = aanscales;
     blkptr = block;
     for (i = 0; i < 2; i++)

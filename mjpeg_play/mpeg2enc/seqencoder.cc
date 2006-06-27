@@ -548,6 +548,9 @@ void SeqEncoder::Pass1EncodePicture(Picture &picture, int field)
 
     // Reconstruct, transform, and encode
     EncodePicture( picture, pass1ratectl);
+
+
+
     mjpeg_info("Enc1  %5d %5d(%2d) %c q=%3.2f %s [%.0f%% Intra]",
                picture.decode, 
                picture.present,
@@ -568,7 +571,7 @@ void SeqEncoder::Pass1EncodePicture(Picture &picture, int field)
 
 */
 
-void SeqEncoder::Pass1ReEncodePicture(Picture &picture, int field)
+void SeqEncoder::Pass1ReEncodePicture0(Picture &picture, void (MacroBlock::*modeMotionAdjustFunc)())
 {
     // Flush any previous encoding
     picture.DiscardCoding();
@@ -577,7 +580,16 @@ void SeqEncoder::Pass1ReEncodePicture(Picture &picture, int field)
     pass1ratectl.SetState( pass1_rcstate->Get() );
 
     // Setup picture to reflect possibly adjusted sequence structure
-    picture.SetFrameParams( pass1_ss, field );
+    picture.SetFrameParams( pass1_ss, 0 );
+
+
+    // Adjust/ or recompute motion estimation and the corresponding coding
+    // mode select
+
+
+    p1_despatcher.Despatch( picture, modeMotionAdjustFunc );
+    p1_despatcher.WaitForCompletion();
+
 
     // Set new GOP structure (if any)
     if( pass1_ss.g_idx == 0 )
@@ -631,7 +643,7 @@ Picture *SeqEncoder::NextFramePicture0()
     return frame_pic;
 }
 
-Picture *SeqEncoder::Picture1(Picture *frame_pic0)
+Picture *SeqEncoder::NextFramePicture1(Picture *frame_pic0)
 {
   Picture *frame_pic1;
   frame_pic1 = GetFreshPicture();
@@ -647,25 +659,26 @@ Picture *SeqEncoder::Picture1(Picture *frame_pic0)
 
 void SeqEncoder::Pass1GopSplitting( Picture &picture)
 {
+
+    assert( ! picture.secondfield );
     // Should this P frame really have been an I-frame ?
-    if( pass1_ss.b_idx ==0 &&  picture.IntraCodedBlocks() > 0.6 && pass1_ss.g_idx >= encparams.N_min )
+    if( pass1_ss.b_idx ==0 &&  picture.IntraCodedBlocks() > 0.6 && pass1_ss.CanSplitHere() )
     {
 
         int old_present = picture.present;
-        if( (!pass1_ss.NextGopClosed() || pass1_ss.BGroupLength() == 1) &&
-            pass1_ss.CanSplitHere() )
+        if( (!pass1_ss.NextGopClosed() || pass1_ss.BGroupLength() == 1) )
         {
             mjpeg_info( "DEVEL: GOP split point found here... %d %d %.0f%% intra coded",
                         pass1_ss.NextGopClosed(), pass1_ss.BGroupLength(),
                         picture.IntraCodedBlocks() * 100.0 );
             pass1_ss.ForceIFrame();
             assert( picture.present == old_present);
-            Pass1ReEncodePicture( picture, 0 );
+            Pass1ReEncodePicture0( picture, &MacroBlock::ForceIFrame );
         }
         else if( encparams.M_min == 1 )
         {
             // Next GOP is closed - and B-frames.  We can't just turn the P into an I
-            // as the corresponding into frame would then be the first B frame and not
+            // as the first of the next GOP frame would then be the first B frame and not
             // the current P frame.
             // Solution: we need to back up and code the remainder of the GOP without
             // B frames to allow the I frame to be inserted at the right spot.
@@ -673,7 +686,7 @@ void SeqEncoder::Pass1GopSplitting( Picture &picture)
                         picture.IntraCodedBlocks() * 100.0 );
             pass1_ss.SuppressBFrames();
             picture.org_img = reader.ReadFrame( picture.present );
-            Pass1ReEncodePicture( picture, 0 );
+            Pass1ReEncodePicture0( picture,  &MacroBlock::ForcePFrame );
         }
     }
 }
@@ -706,9 +719,9 @@ void SeqEncoder::Pass1Process()
 
     if( encparams.fieldpic )
     {
-      frame_pic[1] = Picture1( frame_pic[0] );
+      frame_pic[1] = NextFramePicture1( frame_pic[0] );
       Pass1EncodePicture( *frame_pic[1], 1 );
-      pass1coded.push_back( frame_pic[0] );
+      pass1coded.push_back( frame_pic[1] );
       last_pic = frame_pic[1];
     }
     else
@@ -809,9 +822,9 @@ bool SeqEncoder::Pass2EncodePicture(Picture &picture, bool force_reencode)
                picture.decode, 
                picture.present,
                picture.temp_ref,
-               pict_type_char[pass1_ss.frame_type],
+               pict_type_char[picture.pict_type],
                picture.AQ,
-               picture.pad ? "PAD" : "   ");
+               reencode ? "RECODED" : "RETAINED" );
     return reencode;
 }
 
@@ -856,7 +869,8 @@ void SeqEncoder::Pass2Process()
 
     pass2ratectl.GopSetup( pass2queue.begin(), i );
     bool reference_reencoded = false;
-    for( int p =0; p < i-pass2queue.begin(); ++p )
+    int gop_size = i-pass2queue.begin();
+    for( int p =0; p < gop_size; ++p )
     {
         Picture *pic = pass2queue.front();
         bool reencoded = Pass2EncodePicture( *pic, reference_reencoded );

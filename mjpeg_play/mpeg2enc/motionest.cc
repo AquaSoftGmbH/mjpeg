@@ -782,7 +782,8 @@ void MacroBlock::FrameMEs()
 	int intravar = lum_variance + chrom_var_sum(&ssmb,16,eparams.phy_width);
 
 
-    /* We always have the possibility of INTRA coding */
+    // INTRA coding is always an option and always comes first in the list of
+    // motion estimates for the available coding options
 
     me.mb_type = MB_INTRA;
     me.motion_type = 0;
@@ -1041,7 +1042,16 @@ void MacroBlock::FieldME()
 
     pvariance( ssmb.mb, 16, w2, &lum_variance, &lum_mean );
 	intravar = lum_variance + chrom_var_sum(&ssmb,16,w2);
-        
+
+    // INTRA coding is always an option and always comes first in the list of
+    // motion estimates for the available coding options
+    me.mb_type = MB_INTRA;
+    me.motion_type = 0;
+    me.var = intravar;
+    me.MV[0][0].Zero();
+    best_of_kind_me.clear();
+    best_of_kind_me.push_back( me );
+
 	if(picture.pict_type==I_TYPE)
     {
 		me.mb_type = MB_INTRA;
@@ -1308,8 +1318,11 @@ void MacroBlock::FieldME()
 			}
 		}
 	}
-    best_of_kind_me.erase(best_of_kind_me.begin(), best_of_kind_me.end());
-    best_of_kind_me.push_back( me );
+
+    if( me.mb_type != MB_INTRA )
+    {
+        best_of_kind_me.push_back( me );
+    }
 
 }
 
