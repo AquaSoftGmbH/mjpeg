@@ -20,6 +20,7 @@
  */
 
 #include <stdio.h>
+#include <cassert>
 
 #include "macroblock.hh"
 #include "mpeg2syntaxcodes.h"
