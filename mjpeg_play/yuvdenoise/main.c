@@ -547,11 +547,9 @@ main (int argc, char *argv[])
   y4m_frame_info_t oframeinfo;
   y4m_stream_info_t ostreaminfo;
 
-  mjpeg_log (LOG_INFO, "--------------------------------------------------------------------------------");
-  mjpeg_log (LOG_INFO, "mjpeg-tools yuvdenoise version %s", VERSION);
-  mjpeg_log (LOG_INFO, "--------------------------------------------------------------------------------");
+  mjpeg_log (LOG_INFO, "yuvdenoise version %s", VERSION);
 
-  while ((c = getopt (argc, argv, "hvs:t:g:m:M:r:G:")) != -1)
+  while ((c = getopt (argc, argv, "hvt:g:m:M:r:G:")) != -1)
     {
       switch (c)
 	{
@@ -607,11 +605,6 @@ main (int argc, char *argv[])
 	case 'v':
 	  {
 	    verbose = 1;
-	    break;
-	  }
-	case 's':
-	  {
-	    mjpeg_log(LOG_WARN, "-s code removed, option accepted only for script compatiblity");
 	    break;
 	  }
 	case 't':
