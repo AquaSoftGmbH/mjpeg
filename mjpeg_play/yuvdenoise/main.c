@@ -32,6 +32,7 @@ int cwidth = 0;
 int cheight = 0;
 int input_chroma_subsampling = 0;
 int input_interlaced = 0;
+int hq_mode = 0;
 
 int renoise_Y=0;
 int renoise_U=0;
@@ -272,6 +273,298 @@ temporal_filter_planes (int idx, int w, int h, int t)
 	  f6++;
 	  f7++;
 	  of++;
+	}
+}
+
+void
+temporal_filter_planes_MC (int idx, int w, int h, int t)
+{
+  uint32_t sad,min;
+  uint32_t r, c, m;
+  int32_t d;
+  int x,y,sx,sy;
+
+  uint32_t v;
+  int x1,y1;
+  int x2,y2;
+  int x3,y3;
+  int x5,y5;
+  int x6,y6;
+  int x7,y7;
+
+  uint8_t *f1 = frame1[idx];
+  uint8_t *f2 = frame2[idx];
+  uint8_t *f3 = frame3[idx];
+  uint8_t *f4 = frame4[idx];
+  uint8_t *f5 = frame5[idx];
+  uint8_t *f6 = frame6[idx];
+  uint8_t *f7 = frame7[idx];
+  uint8_t *of = outframe[idx];
+
+#if 0
+
+  if (t == 0)			// shortcircuit filter if t = 0...
+    {
+      memcpy (of, f4, w * h);
+      return;
+    }
+#endif
+
+      for (y = 0; y < h; y+=32)
+      for (x = 0; x < w; x+=32)
+	{
+
+	// find best matching 32x32 block for f3
+	min=psad_00 ( f4+(x)+(y)*w,f3+(x)+(y)*w,w,32,0x00ffffff );
+	x3=y3=0;
+	for (sy=-8; sy < 8; sy++)
+	for (sx=-8; sx < 8; sx++)
+	{
+		sad  = psad_00 ( f4+(x)+(y)*w,f3+(x+sx)+(y+sy)*w,w,32,0x00ffffff );
+		sad += psad_00 ( f4+(x+16)+(y)*w,f3+(x+sx+16)+(y+sy)*w,w,32,0x00ffffff );
+		if(sad<min)
+		{
+		x3 = sx;
+		y3 = sy;
+		min = sad;
+		}
+	}
+
+	// find best matching 32x32 block for f5
+	min=psad_00 ( f4+(x)+(y)*w,f5+(x)+(y)*w,w,32,0x00ffffff );
+	x5=y5=0;
+	for (sy=-8; sy < 8; sy++)
+	for (sx=-8; sx < 8; sx++)
+	{
+		sad  = psad_00 ( f4+(x)+(y)*w,f5+(x+sx)+(y+sy)*w,w,32,0x00ffffff );
+		sad += psad_00 ( f4+(x+16)+(y)*w,f5+(x+sx+16)+(y+sy)*w,w,32,0x00ffffff );
+		if(sad<min)
+		{
+		x5 = sx;
+		y5 = sy;
+		min = sad;
+		}
+	}
+
+	// find best matching 32x32 block for f2
+	min=psad_00 ( f4+(x)+(y)*w,f2+(x)+(y)*w,w,32,0x00ffffff );
+	x2=y2=0;
+	for (sy=(y3-8); sy < (y3+8); sy++)
+	for (sx=(x3-8); sx < (x3+8); sx++)
+	{
+		sad  = psad_00 ( f4+(x)+(y)*w,f2+(x+sx)+(y+sy)*w,w,32,0x00ffffff );
+		sad += psad_00 ( f4+(x+16)+(y)*w,f2+(x+sx+16)+(y+sy)*w,w,32,0x00ffffff );
+		if(sad<min)
+		{
+		x2 = sx;
+		y2 = sy;
+		min = sad;
+		}
+	}
+
+	// find best matching 32x32 block for f6
+	min=psad_00 ( f4+(x)+(y)*w,f6+(x)+(y)*w,w,32,0x00ffffff );
+	x6=y6=0;
+	for (sy=(y5-8); sy < (y5+8); sy++)
+	for (sx=(x5-8); sx < (x5+8); sx++)
+	{
+		sad  = psad_00 ( f4+(x)+(y)*w,f6+(x+sx)+(y+sy)*w,w,32,0x00ffffff );
+		sad += psad_00 ( f4+(x+16)+(y)*w,f6+(x+sx+16)+(y+sy)*w,w,32,0x00ffffff );
+		if(sad<min)
+		{
+		x6 = sx;
+		y6 = sy;
+		min = sad;
+		}
+	}
+
+	// find best matching 32x32 block for f2
+	min=psad_00 ( f4+(x)+(y)*w,f1+(x)+(y)*w,w,32,0x00ffffff );
+	x1=y1=0;
+	for (sy=(y2-8); sy < (y2+8); sy++)
+	for (sx=(x2-8); sx < (x2+8); sx++)
+	{
+		sad  = psad_00 ( f4+(x)+(y)*w,f1+(x+sx)+(y+sy)*w,w,32,0x00ffffff );
+		sad += psad_00 ( f4+(x+16)+(y)*w,f1+(x+sx+16)+(y+sy)*w,w,32,0x00ffffff );
+		if(sad<min)
+		{
+		x1 = sx;
+		y1 = sy;
+		min = sad;
+		}
+	}
+
+	// find best matching 32x32 block for f7
+	min=psad_00 ( f4+(x)+(y)*w,f7+(x)+(y)*w,w,32,0x00ffffff );
+	x7=y7=0;
+	for (sy=(y6-8); sy < (y6+8); sy++)
+	for (sx=(x6-8); sx < (x6+8); sx++)
+	{
+		sad  = psad_00 ( f4+(x)+(y)*w,f7+(x+sx)+(y+sy)*w,w,32,0x00ffffff );
+		sad += psad_00 ( f4+(x+16)+(y)*w,f7+(x+sx+16)+(y+sy)*w,w,32,0x00ffffff );
+		if(sad<min)
+		{
+		x7 = sx;
+		y7 = sy;
+		min = sad;
+		}
+	}
+
+	for (sy=0; sy < 32; sy++)
+	for (sx=0; sx < 32; sx++)
+	{
+		// gauss-filtered reference pixel
+		r  = *(f4+(x+sx-1)+(y+sy-1)*w);
+		r += *(f4+(x+sx  )+(y+sy-1)*w)*2;
+		r += *(f4+(x+sx+1)+(y+sy-1)*w);
+		r += *(f4+(x+sx-1)+(y+sy  )*w)*2;
+		r += *(f4+(x+sx  )+(y+sy  )*w)*4;
+		r += *(f4+(x+sx+1)+(y+sy  )*w)*2;
+		r += *(f4+(x+sx-1)+(y+sy+1)*w);
+		r += *(f4+(x+sx  )+(y+sy+1)*w)*2;
+		r += *(f4+(x+sx+1)+(y+sy+1)*w);
+		r /= 16;
+
+		// add non-filtered reference to the accummulator
+		m = *(f4+(x+sx  )+(y+sy  )*w)*t;
+		c = t;
+
+		// gauss-filtered and translated test pixel
+		sx += x1;
+		sy += y1;
+		v  = *(f1+(x+sx-1)+(y+sy-1)*w);
+		v += *(f1+(x+sx  )+(y+sy-1)*w)*2;
+		v += *(f1+(x+sx+1)+(y+sy-1)*w);
+		v += *(f1+(x+sx-1)+(y+sy  )*w)*2;
+		v += *(f1+(x+sx  )+(y+sy  )*w)*4;
+		v += *(f1+(x+sx+1)+(y+sy  )*w)*2;
+		v += *(f1+(x+sx-1)+(y+sy+1)*w);
+		v += *(f1+(x+sx  )+(y+sy+1)*w)*2;
+		v += *(f1+(x+sx+1)+(y+sy+1)*w);
+		sx -= x1;
+		sy -= y1;
+		v /= 16;
+
+		// add wightened and translated but non-filtered test-pixel
+		d = t - abs (r-v);
+		d = d<0? 0:d;
+	  	c += d;
+          	m += *(f1+(x+sx+x1)+(y+sy+y1)*w)*d;
+
+		// gauss-filtered and translated test pixel
+		sx += x2;
+		sy += y2;
+		v  = *(f2+(x+sx-1)+(y+sy-1)*w);
+		v += *(f2+(x+sx  )+(y+sy-1)*w)*2;
+		v += *(f2+(x+sx+1)+(y+sy-1)*w);
+		v += *(f2+(x+sx-1)+(y+sy  )*w)*2;
+		v += *(f2+(x+sx  )+(y+sy  )*w)*4;
+		v += *(f2+(x+sx+1)+(y+sy  )*w)*2;
+		v += *(f2+(x+sx-1)+(y+sy+1)*w);
+		v += *(f2+(x+sx  )+(y+sy+1)*w)*2;
+		v += *(f2+(x+sx+1)+(y+sy+1)*w);
+		sx -= x2;
+		sy -= y2;
+		v /= 16;
+
+		// add wightened and translated but non-filtered test-pixel
+		d = t - abs (r-v);
+		d = d<0? 0:d;
+	  	c += d;
+          	m += *(f2+(x+sx+x2)+(y+sy+y2)*w)*d;
+
+		// gauss-filtered and translated test pixel
+		sx += x3;
+		sy += y3;
+		v  = *(f3+(x+sx-1)+(y+sy-1)*w);
+		v += *(f3+(x+sx  )+(y+sy-1)*w)*2;
+		v += *(f3+(x+sx+1)+(y+sy-1)*w);
+		v += *(f3+(x+sx-1)+(y+sy  )*w)*2;
+		v += *(f3+(x+sx  )+(y+sy  )*w)*4;
+		v += *(f3+(x+sx+1)+(y+sy  )*w)*2;
+		v += *(f3+(x+sx-1)+(y+sy+1)*w);
+		v += *(f3+(x+sx  )+(y+sy+1)*w)*2;
+		v += *(f3+(x+sx+1)+(y+sy+1)*w);
+		sx -= x3;
+		sy -= y3;
+		v /= 16;
+
+		// add wightened and translated but non-filtered test-pixel
+		d = t - abs (r-v);
+		d = d<0? 0:d;
+	  	c += d;
+          	m += *(f3+(x+sx+x3)+(y+sy+y3)*w)*d;
+
+		// gauss-filtered and translated test pixel
+		sx += x5;
+		sy += y5;
+		v  = *(f5+(x+sx-1)+(y+sy-1)*w);
+		v += *(f5+(x+sx  )+(y+sy-1)*w)*2;
+		v += *(f5+(x+sx+1)+(y+sy-1)*w);
+		v += *(f5+(x+sx-1)+(y+sy  )*w)*2;
+		v += *(f5+(x+sx  )+(y+sy  )*w)*4;
+		v += *(f5+(x+sx+1)+(y+sy  )*w)*2;
+		v += *(f5+(x+sx-1)+(y+sy+1)*w);
+		v += *(f5+(x+sx  )+(y+sy+1)*w)*2;
+		v += *(f5+(x+sx+1)+(y+sy+1)*w);
+		sx -= x5;
+		sy -= y5;
+		v /= 16;
+
+		// add wightened and translated but non-filtered test-pixel
+		d = t - abs (r-v);
+		d = d<0? 0:d;
+	  	c += d;
+          	m += *(f5+(x+sx+x5)+(y+sy+y5)*w)*d;
+
+		// gauss-filtered and translated test pixel
+		sx += x6;
+		sy += y6;
+		v  = *(f6+(x+sx-1)+(y+sy-1)*w);
+		v += *(f6+(x+sx  )+(y+sy-1)*w)*2;
+		v += *(f6+(x+sx+1)+(y+sy-1)*w);
+		v += *(f6+(x+sx-1)+(y+sy  )*w)*2;
+		v += *(f6+(x+sx  )+(y+sy  )*w)*4;
+		v += *(f6+(x+sx+1)+(y+sy  )*w)*2;
+		v += *(f6+(x+sx-1)+(y+sy+1)*w);
+		v += *(f6+(x+sx  )+(y+sy+1)*w)*2;
+		v += *(f6+(x+sx+1)+(y+sy+1)*w);
+		sx -= x6;
+		sy -= y6;
+		v /= 16;
+
+		// add wightened and translated but non-filtered test-pixel
+		d = t - abs (r-v);
+		d = d<0? 0:d;
+	  	c += d;
+          	m += *(f6+(x+sx+x6)+(y+sy+y6)*w)*d;
+
+		// gauss-filtered and translated test pixel
+		sx += x7;
+		sy += y7;
+		v  = *(f7+(x+sx-1)+(y+sy-1)*w);
+		v += *(f7+(x+sx  )+(y+sy-1)*w)*2;
+		v += *(f7+(x+sx+1)+(y+sy-1)*w);
+		v += *(f7+(x+sx-1)+(y+sy  )*w)*2;
+		v += *(f7+(x+sx  )+(y+sy  )*w)*4;
+		v += *(f7+(x+sx+1)+(y+sy  )*w)*2;
+		v += *(f7+(x+sx-1)+(y+sy+1)*w);
+		v += *(f7+(x+sx  )+(y+sy+1)*w)*2;
+		v += *(f7+(x+sx+1)+(y+sy+1)*w);
+		sx -= x7;
+		sy -= y7;
+		v /= 16;
+
+		// add wightened and translated but non-filtered test-pixel
+		d = t - abs (r-v);
+		d = d<0? 0:d;
+	  	c += d;
+          	m += *(f7+(x+sx+x7)+(y+sy+y7)*w)*d;
+
+		*(of+(x+sx)+(y+sy)*w) = m/c;
+
+	}
+
 	}
 }
 
@@ -549,7 +842,7 @@ main (int argc, char *argv[])
 
   mjpeg_log (LOG_INFO, "yuvdenoise version %s", VERSION);
 
-  while ((c = getopt (argc, argv, "hvt:g:m:M:r:G:")) != -1)
+  while ((c = getopt (argc, argv, "qhvt:g:m:M:r:G:")) != -1)
     {
       switch (c)
 	{
@@ -598,6 +891,10 @@ main (int argc, char *argv[])
   	    mjpeg_log (LOG_INFO, "-r [0...255],[0...255],[0...255]                                                ");
   	    mjpeg_log (LOG_INFO, "                                                                                ");
   	    mjpeg_log (LOG_INFO, "Add some static masking noise. Might be used as an effect, too... *g*           ");
+  	    mjpeg_log (LOG_INFO, "                                                                                ");
+  	    mjpeg_log (LOG_INFO, "-q                                                                              ");
+  	    mjpeg_log (LOG_INFO, "                                                                                ");
+  	    mjpeg_log (LOG_INFO, "HighQuality-Mode. Warning: On almost any machine this is dead slow...           ");
 
 	    exit (0);
 	    break;
@@ -605,6 +902,11 @@ main (int argc, char *argv[])
 	case 'v':
 	  {
 	    verbose = 1;
+	    break;
+	  }
+	case 'q':
+	  {
+	    hq_mode = 1;
 	    break;
 	  }
 	case 't':
@@ -661,6 +963,8 @@ main (int argc, char *argv[])
 	     med_post_Y_thres, med_post_U_thres, med_post_V_thres);
   mjpeg_log (LOG_INFO, "Renoise               [Y,U,V] : [%i,%i,%i]",
 	     renoise_Y, renoise_U, renoise_V);
+  mjpeg_log (LOG_INFO, "HQ-Mode                       : %s",
+	     (hq_mode==0? "off":"on"));
 
   /* initialize stream-information */
   y4m_accept_extensions (1);
@@ -781,6 +1085,9 @@ main (int argc, char *argv[])
     mjpeg_log (LOG_INFO, "Buffers allocated.");
   }
 
+  /* initialize motion_library */
+  init_motion_search ();
+
   /* read every frame until the end of the input stream and process it */
   while (Y4M_OK == (errno = y4m_read_frame (fd_in,
 					    &istreaminfo,
@@ -800,9 +1107,18 @@ main (int argc, char *argv[])
 	filter_plane_median (frame1[1], cwidth, cheight, med_pre_U_thres);
 	filter_plane_median (frame1[2], cwidth, cheight, med_pre_V_thres);
 
-	temporal_filter_planes (0, lwidth, lheight, temp_Y_thres);
-      	temporal_filter_planes (1, cwidth, cheight, temp_U_thres);
-      	temporal_filter_planes (2, cwidth, cheight, temp_V_thres);
+	if(hq_mode==1)
+	{
+		temporal_filter_planes_MC (0, lwidth, lheight, temp_Y_thres);
+      		temporal_filter_planes_MC (1, cwidth, cheight, temp_U_thres);
+      		temporal_filter_planes_MC (2, cwidth, cheight, temp_V_thres);
+	}
+	else
+	{
+		temporal_filter_planes (0, lwidth, lheight, temp_Y_thres);
+      		temporal_filter_planes (1, cwidth, cheight, temp_U_thres);
+      		temporal_filter_planes (2, cwidth, cheight, temp_V_thres);
+	}
 
 	filter_plane_median (outframe[0], lwidth, lheight, med_post_Y_thres);
 	filter_plane_median (outframe[1], cwidth, cheight, med_post_U_thres);
