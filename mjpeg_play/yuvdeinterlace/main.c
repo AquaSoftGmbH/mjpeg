@@ -354,14 +354,14 @@ main (int argc, char *argv[])
 
 		if(both_fields)
 			{
-			y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, reconstructed);
+			y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, outframe);
 			}
 
 		motion_compensate ( outframe[0],field1[0], lwidth,lheight, 1);
 		motion_compensate ( outframe[1],field1[1], cwidth,cheight, 1);
 		motion_compensate ( outframe[2],field1[2], cwidth,cheight, 1);
 
-		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, reconstructed);
+		y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, outframe);
 	}
 #endif
     }
