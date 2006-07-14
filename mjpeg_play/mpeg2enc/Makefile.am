@@ -47,12 +47,15 @@ mpeg2enc_noinst_header_REF = \
 mpeg2enc_inst_header_REF = \
 	predict_ref.h
 
-mpeg2enc_SOURCES = mpeg2enc.cc imageplanes.cc
+mpeg2enc_SOURCES = mpeg2enc.cc
 
 libmpeg2encpp_la_SOURCES = conform.cc elemstrmwriter.cc encoderparams.cc \
-		macroblock.cc motionest.cc mpeg2coder.cc mpeg2encoptions.cc mpeg2encoder.cc \
-		picture.cc picturereader.cc predict.cc putpic.cc streamstate.cc seqencoder.cc \
-		quantize.cc ratectl.cc stats.cc synchrolib.cc tables.c transfrm.cc $(mpeg2enc_REF) \
+		macroblock.cc motionest.cc mpeg2coder.cc mpeg2encoptions.cc \
+		imageplanes.cc mpeg2encoder.cc \
+		picture.cc picturereader.cc predict.cc putpic.cc \
+		streamstate.cc seqencoder.cc \
+		quantize.cc ratectl.cc stats.cc synchrolib.cc tables.c \
+		transfrm.cc $(mpeg2enc_REF) \
 		$(SIMD_INLINE) ontheflyratectl.cc pass2ratectl.cc pass1ratectl.cc \
 	rate_complexity_model.cc
 
