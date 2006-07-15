@@ -10,7 +10,7 @@
  *
  * Usage: y4mstabilizer [-v] [-a <alpha>] [-r <srchRadius>]
  *
- *	-v		Verbose.   Move -vs make it more verbose.
+ *	-v		Verbose.  Add additional -v to increase verbosity/debug
  *	-a <alpha>	The alpha value is a "viscosity" measure (see below).
  *	-r <srchRadius>	How far to look for movement.
  *	-s <stride>	How far apart the motion search points are.
@@ -308,7 +308,7 @@ usage (void)
 "\n"
 "Usage: y4mstabilizer [-v] [-a <alpha>] [-r <srchRadius>]\n"
 "\n"
-"	-v		Verbose.   Move -vs make it more verbose.\n"
+"	-v		Verbose.  Repeat -v to increase verbosity/debug info\n"
 "	-a <alpha>	A \"viscosity\" measure (see below).\n"
 "	-r <srchRadius>	How far to look for movement.\n"
 "	-s <stride>	How far apart the motion search points are.\n"
