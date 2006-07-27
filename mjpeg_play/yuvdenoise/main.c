@@ -829,7 +829,7 @@ void filter_plane_median ( uint8_t * plane, int w, int h, int level)
 int
 main (int argc, char *argv[])
 {
-  char c;
+  int c;
   int fd_in = 0;
   int fd_out = 1;
   int errno = 0;
@@ -848,53 +848,33 @@ main (int argc, char *argv[])
 	{
 	case 'h':
 	  {
-  	    mjpeg_log (LOG_INFO, "                                                                                ");
   	    mjpeg_log (LOG_INFO, "... | yuvdenoise [OPTIONS] | ...                                                ");
-  	    mjpeg_log (LOG_INFO, "                                                                                ");
-  	    mjpeg_log (LOG_INFO, "Brief description of the accepted options:                                      ");
-  	    mjpeg_log (LOG_INFO, "                                                                                ");
-  	    mjpeg_log (LOG_INFO, "-g [Y=0...255],[U=0...255],[V=0...255]                                          ");
-  	    mjpeg_log (LOG_INFO, "                                                                                ");
-  	    mjpeg_log (LOG_INFO, "This sets the parameters [Y,U,V] for the gauss-filter. 0 means no filtering,    ");
-  	    mjpeg_log (LOG_INFO, "which is the default, 255 is maximum gaussfiltering. Some camera manufacturers  ");
-  	    mjpeg_log (LOG_INFO, "think it's a good idea to sharpen the frames extremly. This however will raise  ");
-  	    mjpeg_log (LOG_INFO, "typical video-compression-artefacts (ringing, blocking, alias, etc...). If you  ");
-  	    mjpeg_log (LOG_INFO, "desire to have a video free of these, you can raise the gauss-filter-values     ");
-  	    mjpeg_log (LOG_INFO, "until your image is undesirable soft... (Short: setting decent values helps     ");
-  	    mjpeg_log (LOG_INFO, "both: the viewer and the encoder -- setting too high values is ugly.) This may  ");
-  	    mjpeg_log (LOG_INFO, "also help with extremly noisy images from a weak air-captured signal...         ");
-  	    mjpeg_log (LOG_INFO, "Unlike y4mspatialfilter this will not boost ringing artefacts.                  ");
-  	    mjpeg_log (LOG_INFO, "                                                                                ");
-  	    mjpeg_log (LOG_INFO, "-m [0...255],[0...255],[0...255]                                                ");
-  	    mjpeg_log (LOG_INFO, "                                                                                ");
-  	    mjpeg_log (LOG_INFO, "Spatial-Pre-Filter. This one helps with really noisy signals. You should not    ");
-  	    mjpeg_log (LOG_INFO, "use this with moderate to low noise material. Used with care it helps the tem-  ");
-  	    mjpeg_log (LOG_INFO, "poral-filter a lot. Misuse will lead to rather dull images (like an overly me-  ");
-  	    mjpeg_log (LOG_INFO, "dian-filtered image...                                                          ");
-  	    mjpeg_log (LOG_INFO, "                                                                                ");
-  	    mjpeg_log (LOG_INFO, "-t [0...255],[0...255],[0...255]                                                ");
-  	    mjpeg_log (LOG_INFO, "                                                                                ");
-  	    mjpeg_log (LOG_INFO, "Temporal-Noise-Filter. This one dramaticaly reduces noise without loosing sharp-");
-  	    mjpeg_log (LOG_INFO, "ness. If set too high, however, it may introduce visable ghost-images or smear. ");
-  	    mjpeg_log (LOG_INFO, "                                                                                ");
-  	    mjpeg_log (LOG_INFO, "-M [0...255],[0...255],[0...255]                                                ");
-  	    mjpeg_log (LOG_INFO, "                                                                                ");
-  	    mjpeg_log (LOG_INFO, "Spatial-Post-Filter. This one removes spatial noise left by the temporal-filter.");
-  	    mjpeg_log (LOG_INFO, "Used with care it can dramaticaly lower the bitrate. Using it with to high set- ");
-  	    mjpeg_log (LOG_INFO, "tings will lead to the same artefacts as the spatial-pre-filter produces.       ");
-  	    mjpeg_log (LOG_INFO, "                                                                                ");
-  	    mjpeg_log (LOG_INFO, "-G [0...255],[0...255],[0...255]                                                ");
-  	    mjpeg_log (LOG_INFO, "                                                                                ");
-  	    mjpeg_log (LOG_INFO, "Set -m,-t,-M values at once. -t is boosted by a factor of 2. Useful if you do   ");
-  	    mjpeg_log (LOG_INFO, "not want to tweak all the values by hand... which is better.                    ");
-  	    mjpeg_log (LOG_INFO, "                                                                                ");
-  	    mjpeg_log (LOG_INFO, "-r [0...255],[0...255],[0...255]                                                ");
-  	    mjpeg_log (LOG_INFO, "                                                                                ");
-  	    mjpeg_log (LOG_INFO, "Add some static masking noise. Might be used as an effect, too... *g*           ");
-  	    mjpeg_log (LOG_INFO, "                                                                                ");
-  	    mjpeg_log (LOG_INFO, "-q                                                                              ");
-  	    mjpeg_log (LOG_INFO, "                                                                                ");
-  	    mjpeg_log (LOG_INFO, "HighQuality-Mode. Warning: On almost any machine this is dead slow...           ");
+  	    mjpeg_log (LOG_INFO, "Brief description of the accepted options:\n");
+  	    mjpeg_log (LOG_INFO, "-g [Y=0...255],[U=0...255],[V=0...255]");
+  	    mjpeg_log (LOG_INFO, "   This sets the parameters [Y,U,V] for the gauss-filter. 0 means no filtering,");
+  	    mjpeg_log (LOG_INFO, "    which is the default, 255 is maximum gaussfiltering. Some camera manufacturers");
+  	    mjpeg_log (LOG_INFO, "    think it's a good idea to sharpen the frames extremly. This however will raise");
+  	    mjpeg_log (LOG_INFO, "    typical video-compression-artefacts (ringing, blocking, alias, etc...). If you");
+  	    mjpeg_log (LOG_INFO, "    desire to have a video free of these, you can raise the gauss-filter-values");
+  	    mjpeg_log (LOG_INFO, "    until your image is undesirable soft... (Short: setting decent values helps");
+  	    mjpeg_log (LOG_INFO, "    both: the viewer and the encoder -- setting too high values is ugly.) This may");
+  	    mjpeg_log (LOG_INFO, "    also help with extremly noisy images from a weak air-captured signal...");
+  	    mjpeg_log (LOG_INFO, "    Unlike y4mspatialfilter this will not boost ringing artefacts.\n");
+  	    mjpeg_log (LOG_INFO, "-m [0...255],[0...255],[0...255]");
+  	    mjpeg_log (LOG_INFO, "    Spatial-Pre-Filter. This one helps with really noisy signals. You should not");
+  	    mjpeg_log (LOG_INFO, "    use this with moderate to low noise material. Used with care it helps the tem-");
+	     mjpeg_log (LOG_INFO, "   poral-filter a lot. Misuse will lead to rather dull images (like an overly median-filtered image...");
+  	    mjpeg_log (LOG_INFO, "-t [0...255],[0...255],[0...255]");
+  	    mjpeg_log (LOG_INFO, "    Temporal-Noise-Filter. This one dramaticaly reduces noise without loosing sharpness. If set too high, however, it may introduce visable ghost-images or smear. ");
+  	    mjpeg_log (LOG_INFO, "-M [0...255],[0...255],[0...255]");
+  	    mjpeg_log (LOG_INFO, "    Spatial-Post-Filter. This one removes spatial noise left by the temporal-filter.");
+  	    mjpeg_log (LOG_INFO, "    Used with care it can dramaticaly lower the bitrate. Using it with to high settings will lead to the same artefacts as the spatial-pre-filter produces.");
+  	    mjpeg_log (LOG_INFO, "-G [0...255],[0...255],[0...255]");
+  	    mjpeg_log (LOG_INFO, "    Set -m,-t,-M values at once. -t is boosted by a factor of 2. Useful if you do");
+  	    mjpeg_log (LOG_INFO, "    not want to tweak all the values by hand... which is better.");
+  	    mjpeg_log (LOG_INFO, "-r [0...255],[0...255],[0...255]");
+  	    mjpeg_log (LOG_INFO, "    Add some static masking noise. Might be used as an effect, too... *g*");
+  	    mjpeg_log (LOG_INFO, "-q  HighQuality-Mode. Warning: On almost any machine this is dead slow...");
 
 	    exit (0);
 	    break;
