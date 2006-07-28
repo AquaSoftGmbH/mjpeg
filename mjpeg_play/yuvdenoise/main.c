@@ -830,9 +830,9 @@ int
 main (int argc, char *argv[])
 {
   int c;
-  int fd_in = 0;
-  int fd_out = 1;
-  int errno = 0;
+  int fd_in = fileno(stdin);
+  int fd_out = fileno(stdout);
+  int err = 0;
   char *msg = NULL;
   y4m_ratio_t rx, ry;
   y4m_frame_info_t iframeinfo;
@@ -954,10 +954,10 @@ main (int argc, char *argv[])
   y4m_init_frame_info (&oframeinfo);
 
   /* open input stream */
-  if ((errno = y4m_read_stream_header (fd_in, &istreaminfo)) != Y4M_OK)
+  if ((err = y4m_read_stream_header (fd_in, &istreaminfo)) != Y4M_OK)
     {
       mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!",
-		 y4m_strerr (errno));
+		 y4m_strerr (err));
       exit (1);
     }
 
@@ -1069,7 +1069,7 @@ main (int argc, char *argv[])
   init_motion_search ();
 
   /* read every frame until the end of the input stream and process it */
-  while (Y4M_OK == (errno = y4m_read_frame (fd_in,
+  while (Y4M_OK == (err = y4m_read_frame (fd_in,
 					    &istreaminfo,
 					    &iframeinfo, frame1)))
     {
@@ -1192,8 +1192,8 @@ main (int argc, char *argv[])
   }
 
   /* did stream end unexpectedly ? */
-  if (errno != Y4M_ERR_EOF)
-    mjpeg_error_exit1 ("%s", y4m_strerr (errno));
+  if (err != Y4M_ERR_EOF)
+    mjpeg_error_exit1 ("%s", y4m_strerr (err));
 
   /* Exit gently */
   return (0);
