@@ -3,18 +3,6 @@ Documentation Files
 
 INSTALL - How to install this package
 
-Prerequisites
-=============
-
-jpeg-mmx (optional): 
-Acts as a local replacement (not system-wide !) for libjpeg and allows it
-to decode JPEGs with Intels MMX instructions. 
-
-Compilation is somewhat complicated, and won't work on any other
-platforms than Linux/Intel ! 
-
-Other libraries are possible, more to be documented... 
-
 lavtools: Linux Audio and Video TOOLS for Motion JPEG and MPEG
 ==============================================================
 

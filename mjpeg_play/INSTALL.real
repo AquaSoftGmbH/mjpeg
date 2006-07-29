@@ -41,32 +41,16 @@ The following library is highly recommended for compiling the mjpegtools:
 
 libquicktime   : http://libquicktime.sourceforge.net/
 
-Optionally (but not recommended):
-
-JPEG-MMX       : http://sourceforge.net/projects/mjpeg/
-
-The JPEG-MMX only compiles on a IA32 (x86) architecture. If you have a 
-Power PC, AMD64 or other non-IA32 architecture you cannot use the jpeg-mmx
-library.
-
-First, install JPEG-MMX, simply unpack, './configure' and 'make'.
-Do *not* run 'make install'! 
-
 Lastly unpack libquicktime and run './configure', 'make' and 'make install'.
 As usual when installing new libraries it may be necessary to run 'ldconfig' 
 after 'make install'.
 
 COMPILING THE MJPEGTOOLS
 ========================
-Unpack the tarball and run './autogen.sh' to create the configure script.
+Unpack the tarball and run './autogen.sh' to create the configure script.  In
+the simplest form the configure script is run like this:
 
-Then if jpeg-mmx is to be used run 
-
-    './configure --with-jpeg-mmx=/path/to/jpeg-mmx'
-
-where /path/to/jpeg-mmx is the directory where you just compiled JPEG-MMX.   IF
-jpeg-mmx is NOT being used then a simple "./configure" is all that is 
-necessary.
+	./configure
 
 If you do NOT want to include quicktime support you may specify 
 '--with-quicktime=no', otherwise the presence of libquicktime will be 
