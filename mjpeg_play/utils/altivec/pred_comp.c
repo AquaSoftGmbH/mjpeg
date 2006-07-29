@@ -87,7 +87,7 @@ void pred_comp_altivec(PRED_COMP_PDECL)
     s = src + lx*(y+yint) + (x+xint); /* motion vector */
     d = dst + lx*y + x;
 
-#ifdef ALTIVEC_VERIFY /* {{{ */
+#ifdef ALTIVEC_VERIFY
     if (NOT_VECTOR_ALIGNED(src))
 	mjpeg_error_exit1("pred_comp: src %% 16 != 0, (0x%X)", src);
 
@@ -96,6 +96,7 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
     if (NOT_VECTOR_ALIGNED(lx))
 	mjpeg_error_exit1("pred_comp: lx %% 16 != 0, (%d)", lx);
+#endif
 
     if (w != 16 && w != 8)
 	mjpeg_error_exit1("pred_comp: w != 16|8, (%d)", w);
@@ -116,7 +117,6 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
     if (((unsigned long)d & 0xf) > w)
 	mjpeg_error_exit1("pred_comp: (d & 0xf) > w (d=0x%X, w=%d)", d, w);
-#endif /* }}} */
 
     if (xh) {
 	if  (yh) {

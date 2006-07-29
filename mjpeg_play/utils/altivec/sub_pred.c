@@ -56,28 +56,28 @@ void sub_pred_altivec(SUB_PRED_PDECL)
     vector signed short blkA, blkB;
 
 
-#ifdef ALTIVEC_VERIFY /* {{{ */
-    if ((((unsigned long)pred) & 0x7) != 0)
-	mjpeg_error_exit1("sub_pred: pred %% 8 != 0, (0x%X)", pred);
-
-    if ((((unsigned long)cur) & 0x7) != 0)
-	mjpeg_error_exit1("sub_pred: cur %% 8 != 0, (0x%X)", cur);
+#ifdef ALTIVEC_VERIFY
+#ifdef ALTIVEC_DST
+    if (lx & (~0xffff) != 0)
+	mjpeg_error_exit1("sub_pred: lx > vec_dst range", lx);
+#endif
 
     if (NOT_VECTOR_ALIGNED(lx))
 	mjpeg_error_exit1("sub_pred: lx %% 16 != 0, (%d)", lx);
 
     if (NOT_VECTOR_ALIGNED(blk))
 	mjpeg_error_exit1("sub_pred: blk %% 16 != 0, (%d)", blk);
+#endif
 
     if (((unsigned long)pred & 0xf) != ((unsigned long)cur & 0xf))
 	mjpeg_error_exit1("sub_pred: (pred(0x%X) %% 16) != (cur(0x%X) %% 16)",
 	    pred, cur);
 
-#ifdef ALTIVEC_DST
-    if (lx & (~0xffff) != 0)
-	mjpeg_error_exit1("sub_pred: lx > vec_dst range", lx);
-#endif
-#endif /* }}} */
+    if ((((unsigned long)pred) & 0x7) != 0)
+	mjpeg_error_exit1("sub_pred: pred %% 8 != 0, (0x%X)", pred);
+
+    if ((((unsigned long)cur) & 0x7) != 0)
+	mjpeg_error_exit1("sub_pred: cur %% 8 != 0, (0x%X)", cur);
 
 
 /* A->B, B->A expand differently depending on input */

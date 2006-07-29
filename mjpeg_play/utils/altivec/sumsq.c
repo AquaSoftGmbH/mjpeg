@@ -818,10 +818,10 @@ int sumsq_altivec(SUMSQ_PDECL)
 
     if (NOT_VECTOR_ALIGNED(rowstride))
 	mjpeg_error_exit1("sumsq: rowstride %% 16 != 0, (%d)", rowstride);
+#endif
 
     if (h != 8 && h != 16)
 	mjpeg_error_exit1("sumsq: h != [8|16], (%d)", h);
-#endif
 
     AMBER_START;
 

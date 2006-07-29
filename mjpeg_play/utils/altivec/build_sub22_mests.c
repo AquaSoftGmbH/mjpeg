@@ -139,23 +139,20 @@ int build_sub22_mests_altivec(BUILD_SUB22_MESTS_PDECL)
     int min_weight;
 #endif
 
-#ifdef ALTIVEC_VERIFY /* {{{ */
-  if (((unsigned long)s22blk & 0x7) != 0)
-   mjpeg_error_exit1("build_sub22_mests: s22blk %% 8 != 0, (0x%X)", s22blk);
-
+#ifdef ALTIVEC_VERIFY
   if (NOT_VECTOR_ALIGNED(rowstride))
     mjpeg_error_exit1("build_sub22_mests: rowstride %% 16 != 0, (%d)",
 		rowstride);
 
-  if (h != 4 && h != 8)
-    mjpeg_error_exit1("build_sub22_mests: h != [4|8], (%d)", h);
-
-#if 0
   if (NOT_VECTOR_ALIGNED(cres))
     mjpeg_warn("build_sub22_mests: cres %% 16 != 0, (0x%X)",cres);
-#endif
+#endif 
 
-#endif /* }}} */
+  if (((unsigned long)s22blk & 0x7) != 0)
+   mjpeg_error_exit1("build_sub22_mests: s22blk %% 8 != 0, (0x%X)", s22blk);
+
+  if (h != 4 && h != 8)
+    mjpeg_error_exit1("build_sub22_mests: h != [4|8], (%d)", h);
 
     AMBER_START;
 

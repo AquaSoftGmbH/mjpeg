@@ -67,22 +67,22 @@ void variance_altivec(VARIANCE_PDECL)
 	} s;
     } vo;
 
-#ifdef ALTIVEC_VERIFY /* {{{ */
+#ifdef ALTIVEC_VERIFY
+    if (size == 16 && NOT_VECTOR_ALIGNED(p))
+	mjpeg_error_exit1("variance: size == 16 && p %% 16 != 0 (0x%X)", p);
+
+    if (NOT_VECTOR_ALIGNED(rowstride))
+	mjpeg_error_exit1("variance: rowstride %% 16 != 0, (%d)", rowstride);
+#endif
+
     if ((((unsigned long)p) & 0x7) != 0)
 	mjpeg_error_exit1("variance: p %% 8 != 0, (0x%X)", p);
 
     if ((size & 0x7) != 0)
 	mjpeg_error_exit1("variance: size %% 8 != 0, (%d)", size);
 
-    if (size == 16 && NOT_VECTOR_ALIGNED(p))
-	mjpeg_error_exit1("variance: size == 16 && p %% 16 != 0 (0x%X)", p);
-
-    if (NOT_VECTOR_ALIGNED(rowstride))
-	mjpeg_error_exit1("variance: rowstride %% 16 != 0, (%d)", rowstride);
-
     if (rowstride & (~0xffff) != 0)
 	mjpeg_error_exit1("variance: rowstride > vec_dst range", rowstride);
-#endif /* }}} */
 
     AMBER_START;
 

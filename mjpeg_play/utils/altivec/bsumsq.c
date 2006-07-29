@@ -92,6 +92,14 @@ int bsumsq_altivec(BSUMSQ_PDECL)
 
  
 #ifdef ALTIVEC_VERIFY
+
+    if (NOT_VECTOR_ALIGNED(p2))
+	mjpeg_error_exit1("bsumsq: p2 %% 16 != 0, (0x%X)", p2);
+
+    if (NOT_VECTOR_ALIGNED(rowstride))
+	mjpeg_error_exit1("bsumsq: rowstride %% 16 != 0, (%d)", rowstride);
+#endif
+
     if (hxf != 0 && hxf != 1)
 	mjpeg_error_exit1("bsumsq: hxf != [0|1], (hxf=%d)", hxf);
 
@@ -104,15 +112,8 @@ int bsumsq_altivec(BSUMSQ_PDECL)
     if (hyb != 0 && hyb != 1)
 	mjpeg_error_exit1("bsumsq: hyb != [0|1], (hyb=%d)", hyb);
 
-    if (NOT_VECTOR_ALIGNED(p2))
-	mjpeg_error_exit1("bsumsq: p2 %% 16 != 0, (0x%X)", p2);
-
-    if (NOT_VECTOR_ALIGNED(rowstride))
-	mjpeg_error_exit1("bsumsq: rowstride %% 16 != 0, (%d)", rowstride);
-
     if (h != 8 && h != 16)
 	mjpeg_error_exit1("bsumsq: h != [8|16], (%d)", h);
-#endif
 
     AMBER_START;
 

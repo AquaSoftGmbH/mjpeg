@@ -188,14 +188,11 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 	sub22mests++;
     
 
-#ifdef ALTIVEC_VERIFY
 	/* orgblk alignment should always be a multiple of 2 {0,2,4,6,8,A,C,E}
 	 * this is important to avoid the edge case where (orgblk&15)==15
 	 */
 	if (((unsigned int)orgblk & 1) != 0)
 	    mjpeg_warn("find_best_one_pel: orgblk %% 2 != 0 (0x%X)", orgblk);
-#endif
-
     
 	/* calculate SAD for macroblocks:
 	 * orgblk(0, 0), orgblk(+1, 0),

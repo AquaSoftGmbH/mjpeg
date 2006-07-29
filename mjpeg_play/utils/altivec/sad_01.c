@@ -85,10 +85,10 @@ int sad_01_altivec(SAD_01_PDECL)
 
     if (NOT_VECTOR_ALIGNED(rowstride))
 	mjpeg_error_exit1("sad_01: rowstride %% 16 != 0, (%d)", rowstride);
+#endif
 
     if (h != 8 && h != 16)
 	mjpeg_error_exit1("sad_01: h != [8|16], (%d)", h);
-#endif
 
     AMBER_START;
 
