@@ -310,18 +310,18 @@ temporal_filter_planes_MC (int idx, int w, int h, int t)
     }
 #endif
 
-      for (y = 0; y < h; y+=32)
-      for (x = 0; x < w; x+=32)
+      for (y = 0; y < h; y+=16)
+      for (x = 0; x < w; x+=16)
 	{
 
-	// find best matching 32x32 block for f3
-	min=psad_00 ( f4+(x)+(y)*w,f3+(x)+(y)*w,w,32,0x00ffffff );
+	// find best matching 16x16 block for f3
+	min=psad_00 ( f4+(x)+(y)*w,f3+(x)+(y)*w,w,16,0x00ffffff );
 	x3=y3=0;
-	for (sy=-8; sy < 8; sy++)
-	for (sx=-8; sx < 8; sx++)
+	for (sy=-4; sy < 4; sy++)
+	for (sx=-4; sx < 4; sx++)
 	{
-		sad  = psad_00 ( f4+(x)+(y)*w,f3+(x+sx)+(y+sy)*w,w,32,0x00ffffff );
-		sad += psad_00 ( f4+(x+16)+(y)*w,f3+(x+sx+16)+(y+sy)*w,w,32,0x00ffffff );
+		sad  = psad_00 ( f4+(x)+(y)*w,f3+(x+sx)+(y+sy)*w,w,16,0x00ffffff );
+		sad += psad_00 ( f4+(x+8)+(y)*w,f3+(x+sx+8)+(y+sy)*w,w,16,0x00ffffff );
 		if(sad<min)
 		{
 		x3 = sx;
@@ -330,14 +330,14 @@ temporal_filter_planes_MC (int idx, int w, int h, int t)
 		}
 	}
 
-	// find best matching 32x32 block for f5
-	min=psad_00 ( f4+(x)+(y)*w,f5+(x)+(y)*w,w,32,0x00ffffff );
+	// find best matching 16x16 block for f5
+	min=psad_00 ( f4+(x)+(y)*w,f5+(x)+(y)*w,w,16,0x00ffffff );
 	x5=y5=0;
-	for (sy=-8; sy < 8; sy++)
-	for (sx=-8; sx < 8; sx++)
+	for (sy=-4; sy < 4; sy++)
+	for (sx=-4; sx < 4; sx++)
 	{
-		sad  = psad_00 ( f4+(x)+(y)*w,f5+(x+sx)+(y+sy)*w,w,32,0x00ffffff );
-		sad += psad_00 ( f4+(x+16)+(y)*w,f5+(x+sx+16)+(y+sy)*w,w,32,0x00ffffff );
+		sad  = psad_00 ( f4+(x)+(y)*w,f5+(x+sx)+(y+sy)*w,w,16,0x00ffffff );
+		sad += psad_00 ( f4+(x+8)+(y)*w,f5+(x+sx+8)+(y+sy)*w,w,16,0x00ffffff );
 		if(sad<min)
 		{
 		x5 = sx;
@@ -346,14 +346,14 @@ temporal_filter_planes_MC (int idx, int w, int h, int t)
 		}
 	}
 
-	// find best matching 32x32 block for f2
-	min=psad_00 ( f4+(x)+(y)*w,f2+(x)+(y)*w,w,32,0x00ffffff );
+	// find best matching 16x16 block for f2
+	min=psad_00 ( f4+(x)+(y)*w,f2+(x)+(y)*w,w,16,0x00ffffff );
 	x2=y2=0;
-	for (sy=(y3-8); sy < (y3+8); sy++)
-	for (sx=(x3-8); sx < (x3+8); sx++)
+	for (sy=(y3-4); sy < (y3+4); sy++)
+	for (sx=(x3-4); sx < (x3+4); sx++)
 	{
-		sad  = psad_00 ( f4+(x)+(y)*w,f2+(x+sx)+(y+sy)*w,w,32,0x00ffffff );
-		sad += psad_00 ( f4+(x+16)+(y)*w,f2+(x+sx+16)+(y+sy)*w,w,32,0x00ffffff );
+		sad  = psad_00 ( f4+(x)+(y)*w,f2+(x+sx)+(y+sy)*w,w,16,0x00ffffff );
+		sad += psad_00 ( f4+(x+8)+(y)*w,f2+(x+sx+8)+(y+sy)*w,w,16,0x00ffffff );
 		if(sad<min)
 		{
 		x2 = sx;
@@ -362,14 +362,14 @@ temporal_filter_planes_MC (int idx, int w, int h, int t)
 		}
 	}
 
-	// find best matching 32x32 block for f6
-	min=psad_00 ( f4+(x)+(y)*w,f6+(x)+(y)*w,w,32,0x00ffffff );
+	// find best matching 16x16 block for f6
+	min=psad_00 ( f4+(x)+(y)*w,f6+(x)+(y)*w,w,16,0x00ffffff );
 	x6=y6=0;
-	for (sy=(y5-8); sy < (y5+8); sy++)
-	for (sx=(x5-8); sx < (x5+8); sx++)
+	for (sy=(y5-4); sy < (y5+4); sy++)
+	for (sx=(x5-4); sx < (x5+4); sx++)
 	{
-		sad  = psad_00 ( f4+(x)+(y)*w,f6+(x+sx)+(y+sy)*w,w,32,0x00ffffff );
-		sad += psad_00 ( f4+(x+16)+(y)*w,f6+(x+sx+16)+(y+sy)*w,w,32,0x00ffffff );
+		sad  = psad_00 ( f4+(x)+(y)*w,f6+(x+sx)+(y+sy)*w,w,16,0x00ffffff );
+		sad += psad_00 ( f4+(x+8)+(y)*w,f6+(x+sx+8)+(y+sy)*w,w,16,0x00ffffff );
 		if(sad<min)
 		{
 		x6 = sx;
@@ -378,14 +378,14 @@ temporal_filter_planes_MC (int idx, int w, int h, int t)
 		}
 	}
 
-	// find best matching 32x32 block for f2
-	min=psad_00 ( f4+(x)+(y)*w,f1+(x)+(y)*w,w,32,0x00ffffff );
+	// find best matching 16x16 block for f2
+	min=psad_00 ( f4+(x)+(y)*w,f1+(x)+(y)*w,w,16,0x00ffffff );
 	x1=y1=0;
-	for (sy=(y2-8); sy < (y2+8); sy++)
-	for (sx=(x2-8); sx < (x2+8); sx++)
+	for (sy=(y2-4); sy < (y2+4); sy++)
+	for (sx=(x2-4); sx < (x2+4); sx++)
 	{
-		sad  = psad_00 ( f4+(x)+(y)*w,f1+(x+sx)+(y+sy)*w,w,32,0x00ffffff );
-		sad += psad_00 ( f4+(x+16)+(y)*w,f1+(x+sx+16)+(y+sy)*w,w,32,0x00ffffff );
+		sad  = psad_00 ( f4+(x)+(y)*w,f1+(x+sx)+(y+sy)*w,w,16,0x00ffffff );
+		sad += psad_00 ( f4+(x+8)+(y)*w,f1+(x+sx+8)+(y+sy)*w,w,16,0x00ffffff );
 		if(sad<min)
 		{
 		x1 = sx;
@@ -394,14 +394,14 @@ temporal_filter_planes_MC (int idx, int w, int h, int t)
 		}
 	}
 
-	// find best matching 32x32 block for f7
-	min=psad_00 ( f4+(x)+(y)*w,f7+(x)+(y)*w,w,32,0x00ffffff );
+	// find best matching 16x16 block for f7
+	min=psad_00 ( f4+(x)+(y)*w,f7+(x)+(y)*w,w,16,0x00ffffff );
 	x7=y7=0;
-	for (sy=(y6-8); sy < (y6+8); sy++)
-	for (sx=(x6-8); sx < (x6+8); sx++)
+	for (sy=(y6-4); sy < (y6+4); sy++)
+	for (sx=(x6-4); sx < (x6+4); sx++)
 	{
-		sad  = psad_00 ( f4+(x)+(y)*w,f7+(x+sx)+(y+sy)*w,w,32,0x00ffffff );
-		sad += psad_00 ( f4+(x+16)+(y)*w,f7+(x+sx+16)+(y+sy)*w,w,32,0x00ffffff );
+		sad  = psad_00 ( f4+(x)+(y)*w,f7+(x+sx)+(y+sy)*w,w,16,0x00ffffff );
+		sad += psad_00 ( f4+(x+8)+(y)*w,f7+(x+sx+8)+(y+sy)*w,w,16,0x00ffffff );
 		if(sad<min)
 		{
 		x7 = sx;
@@ -410,8 +410,8 @@ temporal_filter_planes_MC (int idx, int w, int h, int t)
 		}
 	}
 
-	for (sy=0; sy < 32; sy++)
-	for (sx=0; sx < 32; sx++)
+	for (sy=0; sy < 16; sy++)
+	for (sx=0; sx < 16; sx++)
 	{
 		// gauss-filtered reference pixel
 		r  = *(f4+(x+sx-1)+(y+sy-1)*w);
@@ -445,7 +445,7 @@ temporal_filter_planes_MC (int idx, int w, int h, int t)
 		sy -= y1;
 		v /= 16;
 
-		// add wightened and translated but non-filtered test-pixel
+		// add weighted and translated but non-filtered test-pixel
 		d = t - abs (r-v);
 		d = d<0? 0:d;
 	  	c += d;
@@ -467,7 +467,7 @@ temporal_filter_planes_MC (int idx, int w, int h, int t)
 		sy -= y2;
 		v /= 16;
 
-		// add wightened and translated but non-filtered test-pixel
+		// add weighted and translated but non-filtered test-pixel
 		d = t - abs (r-v);
 		d = d<0? 0:d;
 	  	c += d;
@@ -489,7 +489,7 @@ temporal_filter_planes_MC (int idx, int w, int h, int t)
 		sy -= y3;
 		v /= 16;
 
-		// add wightened and translated but non-filtered test-pixel
+		// add weighted and translated but non-filtered test-pixel
 		d = t - abs (r-v);
 		d = d<0? 0:d;
 	  	c += d;
@@ -511,7 +511,7 @@ temporal_filter_planes_MC (int idx, int w, int h, int t)
 		sy -= y5;
 		v /= 16;
 
-		// add wightened and translated but non-filtered test-pixel
+		// add weighted and translated but non-filtered test-pixel
 		d = t - abs (r-v);
 		d = d<0? 0:d;
 	  	c += d;
@@ -533,7 +533,7 @@ temporal_filter_planes_MC (int idx, int w, int h, int t)
 		sy -= y6;
 		v /= 16;
 
-		// add wightened and translated but non-filtered test-pixel
+		// add weighted and translated but non-filtered test-pixel
 		d = t - abs (r-v);
 		d = d<0? 0:d;
 	  	c += d;
@@ -555,7 +555,7 @@ temporal_filter_planes_MC (int idx, int w, int h, int t)
 		sy -= y7;
 		v /= 16;
 
-		// add wightened and translated but non-filtered test-pixel
+		// add weighted and translated but non-filtered test-pixel
 		d = t - abs (r-v);
 		d = d<0? 0:d;
 	  	c += d;
@@ -564,7 +564,6 @@ temporal_filter_planes_MC (int idx, int w, int h, int t)
 		*(of+(x+sx)+(y+sy)*w) = m/c;
 
 	}
-
 	}
 }
 
