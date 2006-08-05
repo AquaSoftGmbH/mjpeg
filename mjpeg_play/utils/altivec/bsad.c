@@ -87,22 +87,18 @@ int bsad_altivec(BSAD_PDECL)
 #ifdef ALTIVEC_VERIFY
     if (NOT_VECTOR_ALIGNED(p2))
 	mjpeg_error_exit1("bsad: p2 %% 16 != 0, (0x%X)", p2);
-
     if (NOT_VECTOR_ALIGNED(rowstride))
 	mjpeg_error_exit1("bsad: rowstride %% 16 != 0, (%d)", rowstride);
-#endif
 
     if (hxf != 0 && hxf != 1)
 	mjpeg_error_exit1("bsad: hxf != [0|1], (hxf=%d)", hxf);
-
     if (hyf != 0 && hyf != 1)
 	mjpeg_error_exit1("bsad: hyf != [0|1], (hyf=%d)", hyf);
-
     if (hxb != 0 && hxb != 1)
 	mjpeg_error_exit1("bsad: hxb != [0|1], (hxb=%d)", hxb);
-
     if (hyb != 0 && hyb != 1)
 	mjpeg_error_exit1("bsad: hyb != [0|1], (hyb=%d)", hyb);
+#endif
 
     if (h != 8 && h != 16)
 	mjpeg_error_exit1("bsad: h != [8|16], (%d)", h);

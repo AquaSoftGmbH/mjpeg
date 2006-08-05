@@ -117,7 +117,7 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
     vector signed int versads;
 #endif
 
-#ifdef ALTIVEC_VERIFY /* {{{ */
+#ifdef ALTIVEC_VERIFY
   if (NOT_VECTOR_ALIGNED(org))
     mjpeg_error_exit1("find_best_one_pel: org %% 16 != 0, (0x%X)", org);
 
@@ -127,10 +127,10 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
   if (NOT_VECTOR_ALIGNED(rowstride))
     mjpeg_error_exit1("find_best_one_pel: rowstride %% 16 != 0, (%d)",
       rowstride);
+#endif
 
   if (h != 8 && h != 16)
     mjpeg_error_exit1("find_best_one_pel: h != [8|16], (%d)", h);
-#endif /* }}} */
 
     AMBER_START;
 

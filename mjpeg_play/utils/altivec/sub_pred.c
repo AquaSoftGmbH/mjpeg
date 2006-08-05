@@ -64,21 +64,17 @@ void sub_pred_altivec(SUB_PRED_PDECL)
 
     if (NOT_VECTOR_ALIGNED(lx))
 	mjpeg_error_exit1("sub_pred: lx %% 16 != 0, (%d)", lx);
-
     if (NOT_VECTOR_ALIGNED(blk))
 	mjpeg_error_exit1("sub_pred: blk %% 16 != 0, (%d)", blk);
-#endif
 
     if (((unsigned long)pred & 0xf) != ((unsigned long)cur & 0xf))
 	mjpeg_error_exit1("sub_pred: (pred(0x%X) %% 16) != (cur(0x%X) %% 16)",
 	    pred, cur);
-
     if ((((unsigned long)pred) & 0x7) != 0)
 	mjpeg_error_exit1("sub_pred: pred %% 8 != 0, (0x%X)", pred);
-
     if ((((unsigned long)cur) & 0x7) != 0)
 	mjpeg_error_exit1("sub_pred: cur %% 8 != 0, (0x%X)", cur);
-
+#endif
 
 /* A->B, B->A expand differently depending on input */
 #define ABBA(symbol,ab)		_ABBA(ABBA_##ab,symbol) /* {{{ */

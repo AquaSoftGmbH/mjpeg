@@ -174,10 +174,9 @@ int build_sub44_mests_altivec(BUILD_SUB44_MESTS_PDECL)
     if (NOT_VECTOR_ALIGNED(rowstride))
 	mjpeg_error_exit1("build_sub44_mests: rowstride %% 16 != 0 (%d)",
 		rowstride);
-#endif
-
     if (((unsigned long)s44blk) & 0x3 != 0)
 	mjpeg_error_exit1("build_sub44_mests: s44blk %% 4 != 0 (0x%X)", s44blk);
+#endif
 
     if (h != 2 && h != 4)
 	mjpeg_error_exit1("build_sub44_mests: h != [2|4], (%d)", h);

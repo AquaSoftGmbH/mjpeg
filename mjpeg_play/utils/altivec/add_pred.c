@@ -68,17 +68,15 @@ void add_pred_altivec(ADD_PRED_PDECL)
     if (lx & (~0xffff) != 0)
 	mjpeg_error_exit1("add_pred: lx=%d > vec_dst range", lx);
 #endif
-#endif
 
     if (((unsigned long)pred & 0xf) != ((unsigned long)cur & 0xf))
 	mjpeg_error_exit1("add_pred: (pred(0x%X) %% 16) != (cur(0x%X) %% 16)",
 		pred, cur);
-
     if ((((unsigned long)pred) & 0x7) != 0)
 	mjpeg_error_exit1("add_pred: pred %% 8 != 0, (0x%X)", pred);
-
     if ((((unsigned long)cur) & 0x7) != 0)
 	mjpeg_error_exit1("add_pred: cur %% 8 != 0, (0x%X)", cur);
+#endif
 
 /* MACROS expand differently depending on input */
 #define ABBA(symbol,ab)		_ABBA(ABBA_##ab,symbol) /* {{{ */

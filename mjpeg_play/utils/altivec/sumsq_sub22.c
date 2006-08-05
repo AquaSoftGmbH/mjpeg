@@ -88,10 +88,9 @@ int sumsq_sub22_altivec(SUMSQ_SUB22_PDECL)
 #ifdef ALTIVEC_VERIFY
     if (NOT_VECTOR_ALIGNED(rowstride))
 	mjpeg_error_exit1("sumsq_sub22: rowstride %% 16 != 0, (%d)", rowstride);
-#endif
-
     if (((unsigned long)blk2 % 8) != 0)
 	mjpeg_error_exit1("sumsq_sub22: blk2 %% 8 != 0, (0x%X)", blk2);
+#endif
 
     if (h != 4 && h != 8)
 	mjpeg_error_exit1("sumsq_sub22: h != [4|8], (%d)", h);

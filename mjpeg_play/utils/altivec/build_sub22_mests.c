@@ -143,13 +143,11 @@ int build_sub22_mests_altivec(BUILD_SUB22_MESTS_PDECL)
   if (NOT_VECTOR_ALIGNED(rowstride))
     mjpeg_error_exit1("build_sub22_mests: rowstride %% 16 != 0, (%d)",
 		rowstride);
-
   if (NOT_VECTOR_ALIGNED(cres))
     mjpeg_warn("build_sub22_mests: cres %% 16 != 0, (0x%X)",cres);
-#endif 
-
   if (((unsigned long)s22blk & 0x7) != 0)
    mjpeg_error_exit1("build_sub22_mests: s22blk %% 8 != 0, (0x%X)", s22blk);
+#endif 
 
   if (h != 4 && h != 8)
     mjpeg_error_exit1("build_sub22_mests: h != [4|8], (%d)", h);

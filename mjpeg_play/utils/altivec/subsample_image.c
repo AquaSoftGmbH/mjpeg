@@ -66,19 +66,17 @@ void subsample_image_altivec(SUBSAMPLE_IMAGE_PDECL)
     if (NOT_VECTOR_ALIGNED(image))
 	mjpeg_error_exit1("subsample_image: %s %% %d != 0, (%d)",
 	    "image", 16, image);
-
     if (NOT_VECTOR_ALIGNED(sub22_image))
 	mjpeg_error_exit1("subsample_image: %s %% %d != 0, (%d)",
 	    "sub22_image", 16, sub22_image);
-
     if (NOT_VECTOR_ALIGNED(sub44_image))
 	mjpeg_error_exit1("subsample_image: %s %% %d != 0, (%d)",
 	    "sub44_image", 16, sub44_image);
-#endif
 
     if ((rowstride & 63) != 0)
 	mjpeg_error_exit1("subsample_image: %s %% %d != 0, (%d)",
 	    "rowstride", 64, rowstride);
+#endif
 
     AMBER_START;
 

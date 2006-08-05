@@ -96,6 +96,13 @@ void pred_comp_altivec(PRED_COMP_PDECL)
 
     if (NOT_VECTOR_ALIGNED(lx))
 	mjpeg_error_exit1("pred_comp: lx %% 16 != 0, (%d)", lx);
+
+    if (((unsigned long)d & 0x7) != 0)
+	mjpeg_error_exit1("pred_comp: d %% 8 != 0 (0x%X)", d);
+    if (((unsigned long)d & 0xf) > w)
+	mjpeg_error_exit1("pred_comp: (d & 0xf) > w (d=0x%X, w=%d)", d, w);
+    if (w != h && w != (h * 2))
+	mjpeg_error_exit1("pred_comp: w != h|(h*2), (w=%d, h=%d)", w, h);
 #endif
 
     if (w != 16 && w != 8)
@@ -104,19 +111,10 @@ void pred_comp_altivec(PRED_COMP_PDECL)
     if (h != 16 && h != 8 && h != 4)
 	mjpeg_error_exit1("pred_comp: h != 16|8|4, (%d)", h);
 
-    if (w != h && w != (h * 2))
-	mjpeg_error_exit1("pred_comp: w != h|(h*2), (w=%d, h=%d)", w, h);
-
 #ifdef ALTIVEC_DST
     if (lx & (~0xffff) != 0)
 	mjpeg_error_exit1("pred_comp: lx > vec_dst range", lx);
 #endif
-
-    if (((unsigned long)d & 0x7) != 0)
-	mjpeg_error_exit1("pred_comp: d %% 8 != 0 (0x%X)", d);
-
-    if (((unsigned long)d & 0xf) > w)
-	mjpeg_error_exit1("pred_comp: (d & 0xf) > w (d=0x%X, w=%d)", d, w);
 
     if (xh) {
 	if  (yh) {
