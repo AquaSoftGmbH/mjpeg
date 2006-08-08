@@ -685,8 +685,8 @@ void SeqEncoder::Pass1GopSplitting( Picture &picture)
             mjpeg_info( "DEVEL: GOP split forces P-frames only... %.0f%% intra coded", 
                         picture.IntraCodedBlocks() * 100.0 );
             pass1_ss.SuppressBFrames();
-            picture.org_img = reader.ReadFrame( picture.present );
-            Pass1ReEncodePicture0( picture,  &MacroBlock::ForcePFrame );
+            picture.org_img = reader.ReadFrame( pass1_ss.PresentationNum() );
+            Pass1ReEncodePicture0( picture,  &MacroBlock::MotionEstimateAndModeSelect );
         }
     }
 }
