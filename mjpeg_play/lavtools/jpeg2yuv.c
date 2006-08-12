@@ -44,7 +44,16 @@ jpeg2yuv
 
 #define MAXPIXELS (1280*1024)  /* Maximum size of final image */
 
-
+/* strip string */
+void strip(char *p) {
+    while (1) {
+        if ((*p == '\r') || (*p == '\n'))
+            *p = '\0';
+        if (*p == '\0')
+            break;
+        p++;
+    }
+}
 
 typedef struct _parameters {
   char *jpegformatstr;
@@ -111,8 +120,11 @@ static void usage(char *prog)
 	  "stdout will be filled with the YUV4MPEG movie data stream,\n"
 	  "so be prepared to pipe it on to mpeg2enc or to write it into a file.\n"
 	  "\n"
+	  "If -j option is omited, filenames are read from stdin.\n"
 	  "\n"
 	  "examples:\n"
+	  "  ls *jpg | %s -f 25 -I p > result.yuv\n"
+	  "  | convert all jpg files in curent directory \n"
 	  "  %s -j in_%%06d.jpeg -b 100000 > result.yuv\n"
 	  "  | combines all the available JPEGs that match \n"
 	  "    in_??????.jpeg, starting with 100000 (in_100000.jpeg, \n"
@@ -123,7 +135,7 @@ static void usage(char *prog)
 	  "    abc_0001.jpeg, etc...) and pipes it to mpeg2enc which encodes\n"
 	  "    an MPEG2-file called out.m2v out of it\n"
 	  "\n",
-	  prog, prog, prog, prog);
+	  prog, prog, prog, prog, prog);
 }
 
 
@@ -213,12 +225,10 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
       exit(1);
     }
   }
-  if (param->jpegformatstr == NULL) { 
-    mjpeg_error("%s:  input format string not specified. (Use -j option.)",
-		argv[0]); 
-    usage(argv[0]); 
-    exit(1);
-  }
+
+  if (param->jpegformatstr == NULL)
+      mjpeg_info("Reading jpeg filenames from stdin.");
+
   if (Y4M_RATIO_EQL(param->framerate, y4m_fps_UNKNOWN)) {
     mjpeg_error("%s:  framerate not specified.  (Use -f option)",
 		argv[0]); 
@@ -234,17 +244,30 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
 
 /** init_parse_files
  * Verifies the JPEG input files and prepares YUV4MPEG header information.
+ * remember first filename for later
  * @returns 0 on success
  */
-static int init_parse_files(parameters_t *param)
+static int init_parse_files(parameters_t *param, char *jpegname)
 { 
-  char jpegname[255];
   FILE *jpegfile;
-  
-  snprintf(jpegname, sizeof(jpegname), 
-	   param->jpegformatstr, param->begin);
+
+  if (param->jpegformatstr) {
+       snprintf(jpegname, FILENAME_MAX, param->jpegformatstr, param->begin);
+       jpegfile = fopen(jpegname, "rb");
+  }
+  else {
+       char *p;
+       
+       p = fgets(jpegname, FILENAME_MAX, stdin);
+       if (p) {
+           strip(jpegname);
+           jpegfile = fopen(jpegname, "rb");
+       }
+       else {
+           jpegfile = NULL;
+       }
+  }
   mjpeg_debug("Analyzing %s to get the right pic params", jpegname);
-  jpegfile = fopen(jpegname, "rb");
   
   if (jpegfile == NULL)
     mjpeg_error_exit1("System error while opening: \"%s\": %s",
@@ -348,7 +371,7 @@ static void rescale_color_vals(int width, int height, uint8_t *yp, uint8_t *up, 
       }
 }
 
-static int generate_YUV4MPEG(parameters_t *param)
+static int generate_YUV4MPEG(parameters_t *param, char *firstjpeg)
 {
   uint32_t frame;
   int jpegsize;
@@ -384,8 +407,29 @@ static int generate_YUV4MPEG(parameters_t *param)
           (frame < param->numframes + param->begin) || (param->numframes == -1);
           frame++) {
    
-       snprintf(jpegname, sizeof(jpegname), param->jpegformatstr, frame);
-       jpegfile = fopen(jpegname, "rb");
+       if (param->jpegformatstr) {
+           snprintf(jpegname, sizeof(jpegname), param->jpegformatstr, frame);
+           jpegfile = fopen(jpegname, "rb");
+       }
+       else {
+           char *p;
+           
+           if (firstjpeg) {
+               p = firstjpeg;
+               sprintf(jpegname, firstjpeg);
+               firstjpeg = NULL;
+           }
+           else {
+               p = fgets(jpegname, FILENAME_MAX, stdin);
+           }
+           if (p) {
+               strip(jpegname);
+               jpegfile = fopen(jpegname, "rb");
+           }
+           else {
+               jpegfile = NULL;
+           }
+       }
        
        if (jpegfile == NULL) { 
          mjpeg_info("Read from '%s' failed:  %s", jpegname, strerror(errno));
@@ -496,16 +540,19 @@ static int generate_YUV4MPEG(parameters_t *param)
 int main(int argc, char ** argv)
 { 
   parameters_t param;
+  char first_jpegname[FILENAME_MAX];
+
+  *first_jpegname = '\0';
 
   parse_commandline(argc, argv, &param);
   mjpeg_default_handler_verbosity(param.verbose);
 
   mjpeg_info("Parsing & checking input files.");
-  if (init_parse_files(&param)) {
+  if (init_parse_files(&param, first_jpegname)) {
     mjpeg_error_exit1("* Error processing the JPEG input.");
   }
 
-  if (generate_YUV4MPEG(&param)) { 
+  if (generate_YUV4MPEG(&param, first_jpegname)) { 
     mjpeg_error_exit1("* Error processing the input files.");
   }
 

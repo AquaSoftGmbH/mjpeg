@@ -71,6 +71,9 @@ Read JPEG frames with the name components as follows:
  {2} Counting placeholder (like in C, printf, eg 06 ))
  {3} File extension. Something like this: .jpg
 A correct description of the files could look like this: picture_%06d.jpg
+
+If this option is omited, the filenames are read from stdin. For example:
+ $ls *jpg | jpeg2yuv -f 25 -I p > result.yuv
 .TP 5
 .BI \-R " 1 or 0"
 rescale YUV color values from 0-255 to 16-235 (default: 1)
