@@ -994,8 +994,6 @@ void OnTheFlyPass2::PictUpdate( Picture &picture, int &padding_needed)
   picture.SQ = sum_avg_quant;
 
   pict_count[picture.pict_type] += 1;
-  mjpeg_info( "UPDT: %d - actual %d (%.1f) target %d (%.1f) ",
-               picture.decode, actual_bits, picture.ABQ, target_bits, base_Q );
   mjpeg_debug( "Frame %c A=%6.0f %.2f: I = %6.0f P = %5.0f B = %5.0f",
                pict_type_char[picture.pict_type],
                actual_bits/8.0,

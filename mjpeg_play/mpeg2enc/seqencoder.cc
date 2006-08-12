@@ -364,6 +364,8 @@ void SeqEncoder::Init()
     // because the picture being encoded is  INTRA
     new_ref_picture = GetFreshPicture();
     free_pictures.push_back( new_ref_picture );
+
+    released_ref_frames = 0;
 }
 
 
@@ -503,16 +505,38 @@ Picture *SeqEncoder::GetFreshPicture()
     return fresh;
 }
 
+
 void SeqEncoder::ReleasePicture( Picture *picture )
 {
-    // If the picture is 1st field of a frame we need to retain the
-    // reference image data as it might still be being used for the
-    // 2nd field
-    if( ! encparams.fieldpic || picture->secondfield )
+    // We don't want to free up Picture objects for re-use
+    // until we're sure the encoded picture can no longer
+    // be used as a referenced image when encoding later
+    // pictures.  So we queue possibly referenced Picture's
+    // until at least *2* newer reference Frame's have been
+    // released.
+
+    if( picture->FinalFieldOfRefFrame() )
     {
-      reader.ReleaseFrame( picture->present );
+        ++released_ref_frames;
+        released_pictures.push_back( picture );
+        if( released_ref_frames > 2 )
+        {
+            Picture *nolonger_refd;
+            do
+            {
+                nolonger_refd = released_pictures.front();
+                released_pictures.pop_front();
+                if( nolonger_refd->finalfield )
+                    reader.ReleaseFrame( nolonger_refd->present );
+                free_pictures.push_back( nolonger_refd );
+            }
+            while( !nolonger_refd->FinalFieldOfRefFrame() );
+        }
     }
-    free_pictures.push_back( picture );
+    else
+    {
+        released_pictures.push_back( picture );
+    }
 }
 
 
@@ -627,7 +651,7 @@ Picture *SeqEncoder::NextFramePicture0()
         frame_pic->fwd_ref_frame = old_ref_picture;
         frame_pic->bwd_ref_frame = 0;
     }
-    else
+    else // B Frame
     {
         frame_pic = GetFreshPicture();
         frame_pic->fwd_org = old_ref_picture->org_img;
@@ -730,7 +754,7 @@ void SeqEncoder::Pass1Process()
     }
 
 
-    // Figure out how many pictures can be queued on to pass 2 encoding
+    // Find pictures that can now safely be pass 2 encoded
     int to_queue = 0;
     int i;
 
@@ -752,6 +776,7 @@ void SeqEncoder::Pass1Process()
         to_queue = i == pass1coded.size() ? 0 : i;
     }
 
+    // Queue pass-2 codable pictures for pass-2 coding,
     for( i = 0; i < to_queue; ++i )
     {
         pass2queue.push_back( pass1coded.front() );
@@ -855,10 +880,11 @@ void SeqEncoder::Pass2Process()
             break;
         ++i;
     }
-    
-    if( i == pass2queue.end() )
+
+    // Reached end of Queue without an I-frame or end of sequence
+    // GOP is not yet complete to allow pass-2 coding...
+    if( i == pass2queue.end() && !pass2queue.back()->end_seq)
     {
-        if( !pass2queue.back()->end_seq)
             return;
     }
 
@@ -876,6 +902,8 @@ void SeqEncoder::Pass2Process()
         bool reencoded = Pass2EncodePicture( *pic, reference_reencoded );
         reference_reencoded |= reencoded && pic->pict_type != B_TYPE;
         pic->CommitCoding();
+        mjpeg_info( "RELS: %d %d", pic->decode, pic->present );
+
         ReleasePicture( pic );
         pass2queue.pop_front();
     }
@@ -890,6 +918,10 @@ void SeqEncoder::StreamEnd()
     for( i = 0; i < free_pictures.size(); ++i )
     {
         delete free_pictures[i];
+    }
+    for( i = 0; i < released_pictures.size(); ++i )
+    {
+        delete released_pictures[i];
     }
 }
 

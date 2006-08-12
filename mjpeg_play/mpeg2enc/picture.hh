@@ -132,7 +132,10 @@ public:
             
         }
 
-
+    inline bool FinalFieldOfRefFrame() const
+        {
+            return pict_type != B_TYPE && finalfield;
+        }
 protected:
     
     void SetFieldParams(int field);
@@ -174,6 +177,7 @@ public:
                             // == Number of frame in input stream
 
     bool last_picture;         // Last Picture of a stream
+    bool finalfield;        // Last field of a frame
 
 	/* multiple-reader/single-writer channels Synchronisation  
 	   sync only: no data is "read"/"written"

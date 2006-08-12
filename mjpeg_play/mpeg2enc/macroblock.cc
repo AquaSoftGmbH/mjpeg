@@ -106,7 +106,6 @@ void MacroBlock::ForceIFrame()
 
 void MacroBlock::ForcePFrame()
 {
-    vector<MotionEst>::iterator i = best_of_kind_me.begin();
     best_me = best_fwd_me;
 }
 

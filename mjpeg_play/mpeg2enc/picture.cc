@@ -205,19 +205,20 @@ void Picture::SetFieldParams(int field)
         new_seq = false;
     }
 
-    secondfield = (field == 1);
-        
+    
+    finalfield = !encparams.fieldpic || field == 1;
+
     /* Handle picture structure... */
     if( encparams.fieldpic )
     {
+        /* ... when field encoding */
         pict_struct = ((encparams.topfirst) ^ (field == 1)) ? TOP_FIELD : BOTTOM_FIELD;
         topfirst = 0;
         repeatfirst = 0;
     }
-
-    /* Handle 3:2 pulldown frame pictures */
     else if( encparams.pulldown_32 )
     {
+        /* ... when encoding 3:2 pulldown frame pictures */
         pict_struct = FRAME_PICTURE;
         switch( present % 4 )
         {
@@ -239,9 +240,9 @@ void Picture::SetFieldParams(int field)
                 break;
         }
     }
-    /* Handle ordinary frame pictures */
     else
     {
+        /* .. when encoding ordinary frame pictures */
         pict_struct = FRAME_PICTURE;
         repeatfirst = 0;
         topfirst = encparams.topfirst;
@@ -294,7 +295,10 @@ void Picture::SetFieldParams(int field)
         unit_coeff_threshold = 0;
         unit_coeff_first = 0;
     }
-        
+
+
+
+    
 }
 
 

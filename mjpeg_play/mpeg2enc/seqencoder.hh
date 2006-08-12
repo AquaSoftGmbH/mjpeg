@@ -146,15 +146,28 @@ private:
 
     // Queue of Picture's (in decode order) committed for pass2 encoding
     std::deque<Picture*> pass2queue;
-    
-    // Picture's allocated but currently not used in encoding
+
+    // Picture objects no longer being encoded (signalled by
+    // a called to 'ReleasePicture') but potentially still
+    // referenced by other Picture's and hence not (yet) free
+    // for re-use or destruction.
+
+    std::deque<Picture*> released_pictures;
+
+    // Reference frames all of whose field Picture's have been released
+    // ... needed to maintain released_pictures queue.
+    int released_ref_frames;
+
+    // Picture objects free for re-use.
     std::vector<Picture *> free_pictures;
     
     
 	// Internal state of encoding...
 	StreamState pass1_ss;
 
+    // Reference pictures in pass-1
 	Picture *new_ref_picture, *old_ref_picture;
+
 };
 
 
