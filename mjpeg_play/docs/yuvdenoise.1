@@ -16,6 +16,15 @@ needed to encode your captured movies for VCD and SVCD creation.
 .SH OPTIONS
 \fByuvdenoise\fP accepts the following options:
 .TP 4
+.BI \-g " y,u,v [0..255] Gaussian filter thresholds"
+This sets the thresholds for the gaussian filter.  A value of 
+0 disables filtering for a specific component and 0,0,0 completely 
+disables/bypasses the filter.  This filter is applied \fBbefore\fP the 
+temporal (\-t) filter.
+.br
+(default=0,0,0)
+
+.TP 4
 .BI \-m " y,u,v [0..255] Pre 3D Median filter thresholds"
 This sets the thresholds for the pre-processing 3D median filter.  A value of 
 0 disables median filtering for a specific component and 0,0,0 completely 
