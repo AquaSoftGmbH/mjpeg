@@ -139,6 +139,8 @@ bool VideoStream::SeqEndRunOut()
     unsigned int payload = au_unsent;
     unsigned int ahead = 0;
     AUnit *next_au = au;
+    if( next_au == 0 )
+        return false;
     for(;;)
     {
         if( next_au->end_seq || payload >= muxinto.sector_size)

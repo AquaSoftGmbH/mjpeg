@@ -812,30 +812,39 @@ void Multiplexor::MuxStatus(log_level_t level)
 		switch( (*str)->Kind()  )
 		{
 		case ElementaryStream::video :
-			mjpeg_log( level,
-					   "Video %02x: buf=%7d frame=%06d sector=%08d",
-					   (*str)->stream_id,
-					   (*str)->BufferSize()-(*str)->bufmodel.Space(),
-					   (*str)->DecodeOrder(),
-					   (*str)->nsec
-				);
+            if( (*str)->MuxCompleted() )
+                mjpeg_log( level, "Video %02x: completed" );
+            else
+			    mjpeg_log( level,
+					    "Video %02x: buf=%7d frame=%06d sector=%08d",
+					    (*str)->stream_id,
+					    (*str)->BufferSize()-(*str)->bufmodel.Space(),
+					    (*str)->DecodeOrder(),
+					    (*str)->nsec
+				    );
 			break;
 		case ElementaryStream::audio :
-			mjpeg_log( level,
-					   "Audio %02x: buf=%7d frame=%06d sector=%08d",
-					   (*str)->stream_id,
-					   (*str)->BufferSize()-(*str)->bufmodel.Space(),
-					   (*str)->DecodeOrder(),
-					   (*str)->nsec
-				);
+            if( (*str)->MuxCompleted() )
+                 mjpeg_log( level, "Audio %02x: completed" );
+            else
+			    mjpeg_log( level,
+					    "Audio %02x: buf=%7d frame=%06d sector=%08d",
+					    (*str)->stream_id,
+					    (*str)->BufferSize()-(*str)->bufmodel.Space(),
+					    (*str)->DecodeOrder(),
+					    (*str)->nsec
+				    );
 			break;
 		default :
-			mjpeg_log( level,
-					   "Other %02x: buf=%7d sector=%08d",
-					   (*str)->stream_id,
-					   (*str)->bufmodel.Space(),
-					   (*str)->nsec
-				);
+            if( (*str)->MuxCompleted() )
+                 mjpeg_log( level, "Other %02x: completed" );
+            else
+			    mjpeg_log( level,
+					    "Other %02x: buf=%7d sector=%08d",
+					    (*str)->stream_id,
+					    (*str)->bufmodel.Space(),
+					    (*str)->nsec
+				    );
 			break;
 		}
 	}
@@ -1239,15 +1248,18 @@ void Multiplexor::Multiplex()
 		for( str = estreams.begin(); str < estreams.end(); ++str )
 		{
 #ifdef STREAM_LOGGING
-            mjpeg_debug("%02x: SCR=%lld (%.3f) mux=%d %d reqDTS=%lld ", 
-                        (*str)->stream_id,
-                        current_SCR,
-                        static_cast<double>(current_SCR) /(90.0*300.0),
-                        (*str)->MuxPossible(current_SCR),
-                        (*str)->BufferSize()-(*str)->bufmodel.Space(),
-                        (*str)->RequiredDTS()/300
-                        
-				);
+            if( (*str)->MuxCompleted() )
+                mjpeg_debug( "%02x: complete", (*str)->stream_id );
+            else
+                mjpeg_debug("%02x: SCR=%lld (%.3f) mux=%d %d reqDTS=%lld ",
+                            (*str)->stream_id,
+                            current_SCR,
+                            static_cast<double>(current_SCR) /(90.0*300.0),
+                            (*str)->MuxPossible(current_SCR),
+                            (*str)->BufferSize()-(*str)->bufmodel.Space(),
+                           (*str)->RequiredDTS()/300
+                            
+				    );
 #endif
 			if( (*str)->MuxPossible(current_SCR) && 
 				( !video_first || (*str)->Kind() == ElementaryStream::video )
@@ -1351,7 +1363,7 @@ void Multiplexor::Multiplex()
 		{
 			if( !(*pcomp) && (*str)->MuxCompleted() )
 			{
-				mjpeg_info( "STREAM %02x completed @ frame %d.", (*str)->stream_id, (*str)->DecodeOrder() );
+				mjpeg_info( "STREAM %02x completed", (*str)->stream_id );
 				MuxStatus( LOG_DEBUG );
 				(*pcomp) = true;
 			}

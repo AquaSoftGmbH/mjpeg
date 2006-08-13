@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <vector>
 #include <sys/stat.h>
+#include <cassert>
 
 #include "mjpeg_types.h"
 #include "mpegconsts.h"
@@ -38,40 +39,6 @@
 
 using std::vector;
 
-#if 0
-class InputStream
-{
-public:
-	InputStream( IBitStream &istream ) :
-		stream_length(0),
-        bs( istream ),
-		eoscan(false),
-		last_buffered_AU(0),
-		decoding_order(0),
-		old_frames(0)
-		{}
-
-	void SetBufSize( unsigned int buf_size )
-		{
-			bs.SetBufSize( buf_size );
-		}
-
-    void Close() 
-    bitcount_t stream_length;
-
-protected:
-    IBitStream &bs;
-    bool eoscan;
-	
-	unsigned int last_buffered_AU;		// decode seq num of last buffered frame + 1
-   	bitcount_t AU_start;
-    uint32_t  syncword;
-    bitcount_t prev_offset;
-    unsigned int decoding_order;
-    unsigned int old_frames;
-
-};
-#endif
 
 class Multiplexor;
 
@@ -174,7 +141,7 @@ public:
     }
 
         
-    virtual ~ElementaryStream () { }
+    virtual ~ElementaryStream ();
     
     inline stream_kind Kind() const { return kind; }
 	virtual void Close() = 0;
@@ -200,9 +167,9 @@ public:
     inline clockticks RequiredPTS( const AUnit *unit ) 
         { return unit->PTS + timestamp_delay; };
     inline clockticks RequiredDTS()  
-        { return RequiredDTS(au); };
+        { assert(au != 0 );  return RequiredDTS(au); };
     inline clockticks RequiredPTS() 
-        { return  RequiredPTS(au); };
+        { assert(au != 0 );  return RequiredPTS(au); };
     inline clockticks NextRequiredDTS()
         { 
             AUnit *next = Lookahead();

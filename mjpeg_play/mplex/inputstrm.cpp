@@ -83,6 +83,12 @@ ElementaryStream::ElementaryStream( IBitStream &ibs,
 {
 }
 
+ElementaryStream::~ElementaryStream ()
+{
+    if( au != 0 )
+        delete au;
+}
+
 /***********************************
  *
  * Scan ahead to buffer enough info on the coming Access Units to
@@ -117,7 +123,6 @@ ElementaryStream::NextAU()
     // Free up no longer needed AU record
     if( au != 0 )
         delete au;
-
     // Ensure we have enough in the AU buffer!
     AUBufferLookaheadFill(1);
 
@@ -125,13 +130,16 @@ ElementaryStream::NextAU()
 	AUnit *p_au = aunits.Next();
 	if( p_au != NULL )
 	{
+
 		au = p_au;
 		au_unsent = p_au->length;
 		return true;
 	}
 	else
 	{
+        // We signal no MORE AU left to Mux in this stream...
 		au_unsent = 0;
+        au = 0;
 		return false;
 	}
 }
