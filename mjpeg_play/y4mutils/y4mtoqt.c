@@ -34,7 +34,7 @@ main(int argc, char **argv)
 	uint16_t *p16;
 	uint16_t *yuv10[3];
 	int	fdin, y_len, u_len, v_len, nfields = 1, dominance = 0, afd = -1;
-	int	imodel = 0;
+	int	imodel = 0, allow_wrong_yv12 = 0;
 	int	err, i, c, frames, channels = 0, y4mchroma, tenbit = 0;
 	char	*qtchroma = NULL;
 	quicktime_t *qtf;
@@ -52,10 +52,13 @@ main(int argc, char **argv)
 	fdin = fileno(stdin);
 
 	opterr = 0;
-	while	((c = getopt(argc, argv, "o:a:X")) != -1)
+	while	((c = getopt(argc, argv, "ko:a:X")) != -1)
 		{
 		switch	(c)
 			{
+			case	'k':
+				allow_wrong_yv12 = 1;
+				break;
 			case	'X':
 				tenbit = 1;
 				break;
@@ -256,6 +259,28 @@ main(int argc, char **argv)
 			for	(i = 0; i < v_len; i++)
 				*p16++ = *p++ << 8;
 			}
+/*
+ * What libquicktime calls 'yv12' (QUICKTIME_YUV420) is actually 'iyuv' 
+ * (also known as 'i420').  In order to make the data match the fourcc/label
+ * the U and V planes need to be swapped.  After all, if the file is labeled 
+ * 'yv12' then the data should be in 'yv12' order!
+ *
+ * Breakage, for compatiblity with quicktime4linux, can be forced by using
+ * '-k'.  This allows storing 'iyuv' ('i420') data inside a file that is 
+ * labeled as 'yv12' :(
+ *
+ * It should be noted that very very little outside of V4L knows anything
+ * about uncompressed 4:2:0 - the 4:2:0 color space is used but only with
+ * compressed formats it seems.
+*/
+
+		if	(allow_wrong_yv12 == 0)
+			{
+			p = yuv[1];
+			yuv[1] = yuv[2];
+			yuv[2] = p;
+			}
+
 		err = quicktime_encode_video(qtf, tenbit ? (uint8_t **)yuv10: yuv, 0);
 		if	(err != 0)
 			mjpeg_error_exit1("quicktime_encode_video} failed.");
@@ -306,7 +331,8 @@ do_audio(quicktime_t *qtf, uint8_t *buff, int channels, int bps, int samps)
 static void
 usage()
 	{
-	mjpeg_warn("usage: [-X] [-a inputwavfile] -o outfile");
+	mjpeg_warn("usage: [-k] [-X] [-a inputwavfile] -o outfile");
 	mjpeg_warn("       -X = use v210 (default 2vuy) for 4:2:2, v410 (default v308) for 4:4:4");
+	mjpeg_warn("       -k = do not perform lqt workaround (U and V plane swap) (default 0 - i.e. DO the workaround)");
 	exit(1);
 	}
