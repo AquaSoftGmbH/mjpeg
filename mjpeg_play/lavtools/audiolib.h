@@ -21,7 +21,7 @@
 
 void audio_shutdown(void);
 
-int audio_init(int a_read, int use_read, int a_stereo, int a_size, int a_rate);
+int audio_init(int a_read, int use_read_write, int a_stereo, int a_size, int a_rate);
 long audio_get_buffer_size(void);
 void audio_get_output_status(struct timeval *tmstmp, unsigned int *nb_out, unsigned int *nb_err);
 

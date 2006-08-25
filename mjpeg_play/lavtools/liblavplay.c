@@ -1659,7 +1659,7 @@ static int lavplay_init(lavplay_t *info)
 
    if (editlist->has_audio && info->audio)
    {
-      if (audio_init(0, 0, (editlist->audio_chans>1), editlist->audio_bits,
+      if (audio_init(0, info->use_write, (editlist->audio_chans>1), editlist->audio_bits,
          editlist->audio_rate)) /* increase this last argument to test sync */
       {
          lavplay_msg(LAVPLAY_MSG_ERROR, info,

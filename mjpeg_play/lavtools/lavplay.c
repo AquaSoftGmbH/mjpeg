@@ -196,6 +196,7 @@ static void Usage(char *progname)
       "\n");
    fprintf(stderr, "  -a/--audio num             When play audio, 0:never, or sum of\n");
    fprintf(stderr, "                             1:forward, 2:reverse, 4:fast, 8:pause (default: 7)\n");
+   fprintf(stderr, "  -U/--use-write             Use write instead of mmap for audio playback\n");
    fprintf(stderr, "  -F/--flicker               Disable flicker reduction\n");
    fprintf(stderr, "  -S/--size NxN              width X height for SDL (S) or video (H) window\n");
    fprintf(stderr, "  --s-x-offset num           Video Window X offset from topleft corner\n");
@@ -362,6 +363,10 @@ static int set_option(const char *name, char *value)
    {
       info->audio = atoi(optarg);
    }
+   else if (strcmp(name, "use-write")==0 || strcmp(name, "U")==0)
+   {
+      info->use_write = 1;
+   }
    else if (strcmp(name, "H-offset")==0 || strcmp(name, "H")==0)
    {
       info->horizontal_offset = atoi(optarg);
@@ -478,6 +483,7 @@ static void check_command_line_options(int argc, char *argv[])
       {"preserve-pathnames" ,0,0,0},   /* -P/--preserve-pathnames    */	  
       {"playback"        ,1,0,0},   /* -p/--playback [SHC]  */
       {"audio"           ,1,0,0},   /* -a/--audio num       */
+      {"use-write"       ,0,0,0},   /* -U/--use-write       */
       {"gui-mode"        ,1,0,0},   /* -g/--gui-mode        */
       {"size"            ,1,0,0},   /* -S/--size            */
       {"flicker"         ,0,0,0},   /* -F/--flicker         */
@@ -493,10 +499,10 @@ static void check_command_line_options(int argc, char *argv[])
 /* Get options */
    nerr = 0;
 #ifdef HAVE_GETOPT_LONG
-   while( (n=getopt_long(argc,argv,"S:a:v:H:V:s:c:n:t:qZp:xrzgPF",
+   while( (n=getopt_long(argc,argv,"S:a:v:H:V:s:c:n:t:qUZp:xrzgPF",
       long_options, &option_index)) != EOF)
 #else
-   while( (n=getopt(argc,argv,"S:a:v:H:V:s:c:n:t:qZp:xrzgPF")) != EOF)
+   while( (n=getopt(argc,argv,"S:a:v:H:V:s:c:n:t:qUZp:xrzgPF")) != EOF)
 #endif
    {
       switch(n)
