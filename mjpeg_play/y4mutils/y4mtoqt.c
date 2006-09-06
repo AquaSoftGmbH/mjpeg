@@ -274,11 +274,14 @@ main(int argc, char **argv)
  * compressed formats it seems.
 */
 
-		if	(allow_wrong_yv12 == 0)
+		if	(qtchroma == QUICKTIME_YUV420)
 			{
-			p = yuv[1];
-			yuv[1] = yuv[2];
-			yuv[2] = p;
+			if	(allow_wrong_yv12 == 0)
+				{
+				p = yuv[1];
+				yuv[1] = yuv[2];
+				yuv[2] = p;
+				}
 			}
 
 		err = quicktime_encode_video(qtf, tenbit ? (uint8_t **)yuv10: yuv, 0);
