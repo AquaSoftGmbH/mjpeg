@@ -81,7 +81,7 @@ libmpeg2encpp_la_LIBADD =
 
 mpeg2enc_DEPENDENCIES = \
 	$(LIBMJPEGUTILS) \
-	$(top_builddir)/mpeg2enc/libmpeg2encpp.la
+	libmpeg2encpp.la
 
 mpeg2enc_LDADD = \
 	$(top_builddir)/mpeg2enc/libmpeg2encpp.la \
