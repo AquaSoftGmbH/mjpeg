@@ -541,7 +541,7 @@ if test -n "$pic_flag"; then
   # Check to make sure the pic_flag actually works.
   echo $ac_n "checking if $compiler PIC flag $pic_flag works... $ac_c" 1>&6
   $rm conftest*
-  echo > conftest.c
+  echo 'int main() { return 0 ; }'  > conftest.c
   save_CFLAGS="$CFLAGS"
   CFLAGS="$CFLAGS $pic_flag -DPIC"
   echo "$progname:547: checking if $compiler PIC flag $pic_flag works" >&5
@@ -965,7 +965,7 @@ void nm_test_func(){}
 #ifdef __cplusplus
 }
 #endif
-main(){nm_test_var='a';nm_test_func();return(0);}
+int main(){nm_test_var='a';nm_test_func();return 0;}
 EOF
 
 echo "$progname:971: checking if global_symbol_pipe works" >&5
