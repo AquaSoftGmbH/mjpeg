@@ -166,7 +166,7 @@ main(int argc, char **argv)
 void usage(void)
 	{
 
-	fprintf(stderr, "%s usage: [-H] [-f] [-n numframes] [-w width] [-h height] [-Y val] [-U val] [-V val] [-a pixel aspect] [-i p|t|b] [-r rate]\n", __progname);
+	fprintf(stderr, "%s usage: [-H] [-f] [-n numframes] [-w width] [-h height] [-Y val] [-U val] [-V val] [-a pixel aspect] [-i p|t|b] [-x chroma] [-r rate]\n", __progname);
 	fprintf(stderr, "\n  Omit the YUV4MPEG2 header [-H]");
 	fprintf(stderr, "\n  Specify chroma sampling [-x string] (420mpeg2)");
 	fprintf(stderr, "\n      -x help for list");
