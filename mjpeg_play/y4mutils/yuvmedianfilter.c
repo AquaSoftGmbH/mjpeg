@@ -356,7 +356,7 @@ filter(int width, int height, uint8_t * const input[], uint8_t *output[])
 }
 
 #ifdef HAVE_ASM_MMX
-static inline void mean8(unsigned char *refpix,unsigned char *pixel,int radius_count,int row_stride,int threshold,char *diff,unsigned char *count)
+static inline void mean8(unsigned char *refpix,unsigned char *pixel,int radius_count,int row_stride,int threshold,int8_t *diff,unsigned char *count)
 {
     int a,b;
 
