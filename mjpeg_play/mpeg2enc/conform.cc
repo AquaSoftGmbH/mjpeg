@@ -249,10 +249,6 @@ void EncoderParams::ProfileAndLevelChecks()
 
   /* level (parameter value) constraints */
 
-  /* Table 8-8 */
-  if (frame_rate_code>5 && level>=ML)
-    mjpeg_error_exit1("Picture rate greater than permitted in specified Level");
-
   for (i=0; i<M; i++)
   {
     if (motion_data[i].forw_hor_f_code > maxval->hor_f_code)
@@ -273,29 +269,29 @@ void EncoderParams::ProfileAndLevelChecks()
 
   if (!ignore_constraints) 
     {
+      /* Table 8-8 */
+    if (frame_rate_code > 5 && level >= ML)
+       mjpeg_error_exit1("Picture rate greater than permitted in specified Level");
+
       /* Table 8-10 */
-      if (horizontal_size > maxval->hor_size)
+     if (horizontal_size > maxval->hor_size)
 	mjpeg_error_exit1("Horizontal size is greater than permitted in specified Level");
       
-      if (vertical_size > maxval->vert_size)
+     if (vertical_size > maxval->vert_size)
 	mjpeg_error_exit1("Vertical size is greater than permitted in specified Level");
       
       /* Table 8-11 */
-      if (horizontal_size*vertical_size*frame_rate > 
-	  maxval->sample_rate)
+     if (horizontal_size*vertical_size*frame_rate > maxval->sample_rate)
 	mjpeg_error_exit1("Sample rate is greater than permitted in specified Level");
-    }      
-
   /* Table 8-12 */
-  if (bit_rate> 1.0e6 * maxval->bit_rate)
-    mjpeg_error_exit1("Bit rate is greater than permitted in specified Level");
+     if (bit_rate> 1.0e6 * maxval->bit_rate)
+        mjpeg_error_exit1("Bit rate is greater than permitted in specified Level");
+    }      
 
   /* Table 8-13 */
   if (vbv_buffer_code > maxval->vbv_buffer_size)
     mjpeg_error_exit1("vbv_buffer_size exceeds High Level limit");
 }
-
-
 
 /* 
  * Local variables:
