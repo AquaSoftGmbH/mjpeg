@@ -1180,7 +1180,12 @@ int main(int argc, char **argv)
   /* Catch and forward selected signals to the signal catcher */
   forward_signals(&sigmask);
 
-  lavrec_main(info);
+  if ((lavrec_main(info)) != 1)
+		{
+			mjpeg_error_exit1("Something went wrong while setting up the card");
+	  		print_summary();
+			lavrec_free(info);
+		}
 
   if (!wait_for_start)
      lavrec_start(info);
