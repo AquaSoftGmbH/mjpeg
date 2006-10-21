@@ -853,12 +853,12 @@ main (int argc, char *argv[])
   	    mjpeg_log (LOG_INFO, "   This sets the parameters [Y,U,V] for the gauss-filter. 0 means no filtering,");
   	    mjpeg_log (LOG_INFO, "    which is the default, 255 is maximum gaussfiltering. Some camera manufacturers");
   	    mjpeg_log (LOG_INFO, "    think it's a good idea to sharpen the frames extremly. This however will raise");
-  	    mjpeg_log (LOG_INFO, "    typical video-compression-artefacts (ringing, blocking, alias, etc...). If you");
+  	    mjpeg_log (LOG_INFO, "    typical video-compression-artifacts (ringing, blocking, alias, etc...). If you");
   	    mjpeg_log (LOG_INFO, "    desire to have a video free of these, you can raise the gauss-filter-values");
   	    mjpeg_log (LOG_INFO, "    until your image is undesirable soft... (Short: setting decent values helps");
   	    mjpeg_log (LOG_INFO, "    both: the viewer and the encoder -- setting too high values is ugly.) This may");
   	    mjpeg_log (LOG_INFO, "    also help with extremly noisy images from a weak air-captured signal...");
-  	    mjpeg_log (LOG_INFO, "    Unlike y4mspatialfilter this will not boost ringing artefacts.\n");
+  	    mjpeg_log (LOG_INFO, "    Unlike y4mspatialfilter this will not boost ringing artifacts.\n");
   	    mjpeg_log (LOG_INFO, "-m [0...255],[0...255],[0...255]");
   	    mjpeg_log (LOG_INFO, "    Spatial-Pre-Filter. This one helps with really noisy signals. You should not");
   	    mjpeg_log (LOG_INFO, "    use this with moderate to low noise material. Used with care it helps the tem-");
@@ -867,7 +867,7 @@ main (int argc, char *argv[])
   	    mjpeg_log (LOG_INFO, "    Temporal-Noise-Filter. This one dramaticaly reduces noise without loosing sharpness. If set too high, however, it may introduce visable ghost-images or smear. ");
   	    mjpeg_log (LOG_INFO, "-M [0...255],[0...255],[0...255]");
   	    mjpeg_log (LOG_INFO, "    Spatial-Post-Filter. This one removes spatial noise left by the temporal-filter.");
-  	    mjpeg_log (LOG_INFO, "    Used with care it can dramaticaly lower the bitrate. Using it with to high settings will lead to the same artefacts as the spatial-pre-filter produces.");
+  	    mjpeg_log (LOG_INFO, "    Used with care it can dramaticaly lower the bitrate. Using it with to high settings will lead to the same artifacts as the spatial-pre-filter produces.");
   	    mjpeg_log (LOG_INFO, "-G [0...255],[0...255],[0...255]");
   	    mjpeg_log (LOG_INFO, "    Set -m,-t,-M values at once. -t is boosted by a factor of 2. Useful if you do");
   	    mjpeg_log (LOG_INFO, "    not want to tweak all the values by hand... which is better.");

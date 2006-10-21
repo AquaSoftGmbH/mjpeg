@@ -91,12 +91,10 @@ int quant_code(  int q_scale_type, int mquant )
  *
  * Computes the next quantisation up.  Used to avoid saturation
  * in macroblock coefficients - common in MPEG-1 - which causes
- * nasty artefacts.
+ * nasty artifacts.
  *
  * NOTE: Does no range checking...
- *
  */
- 
 
 int next_larger_quant( int q_scale_type, int quant )
 {
@@ -143,7 +141,7 @@ void quant_intra( struct QuantizerWorkSpace *wsp,
 
   /* 
    * Complicate by handlin clipping by increasing quantisation.  This
-   * seems to avoid nasty artefacts in some situations...
+   * seems to avoid nasty artifacts in some situations...
    */
 
   do
@@ -228,7 +226,6 @@ static int quant_weight_coeff_inter( struct QuantizerWorkSpace *wsp,
        noisy video are around 20.0.  */
 }
 
-							     
 /* 
  * Quantisation for non-intra blocks using Test Model 5 quantization
  *
@@ -245,7 +242,7 @@ static int quant_weight_coeff_inter( struct QuantizerWorkSpace *wsp,
  * RETURN: A bit-mask of block_count bits indicating non-zero blocks (a 1).
  *
  */
-																							     											     
+
 int quant_non_intra( struct QuantizerWorkSpace *wsp,
                      int16_t *src, int16_t *dst,
 					 int q_scale_type,
@@ -340,7 +337,6 @@ void iquant_intra_m1(struct QuantizerWorkSpace *wsp,
     dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
   }
 }
-
 
 /* MPEG-2 inverse quantization */
 void iquant_intra_m2(struct QuantizerWorkSpace *wsp,
