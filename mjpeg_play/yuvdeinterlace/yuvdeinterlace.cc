@@ -684,7 +684,7 @@ for(x=0;x<w;x++)
 for(y=2;y<(h-2);y++)
 for(x=2;x<(w-2);x++)
 {
-	*(out+(x)+(y)*w) = *(scratch+(x)+(y)*w);
+	*(out+(x)+(y)*w) = (*(out+(x)+(y)*w)+*(scratch+(x)+(y)*w)*2)/3;
 }
 }
 
