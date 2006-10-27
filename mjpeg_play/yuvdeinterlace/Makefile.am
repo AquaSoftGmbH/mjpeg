@@ -11,17 +11,8 @@ endif
 
 bin_PROGRAMS = yuvdeinterlace
 
-noinst_HEADERS = \
-	blend_fields.h \
-	sinc_interpolation.h \
-	transform_block.h \
-    motionsearch_deint.h \
-    vector.h
+noinst_HEADERS = 
     
-yuvdeinterlace_SOURCES = blend_fields.c \
-	main.c \
-	sinc_interpolation.c \
-	transform_block.c \
-    motionsearch_deint.c
+yuvdeinterlace_SOURCES = yuvdeinterlace.cc
 
 yuvdeinterlace_LDADD = $(LIBMJPEGUTILS)
