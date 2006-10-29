@@ -561,131 +561,296 @@ for(y=0;y<h;y+=16)
 
 void antialias_plane (uint8_t * out, int w, int h)
 {
+uint8_t * out2 = outframe[0];
 int x,y;
-int a,b,c,m;
-uint32_t min,sad;
-int vx,px;
+int m0,m1,m2,m3,m4,m5,m6,m7;
+int d0,d1,d2,d3,d4,d5,d6,d7;
+
+// outframe is unused here, we can use it to
+// lowpass-filter the frame prior to measuring
+// the isophote-direction
 
 for(y=0;y<h;y++)
 for(x=0;x<w;x++)
 {
-	min = 0x00ffffff;
-	px=0;
-					
-	for(vx=-4;vx<=4;vx++)
-		{
-						a = (
-							1 * *(out+(x-vx-1)+(y-1)*w) +
-							2 * *(out+(x-vx  )+(y-1)*w) +
-							1 * *(out+(x-vx+1)+(y-1)*w) 
-							)/ 4;
+  *(out2+x+y*w)=
+		(
+		*(out+(x-1)+(y-1)*w) +
+		*(out+(x+0)+(y-1)*w) *2+
+		*(out+(x+1)+(y-1)*w) +
+		*(out+(x-1)+(y+0)*w) *2+
+		*(out+(x+0)+(y+0)*w) *4+
+		*(out+(x+1)+(y+0)*w) *2+
+		*(out+(x-1)+(y+1)*w) +
+		*(out+(x+0)+(y+1)*w) *2+
+		*(out+(x+1)+(y+1)*w) 
+		)/16;
+}
 
-						b = (
-							1 * *(out+(x-1)+(y+0)*w) +
-							2 * *(out+(x  )+(y+0)*w) +
-							1 * *(out+(x+1)+(y+0)*w) 
-							)/ 4;
-						
-						c = (
-							1 * *(out+(x+vx-1)+(y+1)*w) +
-							2 * *(out+(x+vx  )+(y+1)*w) +
-							1 * *(out+(x+vx+1)+(y+1)*w) 
-							)/ 4;
-						
-						m = (a+b+c)/3;
-						
-						sad  = (m-a)*(m-a)+
-							   (m-b)*(m-b)*2+
-							   (m-c)*(m-c);
-						
-						x--;
-						a = (
-							1 * *(out+(x-vx-1)+(y-1)*w) +
-							2 * *(out+(x-vx  )+(y-1)*w) +
-							1 * *(out+(x-vx+1)+(y-1)*w) 
-							)/ 4;
+for(y=0;y<h;y++)
+for(x=0;x<w;x++)
+{
+	// test horizontal direction
+	m7 = 0;
+	m7 += *(out2+(x-1)+(y+0)*w);
+	m7 += *(out2+(x-1)+(y+0)*w)*2;
+	m7 += *(out2+(x+0)+(y+0)*w)*4;
+	m7 += *(out2+(x+1)+(y+0)*w)*2;
+	m7 += *(out2+(x+1)+(y+0)*w);
+	m7 /= 10;
 
-						b = (
-							1 * *(out+(x-1)+(y+0)*w) +
-							2 * *(out+(x  )+(y+0)*w) +
-							1 * *(out+(x+1)+(y+0)*w) 
-							)/ 4;
-						
-						c = (
-							1 * *(out+(x+vx-1)+(y+1)*w) +
-							2 * *(out+(x+vx  )+(y+1)*w) +
-							1 * *(out+(x+vx+1)+(y+1)*w) 
-							)/ 4;
-						
-						m = (a+b+c)/3;
-						
-						sad += (m-a)*(m-a)+
-							   (m-b)*(m-b)*2+
-							   (m-c)*(m-c);
-						x+=2;
-						a = (
-							1 * *(out+(x-vx-1)+(y-1)*w) +
-							2 * *(out+(x-vx  )+(y-1)*w) +
-							1 * *(out+(x-vx+1)+(y-1)*w) 
-							)/ 4;
+	d7 = 0;
+	d7 += abs(m0-*(out2+(x-2)+(y+0)*w));
+	d7 += abs(m0-*(out2+(x-1)+(y+0)*w));
+	d7 += abs(m0-*(out2+(x+0)+(y+0)*w));
+	d7 += abs(m0-*(out2+(x+1)+(y+0)*w));
+	d7 += abs(m0-*(out2+(x+2)+(y+0)*w));
+	d7 /= 5;
 
-						b = (
-							1 * *(out+(x-1)+(y+0)*w) +
-							2 * *(out+(x  )+(y+0)*w) +
-							1 * *(out+(x+1)+(y+0)*w) 
-							)/ 4;
-						
-						c = (
-							1 * *(out+(x+vx-1)+(y+1)*w) +
-							2 * *(out+(x+vx  )+(y+1)*w) +
-							1 * *(out+(x+vx+1)+(y+1)*w) 
-							)/ 4;
-						
-						m = (a+b+c)/3;
-						
-						sad += (m-a)*(m-a)+
-							   (m-b)*(m-b)*2+
-							   (m-c)*(m-c);
-						x--;
-						
-						if(sad<min)
-							{
-							min=sad;
-							px=vx;
-							}
-						}
+	// test vertical direction
+	m0 = 0;
+	m0 += *(out2+(x+0)+(y-1)*w);
+	m0 += *(out2+(x+0)+(y+0)*w)*2;
+	m0 += *(out2+(x+0)+(y+1)*w);
+	m0 /= 4;
 
-					if( abs(px)<=1 )
-						{
-						// gauss-filter for diagonal orientations
-						*(scratch+(x)+(y)*w) = 
-							( 2 * *(out+(x   )+(y  )*w) +
-							  1 * *(out+(x-px)+(y-1)*w) +
-							  1 * *(out+(x+px)+(y+1)*w) )/4;
-						}
-					else
-					if( abs(px)>=2 )
-						{
-						// bigger gauss kernel for even flatter angles
-						*(scratch+(x)+(y)*w) = 
-							( 4 * *(out+(x+0)+(y)*w) +
-							  2 * *(out+(x-1)+(y)*w) +
-							  2 * *(out+(x+1)+(y)*w) +
-							  2 * *(out+(x+0-px)+(y-1)*w) +
-							  1 * *(out+(x-1-px)+(y-1)*w) +
-							  1 * *(out+(x+1-px)+(y-1)*w) +
-							  2 * *(out+(x+0+px)+(y+1)*w) +
-							  1 * *(out+(x-1+px)+(y+1)*w) +
-							  1 * *(out+(x+1+px)+(y+1)*w) 
-						)/16;
-						}
+	d0 = 0;
+	d0 += abs(m0-*(out2+(x+0)+(y-1)*w));
+	d0 += abs(m0-*(out2+(x+0)+(y+0)*w));
+	d0 += abs(m0-*(out2+(x+0)+(y+1)*w));
+	d0 /= 3;
+
+	// test +45 degrees
+	m1 = 0;
+	m1 += *(out2+(x+1)+(y-1)*w);
+	m1 += *(out2+(x+0)+(y+0)*w)*2;
+	m1 += *(out2+(x-1)+(y+1)*w);
+	m1 /= 4;
+
+	d1 = 0;
+	d1 += abs(m0-*(out2+(x+1)+(y-1)*w));
+	d1 += abs(m0-*(out2+(x+0)+(y+0)*w));
+	d1 += abs(m0-*(out2+(x-1)+(y+1)*w));
+	d1 /= 3;
+
+	// test -45 degrees
+	m2 = 0;
+	m2 += *(out2+(x-1)+(y-1)*w);
+	m2 += *(out2+(x+0)+(y+0)*w)*2;
+	m2 += *(out2+(x+1)+(y+1)*w);
+	m2 /= 4;
+
+	d2 = 0;
+	d2 += abs(m0-*(out2+(x-1)+(y-1)*w));
+	d2 += abs(m0-*(out2+(x+0)+(y+0)*w));
+	d2 += abs(m0-*(out2+(x+1)+(y+1)*w));
+	d2 /= 3;
+	
+	// test +72 degrees
+	m3 = 0;
+	m3 += *(out2+(x+3)+(y-1)*w);
+	m3 += *(out2+(x+2)+(y-1)*w)*2;
+	m3 += *(out2+(x+1)+(y-1)*w);
+	m3 += *(out2+(x-1)+(y+0)*w);
+	m3 += *(out2+(x+0)+(y+0)*w)*2;
+	m3 += *(out2+(x+1)+(y+0)*w);
+	m3 += *(out2+(x-1)+(y+1)*w);
+	m3 += *(out2+(x-2)+(y+1)*w)*2;
+	m3 += *(out2+(x-3)+(y+1)*w);
+	m3 /= 12;
+
+	d3 = 0;
+	d3 += abs(m0-*(out2+(x+3)+(y-1)*w));
+	d3 += abs(m0-*(out2+(x+2)+(y-1)*w));
+	d3 += abs(m0-*(out2+(x+1)+(y-1)*w));
+	d3 += abs(m0-*(out2+(x-1)+(y+0)*w));
+	d3 += abs(m0-*(out2+(x+0)+(y+0)*w));
+	d3 += abs(m0-*(out2+(x+1)+(y+0)*w));
+	d3 += abs(m0-*(out2+(x-1)+(y+1)*w));
+	d3 += abs(m0-*(out2+(x-2)+(y+1)*w));
+	d3 += abs(m0-*(out2+(x-3)+(y+1)*w));
+	d3 /= 9;
+
+	// test -72 degrees
+	m4 = 0;
+	m4 += *(out2+(x-3)+(y-1)*w);
+	m4 += *(out2+(x-2)+(y-1)*w)*2;
+	m4 += *(out2+(x-1)+(y-1)*w);
+	m4 += *(out2+(x-1)+(y+0)*w);
+	m4 += *(out2+(x+0)+(y+0)*w)*2;
+	m4 += *(out2+(x+1)+(y+0)*w);
+	m4 += *(out2+(x+1)+(y+1)*w);
+	m4 += *(out2+(x+2)+(y+1)*w)*2;
+	m4 += *(out2+(x+3)+(y+1)*w);
+	m4 /= 12;
+
+	d4 = 0;
+	d4 += abs(m0-*(out2+(x-3)+(y-1)*w));
+	d4 += abs(m0-*(out2+(x-2)+(y-1)*w));
+	d4 += abs(m0-*(out2+(x-1)+(y-1)*w));
+	d4 += abs(m0-*(out2+(x-1)+(y+0)*w));
+	d4 += abs(m0-*(out2+(x+0)+(y+0)*w));
+	d4 += abs(m0-*(out2+(x+1)+(y+0)*w));
+	d4 += abs(m0-*(out2+(x+1)+(y+1)*w));
+	d4 += abs(m0-*(out2+(x+2)+(y+1)*w));
+	d4 += abs(m0-*(out2+(x+3)+(y+1)*w));
+	d4 /= 9;
+
+	// test +72 degrees
+	m5 = 0;
+	m5 += *(out2+(x+4)+(y-1)*w);
+	m5 += *(out2+(x+3)+(y-1)*w)*2;
+	m5 += *(out2+(x+2)+(y-1)*w);
+	m5 += *(out2+(x-1)+(y+0)*w);
+	m5 += *(out2+(x+0)+(y+0)*w)*2;
+	m5 += *(out2+(x+1)+(y+0)*w);
+	m5 += *(out2+(x-2)+(y+1)*w);
+	m5 += *(out2+(x-3)+(y+1)*w)*2;
+	m5 += *(out2+(x-4)+(y+1)*w);
+	m5 /= 12;
+
+	d5 = 0;
+	d5 += abs(m0-*(out2+(x+4)+(y-1)*w));
+	d5 += abs(m0-*(out2+(x+3)+(y-1)*w));
+	d5 += abs(m0-*(out2+(x+2)+(y-1)*w));
+	d5 += abs(m0-*(out2+(x-1)+(y+0)*w));
+	d5 += abs(m0-*(out2+(x+0)+(y+0)*w));
+	d5 += abs(m0-*(out2+(x+1)+(y+0)*w));
+	d5 += abs(m0-*(out2+(x-2)+(y+1)*w));
+	d5 += abs(m0-*(out2+(x-3)+(y+1)*w));
+	d5 += abs(m0-*(out2+(x-4)+(y+1)*w));
+	d5 /= 9;
+
+	if( d0<=d1 &&
+		d0<=d2 &&
+		d0<=d3 &&
+		d0<=d4 &&
+		d0<=d5 )
+	{
+		m0 = 0;
+		m0 += *(out+(x+0)+(y-1)*w);
+		m0 += *(out+(x+0)+(y+0)*w)*2;
+		m0 += *(out+(x+0)+(y+1)*w);
+		m0 /= 4;
+
+		*(scratch+x+y*w)=m0;
+	}
+	else
+	if( d7<=d1 &&
+		d7<=d2 &&
+		d7<=d3 &&
+		d7<=d4 &&
+		d7<=d5 )
+	{
+		m5 = 0;
+		m5 += *(out+(x-1)+(y+0)*w);
+		m5 += *(out+(x+0)+(y+0)*w)*2;
+		m5 += *(out+(x+1)+(y+0)*w);
+		m5 /= 4;
+
+		*(scratch+x+y*w)=m5;
+	}
+	else
+	if( d1<=d0 &&
+		d1<=d2 &&
+		d1<=d3 &&
+		d1<=d4 &&
+		d1<=d5 )
+	{
+	m1 = 0;
+	m1 += *(out+(x+1)+(y-1)*w);
+	m1 += *(out+(x+0)+(y+0)*w)*2;
+	m1 += *(out+(x-1)+(y+1)*w);
+	m1 /= 4;
+
+	*(scratch+x+y*w)=m1;
+	}
+	else
+	if( d2<=d0 &&
+		d2<=d1 &&
+		d2<=d3 &&
+		d2<=d4 &&
+		d2<=d5 )
+	{
+	m2 = 0;
+	m2 += *(out+(x-1)+(y-1)*w);
+	m2 += *(out+(x+0)+(y+0)*w)*2;
+	m2 += *(out+(x+1)+(y+1)*w);
+	m2 /= 4;
+
+	*(scratch+x+y*w)=m2;
+	}
+	else
+	if( d3<=d0 &&
+		d3<=d1 &&
+		d3<=d2 &&
+		d3<=d4 &&
+		d3<=d5 )
+	{
+	
+	m3 = 0;
+	m3 += *(out+(x+3)+(y-1)*w);
+	m3 += *(out+(x+2)+(y-1)*w)*2;
+	m3 += *(out+(x+1)+(y-1)*w);
+	m3 += *(out+(x-1)+(y+0)*w);
+	m3 += *(out+(x+0)+(y+0)*w)*2;
+	m3 += *(out+(x+1)+(y+0)*w);
+	m3 += *(out+(x-1)+(y+1)*w);
+	m3 += *(out+(x-2)+(y+1)*w)*2;
+	m3 += *(out+(x-3)+(y+1)*w);
+	m3 /= 12;
+
+	*(scratch+x+y*w)=m3;
+	}
+	else
+	if( d4<=d0 &&
+		d4<=d1 &&
+		d4<=d2 &&
+		d4<=d3 &&
+		d4<=d5 )
+	{
+	m4 = 0;
+	m4 += *(out+(x-3)+(y-1)*w);
+	m4 += *(out+(x-2)+(y-1)*w)*2;
+	m4 += *(out+(x-1)+(y-1)*w);
+	m4 += *(out+(x-1)+(y+0)*w);
+	m4 += *(out+(x+0)+(y+0)*w)*2;
+	m4 += *(out+(x+1)+(y+0)*w);
+	m4 += *(out+(x+1)+(y+1)*w);
+	m4 += *(out+(x+2)+(y+1)*w)*2;
+	m4 += *(out+(x+3)+(y+1)*w);
+	m4 /= 12;
+
+	*(scratch+x+y*w)=m4;
+	}
+	else
+	if( d5<=d0 &&
+		d5<=d1 &&
+		d5<=d2 &&
+		d5<=d3 &&
+		d5<=d4 )
+	{
+	m5 = 0;
+	m5 += *(out+(x-4)+(y-1)*w);
+	m5 += *(out+(x-3)+(y-1)*w)*2;
+	m5 += *(out+(x-2)+(y-1)*w);
+	m5 += *(out+(x-1)+(y+0)*w);
+	m5 += *(out+(x+0)+(y+0)*w)*2;
+	m5 += *(out+(x+1)+(y+0)*w);
+	m5 += *(out+(x+2)+(y+1)*w);
+	m5 += *(out+(x+3)+(y+1)*w)*2;
+	m5 += *(out+(x+4)+(y+1)*w);
+	m5 /= 12;
+	*(scratch+x+y*w)=m5;
+	}
 }	
 
 for(y=2;y<(h-2);y++)
 for(x=2;x<(w-2);x++)
 {
-	*(out+(x)+(y)*w) = (*(out+(x)+(y)*w)+*(scratch+(x)+(y)*w)*2)/3;
+	*(out+(x)+(y)*w) = *(scratch+(x)+(y)*w);
 }
+
 }
 
 void antialias_frame ()
