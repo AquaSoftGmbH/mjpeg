@@ -2,6 +2,8 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
+EXTRA_DIST = implementation.html
+
 AM_CFLAGS = -DNDEBUG -finline-functions @PROGRAM_NOPIC@
 AM_CXXFLAGS = -DNDEBUG -finline-functions @PROGRAM_NOPIC@
 

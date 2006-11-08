@@ -3,6 +3,8 @@
 EXTRA_DIST = \
 	README \
 	INSTRUCT \
+	mpeg_systems_paper_0.99.ps.gz \
+	Doxyfile \
 	TODO
 
 MAINTAINERCLEANFILES = Makefile.in
