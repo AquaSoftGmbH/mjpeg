@@ -17,7 +17,7 @@ mpeg2encpp_MMXSSE_INLINE = \
 	quantize_x86.c \
 	transfrm_x86.c
 
-EXTRA_DIST = NOTES README TODO INSTALL ChangeLog
+EXTRA_DIST = NOTES README TODO INSTALL ChangeLog seqstats.cc seqstats.hh
 
 MAINTAINERCLEANFILES = Makefile.in
 
@@ -60,7 +60,7 @@ libmpeg2encpp_la_SOURCES = conform.cc elemstrmwriter.cc encoderparams.cc \
 	rate_complexity_model.cc
 
 noinst_HEADERS = channel.hh mpeg2syntaxcodes.h quantize_precomp.h simd.h \
-	tables.h $(mpeg2enc_noinst_header_REF) imageplanes.hh rate_complexity_model.hh seqstats.hh
+	tables.h $(mpeg2enc_noinst_header_REF) imageplanes.hh rate_complexity_model.hh
 
 libmpeg2encpp_includedir = $(pkgincludedir)/mpeg2enc
 
