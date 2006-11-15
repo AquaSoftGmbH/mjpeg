@@ -3,7 +3,7 @@ Section: graphics
 Priority: extra
 Maintainer: KAWAMATA Hitoshi <hitoshi.kawamata@nifty.com>
 Build-Depends: debhelper (>> 3.4.4), nasm (>= 0.98.34) [i386], libpopt-dev,
- libdv-dev, libquicktime-dev, libjpeg62-dev, libjpeg-mmx-dev (>= 0.1.4) [i386],
+ libdv-dev, libquicktime-dev, libjpeg62-dev,
  libsdl1.2-dev, libgtk1.2-dev, libfreetype6-dev, libxrender-dev | xlibs-dev
 Standards-Version: 3.5.2
 
