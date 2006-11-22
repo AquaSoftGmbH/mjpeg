@@ -121,7 +121,7 @@ public:
     free (outframe[1] - vertical_overshot_chroma);
     free (outframe[2] - vertical_overshot_chroma);
 
-    free (scratch - vertical_overshot_chroma);
+    free (scratch - vertical_overshot_luma);
 
   }
 
