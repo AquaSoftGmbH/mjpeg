@@ -696,7 +696,7 @@ main (int argc, char *argv[])
 	    mjpeg_log (LOG_INFO, " -t [nr] (default 4) motion threshold.");
 	    mjpeg_log (LOG_INFO, "         0 -> every block is moving.");
 	    mjpeg_log (LOG_INFO, " -a just antialias the frames! This will");
-	    mjpeg_log (LOG_INFO, "    assume progressive but aliassed input.");
+	    mjpeg_log (LOG_INFO, "    assume progressive but aliased input.");
 	    mjpeg_log (LOG_INFO, "    you can use this to improve badly deinterlaced");
 	    mjpeg_log (LOG_INFO, "    footage. EG: deinterlaced with cubic-interpolation");
 	    mjpeg_log (LOG_INFO, "    or worse...");
