@@ -20,11 +20,13 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include "cpu_accel.h"
 
 #include "altivec_motion.h"
 
 #include "../mjpeg_logging.h"
 
+#define SIMD_DO(x) if(disable_simd( #x)) mjpeg_info(" Disabling " #x); else p##x = x##_altivec
 
 void enable_altivec_motion()
 {
@@ -46,86 +48,85 @@ void enable_altivec_motion()
 #if ALTIVEC_TEST_FUNCTION(sad_00)
     psad_00 = ALTIVEC_TEST_SUFFIX(sad_00);
 #else
-    psad_00 = ALTIVEC_SUFFIX(sad_00);
+    SIMD_DO(sad_00);
 #endif
 #endif
 
 #if ALTIVEC_TEST_FUNCTION(sad_01)
     psad_01 = ALTIVEC_TEST_SUFFIX(sad_01);
 #else
-    psad_01 = ALTIVEC_SUFFIX(sad_01);
+    SIMD_DO(sad_01);
 #endif
 
 #if ALTIVEC_TEST_FUNCTION(sad_10)
     psad_10 = ALTIVEC_TEST_SUFFIX(sad_10);
 #else
-    psad_10 = ALTIVEC_SUFFIX(sad_10);
+    SIMD_DO(sad_10);
 #endif
 
 #if ALTIVEC_TEST_FUNCTION(sad_11)
     psad_11 = ALTIVEC_TEST_SUFFIX(sad_11);
 #else
-    psad_11 = ALTIVEC_SUFFIX(sad_11);
+    SIMD_DO(sad_11);
 #endif
 
 #if ALTIVEC_TEST_FUNCTION(bsad)
     pbsad = ALTIVEC_TEST_SUFFIX(bsad);
 #else
-    pbsad = ALTIVEC_SUFFIX(bsad);
+    SIMD_DO(bsad);
 #endif
 
 #if ALTIVEC_TEST_FUNCTION(sumsq)
     psumsq = ALTIVEC_TEST_SUFFIX(sumsq);
 #else
-    psumsq = ALTIVEC_SUFFIX(sumsq);
+    SIMD_DO(sumsq);
 #endif
 
 #if ALTIVEC_TEST_FUNCTION(sumsq_sub22)
     psumsq_sub22 = ALTIVEC_TEST_SUFFIX(sumsq_sub22);
 #else
-    psumsq_sub22 = ALTIVEC_SUFFIX(sumsq_sub22);
+    SIMD_DO(sumsq_sub22);
 #endif
 
 #if ALTIVEC_TEST_FUNCTION(bsumsq)
     pbsumsq = ALTIVEC_TEST_SUFFIX(bsumsq);
 #else
-    pbsumsq = ALTIVEC_SUFFIX(bsumsq);
+    SIMD_DO(bsumsq);
 #endif
-
 
 #if ALTIVEC_TEST_FUNCTION(bsumsq_sub22)
     pbsumsq_sub22 = ALTIVEC_TEST_SUFFIX(bsumsq_sub22);
 #else
-    pbsumsq_sub22 = ALTIVEC_SUFFIX(bsumsq_sub22);
+    SIMD_DO(bsumsq_sub22);
 #endif
 
 #if ALTIVEC_TEST_FUNCTION(find_best_one_pel)
     pfind_best_one_pel = ALTIVEC_TEST_SUFFIX(find_best_one_pel);
 #else
-    pfind_best_one_pel = ALTIVEC_SUFFIX(find_best_one_pel);
+    SIMD_DO(find_best_one_pel);
 #endif
 
 #if ALTIVEC_TEST_FUNCTION(build_sub22_mests)
     pbuild_sub22_mests = ALTIVEC_TEST_SUFFIX(build_sub22_mests);
 #else
-    pbuild_sub22_mests = ALTIVEC_SUFFIX(build_sub22_mests);
+    SIMD_DO(build_sub22_mests);
 #endif
 
 #if ALTIVEC_TEST_FUNCTION(build_sub44_mests)
     pbuild_sub44_mests = ALTIVEC_TEST_SUFFIX(build_sub44_mests);
 #else
-    pbuild_sub44_mests = ALTIVEC_SUFFIX(build_sub44_mests);
+    SIMD_DO(build_sub44_mests);
 #endif
 
 #if ALTIVEC_TEST_FUNCTION(variance)
     pvariance = ALTIVEC_TEST_SUFFIX(variance);
 #else
-    pvariance = ALTIVEC_SUFFIX(variance);
+    SIMD_DO(variance);
 #endif
 
 #if ALTIVEC_TEST_FUNCTION(subsample_image)
     psubsample_image = ALTIVEC_TEST_SUFFIX(subsample_image);
 #else
-    psubsample_image = ALTIVEC_SUFFIX(subsample_image);
+    psubsample_image = subsample_image_altivec;
 #endif
 }

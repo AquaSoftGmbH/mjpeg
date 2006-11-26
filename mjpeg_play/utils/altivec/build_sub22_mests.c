@@ -600,7 +600,7 @@ int build_sub22_mests_altivec(BUILD_SUB22_MESTS_PDECL)
 #if ALTIVEC_TEST_FUNCTION(sub_mean_reduction)
     ALTIVEC_TEST_SUFFIX(sub_mean_reduction)(sub22set, reduction, &min_weight);
 #else
-    ALTIVEC_SUFFIX(sub_mean_reduction)(sub22set, reduction, &min_weight);
+    sub_mean_reduction_altivec(sub22set, reduction, &min_weight);
 #endif
     return sub22set->len;
 #endif

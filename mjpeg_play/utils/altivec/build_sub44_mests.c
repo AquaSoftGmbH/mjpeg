@@ -707,7 +707,7 @@ int build_sub44_mests_altivec(BUILD_SUB44_MESTS_PDECL)
 #  if ALTIVEC_TEST_FUNCTION(sub_mean_reduction)
     ALTIVEC_TEST_SUFFIX(sub_mean_reduction)(sub44set, 1+(reduction>1), &mean_weight);
 #  else
-    ALTIVEC_SUFFIX(sub_mean_reduction)(sub44set, 1+(reduction>1), &mean_weight);
+    sub_mean_reduction_altivec(sub44set, 1+(reduction>1), &mean_weight);
 #  endif
   return sub44set->len;
 #endif
