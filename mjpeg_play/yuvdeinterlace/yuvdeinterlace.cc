@@ -109,20 +109,19 @@ public:
 
    ~deinterlacer ()
   {
-    free (inframe[0] - vertical_overshot_luma);
-    free (inframe[1] - vertical_overshot_chroma);
-    free (inframe[2] - vertical_overshot_chroma);
+    free (inframe[0]);
+    free (inframe[1]);
+    free (inframe[2]);
 
-    free (inframe0[0] - vertical_overshot_luma);
-    free (inframe0[1] - vertical_overshot_chroma);
-    free (inframe0[2] - vertical_overshot_chroma);
+    free (inframe0[0]);
+    free (inframe0[1]);
+    free (inframe0[2]);
 
-    free (outframe[0] - vertical_overshot_luma);
-    free (outframe[1] - vertical_overshot_chroma);
-    free (outframe[2] - vertical_overshot_chroma);
+    free (outframe[0]);
+    free (outframe[1]);
+    free (outframe[2]);
 
-    free (scratch - vertical_overshot_luma);
-
+    free (scratch);
   }
 
 void temporal_reconstruct_frame ( uint8_t * out,
