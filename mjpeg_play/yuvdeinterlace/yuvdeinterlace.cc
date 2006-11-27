@@ -72,7 +72,7 @@ public:
     int luma_size;
     int chroma_size;
 
-    // Some functions need some vertical overshot area
+    // Some functions need some vertical overshoot area
     // above and below the image. So we make the buffer
     // a little bigger...
     vertical_overshot_luma = 32*w;
@@ -94,7 +94,7 @@ public:
 
       scratch = (uint8_t *) malloc (luma_size) + vertical_overshot_luma;
 
-	  width = w;
+      width = w;
       height = h;
       cwidth = cw;
       cheight = ch;
@@ -125,11 +125,11 @@ public:
   }
 
 void temporal_reconstruct_frame ( uint8_t * out,
-						uint8_t * in0,
-						uint8_t * in1,
-						int w,
-						int h,
-						int field)
+					uint8_t * in0,
+					uint8_t * in1,
+					int w,
+					int h,
+					int field)
 {
 int x,y;
 uint32_t sad;
@@ -175,7 +175,7 @@ for(y=0;y<h;y+=16)
 		var4 = psad_00 ( in0+(x+8)+(y+8)*w, in1+(x+8)+(y+8)*w, w, 16, 0x00ffffff);
 		var4 /= 256;
 		
-		// if all block-variances are below the threshold we can savely assume
+		// if all block-variances are below the threshold we can safely assume
 		// that there is no motion...
 		if( ( var0 <= motion_threshold ) && 
 			( var1 <= motion_threshold ) &&
@@ -271,7 +271,7 @@ for(y=0;y<h;y+=16)
 
 			if (field==0)
 			{
-			// after we now (hopefuly) have the correct motion-vector for
+			// after we now (hopefully) have the correct motion-vector for
 			// the bottom field, use it to interpolate the missing data...
 			for(dy=0;dy<18;dy+=2)
 				for(dx=0;dx<18;dx++)
@@ -291,7 +291,7 @@ for(y=0;y<h;y+=16)
 			}
 			else
 			{
-			// after we now (hopefuly) have the correct motion-vector for
+			// after we now (hopefully) have the correct motion-vector for
 			// the top field, use it to interpolate the missing data...
 			for(dy=0;dy<18;dy+=2)
 				for(dx=0;dx<18;dx++)
@@ -842,20 +842,15 @@ main (int argc, char *argv[])
       else
 	{
 	  mjpeg_log (LOG_ERROR,
-		     "Unable to determine field-order from input-stream.  ");
+		     "Unable to determine field-order from input-stream.");
 	  mjpeg_log (LOG_ERROR,
-		     "This is most likely the case when using mplayer to  ");
+		     "This is most likely the case when using mplayer to produce the input-stream.");
 	  mjpeg_log (LOG_ERROR,
-		     "produce my input-stream.                            ");
-	  mjpeg_log (LOG_ERROR,
-		     "                                                    ");
-	  mjpeg_log (LOG_ERROR,
-		     "Either the stream is misflagged or progressive...   ");
+		     "Either the stream is misflagged or progressive...");
 	  mjpeg_log (LOG_ERROR,
 		     "I will stop here, sorry. Please choose a field-order");
 	  mjpeg_log (LOG_ERROR,
-		     "with -s0 or -s1. Otherwise I can't do anything for  ");
-	  mjpeg_log (LOG_ERROR, "you. TERMINATED. Thanks...");
+		     "with -s0 or -s1. Otherwise I can't do anything for you. TERMINATED. Thanks...");
 	  exit (-1);
 	}
     }
@@ -873,13 +868,11 @@ main (int argc, char *argv[])
 					    &YUVdeint.Y4MStream.iframeinfo,
 					    YUVdeint.inframe)))
     {
-	  if(!YUVdeint.just_anti_alias)
+	  if (!YUVdeint.just_anti_alias)
 		  YUVdeint.deinterlace_motion_compensated ();
 	  else
 		  YUVdeint.antialias_frame ();
-
 	frame++;
     }
-
   return 0;
 }
