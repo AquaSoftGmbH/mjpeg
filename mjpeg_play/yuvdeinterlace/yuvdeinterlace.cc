@@ -125,11 +125,11 @@ public:
   }
 
 void temporal_reconstruct_frame ( uint8_t * out,
-								  uint8_t * in0,
-								  uint8_t * in1,
-								  int w,
-								  int h,
-								  int field)
+						uint8_t * in0,
+						uint8_t * in1,
+						int w,
+						int h,
+						int field)
 {
 int x,y;
 uint32_t sad;
@@ -670,6 +670,7 @@ main (int argc, char *argv[])
 {
   int frame = 0;
   int errno = 0;
+  int ss_h, ss_v;
 
   deinterlacer YUVdeint;
 
@@ -771,13 +772,10 @@ main (int argc, char *argv[])
   y4m_init_frame_info (&YUVdeint.Y4MStream.oframeinfo);
 
 /* open input stream */
-  if ((errno =
-       y4m_read_stream_header (YUVdeint.Y4MStream.fd_in,
+  if ((errno = y4m_read_stream_header (YUVdeint.Y4MStream.fd_in,
 			       &YUVdeint.Y4MStream.istreaminfo)) != Y4M_OK)
     {
-      mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!",
-		 y4m_strerr (errno));
-      exit (1);
+    mjpeg_error_exit1("Couldn't read YUV4MPEG header: %s!",y4m_strerr(errno));
     }
 
   /* get format information */
@@ -790,34 +788,23 @@ main (int argc, char *argv[])
 	     y4m_chroma_keyword (YUVdeint.input_chroma_subsampling));
 
   /* if chroma-subsampling isn't supported bail out ... */
-  if (YUVdeint.input_chroma_subsampling == Y4M_CHROMA_420JPEG ||
-      YUVdeint.input_chroma_subsampling == Y4M_CHROMA_420MPEG2 ||
-      YUVdeint.input_chroma_subsampling == Y4M_CHROMA_420PALDV)
-    {
-      YUVdeint.cwidth = YUVdeint.width / 2;
-      YUVdeint.cheight = YUVdeint.height / 2;
-    }
-  else if (YUVdeint.input_chroma_subsampling == Y4M_CHROMA_444)
-    {
-      YUVdeint.cwidth = YUVdeint.width;
-      YUVdeint.cheight = YUVdeint.height;
-    }
-  else if (YUVdeint.input_chroma_subsampling == Y4M_CHROMA_422)
-    {
-      YUVdeint.cwidth = YUVdeint.width / 2;
-      YUVdeint.cheight = YUVdeint.height;
-    }
-  else if (YUVdeint.input_chroma_subsampling == Y4M_CHROMA_411)
-    {
-      YUVdeint.cwidth = YUVdeint.width / 4;
-      YUVdeint.cheight = YUVdeint.height;
-    }
-  else
-    {
-      mjpeg_log (LOG_ERROR,
-		 "Y4M-Stream is not in a supported chroma-format. Sorry.");
-      exit (-1);
-    }
+  switch (YUVdeint.input_chroma_subsampling)
+         {
+	 case Y4M_CHROMA_420JPEG:
+	 case Y4M_CHROMA_420MPEG2:
+	 case Y4M_CHROMA_420PALDV:
+	 case Y4M_CHROMA_444:
+	 case Y4M_CHROMA_422:
+	 case Y4M_CHROMA_411:
+	      ss_h = y4m_chroma_ss_x_ratio(YUVdeint.input_chroma_subsampling).d;
+	      ss_v = y4m_chroma_ss_y_ratio(YUVdeint.input_chroma_subsampling).d;
+	      YUVdeint.cwidth = YUVdeint.width / ss_h;
+	      YUVdeint.cheight = YUVdeint.height / ss_v;
+	      break;
+	 default:
+              mjpeg_error_exit1( "%s is not in supported chroma-format. Sorry.",
+	          y4m_chroma_keyword(YUVdeint.input_chroma_subsampling));
+	 }
 
   /* the output is progressive 4:2:0 MPEG 1 */
   y4m_si_set_interlace (&YUVdeint.Y4MStream.ostreaminfo, Y4M_ILACE_NONE);
@@ -895,4 +882,4 @@ main (int argc, char *argv[])
     }
 
   return 0;
-};
+}
