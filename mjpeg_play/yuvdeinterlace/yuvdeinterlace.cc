@@ -80,19 +80,19 @@ public:
     luma_size = ( w * h ) + 2 * vertical_overshot_luma;
     chroma_size = ( cw * ch ) + 2 * vertical_overshot_chroma;
   
-      inframe[0] = (uint8_t *) malloc (luma_size) + vertical_overshot_luma;
-      inframe[1] = (uint8_t *) malloc (chroma_size) + vertical_overshot_chroma;
-      inframe[2] = (uint8_t *) malloc (chroma_size) + vertical_overshot_chroma;
+      inframe[0] = (uint8_t *) malloc (luma_size + vertical_overshot_luma);
+      inframe[1] = (uint8_t *) malloc (chroma_size + vertical_overshot_chroma);
+      inframe[2] = (uint8_t *) malloc (chroma_size + vertical_overshot_chroma);
 
-      inframe0[0] = (uint8_t *) malloc (luma_size) + vertical_overshot_luma;
-      inframe0[1] = (uint8_t *) malloc (chroma_size) + vertical_overshot_chroma;
-      inframe0[2] = (uint8_t *) malloc (chroma_size) + vertical_overshot_chroma;
+      inframe0[0] = (uint8_t *) malloc (luma_size + vertical_overshot_luma);
+      inframe0[1] = (uint8_t *) malloc (chroma_size + vertical_overshot_chroma);
+      inframe0[2] = (uint8_t *) malloc (chroma_size + vertical_overshot_chroma);
 
-      outframe[0] = (uint8_t *) malloc (luma_size) + vertical_overshot_luma;
-      outframe[1] = (uint8_t *) malloc (chroma_size) + vertical_overshot_chroma;
-      outframe[2] = (uint8_t *) malloc (chroma_size) + vertical_overshot_chroma;
+      outframe[0] = (uint8_t *) malloc (luma_size + vertical_overshot_luma);
+      outframe[1] = (uint8_t *) malloc (chroma_size + vertical_overshot_chroma);
+      outframe[2] = (uint8_t *) malloc (chroma_size + vertical_overshot_chroma);
 
-      scratch = (uint8_t *) malloc (luma_size) + vertical_overshot_luma;
+      scratch = (uint8_t *) malloc (luma_size + vertical_overshot_luma);
 
       width = w;
       height = h;
