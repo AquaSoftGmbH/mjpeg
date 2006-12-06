@@ -14,14 +14,14 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-#include <string.h>
 #include "config.h"
+#include <string.h>
+#include <math.h>
 #include "mjpeg_types.h"
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
 #include "cpu_accel.h"
 #include "motionsearch.h"
-#include "math.h"
 
 class y4mstream
 {
@@ -763,6 +763,10 @@ main (int argc, char *argv[])
 
   // initialize motionsearch-library      
   init_motion_search ();
+
+#ifdef HAVE_ALTIVEC
+  reset_motion_simd("sad_00");
+#endif
 
   // initialize stream-information 
   y4m_accept_extensions (1);

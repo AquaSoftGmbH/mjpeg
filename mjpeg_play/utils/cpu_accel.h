@@ -54,6 +54,7 @@ extern "C" {
 #define ALIGN_PTR(p,a) ((void *)( (((size_t)(p))+(a)-1)&~((size_t)(a)-1)))
 
 extern const char *disable_simd_flags[];
+extern int simd_name_ok(char *);
 extern int disable_simd(char *);
 
 #ifdef __cplusplus

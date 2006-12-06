@@ -142,6 +142,7 @@ extern "C" {
 #endif
 
 void init_motion_search(void);
+void reset_motion_simd(char *);
 int round_search_radius( int radius );
 
 #ifdef  __cplusplus

@@ -23,6 +23,7 @@
 #include "config.h"
 #include <limits.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include "cpu_accel.h"
 #include "fastintfns.h"
@@ -999,3 +1000,43 @@ void init_motion_search(void)
 	}
 #endif
 }
+
+/*
+ * In some cases it is necessary to not use the SIMD routines even if they
+ * are available.   This can be due to a program not being able to use 
+ * correctly aligned buffers OR limitations in the SIMD routines.  The 
+ * yuvdeinterlace program is known to crash on PPC systems due to the sad_00 
+ * function requiring 16 byte alignment which yuvdeinterlace can not guarantee.
+ *
+ * Rather than completely disabling (via the MJPEGTOOLS_SIMD_DISABLE environment
+ * variable) Altivec sad_00 for all programs in a pipeline the code below
+ * can be used to selectively reset specific functions back to the C reference
+ * code specific.
+*/
+
+#define SIMD_RESET(x) \
+if (!strcmp(#x, name) && simd_name_ok( name )) \
+        { \
+	mjpeg_info(" Use non-SIMD " #x); \
+	p##x = x; \
+	}
+
+void reset_motion_simd(char *name)
+	{
+	SIMD_RESET(sad_00);
+	SIMD_RESET(sad_01);
+	SIMD_RESET(sad_10);
+	SIMD_RESET(sad_11);
+	SIMD_RESET(sad_sub22);
+	SIMD_RESET(sad_sub44);
+	SIMD_RESET(bsad);
+	SIMD_RESET(variance);
+	SIMD_RESET(sumsq);
+	SIMD_RESET(bsumsq);
+	SIMD_RESET(sumsq_sub22);
+	SIMD_RESET(bsumsq_sub22);
+	SIMD_RESET(find_best_one_pel);
+	SIMD_RESET(build_sub22_mests);
+	SIMD_RESET(build_sub44_mests);
+	SIMD_RESET(subsample_image);
+	}

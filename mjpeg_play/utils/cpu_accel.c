@@ -379,7 +379,6 @@ disable_simd(char *name)
 	{
 	int	foundit;
 	char	*cp, *simd_env, *dup_backup;
-	const char **dft;
 
 	if	((cp = getenv("MJPEGTOOLS_SIMD_DISABLE")) == NULL)
 		return(0);
@@ -396,15 +395,8 @@ disable_simd(char *name)
  * First check that the routine being tested for disabled status exists in
  * the list of known functions.
 */
-	foundit = 0;
-	for	(dft = disable_simd_flags; *dft; dft++)
-		{
-		if	(strcasecmp(name, *dft) == 0)
-			{
-			foundit = 1;
-			break;
-			}
-		}
+	foundit = simd_name_ok(name);
+
 	if	(foundit == 0)
 		return(0);
 
@@ -424,6 +416,20 @@ disable_simd(char *name)
 		}
 	free(dup_backup);
 	return(foundit);
+	}
+
+int
+simd_name_ok(char *name)
+	{
+	int foundit = 0;
+	const char **dft;
+
+	for	(dft = disable_simd_flags; *dft; dft++)
+		{
+		if	(strcasecmp(name, *dft) == 0)
+			return(1);
+		}
+	return(0);
 	}
 
 static char *parse_next(char **sptr, const char *delim)
