@@ -35,11 +35,6 @@
 #include <libdv/dv.h>
 #endif
 
-#ifdef HAVE_LIBQUICKTIME
-#include <quicktime.h>
-#include <lqt.h>
-#endif
-
 extern int AVI_errno;
 
 static char video_format=' ';

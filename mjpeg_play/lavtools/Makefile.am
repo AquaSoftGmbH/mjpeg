@@ -2,7 +2,7 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
-AM_CPPFLAGS = -I$(top_srcdir) -I$(includedir) -I$(top_srcdir)/utils
+AM_CPPFLAGS = -I$(top_srcdir) -I$(includedir) -I$(top_srcdir)/utils $(LIBQUICKTIME_CFLAGS)
 
 LIBMJPEGUTILS = $(top_builddir)/utils/libmjpegutils.la
 if HAVE_ALTIVEC
@@ -39,7 +39,7 @@ LAV_ALL_LIB_OPTS = \
 	-release $(LT_RELEASE) $(EXTRA_LDFLAGS)
 
 liblavfile_la_SOURCES = editlist.c lav_io.c avilib.c
-liblavfile_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS) $(JPEG_CFLAGS) $(LIBQUICKTIME_CFLAGS)
+liblavfile_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS) $(JPEG_CFLAGS)
 liblavfile_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) \
 	$(LIBQUICKTIME_LIBS) $(JPEG_LIBS) $(LIBDV_LIBS)
 liblavfile_la_LIBADD = $(LIBMJPEGUTILS)

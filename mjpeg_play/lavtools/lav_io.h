@@ -24,6 +24,11 @@
 typedef void avi_t;
 #endif
 
+#ifdef HAVE_LIBQUICKTIME
+#include <quicktime.h>
+#include <lqt.h>
+#endif
+
 #include <yuv4mpeg.h>
 
 #define MAX_MBYTES_PER_FILE_64 (4194304 - 1024)   /* 4TB-1GB should be enough */
@@ -40,7 +45,7 @@ typedef struct
    avi_t *avi_fd;
    int	jpeg_fd;
    char	*jpeg_filename;
-   void	*qt_fd;
+   quicktime_t	*qt_fd;
    int	format;
    int	interlacing;
    int	sar_w;  /* "sample aspect ratio" width  */
