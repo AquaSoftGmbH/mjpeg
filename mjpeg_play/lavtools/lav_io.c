@@ -28,7 +28,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
-#define COMPILE_LAV_IO_C
 #include "lav_io.h"
 
 #ifdef HAVE_LIBDV

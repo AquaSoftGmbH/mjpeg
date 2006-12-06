@@ -15,14 +15,9 @@
 */
 
 #ifndef LAV_IO_H
-
 #define LAV_IO_H
 
-#ifdef COMPILE_LAV_IO_C
 #include <avilib.h>
-#else
-typedef void avi_t;
-#endif
 
 #ifdef HAVE_LIBQUICKTIME
 #include <quicktime.h>
