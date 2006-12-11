@@ -40,7 +40,7 @@ typedef struct
    avi_t *avi_fd;
    int	jpeg_fd;
    char	*jpeg_filename;
-   quicktime_t	*qt_fd;
+   void	*qt_fd;	/* NOT quicktime_t because some systems lack libquicktime */
    int	format;
    int	interlacing;
    int	sar_w;  /* "sample aspect ratio" width  */
