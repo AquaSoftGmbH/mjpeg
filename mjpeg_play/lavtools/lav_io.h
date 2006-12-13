@@ -22,6 +22,8 @@
 #ifdef HAVE_LIBQUICKTIME
 #include <quicktime.h>
 #include <lqt.h>
+#else
+typedef void quicktime_t;
 #endif
 
 #include <yuv4mpeg.h>
@@ -40,7 +42,7 @@ typedef struct
    avi_t *avi_fd;
    int	jpeg_fd;
    char	*jpeg_filename;
-   void	*qt_fd;	/* NOT quicktime_t because some systems lack libquicktime */
+   quicktime_t *qt_fd;
    int	format;
    int	interlacing;
    int	sar_w;  /* "sample aspect ratio" width  */
