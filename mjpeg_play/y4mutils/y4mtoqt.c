@@ -286,7 +286,7 @@ main(int argc, char **argv)
 
 		err = quicktime_encode_video(qtf, tenbit ? (uint8_t **)yuv10: yuv, 0);
 		if	(err != 0)
-			mjpeg_error_exit1("quicktime_encode_video} failed.");
+			mjpeg_error_exit1("quicktime_encode_video failed.");
 		}
 
 	if	(audiofilename)
