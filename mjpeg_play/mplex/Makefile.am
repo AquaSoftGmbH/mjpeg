@@ -15,13 +15,13 @@ bin_PROGRAMS = mplex
 
 lib_LTLIBRARIES = libmplex2.la
 
-if HAVE_ZALPHA
-  ZALPHA_FILES = zalphastrm.hpp zalphastrm_in.cpp zalphastrm_out.cpp
-  ZALPHA_FLAGS = -DZALPHA
-else
-  ZALPHA_FILES =
-  ZALPHA_FLAGS =
-endif
+# ZALPHA is dead (or close enough to being in that state).  If you want to
+# enable NON-COMPILABLE code then switch the comment status of the lines below
+
+# ZALPHA_FILES = zalphastrm.hpp zalphastrm_in.cpp zalphastrm_out.cpp
+# ZALPHA_FLAGS = -DZALPHA
+ZALPHA_FILES =
+ZALPHA_FLAGS =
 
 
 libmplex2_la_SOURCES = \

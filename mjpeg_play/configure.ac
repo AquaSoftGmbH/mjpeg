@@ -44,11 +44,6 @@ AC_ARG_ENABLE(simd-accel,
               AC_HELP_STRING([--enable-simd-accel],
                              [use SIMD multimedia instructions
                               (MMX, AltiVec, etc.) if possible]))
-AC_ARG_ENABLE(zalpha,
-              AC_HELP_STRING([--enable-zalpha],
-                             [include MPEG Z/Alpha support in mplex (see
-                              http://www.geofront.se/products_software_mza.php)]))
-
 AC_ARG_WITH(extra-cflags,
             AC_HELP_STRING([--with-extra-cflags=flags],
                            [Options to be added to CFLAGS (optional)]))
@@ -456,16 +451,6 @@ if test x$have_x86cpu = xtrue -o x$have_ppccpu = xtrue; then
   AC_MSG_RESULT($ARCHFLAGS)
 fi
 
-dnl *********************************************************************
-dnl Check if Z/Alpha has been enabled. 
-
-use_zalpha=false
-if test "x$enable_zalpha" = "xyes" ; then
-  use_zalpha=true
-fi
-AM_CONDITIONAL(HAVE_ZALPHA, test x$use_zalpha = xtrue)
-
-
 dnl **********************************************************************
 dnl Handle forcing static linkage in key places
 if test "x$enable_force_static" = "xyes" ; then
@@ -607,7 +592,6 @@ if test x"$with_extra_cflags" != "x"; then
 fi
 AC_MSG_NOTICE([  - video4linux recording/playback: ${have_video4linux}])
 AC_MSG_NOTICE([  - software MJPEG playback       : ${have_sdl}])
-AC_MSG_NOTICE([  - MPEG Z/Alpha                  : ${use_zalpha}])
 AC_MSG_NOTICE([  - Quicktime playback/recording  : ${have_libquicktime}])
 AC_MSG_NOTICE([  - PNG input support             : ${have_libpng}])
 AC_MSG_NOTICE([  - AVI MJPEG playback/recording  : true (always)])
