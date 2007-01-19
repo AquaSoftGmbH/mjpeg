@@ -146,8 +146,8 @@ public:
             pthread_cond_wait( &waiting, &atomic);
         }
         e = pthread_mutex_unlock( &atomic );
-#ifdef NDEBUG
-        if (  != 0)
+#ifndef NDEBUG
+        if ( e != 0)
         {
             fprintf(stderr, "5 pthread_mutex_unlock=%d\n", e);
             abort();
