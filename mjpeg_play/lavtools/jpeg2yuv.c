@@ -371,20 +371,54 @@ static void rescale_color_vals(int width, int height, uint8_t *yp, uint8_t *up, 
       }
 }
 
+/**
+  Open and read a file if the file name
+  is not the same as the previous file name.
+  @param jpegdata: buffer where the JPEG data will be read into
+  @param jpegname: JPEG file name
+  @param prev_jpegname: previous JPEG file name
+  @returns 0  if the previous read data is still valid.
+           -1 if the file could not be opened.
+           >0 the number of bytes read into jpegdata.
+*/
+static size_t read_jpeg_data(uint8_t *jpegdata, char *jpegname, char *prev_jpegname)
+{
+  FILE *jpegfile;
+  size_t jpegsize;
+  if (strncmp(jpegname, prev_jpegname, strlen(jpegname)) != 0) {
+    strncpy(prev_jpegname, jpegname, strlen(jpegname));
+    jpegfile = fopen(jpegname, "rb");
+    if (jpegfile == NULL) { 
+      jpegsize = -1;
+      mjpeg_info("Read from '%s' failed:  %s", jpegname, strerror(errno));
+    } else {
+      jpegsize = fread(jpegdata, sizeof(unsigned char), MAXPIXELS, jpegfile); 
+      fclose(jpegfile);
+    }
+  }
+  else {
+    jpegsize = 0;
+  }
+  return jpegsize;
+}
+
 static int generate_YUV4MPEG(parameters_t *param, char *firstjpeg)
 {
   uint32_t frame;
-  int jpegsize;
+  size_t jpegsize;
   char jpegname[FILENAME_MAX];
-  FILE *jpegfile;
+  char prev_jpegname[FILENAME_MAX];
   int loops;                                 /* number of loops to go */
   uint8_t *yuv[3];  /* buffer for Y/U/V planes of decoded JPEG */
   static uint8_t jpegdata[MAXPIXELS];  /* that ought to be enough */
   y4m_stream_info_t streaminfo;
   y4m_frame_info_t frameinfo;
+  jpegsize = 0;
   loops = param->loop;
 
   mjpeg_info("Number of Loops %i", loops);
+  mjpeg_info("Number of Frames %i", param->numframes);
+  mjpeg_info("Start at frame %i", param->begin);
 
   mjpeg_info("Now generating YUV4MPEG stream.");
   y4m_init_stream_info(&streaminfo);
@@ -402,6 +436,7 @@ static int generate_YUV4MPEG(parameters_t *param, char *firstjpeg)
 
   y4m_write_stream_header(STDOUT_FILENO, &streaminfo);
  
+  prev_jpegname[0] = 0;
   do {
      for (frame = param->begin;
           (frame < param->numframes + param->begin) || (param->numframes == -1);
@@ -409,7 +444,7 @@ static int generate_YUV4MPEG(parameters_t *param, char *firstjpeg)
    
        if (param->jpegformatstr) {
            snprintf(jpegname, sizeof(jpegname), param->jpegformatstr, frame);
-           jpegfile = fopen(jpegname, "rb");
+	 jpegsize = read_jpeg_data(jpegdata, jpegname, prev_jpegname);
        }
        else {
            char *p;
@@ -424,26 +459,26 @@ static int generate_YUV4MPEG(parameters_t *param, char *firstjpeg)
            }
            if (p) {
                strip(jpegname);
-               jpegfile = fopen(jpegname, "rb");
+             jpegsize = read_jpeg_data(jpegdata, jpegname, prev_jpegname);
            }
            else {
-               jpegfile = NULL;
+             jpegsize = 0;
            }
        }
        
-       if (jpegfile == NULL) { 
-         mjpeg_info("Read from '%s' failed:  %s", jpegname, strerror(errno));
+      mjpeg_info("Numframes %i  jpegsize %i", param->numframes, jpegsize);
+       if (jpegsize == -1) {
+			mjpeg_info("in jpegsize < 0"); 
          if (param->numframes == -1) {
            mjpeg_info("No more frames.  Stopping.");
            break;  /* we are done; leave 'while' loop */
          } else {
            mjpeg_info("Rewriting latest frame instead.");
          }
-       } else {
-         mjpeg_debug("Preparing frame");
+       }
          
-         jpegsize = fread(jpegdata, sizeof(unsigned char), MAXPIXELS, jpegfile); 
-         fclose(jpegfile);
+       if (jpegsize > 0) { 
+         mjpeg_debug("Preparing frame");
          
          /* decode_jpeg_raw:s parameters from 20010826
           * jpeg_data:       buffer with input / output jpeg
