@@ -40,28 +40,28 @@ static void usage (void)
 	  "        -d num   duration of transistion in frames (REQUIRED!)\n"
 	  "        -s num   skip first num frames of transistion\n"
 	  "        -n num   only process num frames of the transistion\n"
+	  "        -r num   repeat each frame 'num' times. (default = 1)\n"
 	  "        -v num   verbosity [0..2]\n");
 }
 
 static void blend (unsigned char *src0[3], unsigned char *src1[3],
                    unsigned int opacity1,
-                   unsigned int width,     unsigned int height,
+                   unsigned int len,
                    unsigned char *dst[3])
 {
-   register unsigned int i, op0, op1;
-   register unsigned int len = width * height;
-   op1 = (opacity1 > 255) ? 255 : opacity1;
-   op0 = 255 - op1;
+   register unsigned int i = 0;
+   register unsigned int j = 0;
+   register unsigned int op1 = opacity1 & 0xFF;
+   register unsigned int op0 = 0x100 - op1;
 
-   for (i=0; i<len; i++)
-      dst[0][i] = (op0 * src0[0][i] + op1 * src1[0][i]) / 255;
-      
-   len>>=2; /* len = len / 4 */
-
-   for (i=0; i<len; i++) {
-      dst[1][i] = (op0 * src0[1][i] + op1 * src1[1][i]) / 255;
-      dst[2][i] = (op0 * src0[2][i] + op1 * src1[2][i]) / 255;
-   }
+   do {
+      dst[2][j] = (op0 * src0[2][j] + op1 * src1[2][j]) >> 8;
+      dst[1][j] = (op0 * src0[1][j] + op1 * src1[1][j]) >> 8; j++;
+      dst[0][i] = (op0 * src0[0][i] + op1 * src1[0][i]) >> 8; i++;
+      dst[0][i] = (op0 * src0[0][i] + op1 * src1[0][i]) >> 8; i++;
+      dst[0][i] = (op0 * src0[0][i] + op1 * src1[0][i]) >> 8; i++;
+      dst[0][i] = (op0 * src0[0][i] + op1 * src1[0][i]) >> 8; i++;
+   } while (i < len);
 }
 
 int main (int argc, char *argv[])
@@ -72,20 +72,21 @@ int main (int argc, char *argv[])
    unsigned char *yuv0[3]; /* input 0 */
    unsigned char *yuv1[3]; /* input 1 */
    unsigned char *yuv[3];  /* output */
-   int w, h;
-   int i, j, opacity, frame;
+   int w, h, len, lensr2;
+   int i, j, opacity, opacity_range, frame, numframes, r = 0;
    unsigned int param_opacity0   = 0;     /* opacity of input1 at the beginning */
    unsigned int param_opacity1   = 255;   /* opacity of input1 at the end */
    unsigned int param_duration   = 0;     /* duration of transistion effect */
    unsigned int param_skipframes = 0;     /* # of frames to skip */
-   unsigned int param_numframes  = 0;    /* # of frames to process - skip+num <= duration */
+   unsigned int param_numframes  = 0;     /* # of frames to (process - skip+num) * framerepeat <= duration */
+   unsigned int param_framerep   = 1;    /* # of repititions per frame */
    y4m_stream_info_t streaminfo;
    y4m_frame_info_t frameinfo;
 
    y4m_init_stream_info (&streaminfo);
    y4m_init_frame_info (&frameinfo);
 
-   while ((i = getopt(argc, argv, "v:o:O:d:s:n:")) != -1) {
+   while ((i = getopt(argc, argv, "v:o:O:d:s:n:r:")) != -1) {
       switch (i) {
       case 'v':
          verbose = atoi (optarg);
@@ -121,15 +122,19 @@ int main (int argc, char *argv[])
       case 'n':
          param_numframes = atoi (optarg);
          break;
+      case 'r':
+         param_framerep = atoi (optarg);
+         break;
       }
    }
    if (param_numframes == 0)
-      param_numframes = param_duration - param_skipframes;
+      param_numframes = (param_duration - param_skipframes) / param_framerep;
    if (param_duration == 0) {
       usage ();
       exit (1);
    }
-   if ((param_skipframes + param_numframes) > param_duration) {
+   numframes = (param_skipframes + param_numframes) * param_framerep;
+   if (numframes > param_duration) {
       mjpeg_error_exit1( "skip + num > duration");
    }
 
@@ -145,35 +150,43 @@ int main (int argc, char *argv[])
    w = y4m_si_get_width(&streaminfo);
    h = y4m_si_get_height(&streaminfo);
    
-   yuv[0] = malloc (w*h);
-   yuv0[0] = malloc (w*h);
-   yuv1[0] = malloc (w*h);
-   yuv[1] = malloc (w*h/4);
-   yuv0[1] = malloc (w*h/4);
-   yuv1[1] = malloc (w*h/4);
-   yuv[2] = malloc (w*h/4); 
-   yuv0[2] = malloc (w*h/4); 
-   yuv1[2] = malloc (w*h/4);
+   len = w*h;
+   lensr2 = len >> 2;
+   yuv[0] = malloc (len);
+   yuv0[0] = malloc (len);
+   yuv1[0] = malloc (len);
+   yuv[1] = malloc (lensr2);
+   yuv0[1] = malloc (lensr2);
+   yuv1[1] = malloc (lensr2);
+   yuv[2] = malloc (lensr2); 
+   yuv0[2] = malloc (lensr2); 
+   yuv1[2] = malloc (lensr2);
 
    y4m_write_stream_header (out_fd, &streaminfo);
 
    frame = param_skipframes;
+   param_duration--;
+   opacity_range = param_opacity1 - param_opacity0;
    while (1) {
+
+      if (!r) {
+        r = param_framerep;
 
       i = y4m_read_frame(in_fd, &streaminfo, &frameinfo, yuv0);
       if (i != Y4M_OK)
-	exit (frame < (param_skipframes + param_numframes));
+          exit (frame < numframes);
 
       j = y4m_read_frame(in_fd, &streaminfo, &frameinfo, yuv1);
       if (j != Y4M_OK)
-	exit (frame < (param_skipframes + param_numframes));
+          exit (frame < numframes);
+      }
+      r--;
 
-      opacity = (1 - frame/((double)param_duration-1)) * param_opacity0
-                  + (frame/((double)param_duration-1)) * param_opacity1;
+      opacity = param_opacity0 + ((frame * opacity_range) / param_duration);
 
-      blend (yuv0, yuv1, opacity, w, h, yuv);
+      blend (yuv0, yuv1, opacity, len, yuv);
       y4m_write_frame (out_fd, &streaminfo, &frameinfo, yuv);
-      if (++frame == (param_skipframes + param_numframes))
+      if (++frame == numframes)
          exit (0);
    }
 
