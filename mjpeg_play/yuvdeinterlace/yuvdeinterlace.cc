@@ -63,6 +63,9 @@ public:
 
   uint8_t *inframe[3];
   uint8_t *inframe0[3];
+  uint8_t *inframe1[3];
+  uint8_t *inframe2[3];
+  uint8_t *inframe3[3];
 
   uint8_t *outframe[3];
   uint8_t *scratch;
@@ -88,6 +91,18 @@ public:
       inframe0[1] = (uint8_t *) malloc (chroma_size + vertical_overshot_chroma);
       inframe0[2] = (uint8_t *) malloc (chroma_size + vertical_overshot_chroma);
 
+      inframe1[0] = (uint8_t *) malloc (luma_size + vertical_overshot_luma);
+      inframe1[1] = (uint8_t *) malloc (chroma_size + vertical_overshot_chroma);
+      inframe1[2] = (uint8_t *) malloc (chroma_size + vertical_overshot_chroma);
+
+      inframe2[0] = (uint8_t *) malloc (luma_size + vertical_overshot_luma);
+      inframe2[1] = (uint8_t *) malloc (chroma_size + vertical_overshot_chroma);
+      inframe2[2] = (uint8_t *) malloc (chroma_size + vertical_overshot_chroma);
+
+      inframe3[0] = (uint8_t *) malloc (luma_size + vertical_overshot_luma);
+      inframe3[1] = (uint8_t *) malloc (chroma_size + vertical_overshot_chroma);
+      inframe3[2] = (uint8_t *) malloc (chroma_size + vertical_overshot_chroma);
+
       outframe[0] = (uint8_t *) malloc (luma_size + vertical_overshot_luma);
       outframe[1] = (uint8_t *) malloc (chroma_size + vertical_overshot_chroma);
       outframe[2] = (uint8_t *) malloc (chroma_size + vertical_overshot_chroma);
@@ -102,6 +117,7 @@ public:
 
    deinterlacer ()
   {
+  both_fields = 0;
   mark_moving_blocks = 0;
   motion_threshold = 4;
   just_anti_alias = 0;
@@ -116,6 +132,18 @@ public:
     free (inframe0[0]);
     free (inframe0[1]);
     free (inframe0[2]);
+
+    free (inframe1[0]);
+    free (inframe1[1]);
+    free (inframe1[2]);
+
+    free (inframe2[0]);
+    free (inframe2[1]);
+    free (inframe2[2]);
+
+    free (inframe3[0]);
+    free (inframe3[1]);
+    free (inframe3[2]);
 
     free (outframe[0]);
     free (outframe[1]);
@@ -136,11 +164,13 @@ uint32_t sad;
 uint32_t min;
 uint32_t var0,var1,var2,var3,var4;
 int vx,vy,dx,dy,px,py;
+int radius=8;
+int bx,by,fx,fy;
 
-int lx0[256];
-int ly0[256];
-int lx1[256];
-int ly1[256];
+static int lx0[256];
+static int ly0[256];
+static int lx1[256];
+static int ly1[256];
 
 // init vector-memory with zero-vectors
 // these will be used to get more opticaly correct
@@ -149,355 +179,289 @@ int ly1[256];
 for( dx=0; dx<256; dx++)
 	lx0[dx]=lx1[dx]=ly0[dx]=ly1[dx]=0;
 
-// devide the image into 16x16 blocks
+memcpy ( in0-w*1,in0,w );
+memcpy ( in0-w*2,in0,w );
+memcpy ( in0-w*3,in0,w );
+memcpy ( in0-w*4,in0,w );
+memcpy ( in0-w*5,in0,w );
+memcpy ( in0-w*6,in0,w );
+memcpy ( in0-w*7,in0,w );
+
+memcpy ( in1-w*1,in1,w );
+memcpy ( in1-w*2,in1,w );
+memcpy ( in1-w*3,in1,w );
+memcpy ( in1-w*4,in1,w );
+memcpy ( in1-w*5,in1,w );
+memcpy ( in1-w*6,in1,w );
+memcpy ( in1-w*7,in1,w );
+
+memcpy ( in0+(h+0)*w,in0+(h-1)*w,w );
+memcpy ( in0+(h+1)*w,in0+(h-1)*w,w );
+memcpy ( in0+(h+2)*w,in0+(h-1)*w,w );
+memcpy ( in0+(h+3)*w,in0+(h-1)*w,w );
+memcpy ( in0+(h+4)*w,in0+(h-1)*w,w );
+memcpy ( in0+(h+5)*w,in0+(h-1)*w,w );
+memcpy ( in0+(h+6)*w,in0+(h-1)*w,w );
+memcpy ( in0+(h+7)*w,in0+(h-1)*w,w );
+
+memcpy ( in1+(h+0)*w,in1+(h-1)*w,w );
+memcpy ( in1+(h+1)*w,in1+(h-1)*w,w );
+memcpy ( in1+(h+2)*w,in1+(h-1)*w,w );
+memcpy ( in1+(h+3)*w,in1+(h-1)*w,w );
+memcpy ( in1+(h+4)*w,in1+(h-1)*w,w );
+memcpy ( in1+(h+5)*w,in1+(h-1)*w,w );
+memcpy ( in1+(h+6)*w,in1+(h-1)*w,w );
+memcpy ( in1+(h+7)*w,in1+(h-1)*w,w );
+
+// at first do an ELA-Interpolation of the reference field
+// this is needed because we need inter-field(!) motion-vectors
+
+memcpy(out,in1,w*h);
+for(y=1-field;y<h;y+=2)
+	for(x=0;x<w;x++)
+	{
+	int ELA_min=255;
+	int ELA_dif;
+	int a,b,c;
+
+	a = *(out+(x)+(y-1)*w);
+	c = *(out+(x)+(y+1)*w);
+
+	*(out+(x)+(y)*w) = (a+c)/2;
+
+	for(vx=0;vx<=5;vx++)
+		{
+		ELA_dif = abs ( *(out+(x-vx  )+(y-1)*w) - *(out+(x+vx  )+(y+1)*w) );
+		b = ( *(out+(x-vx  )+(y-1)*w) + *(out+(x+vx  )+(y+1)*w) )/2;
+
+		if( ELA_dif<ELA_min && ( (a<=b && b<=c) || (a>=b && b>=c) ) ) 
+			{
+			ELA_min=ELA_dif;
+			*(out+(x)+(y)*w) = b;
+			}
+
+		ELA_dif = abs ( *(out+(x+vx  )+(y-1)*w) - *(out+(x-vx  )+(y+1)*w) );
+		b = ( *(out+(x+vx  )+(y-1)*w) + *(out+(x-vx  )+(y+1)*w) )/2;
+
+		if( ELA_dif<ELA_min && ( (a<=b && b<=c) || (a>=b && b>=c) ) ) 
+			{
+			ELA_min=ELA_dif;
+			*(out+(x)+(y)*w) = b;
+			}
+		}
+	}
+
+// devide the image into 16x16 macro-blocks
 for(y=0;y<h;y+=16)
 	{
 	for(x=0;x<w;x+=16)
 		{
+		// for testing purposes we will use a simple (and dumb...) full-search
+		// this will later be replaced with an EPZS, again.
 
-		// center-block-variance
-		var0 = psad_00 ( in0+(x  )+(y  )*w, in1+(x  )+(y  )*w, w, 16, 0x00ffffff);
-		var0 /= 256;
-		
-		// top-left-block-variance (overlapped)
-		var1 = psad_00 ( in0+(x-8)+(y-8)*w, in1+(x-8)+(y-8)*w, w, 16, 0x00ffffff);
-		var1 /= 256;
-		
-		// top-right-block-variance
-		var2 = psad_00 ( in0+(x+8)+(y-8)*w, in1+(x+8)+(y-8)*w, w, 16, 0x00ffffff);
-		var2 /= 256;
-
-		// bottom-left-block-variance
-		var3 = psad_00 ( in0+(x-8)+(y+8)*w, in1+(x-8)+(y+8)*w, w, 16, 0x00ffffff);
-		var3 /= 256;
-		
-		// bottom-right-block-variance
-		var4 = psad_00 ( in0+(x+8)+(y+8)*w, in1+(x+8)+(y+8)*w, w, 16, 0x00ffffff);
-		var4 /= 256;
-		
-		// if all block-variances are below the threshold we can safely assume
-		// that there is no motion...
-		if( ( var0 <= motion_threshold ) && 
-			( var1 <= motion_threshold ) &&
-			( var2 <= motion_threshold ) &&
-			( var3 <= motion_threshold ) &&
-			( var4 <= motion_threshold ) ) 
+y -= 4;
+		if(field==0)
 			{
-			// use temporal interpolation for this block, we can do so, as it
-			// is known to be non-moving...
-			for(dy=0;dy<16;dy++)
-				for(dx=0;dx<16;dx++)
-					{
-					*(out+(x+dx)+(y+dy)*w)=
-						(
-						*(in0+(x+dx)+(y+dy)*w)+
-						*(in1+(x+dx)+(y+dy)*w)
-						)/2;
-					}
-			// a non-moving block has a motion-vector of (0,0), so store this
-			// in the vector-memory
-			lx1[x/16]=0;
-			ly1[x/16]=0;
+			min  = psad_00 ( in0+(x)+(y)*w+w, out+(x)+(y)*w+w, w*2,16, 0x00ffffff);
 			}
 		else
 			{
-			// This block moves. So we need to find the best motion-compensated
-			// interpolation we can get hands on...
-			
-			// reset search...
-			min = 0x00ffffff;
-			vx=vy=0;
-			
-			// try to get a prediction of the motion, first...
-			if( (x/16)>=1 ) // a prediction is possible...
+			min  = psad_00 ( in0+(x)+(y)*w, out+(x)+(y)*w, w*2,16, 0x00ffffff);
+			}
+		bx=by=0;
+		radius=8; // usualy larger radii do not make sense for deinterlacing
+		for(dy=(-radius);dy<(+radius);dy+=2)
+			for(dx=(-radius);dx<(+radius);dx++)
 				{
-				// FIXME: a median would be better, here...
-				px = lx1[(x/16)-1]+lx0[(x/16)-1]+lx0[(x/16)];
-				py = ly1[(x/16)-1]+ly0[(x/16)-1]+ly0[(x/16)];
-				px /= 3;
-				py /= 3;
-				}
-			else
-				px=py=0; // a prediction is not possible...
-						
-			for(dy=-16;dy<16;dy+=2)
-				for(dx=-16;dx<16;dx++)
+				if (field==0)
 					{
-					if (field==0)
-						{
-						// do the motionsearch for the bottom field
-						// calculate the block variance
-						sad  = psad_00 ( in0+(x)+(y)*w+w, in1+(x+dx*2)+(y+dy*2)*w+w, w*2, 8, 0x00ffffff);
-						sad += psad_00 ( in0+(x-dx*2)+(y-dy*2)*w+w, in1+(x)+(y)*w+w, w*2, 8, 0x00ffffff);
-						sad += psad_00 ( in0+(x-dx)+(y-dy)*w+w, in1+(x+dx)+(y+dy)*w+w, w*2, 8, 0x00ffffff);
-					
-						// add a penalty for motion-vectors too far away from
-						// the predicted location
-						if( (x/16)>=1 ) // a prediction is possible...
-							sad += 1024*(abs(px-dx)+abs(py-dy));
-					
-						if(min>sad)
-							{
-							vx=dx;
-							vy=dy;
-							min=sad;
-							}
-						}
-					else
-						{
-						// do the motionsearch for the top field
-						// calculate the block variance
-						sad  = psad_00 ( in0+(x)+(y)*w, in1+(x+dx*2)+(y+dy*2)*w, w*2, 8, 0x00ffffff);
-						sad += psad_00 ( in0+(x-dx*2)+(y-dy*2)*w, in1+(x)+(y)*w, w*2, 8, 0x00ffffff);
-						sad += psad_00 ( in0+(x-dx)+(y-dy)*w, in1+(x+dx)+(y+dy)*w, w*2, 8, 0x00ffffff);
-					
-						// add a penalty for motion-vectors too far away from
-						// the predicted location
-						if( (x/16)>=1 ) // a prediction is possible...
-							sad += 1024*(abs(px-dx)+abs(py-dy));
-					
-						if(min>sad)
-							{
-							vx=dx;
-							vy=dy;
-							min=sad;
-							}
-						}
-					}
+					// do the motionsearch for the bottom field
+					// calculate the block variance
+					sad  = psad_00 ( in0+(x+dx)+(y+dy)*w+w, out+(x)+(y)*w+w, w*2,16, 0x00ffffff);
 				
-			// store the found vector in the vector-memory
-			lx1[x/16]=vx;
-			ly1[x/16]=vy;
-
-			if (field==0)
-			{
-			// after we now (hopefully) have the correct motion-vector for
-			// the bottom field, use it to interpolate the missing data...
-			for(dy=0;dy<18;dy+=2)
-				for(dx=0;dx<18;dx++)
-					{
-					// just copy the top-field
-					if((x+dx)<w)
-					*(out+(x+dx)+(y+dy)*w)=*(in1+(x+dx)+(y+dy)*w);
-					// insert the motion-compensated-interpolation for the 
-					// bottom field
-					if((x+dx)<w)
-					*(out+(x+dx)+(y+dy+1)*w)=
-						(
-						*(in0+(x+dx-vx)+(y+dy-vy+1)*w)+
-						*(in1+(x+dx+vx)+(y+dy+vy+1)*w)
-						)/2;
+					if(min>sad)
+						{
+						bx=dx;
+						by=dy;
+						min=sad;
+						}
 					}
+				else
+					{
+					// do the motionsearch for the top field
+					// calculate the block variance
+					sad  = psad_00 ( in0+(x+dx)+(y+dy)*w, out+(x)+(y)*w, w*2,16, 0x00ffffff);
+				
+					if(min>sad)
+						{
+						bx=dx;
+						by=dy;
+						min=sad;
+						}
+					}
+				}
+
+		if(field==0)
+			min = psad_00 ( in1+(x)+(y)*w+w, out+(x)+(y)*w+w, w*2,16, 0x00ffffff);
+		else
+			min = psad_00 ( in1+(x)+(y)*w, out+(x)+(y)*w, w*2,16, 0x00ffffff);
+		fx=fy=0;
+		radius=8;
+		for(dy=(-radius);dy<(+radius);dy+=2)
+			for(dx=(-radius);dx<(+radius);dx++)
+				{
+				if (field==0)
+					{
+					// do the motionsearch for the bottom field
+					// calculate the block variance
+					sad = psad_00 ( in1+(x+dx)+(y+dy)*w+w, out+(x)+(y)*w+w, w*2,16, 0x00ffffff);
+				
+					if(min>sad)
+						{
+						fx=dx;
+						fy=dy;
+						min=sad;
+						}
+					}
+				else
+					{
+					// do the motionsearch for the top field
+					// calculate the block variance
+					sad = psad_00 ( in1+(x+dx)+(y+dy)*w, out+(x)+(y)*w, w*2,16, 0x00ffffff);
+				
+					if(min>sad)
+						{
+						fx=dx;
+						fy=dy;
+						min=sad;
+						}
+					}
+				}
+y += 4;
+
+		// limit the vectors to the allowed range
+		if( (x+fx)>width  || (x+fx)<0 ) fx=0;
+		if( (y+fy)>height || (y+fy)<0 ) fy=0;
+		if( (x+bx)>width  || (x+bx)<0 ) bx=0;
+		if( (y+by)>height || (y+by)<0 ) by=0;
+	
+		if (field==0)
+		{
+		// after we now (hopefully) have the correct motion-vector for
+		// the bottom field, use it to interpolate the missing data...
+		for(dy=0;dy<16;dy+=2)
+			for(dx=0;dx<16;dx++)
+				{
+				int v;
+				int v0;
+				// just copy the top-field
+				//*(out+(x+dx)+(y+dy)*w)=*(in1+(x+dx)+(y+dy)*w);
+					// insert the motion-compensated-interpolation for the 
+				// bottom field
+				v=  *(in1+(x+dx)+(y+dy-6)*w)* -0+
+				    *(in1+(x+dx)+(y+dy-4)*w)* +0+
+				    *(in1+(x+dx)+(y+dy-2)*w)*-26+
+				    *(in1+(x+dx)+(y+dy  )*w)*+526+ 
+				    *(in1+(x+dx)+(y+dy+2)*w)*+526+
+				    *(in1+(x+dx)+(y+dy+4)*w)*-26+
+				    *(in1+(x+dx)+(y+dy+6)*w)* +0+
+				    *(in1+(x+dx)+(y+dy+8)*w)* -0;
+
+				// highpass-part (previous field)
+				// same Lanzcosfilter as above but a highpass-filter
+				// coefficients summ up to zero and only 1/6 of it will be
+				// summed to the lowpass-information...
+				v+= (
+				    *(in0+(x+dx+bx)+(y+dy+by-7)*w)*  0+
+				    *(in0+(x+dx+bx)+(y+dy+by-5)*w)* -0+
+				    *(in0+(x+dx+bx)+(y+dy+by-3)*w)* +31+
+				    *(in0+(x+dx+bx)+(y+dy+by-1)*w)*-116+
+				    *(in0+(x+dx+bx)+(y+dy+by+1)*w)*+170+
+				    *(in0+(x+dx+bx)+(y+dy+by+3)*w)*-116+
+				    *(in0+(x+dx+bx)+(y+dy+by+5)*w)* +31+
+				    *(in0+(x+dx+bx)+(y+dy+by+7)*w)* -0+
+				    *(in0+(x+dx+bx)+(y+dy+by+9)*w)*  0
+				    );
+
+				v+= (
+				    *(in1+(x+dx+fx)+(y+dy+fy-7)*w)*  0+
+				    *(in1+(x+dx+fx)+(y+dy+fy-5)*w)* -0+
+				    *(in1+(x+dx+fx)+(y+dy+fy-3)*w)* +31+
+				    *(in1+(x+dx+fx)+(y+dy+fy-1)*w)*-116+
+				    *(in1+(x+dx+fx)+(y+dy+fy+1)*w)*+170+
+				    *(in1+(x+dx+fx)+(y+dy+fy+3)*w)*-116+
+				    *(in1+(x+dx+fx)+(y+dy+fy+5)*w)* +31+
+				    *(in1+(x+dx+fx)+(y+dy+fy+7)*w)* -0+
+				    *(in1+(x+dx+fx)+(y+dy+fy+9)*w)*  -0
+				    );
+
+v /= 1000;
+				v0 = (  *(in0+(x+dx+bx)+(y+dy+by+1)*w)+
+					*(in1+(x+dx+fx)+(y+dy+fy+1)*w)
+					)/2;
+
+				v = v>255? 255:v;
+				v = v<0  ?   0:v;
+
+					//if(abs(v0-v)<8) 
+					//	v=v0;
+
+				*(out+(x+dx)+(y+dy+1)*w)=v;
+				}
 			}
 			else
 			{
 			// after we now (hopefully) have the correct motion-vector for
 			// the top field, use it to interpolate the missing data...
-			for(dy=0;dy<18;dy+=2)
-				for(dx=0;dx<18;dx++)
+			for(dy=0;dy<16;dy+=2)
+				for(dx=0;dx<16;dx++)
 					{
+					int v;
+					int v0;
 					// just copy the bottom-field
-					if((x+dx)<w)
-					*(out+(x+dx)+(y+dy+1)*w)=*(in1+(x+dx)+(y+dy+1)*w);
+//			*(out+(x+dx)+(y+dy+1)*w)=*(in1+(x+dx)+(y+dy+1)*w);
+
 					// insert the motion-compensated-interpolation for the 
-					// top field
-					if((x+dx)<w)
-					*(out+(x+dx)+(y+dy)*w)=
-						(
-						*(in0+(x+dx-vx)+(y+dy-vy)*w)+
-						*(in1+(x+dx+vx)+(y+dy+vy)*w)
+					// bottom field
+
+					//lowpass-part (current field)
+					v = *(in1+(x+dx)+(y+dy-7)*w)*  -0+
+					    *(in1+(x+dx)+(y+dy-5)*w)* +0+ 
+					    *(in1+(x+dx)+(y+dy-3)*w)*-26+
+					    *(in1+(x+dx)+(y+dy-1)*w)*+526+ 
+					    *(in1+(x+dx)+(y+dy+1)*w)*+526+
+					    *(in1+(x+dx)+(y+dy+3)*w)*-26+
+					    *(in1+(x+dx)+(y+dy+5)*w)* +0+
+					    *(in1+(x+dx)+(y+dy+7)*w)*  -0;
+
+					//highpass-part (previous field)
+					v+= ( *(in0+(x+dx+bx)+(y+dy+by-4)*w)* +31+
+					      *(in0+(x+dx+bx)+(y+dy+by-2)*w)* -116+
+					      *(in0+(x+dx+bx)+(y+dy+by  )*w)*+170+
+					      *(in0+(x+dx+bx)+(y+dy+by+2)*w)* -116+
+					      *(in0+(x+dx+bx)+(y+dy+by+4)*w)* +31 );
+
+					//highpass-part (next field)
+					v+= ( *(in1+(x+dx+fx)+(y+dy+fy-4)*w)* +31+
+					      *(in1+(x+dx+fx)+(y+dy+fy-2)*w)* -116+
+					      *(in1+(x+dx+fx)+(y+dy+fy  )*w)*+170+
+					      *(in1+(x+dx+fx)+(y+dy+fy+2)*w)* -116+
+					      *(in1+(x+dx+fx)+(y+dy+fy+4)*w)* +31 );
+v /= 1000;
+					v0 = (  *(in0+(x+dx+bx)+(y+dy+by)*w)+
+						*(in1+(x+dx+fx)+(y+dy+fy)*w)
 						)/2;
+
+					v = v>255? 255:v;
+					v = v<0  ?   0:v;
+
+					//if(abs(v0-v)<8) 
+					//	v=v0;
+
+					*(out+(x+dx)+(y+dy)*w)=v;
 					}
 			}
-		
-		if( field==0 )
-			{
-			// the only chance to protect the result agains false motion
-			// is to apply a median-filter to the block
-			for(dy=0;dy<18;dy+=2)
-				for(dx=0;dx<18;dx++)
-					{
-					int a,b,c,d;
-					
-					a = *(out+(x+dx)+(y+dy+0)*w);
-					b = *(out+(x+dx)+(y+dy+1)*w);
-					c = *(out+(x+dx)+(y+dy+2)*w);
-					
-					if( a>b ) { d=a; a=b; b=d; }
-					if( b>c ) { d=b; b=c; c=d; }
-					if( a>b ) { d=a; a=b; b=d; }
-				
-					if((x+dx)<w)
-					*(out+(x+dx)+(y+dy+1)*w)=b;
-					}
-			}
-		else
-			{
-			for(dy=0;dy<18;dy+=2)
-				for(dx=0;dx<18;dx++)
-					{
-					int a,b,c,d;
-					
-					a = *(out+(x+dx)+(y+dy-1)*w);
-					b = *(out+(x+dx)+(y+dy+0)*w);
-					c = *(out+(x+dx)+(y+dy+1)*w);
-					
-					if( a>b ) { d=a; a=b; b=d; }
-					if( b>c ) { d=b; b=c; c=d; }
-					if( a>b ) { d=a; a=b; b=d; }
-				
-					if((x+dx)<w)
-					*(out+(x+dx)+(y+dy)*w)=b;
-					}
-			}
-		
-			// finaly we need to anti-alias the block...
-			// This filter checks for the isophote-vector and
-			// depending on how steep it is filters along that
-			// vector with different filter-kernels...
-			for(dy=0;dy<16;dy++)
-				for(dx=0;dx<16;dx++)
-					{
-					int a,b,c,m;
-					
-					min = 0x00ffffff;
-					px=0;
-					
-					for(vx=-2;vx<=2;vx++)
-						{
-						a = (
-							1 * *(out+(x+dx-vx-1)+(y+dy-1)*w) +
-							2 * *(out+(x+dx-vx  )+(y+dy-1)*w) +
-							1 * *(out+(x+dx-vx+1)+(y+dy-1)*w) 
-							)/ 4;
 
-						b = (
-							1 * *(out+(x+dx-1)+(y+dy+0)*w) +
-							2 * *(out+(x+dx  )+(y+dy+0)*w) +
-							1 * *(out+(x+dx+1)+(y+dy+0)*w) 
-							)/ 4;
-						
-						c = (
-							1 * *(out+(x+dx+vx-1)+(y+dy+1)*w) +
-							2 * *(out+(x+dx+vx  )+(y+dy+1)*w) +
-							1 * *(out+(x+dx+vx+1)+(y+dy+1)*w) 
-							)/ 4;
-						
-						m = (a+b+c)/3;
-						
-						sad  = (m-a)*(m-a)+
-							   (m-b)*(m-b)+
-							   (m-c)*(m-c);
-							   
-						x -= 1;
-						a = (
-							1 * *(out+(x+dx-vx-1)+(y+dy-1)*w) +
-							2 * *(out+(x+dx-vx  )+(y+dy-1)*w) +
-							1 * *(out+(x+dx-vx+1)+(y+dy-1)*w) 
-							)/ 4;
-
-						b = (
-							1 * *(out+(x+dx-1)+(y+dy+0)*w) +
-							2 * *(out+(x+dx  )+(y+dy+0)*w) +
-							1 * *(out+(x+dx+1)+(y+dy+0)*w) 
-							)/ 4;
-						
-						c = (
-							1 * *(out+(x+dx+vx-1)+(y+dy+1)*w) +
-							2 * *(out+(x+dx+vx  )+(y+dy+1)*w) +
-							1 * *(out+(x+dx+vx+1)+(y+dy+1)*w) 
-							)/ 4;
-						x +=1;
-						
-						m = (a+b+c)/3;
-						
-						sad += (m-a)*(m-a)+
-							   (m-b)*(m-b)+
-							   (m-c)*(m-c);
-						
-						x += 1;
-						a = (
-							1 * *(out+(x+dx-vx-1)+(y+dy-1)*w) +
-							2 * *(out+(x+dx-vx  )+(y+dy-1)*w) +
-							1 * *(out+(x+dx-vx+1)+(y+dy-1)*w) 
-							)/ 4;
-
-						b = (
-							1 * *(out+(x+dx-1)+(y+dy+0)*w) +
-							2 * *(out+(x+dx  )+(y+dy+0)*w) +
-							1 * *(out+(x+dx+1)+(y+dy+0)*w) 
-							)/ 4;
-						
-						c = (
-							1 * *(out+(x+dx+vx-1)+(y+dy+1)*w) +
-							2 * *(out+(x+dx+vx  )+(y+dy+1)*w) +
-							1 * *(out+(x+dx+vx+1)+(y+dy+1)*w) 
-							)/ 4;
-						x -=1;
-						
-						m = (a+b+c)/3;
-						
-						sad += (m-a)*(m-a)+
-							   (m-b)*(m-b)+
-							   (m-c)*(m-c);
-						
-						if(sad<min)
-							{
-							min=sad;
-							px=vx;
-							}
-						}
-
-					if( px==0 )
-						{
-						// no filter for plain horizontal or vertical orientations
-						*(scratch+(x+dx)+(y+dy)*w) = *(out+(x+dx)+(y+dy)*w) ;
-						}
-					else
-					if( abs(px)==1 )
-						{
-						// gauss-filter for diagonal orientations
-						*(scratch+(x+dx)+(y+dy)*w) = 
-							( 2 * *(out+(x+dx)+(y+dy)*w) +
-							  1 * *(out+(x+dx-px)+(y+dy-1)*w) +
-							  1 * *(out+(x+dx+px)+(y+dy+1)*w) )/4;
-						}
-					else
-					if( abs(px)==2 )
-						{
-						// bigger gauss kernel for even flatter angles
-						*(scratch+(x+dx)+(y+dy)*w) = 
-							( 4 * *(out+(x+dx+0)+(y+dy)*w) +
-							  2 * *(out+(x+dx-1)+(y+dy)*w) +
-							  2 * *(out+(x+dx+1)+(y+dy)*w) +
-							  2 * *(out+(x+dx+0-px)+(y+dy-1)*w) +
-							  1 * *(out+(x+dx-1-px)+(y+dy-1)*w) +
-							  1 * *(out+(x+dx+1-px)+(y+dy-1)*w) +
-							  2 * *(out+(x+dx+0+px)+(y+dy+1)*w) +
-							  1 * *(out+(x+dx-1+px)+(y+dy+1)*w) +
-							  1 * *(out+(x+dx+1+px)+(y+dy+1)*w) 
-						)/16;
-						}
-					}	
-
-			// if it is save to do so, copy the anti-aliassed block into
-			// the outframe...
-			for(dy=0;dy<16;dy++)
-				for(dx=0;dx<16;dx++)
-					{
-					if( (y+dy)>=2 && (y+dy)<(h-2) && x>2 && x<(w-2) )
-					*(out+(x+dx)+(y+dy)*w) = *(scratch+(x+dx)+(y+dy)*w);
-					}
-				
-			if(mark_moving_blocks)
-			for(dy=0;dy<16;dy++)
-				for(dx=0;dx<16;dx++)
-					{
-					*(out+(x+dx)+(y+dy)*w) = 64+*(out+(x+dx)+(y+dy)*w)/2;
-					}
-
-				}
-		}
 	// before processing the next line of blocks, we save the motion-vectors
 	// of this line in lx0 and ly0, so we can get a prediction of the motion
 	// in the next line...
@@ -507,6 +471,7 @@ for(y=0;y<h;y+=16)
 		ly0[dx]=ly1[dx];
 		}
 	}
+}
 }
 
   void deinterlace_motion_compensated ()
@@ -519,6 +484,8 @@ for(y=0;y<h;y+=16)
   temporal_reconstruct_frame (outframe[1], inframe[1], inframe0[1], cwidth, cheight, 0 );
   temporal_reconstruct_frame (outframe[2], inframe[2], inframe0[2], cwidth, cheight, 0 );
   
+  antialias_plane (outframe[0],width,height);
+
   y4m_write_frame (Y4MStream.fd_out, &Y4MStream.ostreaminfo,
 				   &Y4MStream.oframeinfo, outframe);
 
@@ -528,6 +495,8 @@ for(y=0;y<h;y+=16)
 	  temporal_reconstruct_frame (outframe[1], inframe0[1], inframe[1], cwidth, cheight, 1 );
 	  temporal_reconstruct_frame (outframe[2], inframe0[2], inframe[2], cwidth, cheight, 1 );
   
+	  antialias_plane (outframe[0],width,height);
+
 	  y4m_write_frame (Y4MStream.fd_out, &Y4MStream.ostreaminfo,
 				   &Y4MStream.oframeinfo, outframe);
 	  }
@@ -538,8 +507,10 @@ for(y=0;y<h;y+=16)
   temporal_reconstruct_frame (outframe[1], inframe0[1], inframe[1], cwidth, cheight, 1 );
   temporal_reconstruct_frame (outframe[2], inframe0[2], inframe[2], cwidth, cheight, 1 );
   
-  y4m_write_frame (Y4MStream.fd_out, &Y4MStream.ostreaminfo,
-				   &Y4MStream.oframeinfo, outframe);
+  //antialias_plane (outframe[0],width,height);
+
+  //y4m_write_frame (Y4MStream.fd_out, &Y4MStream.ostreaminfo,
+  //				   &Y4MStream.oframeinfo, outframe);
 
   if( both_fields==1 && frame!=0)
 	  {
@@ -572,7 +543,7 @@ for(x=0;x<w;x++)
 {
 	min=0x00ffffff;
 	vx=0;
-	for(dx=-6;dx<=6;dx++)
+	for(dx=-2;dx<=2;dx++)
 	{
 	sad  = abs( *(out+(x+dx-3)+(y-1)*w) - *(out+(x-3)+(y+0)*w) );
 	sad += abs( *(out+(x+dx-2)+(y-1)*w) - *(out+(x-2)+(y+0)*w) );
@@ -643,12 +614,9 @@ for(x=2;x<(w-2);x++)
 {
 	*(out+(x)+(y)*w) = 
 		(
-		1 * *(out+(x)+(y)*w)+
-
-		1 * *(scratch+(x)+(y-1)*w) +
-		2 * *(scratch+(x)+(y+0)*w) +
-		1 * *(scratch+(x)+(y+1)*w) 
-		)/5;
+		*(out+(x)+(y)*w)+
+		*(scratch+(x)+(y+0)*w)
+		)/2;
 }
 
 }
@@ -663,6 +631,143 @@ void antialias_frame ()
 				   &Y4MStream.oframeinfo, inframe);
 }
 
+void deinterlace_ELA ()
+{
+int x,y;
+int min,d,m,n;
+int vx;
+int i,j;
+int c;
+
+for(y=0;y<height;y+=2)
+for(x=0;x<width;x++)
+	{
+
+	min=25600;
+	i = *(inframe[0]+(x)+(y-1)*width) + *(inframe[0]+(x)+(y+1)*width);
+	i /= 2;
+	j = i;
+
+	for(vx=0;vx<=3;vx++)
+	{
+
+		n = *(inframe[0]+(x-vx)+(y-1)*width) + *(inframe[0]+(x+vx)+(y+1)*width);
+		n /= 2;
+
+		d  = abs ( 	*(inframe[0]+(x-vx  )+(y-1)*width) -
+				*(inframe[0]+(x+vx  )+(y+1)*width) );
+		d += abs ( 	*(inframe[0]+(x-vx-1)+(y-1)*width) -
+				*(inframe[0]+(x+vx-1)+(y+1)*width) );
+		d += abs ( 	*(inframe[0]+(x-vx+1)+(y-1)*width) -
+				*(inframe[0]+(x+vx+1)+(y+1)*width) );
+		d += abs ( 	*(inframe[0]+(x-vx-2)+(y-1)*width) -
+				*(inframe[0]+(x+vx-2)+(y+1)*width) );
+		d += abs ( 	*(inframe[0]+(x-vx+2)+(y-1)*width) -
+				*(inframe[0]+(x+vx+2)+(y+1)*width) );
+		d += abs ( n - j )*3;
+
+		if(d<min)
+		{
+		min=d;
+		i = n;
+		}
+
+		n = *(inframe[0]+(x+vx)+(y-1)*width) + *(inframe[0]+(x-vx)+(y+1)*width);
+		n /= 2;
+		d = abs ( 	*(inframe[0]+(x+vx  )+(y-1)*width) -
+				*(inframe[0]+(x-vx  )+(y+1)*width) );
+		d += abs ( 	*(inframe[0]+(x+vx-1)+(y-1)*width) -
+				*(inframe[0]+(x-vx-1)+(y+1)*width) );
+		d += abs ( 	*(inframe[0]+(x+vx+1)+(y-1)*width) -
+				*(inframe[0]+(x-vx+1)+(y+1)*width) );
+		d += abs ( 	*(inframe[0]+(x+vx-2)+(y-1)*width) -
+				*(inframe[0]+(x-vx-2)+(y+1)*width) );
+		d += abs ( 	*(inframe[0]+(x+vx+2)+(y-1)*width) -
+				*(inframe[0]+(x-vx+2)+(y+1)*width) );
+		d += abs ( n - j )*3;
+
+		if(d<min)
+		{
+		min=d;
+		i=n;
+		}
+	}
+
+	*(outframe[0]+x+(y-1)*width)=*(inframe[0]+x+(y-1)*width);
+	*(outframe[0]+x+y*width)=i;
+	}
+
+  memcpy (outframe[1],inframe[1],cwidth*cheight);
+  memcpy (outframe[2],inframe[2],cwidth*cheight);
+
+//  y4m_write_frame (Y4MStream.fd_out, &Y4MStream.ostreaminfo,
+//				   &Y4MStream.oframeinfo, outframe);
+
+for(y=1;y<height;y+=2)
+for(x=0;x<width;x++)
+	{
+
+	min=25600;
+	i = *(inframe[0]+(x)+(y-1)*width) + *(inframe[0]+(x)+(y+1)*width);
+	i /= 2;
+	j = i;
+
+	for(vx=0;vx<=3;vx++)
+	{
+
+		n = *(inframe[0]+(x-vx)+(y-1)*width) + *(inframe[0]+(x+vx)+(y+1)*width);
+		n /= 2;
+
+		d  = abs ( 	*(inframe[0]+(x-vx  )+(y-1)*width) -
+				*(inframe[0]+(x+vx  )+(y+1)*width) );
+		d += abs ( 	*(inframe[0]+(x-vx-1)+(y-1)*width) -
+				*(inframe[0]+(x+vx-1)+(y+1)*width) );
+		d += abs ( 	*(inframe[0]+(x-vx+1)+(y-1)*width) -
+				*(inframe[0]+(x+vx+1)+(y+1)*width) );
+		d += abs ( 	*(inframe[0]+(x-vx-2)+(y-1)*width) -
+				*(inframe[0]+(x+vx-2)+(y+1)*width) );
+		d += abs ( 	*(inframe[0]+(x-vx+2)+(y-1)*width) -
+				*(inframe[0]+(x+vx+2)+(y+1)*width) );
+		d += abs ( n - j )*3;
+
+		if(d<min)
+		{
+		min=d;
+		i = n;
+		}
+
+		n = *(inframe[0]+(x+vx)+(y-1)*width) + *(inframe[0]+(x-vx)+(y+1)*width);
+		n /= 2;
+		d = abs ( 	*(inframe[0]+(x+vx  )+(y-1)*width) -
+				*(inframe[0]+(x-vx  )+(y+1)*width) );
+		d += abs ( 	*(inframe[0]+(x+vx-1)+(y-1)*width) -
+				*(inframe[0]+(x-vx-1)+(y+1)*width) );
+		d += abs ( 	*(inframe[0]+(x+vx+1)+(y-1)*width) -
+				*(inframe[0]+(x-vx+1)+(y+1)*width) );
+		d += abs ( 	*(inframe[0]+(x+vx-2)+(y-1)*width) -
+				*(inframe[0]+(x-vx-2)+(y+1)*width) );
+		d += abs ( 	*(inframe[0]+(x+vx+2)+(y-1)*width) -
+				*(inframe[0]+(x-vx+2)+(y+1)*width) );
+		d += abs ( n - j )*3;
+
+		if(d<min)
+		{
+		min=d;
+		i=n;
+		}
+	}
+
+	*(outframe[0]+x+(y-1)*width)=(*(outframe[0]+x+(y-1)*width)+*(inframe[0]+x+(y-1)*width))/2;
+	*(outframe[0]+x+y*width)=(*(outframe[0]+x+y*width)+i)/2;
+	}
+
+  memcpy (outframe[1],inframe[1],cwidth*cheight);
+  memcpy (outframe[2],inframe[2],cwidth*cheight);
+
+  y4m_write_frame (Y4MStream.fd_out, &Y4MStream.ostreaminfo,
+				   &Y4MStream.oframeinfo, outframe);
+
+  }
 };
 
 int
@@ -872,6 +977,8 @@ main (int argc, char *argv[])
 					    &YUVdeint.Y4MStream.iframeinfo,
 					    YUVdeint.inframe)))
     {
+
+//YUVdeint.deinterlace_ELA ();
 	  if (!YUVdeint.just_anti_alias)
 		  YUVdeint.deinterlace_motion_compensated ();
 	  else
