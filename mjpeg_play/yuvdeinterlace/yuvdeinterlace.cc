@@ -368,9 +368,7 @@ y += 4;
 				    *(in1+(x+dx)+(y+dy+8)*w)* -0;
 
 				// highpass-part (previous field)
-				// same Lanzcosfilter as above but a highpass-filter
-				// coefficients summ up to zero and only 1/6 of it will be
-				// summed to the lowpass-information...
+				
 				v+= (
 				    *(in0+(x+dx+bx)+(y+dy+by-7)*w)*  0+
 				    *(in0+(x+dx+bx)+(y+dy+by-5)*w)* -0+
