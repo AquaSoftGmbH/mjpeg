@@ -59,8 +59,8 @@ libmpeg2encpp_la_SOURCES = conform.cc elemstrmwriter.cc encoderparams.cc \
 		$(SIMD_INLINE) ontheflyratectl.cc pass2ratectl.cc pass1ratectl.cc \
 	rate_complexity_model.cc
 
-noinst_HEADERS = channel.hh mpeg2syntaxcodes.h quantize_precomp.h simd.h \
-	tables.h $(mpeg2enc_noinst_header_REF) imageplanes.hh rate_complexity_model.hh
+noinst_HEADERS = channel.hh quantize_precomp.h simd.h \
+	tables.h $(mpeg2enc_noinst_header_REF) rate_complexity_model.hh
 
 libmpeg2encpp_includedir = $(pkgincludedir)/mpeg2enc
 
@@ -68,7 +68,8 @@ libmpeg2encpp_include_HEADERS = elemstrmwriter.hh encoderparams.hh \
 	encodertypes.h macroblock.hh mpeg2coder.hh mpeg2encoder.hh mpeg2encoptions.hh \
 	mpeg2encparams.h picture.hh picturereader.hh quantize.hh quantize_ref.h ratectl.hh \
 	streamstate.h seqencoder.hh synchrolib.h syntaxconsts.h $(mpeg2enc_inst_header_REF) \
-	ontheflyratectl.hh pass1ratectl.hh pass2ratectl.hh
+	ontheflyratectl.hh pass1ratectl.hh pass2ratectl.hh \
+	mpeg2syntaxcodes.h imageplanes.hh
 
 libmpeg2encpp_la_LDFLAGS = \
 	${LT_STATIC} \
@@ -77,7 +78,7 @@ libmpeg2encpp_la_LDFLAGS = \
 
 libmpeg2encpp_la_DEPENDENCIES = $(LIBMJPEGUTILS)
 
-libmpeg2encpp_la_LIBADD = 
+libmpeg2encpp_la_LIBADD = $(LIBMJPEGUTILS)
 
 mpeg2enc_DEPENDENCIES = \
 	$(LIBMJPEGUTILS) \
