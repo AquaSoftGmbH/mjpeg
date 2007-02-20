@@ -81,5 +81,7 @@ libmplex2_la_CXXFLAGS = $(ZALPHA_FLAGS)
 
 mplex_SOURCES = main.cpp 
 
-mplex_LDADD = \
-	libmplex2.la @LIBGETOPT_LIB@ $(LIBM_LIBS) 
+mplex_DEPENDENCIES = libmplex2.la
+
+mplex_LDADD = libmplex2.la @LIBGETOPT_LIB@ $(LIBM_LIBS)
+

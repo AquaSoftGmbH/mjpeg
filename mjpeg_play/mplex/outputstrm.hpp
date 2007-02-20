@@ -32,6 +32,7 @@ public:
         segment_num( 1 ),
         segment_len( 0 )
         {}
+    virtual ~OutputStream() {}
     virtual int  Open( ) = 0;
     virtual void Close() = 0;
     virtual uint64_t SegmentSize( ) = 0;

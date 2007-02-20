@@ -34,9 +34,9 @@ PS_Stream:: PS_Stream( unsigned _mpeg,
                        unsigned int _sector_size,
                        OutputStream &_output_strm, 
                        off_t max_seg_size )
-    : mpeg_version( _mpeg),
+    : output_strm(_output_strm ),
+      mpeg_version( _mpeg),
       sector_size( _sector_size ),
-      output_strm(_output_strm ),
       max_segment_size( max_seg_size )
 {
     sector_buf = new uint8_t[sector_size];
@@ -372,7 +372,7 @@ void PS_Stream::BufferPacketHeader( uint8_t *buf,
 			*(index++) = static_cast<uint8_t> (buffer_size & 0xff);
 		}
         /* If required pad the PES header: needed for some workarounds */
-        while( index-(pes_header_len_field+1) < min_pes_hdr_len )
+        while( index-(pes_header_len_field+1) < static_cast<int>(min_pes_hdr_len) )
             *(index++)=static_cast<uint8_t>(STUFFING_BYTE);
 	}
 

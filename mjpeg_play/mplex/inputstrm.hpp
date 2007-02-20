@@ -47,7 +47,7 @@ class MuxStream
 {
 public:
 	MuxStream();
-
+    virtual ~MuxStream() {}
     void Init( const int strm_id,
                const unsigned int _buf_scale,
 			   const unsigned int buf_size,

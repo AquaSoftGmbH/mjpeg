@@ -312,8 +312,7 @@ void VideoStream::OutputSector ( )
 		if( Lookahead() != 0 )
 		{
             autype = NextAUType();
-            AUnit *next = Lookahead();
-                    
+
 			if(  dtspts_for_all_au  && max_packet_payload == 0 )
 				max_packet_payload = au_unsent + Lookahead()->length;
 

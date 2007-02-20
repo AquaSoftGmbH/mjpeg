@@ -68,6 +68,7 @@ private:
 class FrameIntervals
 {
 public:
+    virtual ~FrameIntervals() {}
 	virtual int NextFrameInterval() = 0;
 };
 

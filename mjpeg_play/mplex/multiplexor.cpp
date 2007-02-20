@@ -645,7 +645,6 @@ void Multiplexor::Init()
 {
 	std::vector<ElementaryStream *>::iterator str;
 	clockticks delay;
-	unsigned int sectors_delay;
 
 	Pack_struc 			dummy_pack;
 	Sys_header_struc 	dummy_sys_header;	
@@ -813,7 +812,7 @@ void Multiplexor::MuxStatus(log_level_t level)
 		{
 		case ElementaryStream::video :
             if( (*str)->MuxCompleted() )
-                mjpeg_log( level, "Video %02x: completed" );
+                mjpeg_log( level, "Video %02x: completed", (*str)->stream_id );
             else
 			    mjpeg_log( level,
 					    "Video %02x: buf=%7d frame=%06d sector=%08d",
@@ -825,7 +824,7 @@ void Multiplexor::MuxStatus(log_level_t level)
 			break;
 		case ElementaryStream::audio :
             if( (*str)->MuxCompleted() )
-                 mjpeg_log( level, "Audio %02x: completed" );
+                 mjpeg_log( level, "Audio %02x: completed", (*str)->stream_id );
             else
 			    mjpeg_log( level,
 					    "Audio %02x: buf=%7d frame=%06d sector=%08d",
@@ -837,7 +836,7 @@ void Multiplexor::MuxStatus(log_level_t level)
 			break;
 		default :
             if( (*str)->MuxCompleted() )
-                 mjpeg_log( level, "Other %02x: completed" );
+                 mjpeg_log( level, "Other %02x: completed", (*str)->stream_id );
             else
 			    mjpeg_log( level,
 					    "Other %02x: buf=%7d sector=%08d",
