@@ -36,8 +36,8 @@ public:
             fullness(0),
             read(0),
             write(0),
-            producers_waiting(0),
-            consumers_waiting(0)
+            consumers_waiting(0),
+            producers_waiting(0)
     {
 #ifdef PTHREAD_MUTEX_ERRORCHECK
         pthread_mutexattr_t mu_attr;
@@ -140,7 +140,7 @@ public:
             abort();
         }
 #endif
-        int wait_for = consumers_waiting+1;
+        unsigned int wait_for = consumers_waiting+1;
         while( fullness > 0 || consumers_waiting < wait_for )
         {
             pthread_cond_wait( &waiting, &atomic);

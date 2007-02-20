@@ -77,7 +77,6 @@ OnTheFlyPass1::OnTheFlyPass1(EncoderParams &encparams ) :
 	bits_used = 0;
 	frame_overshoot_margin = 0;
 	sum_avg_act = 0.0;
-	sum_avg_var = 0.0;
 	sum_avg_quant = 0.0;
 
 }
@@ -92,6 +91,21 @@ OnTheFlyPass1::OnTheFlyPass1(EncoderParams &encparams ) :
 
 void OnTheFlyPass1::Init()
 {
+    /*
+      Reaction paramer - i.e. quantisation feedback gain relative
+      to bit over/undershoot.
+      For normal frames it is fairly modest as we can compensate
+      over multiple frames and can average out variations in image
+      complexity.
+
+      For stills we set it a higher so corrections take place
+      more rapidly *within* a single frame.
+    */
+    if( encparams.still_size > 0 )
+        fb_gain = (int)floor(2.0*encparams.bit_rate/encparams.decode_frame_rate);
+    else
+        fb_gain = (int)floor(4.0*encparams.bit_rate/encparams.decode_frame_rate);
+
     /* Set the virtual buffers for per-frame rate control feedback to
        values corresponding to the quantisation floor (if specified)
        or a "reasonable" quantisation (6.0) if not.
@@ -100,7 +114,13 @@ void OnTheFlyPass1::Init()
     double init_quant = (encparams.quant_floor > 0.0 ? encparams.quant_floor : 6.0);
     int i;
     for( i = FIRST_PICT_TYPE; i <= LAST_PICT_TYPE; ++i )
+    {
         ratectl_vbuf[i] = static_cast<int>(init_quant * fb_gain / 62.0);
+        Xhi[i] = 1.0; // Not used in first frame, set so init
+                      // for valgrind, debug messages etc.
+        sum_size[i] = 0.0;
+        pict_count[i] = 0;
+    }
 
     first_gop = true;
     K_AVG_WINDOW[I_TYPE] = 2.0;
@@ -135,34 +155,26 @@ void OnTheFlyPass1::Init()
     margin the deficit should be recovered in one second.
 
   */
+
     if( encparams.still_size > 0 )
     {
+        per_pict_bits = encparams.still_size * 8;
         undershoot_carry = 0;
         overshoot_gain = 1.0;
     }
     else
     {
+        per_pict_bits =
+            static_cast<int32_t>(encparams.fieldpic
+                                 ? encparams.bit_rate / field_rate
+                                 : encparams.bit_rate / encparams.decode_frame_rate
+                );
         int buffer_safe = 3 * per_pict_bits ;
         undershoot_carry = (encparams.video_buffer_size - buffer_safe)/6;
         if( undershoot_carry < 0 )
             mjpeg_error_exit1("Rate control can't cope with a video buffer smaller 4 frame intervals");
         overshoot_gain =  encparams.bit_rate / (encparams.video_buffer_size-buffer_safe);
     }
-
-    /*
-      Reaction paramer - i.e. quantisation feedback gain relative
-      to bit over/undershoot.
-      For normal frames it is fairly modest as we can compensate
-      over multiple frames and can average out variations in image
-      complexity.
-
-      For stills we set it a higher so corrections take place
-      more rapidly *within* a single frame.
-    */
-    if( encparams.still_size > 0 )
-        fb_gain = (int)floor(2.0*encparams.bit_rate/encparams.decode_frame_rate);
-    else
-        fb_gain = (int)floor(4.0*encparams.bit_rate/encparams.decode_frame_rate);
 
 
     next_ip_delay = 0.0;
@@ -199,18 +211,6 @@ void OnTheFlyPass1::InitSeq()
     bits_transported = bits_used = 0;
     field_rate = 2*encparams.decode_frame_rate;
     fields_per_pict = encparams.fieldpic ? 1 : 2;
-    if( encparams.still_size > 0 )
-    {
-        per_pict_bits = encparams.still_size * 8;
-    }
-    else
-    {
-        per_pict_bits = 
-            static_cast<int32_t>(encparams.fieldpic
-                                 ? encparams.bit_rate / field_rate
-                                 : encparams.bit_rate / encparams.decode_frame_rate
-                );
-    }
 }
 
 
@@ -276,9 +276,8 @@ void OnTheFlyPass1::InitGOP(  )
 
 bool OnTheFlyPass1::InitPict(Picture &picture)
 {
-	double target_Q;
 	int available_bits;
-	double Xsum,varsum;
+	double Xsum;
 
 	/* TODO: A.Stevens  Nov 2000 - This modification needs testing visually.
 
@@ -295,12 +294,9 @@ bool OnTheFlyPass1::InitPict(Picture &picture)
 	*/
 
  
-    actsum = picture.ActivityBestMotionComp();
-    varsum = picture.VarSumBestMotionComp();
+    actsum = picture.VarSumBestMotionComp();
 	avg_act = actsum/(double)(encparams.mb_per_pict);
-	avg_var = varsum/(double)(encparams.mb_per_pict);
 	sum_avg_act += avg_act;
-	sum_avg_var += avg_var;
 	actcovered = 0.0;
 	sum_base_Q = 0.0;
     sum_actual_Q = 0;
@@ -419,9 +415,10 @@ bool OnTheFlyPass1::InitPict(Picture &picture)
 
 	picture.avg_act = avg_act;
 	picture.sum_avg_act = sum_avg_act;
-	cur_mquant = ScaleQuant( picture.q_scale_type,
-                             fmax( vbuf_fullness*62.0/fb_gain, encparams.quant_floor) );
-    mquant_change_ctr = encparams.mb_width/2;
+    cur_base_Q = fmax( vbuf_fullness*62.0/fb_gain, encparams.quant_floor);
+	cur_mquant = ScaleQuant( picture.q_scale_type,  cur_base_Q );
+
+    mquant_change_ctr = encparams.mb_width/2-1;
 
     return true;    // In pass-1 we have no previous encoding to rely on
 }
@@ -438,9 +435,7 @@ bool OnTheFlyPass1::InitPict(Picture &picture)
 
 void OnTheFlyPass1::PictUpdate( Picture &picture, int &padding_needed)
 {
-	double K;
 	int32_t actual_bits;		/* Actual (inc. padding) picture bit counts */
-	int    i;
 	int frame_overshoot;
 	actual_bits = picture.EncodedSize();
 	frame_overshoot = (int)actual_bits-(int)target_bits;
@@ -629,9 +624,6 @@ int OnTheFlyPass1::TargetPictureEncodingSize()
 
 int OnTheFlyPass1::MacroBlockQuant( const MacroBlock &mb )
 {
-    --mquant_change_ctr;
-    if( mquant_change_ctr < 0)
-        mquant_change_ctr =  encparams.mb_width/2;
     int lum_variance = mb.BaseLumVariance();
     const Picture &picture = mb.ParentPicture();
 
@@ -650,6 +642,7 @@ int OnTheFlyPass1::MacroBlockQuant( const MacroBlock &mb )
         /* Guesstimate a virtual buffer fullness based on
            bits used vs. bits in proportion to activity encoded
         */
+
 
         double dj = static_cast<double>(vbuf_fullness) 
             + static_cast<double>(picture.EncodedSize())
@@ -692,16 +685,19 @@ int OnTheFlyPass1::MacroBlockQuant( const MacroBlock &mb )
         }
         else
             act_boost = 1.0;
-        cur_base_Q =  fmax(dj*62.0/fb_gain,encparams.quant_floor);
+
+        cur_base_Q = fmax(dj*62.0/fb_gain,encparams.quant_floor);
         cur_mquant = ScaleQuant(picture.q_scale_type,cur_base_Q/act_boost) ;
     }
+    --mquant_change_ctr;
+    if( mquant_change_ctr < 0)
+        mquant_change_ctr =  encparams.mb_width/2-1;
 
     sum_base_Q += cur_base_Q;
     sum_actual_Q += cur_mquant;
 	/* Update activity covered */
-	double act  = mb.Activity();
-	actcovered += act;
-	 
+	actcovered += lum_variance;
+
 	return cur_mquant;
 }
 
@@ -722,7 +718,6 @@ OnTheFlyPass2::OnTheFlyPass2(EncoderParams &encparams ) :
         bits_transported = 0;
         bits_used = 0;
         sum_avg_act = 0.0;
-        sum_avg_var = 0.0;
         
         /* TODO: These values should are really MPEG-1/2 and material type
            dependent.  The encoder should probably run over the first 100
@@ -768,7 +763,6 @@ void OnTheFlyPass2::Init()
 
 void OnTheFlyPass2::InitSeq()
 {
-  double init_quant;
   /* If its stills with a size we have to hit then make the
      guesstimates of for initial quantisation pessimistic...
   */
@@ -803,9 +797,6 @@ void OnTheFlyPass2::GopSetup( std::deque<Picture *>::iterator gop_begin,
   */
   gop_buffer_correction = 0;
   mjpeg_debug( "PASS2 GOP Rate Lookead" );
-  double recovery_fraction = field_rate/(overshoot_gain * fields_in_gop);
-
-
 
   std::deque<Picture *>::iterator i;
   gop_Xhi = 0.0;
@@ -862,15 +853,11 @@ void OnTheFlyPass2::InitGOP(  )
 
 bool OnTheFlyPass2::InitPict(Picture &picture)
 {
-  double target_Q;
-  double Xsum,varsum;
 
-  actsum = picture.ActivityBestMotionComp();
-  varsum = picture.VarSumBestMotionComp();
+
+  actsum = picture.VarSumBestMotionComp();
   avg_act = actsum/(double)(encparams.mb_per_pict);
-  avg_var = varsum/(double)(encparams.mb_per_pict);
   sum_avg_act += avg_act;
-  sum_avg_var += avg_var;
   actcovered = 0.0;
   sum_base_Q = 0.0;
   sum_actual_Q = 0;
@@ -888,7 +875,7 @@ bool OnTheFlyPass2::InitPict(Picture &picture)
   double available_bits = (gop_bitrate+feedback_correction);
 
   // Work out target bit allocation of frame based complexity statistics
-  double Xhi = picture.ABQ * picture.EncodedSize(); // picture.Complexity();
+  double Xhi = picture.ABQ * picture.EncodedSize(); 
   target_bits = static_cast<int32_t>(available_bits*Xhi/gop_Xhi);
   target_bits = min( target_bits, encparams.video_buffer_size*3/4 );
 
@@ -938,10 +925,7 @@ bool OnTheFlyPass2::InitPict(Picture &picture)
 
 void OnTheFlyPass2::PictUpdate( Picture &picture, int &padding_needed)
 {
-  double K;
   int32_t actual_bits;            /* Actual (inc. padding) picture bit counts */
-  int    i;
-  int    Qsum;
   int frame_overshoot;
   actual_bits = picture.EncodedSize();
   frame_overshoot = (int)actual_bits-(int)target_bits;

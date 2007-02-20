@@ -36,7 +36,7 @@ public:
 	virtual const RateCtlState &Get() const { return *this; }
 	int target_bits; // target_bits
 	int vbuf_fullness;
-    	int ratectl_vbuf[NUM_PICT_TYPES];
+    int ratectl_vbuf[NUM_PICT_TYPES];
 
 	int per_pict_bits;
 	int     fields_in_gop;
@@ -54,7 +54,7 @@ public:
 	double overshoot_gain;
 
     /*
-	  actsum - Total activity (sum block variances) in frame
+	  actsum - Total activity (sum block lum variances) in frame
 	  actcovered - Activity macroblocks so far quantised (used to
 	  fine tune quantisation to avoid starving highly
 	  active blocks appearing late in frame...) UNUSED
@@ -64,8 +64,6 @@ public:
 	double actcovered;
 	double sum_avg_act;
 	double avg_act;
-	double avg_var;
-	double sum_avg_var;
 	double sum_avg_quant;
 
 
@@ -210,8 +208,6 @@ public:
     double actcovered;
     double sum_avg_act;
     double avg_act;
-    double avg_var;
-    double sum_avg_var;
     double sum_avg_quant;
 
 

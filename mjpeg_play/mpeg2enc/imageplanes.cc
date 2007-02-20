@@ -44,7 +44,7 @@ ImagePlanes::ImagePlanes( EncoderParams &encparams )
     for( int c = 0; c < NUM_PLANES; ++c )
     { 
         if( planes[c] != 0 )
-            delete planes[c];
+            delete [] planes[c];
     }
 }
 

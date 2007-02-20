@@ -52,6 +52,8 @@ class RateCtl
 public:
     RateCtl( EncoderParams &_encparams, RateCtlState &_state );
 
+    virtual ~RateCtl() {}
+
     /*********************
     *
     * Initialise rate control parameters for start of encoding

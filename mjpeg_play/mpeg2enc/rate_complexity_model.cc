@@ -114,7 +114,7 @@ protected:
     // population or very different image complexities
     std::vector<Bucket>::iterator r = l + 1;
     double distance = (r->min - l->max) * log( l->instances + r->instances ) ;
-  
+    return distance;
   }
 
 
@@ -307,8 +307,6 @@ double RateComplexityModel::FindRateCoefficient( double target_bitrate,
                                                  double tolerance )
 {
   double rate_coefficient = init_rate_coefficient;
-  double incr = 1.0 + tolerance;
-  double decr = 1.0 - tolerance;
   double rate = PredictedBitrate(rate_coefficient);
 
   // Find the correct initial direction and a reasonable initial step-size

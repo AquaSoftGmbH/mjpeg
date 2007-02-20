@@ -431,7 +431,6 @@ bool DualPrimeMetric( const Picture &picture,
                       int &measure
     )
 {
-    bool all_legal = true;
     Coord cross;
     int part_meas = 0;
 

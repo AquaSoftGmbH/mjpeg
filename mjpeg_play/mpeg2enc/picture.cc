@@ -100,7 +100,6 @@ Picture::Picture( EncoderParams &_encparams,
 
 Picture::~Picture()
 {
-    int i;
     delete rec_img;
     delete pred;
     delete coding;
@@ -271,6 +270,8 @@ void Picture::SetFieldParams(int field)
             sxb = encparams.motion_data[bgrp_decode].sxb;
             syb = encparams.motion_data[bgrp_decode].syb;
             break;
+        default:
+            abort();
     }
 
     /* We currently don't support frame-only DCT/Motion Est.  for non

@@ -39,7 +39,7 @@ class StreamState
 public:
     StreamState( EncoderParams &encparams, PictureReader &reader );
     void Init( );
-    void Next( int64_t bits_after_mux );
+    void Next( uint64_t bits_after_mux );
     void ForceIFrame();
     void SuppressBFrames();
 

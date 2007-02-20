@@ -100,7 +100,11 @@ void LookaheadRCPass1::Init()
     double init_quant = (encparams.quant_floor > 0.0 ? encparams.quant_floor : 6.0);
     int i;
     for( i = FIRST_PICT_TYPE; i <= LAST_PICT_TYPE; ++i )
+    {
         ratectl_vbuf[i] = static_cast<int>(init_quant * fb_gain / 62.0);
+        Xhi[i] = 1.0; // Not used in first frame, set so init
+                      // for valgrind, debug messages etc.
+    }
 
     first_gop = true;
     K_AVG_WINDOW[I_TYPE] = 2.0;
@@ -132,7 +136,11 @@ void LookaheadRCPass1::Init()
        Currently, for a 1-frame sized margin gain is set to recover
        an undershoot in half a second
     */
-
+    per_pict_bits =
+        static_cast<int32_t>(encparams.fieldpic
+                              ? encparams.bit_rate / field_rate
+                              : encparams.bit_rate / encparams.decode_frame_rate
+            );
     int buffer_safe = 3 * per_pict_bits ;
     undershoot_carry = (encparams.video_buffer_size - buffer_safe)/6;
     if( undershoot_carry < 0 )
@@ -188,12 +196,6 @@ void LookaheadRCPass1::InitSeq()
     bits_transported = bits_used = 0;
     field_rate = 2*encparams.decode_frame_rate;
     fields_per_pict = encparams.fieldpic ? 1 : 2;
-    per_pict_bits =
-        static_cast<int32_t>(encparams.fieldpic
-                              ? encparams.bit_rate / field_rate
-                              : encparams.bit_rate / encparams.decode_frame_rate
-            );
-
 }
 
 
@@ -259,7 +261,6 @@ void LookaheadRCPass1::InitGOP(  )
 
 bool LookaheadRCPass1::InitPict(Picture &picture)
 {
-    double target_Q;
     int available_bits;
     double Xsum,varsum;
 
@@ -409,9 +410,7 @@ bool LookaheadRCPass1::InitPict(Picture &picture)
 
 void LookaheadRCPass1::PictUpdate( Picture &picture, int &padding_needed)
 {
-    double K;
     int32_t actual_bits;        /* Actual (inc. padding) picture bit counts */
-    int    i;
     int frame_overshoot;
     actual_bits = picture.EncodedSize();
     frame_overshoot = (int)actual_bits-(int)target_bits;

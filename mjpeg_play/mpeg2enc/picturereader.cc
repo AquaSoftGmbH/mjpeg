@@ -47,7 +47,7 @@ void PictureReader::Init()
 
 PictureReader::~PictureReader()
 {
-    for( int i = 0; i < input_imgs_buf.size(); ++i )
+    for( unsigned int i = 0; i < input_imgs_buf.size(); ++i )
         delete input_imgs_buf[i];
 
 }

@@ -112,7 +112,7 @@ void EncoderParams::InitEncodingControls( const MPEG2EncOptions &options)
 #ifdef DEBUG_MOTION_EST
     static const int MARGIN = 64;
 #else
-    static const int MARGIN = 0;
+    static const int MARGIN = 8;
 #endif
     
 #ifdef HAVE_ALTIVEC
@@ -183,7 +183,7 @@ static int f_code( int max_radius )
 void EncoderParams::Init( const MPEG2EncOptions &options )
 {
 	int i;
-    const char *msg;
+    const char *msg = 0;
 
 	//istrm_nframes = 999999999; /* determined by EOF of stdin */
 

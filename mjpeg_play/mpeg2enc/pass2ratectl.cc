@@ -178,9 +178,6 @@ void XhiPass2RC::InitGOP( std::deque<Picture *>::iterator gop_pics, int gop_len 
     */
 	gop_buffer_correction = 0;
     mjpeg_debug( "PASS2 GOP INIT" );
-    double recovery_fraction = field_rate/(overshoot_gain * fields_in_gop);
-
-
     
     int i;
     gop_Xhi = 0.0;
@@ -218,8 +215,7 @@ void XhiPass2RC::InitGOP( std::deque<Picture *>::iterator gop_pics, int gop_len 
 void XhiPass2RC::InitNewPict(Picture &picture)
 {
 
-    double target_Q;
-    double Xsum,varsum;
+    double varsum;
 
     actsum = picture.ActivityBestMotionComp();
     varsum = picture.VarSumBestMotionComp();
@@ -277,7 +273,6 @@ void XhiPass2RC::InitNewPict(Picture &picture)
 
 void XhiPass2RC::UpdatePict( Picture &picture, int &padding_needed)
 {
-	double K;
 	int32_t actual_bits;		/* Actual (inc. padding) picture bit counts */
 	int    i;
 	int    Qsum;
@@ -363,7 +358,6 @@ int XhiPass2RC::TargetPictureEncodingSize()
 int XhiPass2RC::MacroBlockQuant( const MacroBlock &mb )
 {
     int lum_variance = mb.BaseLumVariance();
-    int mquant;
     if( lum_variance < encparams.boost_var_ceil )
     {
         const Picture &picture = mb.ParentPicture();

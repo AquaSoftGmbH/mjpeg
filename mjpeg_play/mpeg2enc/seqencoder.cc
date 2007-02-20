@@ -150,7 +150,7 @@ void Despatcher::Init( unsigned int _parallelism )
         pattr = &attr;
 #endif
         worker_threads = new pthread_t[parallelism];
-        for(int i = 0; i < parallelism; ++i )
+        for( unsigned int i = 0; i < parallelism; ++i )
         {
             jobpool[i].working = false;
             jobpool[i].stripe = i;
@@ -242,6 +242,7 @@ void Despatcher::ParallelWorker()
                 stripe_begin = macroblocks_begin + job->stripe* macroblocks/parallelism;
                 stripe_end = macroblocks_begin + (job->stripe+1)* macroblocks/parallelism;
                 break;
+            default :
             case EncoderJob::INTERLEAVED :
                 stripe_step = parallelism;
                 stripe_begin = macroblocks_begin+job->stripe;
@@ -265,7 +266,7 @@ void Despatcher::Despatch(  Picture &picture,
 {
     if( parallelism > 0 )
     {
-        for( int stripe = 0; stripe < parallelism; ++stripe )
+        for( unsigned int stripe = 0; stripe < parallelism; ++stripe )
         {
             EncoderJob *job = &jobpool[stripe];
             // We guanratee a previously despatched stripe has completed before it is redespatched
@@ -329,8 +330,8 @@ SeqEncoder::SeqEncoder( EncoderParams &_encparams,
     pass1ratectl( _p1ratectl ),
     pass2ratectl( _p2ratectl ),
     p1_despatcher( *new Despatcher ),
-    pass1_ss( _encparams, _reader ),
-    pass1_rcstate( pass1ratectl.NewState() )
+    pass1_rcstate( pass1ratectl.NewState() ),
+    pass1_ss( _encparams, _reader )
 {
 }
 
@@ -398,6 +399,7 @@ void SeqEncoder::EncodePicture( Picture &picture,
 
     int padding_needed;
     picture.PutHeaders();
+
     picture.QuantiseAndCode(ratecontrol);
     ratecontrol.PictUpdate( picture, padding_needed);
     picture.PutTrailers(padding_needed);
@@ -572,7 +574,6 @@ void SeqEncoder::Pass1EncodePicture(Picture &picture, int field)
 
     // Reconstruct, transform, and encode
     EncodePicture( picture, pass1ratectl);
-
 
 
     mjpeg_info("Enc1  %5d %5d(%2d) %c q=%3.2f %s [%.0f%% Intra]",
@@ -755,8 +756,8 @@ void SeqEncoder::Pass1Process()
 
 
     // Find pictures that can now safely be pass 2 encoded
-    int to_queue = 0;
-    int i;
+    unsigned int to_queue = 0;
+    unsigned int i;
 
     if( last_pic->end_seq )
     {
@@ -914,7 +915,7 @@ void SeqEncoder::StreamEnd()
     uint64_t bits_after_mux = BitsAfterMux();
     mjpeg_info( "Guesstimated final muxed size = %lld\n", bits_after_mux/8 );
     
-    int i;
+    unsigned int i;
     for( i = 0; i < free_pictures.size(); ++i )
     {
         delete free_pictures[i];

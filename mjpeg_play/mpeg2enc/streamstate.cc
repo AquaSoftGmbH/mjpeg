@@ -107,7 +107,7 @@ bool StreamState::CanSplitHere(int offset) const
   Update ss to the next sequence state.
 */
 
-void StreamState::Next(  int64_t bits_after_mux )   // Estimate of how much output would have been produced
+void StreamState::Next(  uint64_t bits_after_mux )   // Estimate of how much output would have been produced
 {
     ++frame_num;    
     ++s_idx;
@@ -221,8 +221,6 @@ void StreamState::SetTempRef()
 
 void StreamState::GopStart(  )
 {
-    uint64_t bits_after_mux;
-    double frame_periods;
     /* If   we're starting a GOP and have gone past the current
        sequence splitting point split the sequence and
        set the next splitting point.

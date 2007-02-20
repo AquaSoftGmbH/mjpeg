@@ -1081,9 +1081,7 @@ YUV4MPEGEncoder::YUV4MPEGEncoder( MPEG2EncCmdLineOptions &cmd_options ) :
 
 void YUV4MPEGEncoder::Encode( )
 {
-    bool more;
     seqencoder->EncodeStream();
-    //while( seqencoder->EncodeFrame() );
 }
 
 int main( int argc,	char *argv[] )
