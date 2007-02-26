@@ -198,6 +198,8 @@ fi
 AC_SUBST(JPEG_LIBS)
 AC_SUBST(JPEG_CFLAGS)
 
+PKG_PROG_PKG_CONFIG
+
 have_libquicktime=false
 if test x$with_libquicktime != xno ; then
   PKG_CHECK_MODULES(LIBQUICKTIME, [libquicktime > 0.9.7],
