@@ -23,6 +23,7 @@ Requires:	glib2 gtk2
 Requires:	libquicktime
 Requires:	libdv
 
+BuildRequires:  autoconf automake
 BuildRequires:  xorg-x11-devel SDL-devel
 BuildRequires:  libpng-devel libjpeg-devel
 BuildRequires:  glib2-devel gtk2-devel
@@ -41,7 +42,7 @@ hardware. With the rest of the tools, this video can be edited and
 encoded into mpeg1/2 or divx video.
 
 %prep
-%setup -q -n %{name}-%{version} -a 1
+%setup -q -n %{name}-%{version} 
 
 mkdir usr
 
