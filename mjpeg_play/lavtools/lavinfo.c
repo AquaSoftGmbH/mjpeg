@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
 	       p = "m";
 	       break;
 	  default:
-	       p = "***BOGUS/UNKNOWN*** interlacing";
+	       p = "***BOGUS/UNKNOWN***";
 	       break;
 	  }
    printf("video_inter=%s\n", p);
