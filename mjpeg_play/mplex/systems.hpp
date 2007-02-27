@@ -62,7 +62,7 @@ public:
     PS_Stream( unsigned _mpeg,
                unsigned int _sector_size,
                OutputStream &_output_strm, 
-               off_t max_segment_size // 0 = No Limit
+               uint64_t max_segment_size // 0 = No Limit
         );
     virtual ~PS_Stream();
 
@@ -143,7 +143,7 @@ private:
     OutputStream &output_strm; 
     unsigned int mpeg_version;
     unsigned int sector_size;
-    off_t max_segment_size;
+    uint64_t max_segment_size;
     uint8_t *sector_buf;
     bitcount_t last_pack_start;
 };

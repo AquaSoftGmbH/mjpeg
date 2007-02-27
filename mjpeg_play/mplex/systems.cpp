@@ -33,7 +33,7 @@
 PS_Stream:: PS_Stream( unsigned _mpeg,
                        unsigned int _sector_size,
                        OutputStream &_output_strm, 
-                       off_t max_seg_size )
+                       uint64_t max_seg_size )
     : output_strm(_output_strm ),
       mpeg_version( _mpeg),
       sector_size( _sector_size ),
@@ -52,7 +52,7 @@ PS_Stream::~PS_Stream()
 bool
 PS_Stream::SegmentLimReached()
 {
-	off_t written = output_strm.SegmentSize();
+	uint64_t written = output_strm.SegmentSize();
 	return max_segment_size != 0 && written > max_segment_size;
 }
 

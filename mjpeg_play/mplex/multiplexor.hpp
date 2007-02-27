@@ -66,7 +66,7 @@ public:
 	int data_rate;
     unsigned int    run_in_frames;
     int mux_format;
-	off_t max_segment_size;
+	uint64_t max_segment_size;
 
 	Workarounds workarounds;
 

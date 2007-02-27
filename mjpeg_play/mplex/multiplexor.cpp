@@ -82,8 +82,8 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
 	split_at_seq_end = !job.multifile_segment;
     workarounds = job.workarounds;
     run_in_frames = job.run_in_frames;
-    max_segment_size = static_cast<off_t>(job.max_segment_size)
-                       * static_cast<off_t>(1024 * 1024);
+    max_segment_size = static_cast<uint64_t>(job.max_segment_size)
+                       * static_cast<uint64_t>(1024 * 1024);
     max_PTS = static_cast<clockticks>(job.max_PTS) * CLOCKS;
 	video_delay = static_cast<clockticks>(job.video_offset);
 	audio_delay = static_cast<clockticks>(job.audio_offset);
