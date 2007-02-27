@@ -52,10 +52,17 @@ liblavjpeg_la_LIBADD = $(LIBMJPEGUTILS)
 liblavrec_la_SOURCES = liblavrec.c audiolib.c frequencies.c
 liblavrec_la_CPPFLAGS = $(AM_CPPFLAGS) # so automake doesn't complain about audiolib & frequencies
 liblavrec_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
+liblavrec_la_LIBADD = liblavfile.la liblavjpeg.la
+liblavrec_la_DEPENDENCIES = liblavfile.la liblavjpeg.la
 
 liblavplay_la_SOURCES = liblavplay.c audiolib.c
 liblavplay_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS) $(X_CFLAGS)
 liblavplay_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
+liblavplay_la_LIBADD = liblavfile.la $(SDL_LIBS) liblavjpeg.la
+liblavplay_la_DEPENDENCIES = liblavfile.la liblavjpeg.la
+if HAVE_X
+  liblavplay_la_LIBADD += $(X_LIBS) -lX11
+endif
 
 # *********************************************************************
 # The tools themselves
