@@ -496,15 +496,12 @@ int lav_write_frame(lav_file_t *lav_file, uint8_t *buff, long size, long count)
 
 int lav_write_audio(lav_file_t *lav_file, uint8_t *buff, long samps)
 {
-   int res;
+   int res = -1;
 #ifdef HAVE_LIBQUICKTIME
    int i, j;
-   int16_t *qt_audio = (int16_t *)buff, **qt_audion;
+   int16_t *buff16 = (int16_t *)buff, **qt_audion;
    int channels = lav_audio_channels(lav_file);
-
-   qt_audion = malloc(channels * sizeof (int16_t **));
-   for (i = 0; i < channels; i++)
-	qt_audion[i] = (int16_t *)malloc(samps * lav_file->bps);
+   int bits = lav_audio_bits(lav_file);
 #endif
 
    video_format = lav_file->format; internal_error = 0; /* for error messages */
@@ -517,20 +514,40 @@ int lav_write_audio(lav_file_t *lav_file, uint8_t *buff, long samps)
          break;
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
-	/* Deinterleave the audio into the two channels. */
-	for (i = 0; i < samps; i++)
-	    {
-	    for (j = 0; j < channels; j++)
-		qt_audion[j][i] = qt_audio[(channels*i) + j];
-	    }
-	res = lqt_encode_audio_track(lav_file->qt_fd, qt_audion, NULL,samps,0);
-	for (j = 0; j < channels; j++)
-	    free(qt_audion[j]);
-	free(qt_audion);
-        break;
+	if (bits != 16 || channels > 1)
+	 {
+    /* Deinterleave the audio into the two channels and/or convert
+     * bits per sample to the required format.
+     */
+    qt_audion = malloc(channels * sizeof(*qt_audion));
+    for (i = 0; i < channels; i++)
+      qt_audion[i] = malloc(samps * sizeof(**qt_audion));
+
+    if (bits == 16)
+      for (i = 0; i < samps; i++)
+			for (j = 0; j < channels; j++)
+			  qt_audion[j][i] = buff16[channels * i + j];
+   else if (bits == 8)
+		for (i = 0; i < samps; i++)
+		  for (j = 0; j < channels; j++)
+		    qt_audion[j][i] = ((int16_t)(buff[channels * i + j]) << 8) ^ 0x8000;
+
+   if (bits == 8 || bits == 16)
+      res = lqt_encode_audio_track(lav_file->qt_fd, qt_audion, NULL, samps, 0);
+
+	for (i = 0; i < channels; i++)
+		free(qt_audion[i]);
+		free(qt_audion);
+  	} 
+	else 
+	{
+		qt_audion = &buff16;
+		res = lqt_encode_audio_track(lav_file->qt_fd, qt_audion, NULL, samps, 0);
+  	}
+  break;
 #endif
       default:
-         res = -1;
+	break;
    }
 
    return res;
