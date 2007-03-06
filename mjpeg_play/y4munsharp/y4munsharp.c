@@ -58,7 +58,7 @@ static int gen_convolve_matrix(double, double **);
 
 	u_char	*i_yuv[3], *o_yuv[3], *cur_col, *dest_col, *cur_row, *dest_row;
 
-	double	y_radius = 3.0, y_amount = 0.30;
+	double	y_radius = 2.0, y_amount = 0.30;
 	double	uv_radius = -1.0, uv_amount;
 	int	y_threshold = 4, uv_threshold, frameno;
 
@@ -636,7 +636,7 @@ void usage(void)
 	fprintf(stderr, "%s:\tradius and amount are floating point numbers\n",
 		__progname);
 	fprintf(stderr, "%s:\tthreshold is integer.\n", __progname);
-	fprintf(stderr, "%s:\tdefault for -L is 3.0,0.3,4\n", __progname);
+	fprintf(stderr, "%s:\tdefault for -L is 2.0,0.3,4\n", __progname);
 	fprintf(stderr, "%s:\tchroma not filtered UNLESS -C used, no default\n",
 		__progname);
 	fprintf(stderr, "%s:-v verbose 0=quiet 1=normal 2=debug (default: 1)\n", __progname);
