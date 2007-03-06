@@ -171,8 +171,15 @@ public:
 // the ELA-algorithm overshots by one line above and below the
 // frame-size, so fill the ELA-overshot-area in the inframe to
 // ensure that no green or purple lines are generated...
+#ifdef notnow
+// do NOT do this - the "in0 -w" computes an address 'w' bytes BEFORE the 
+// start of the buffer.  On some systems this corrupts the malloc arena but
+// the program keeps running.  On other systems an immediate segfault happens
+// when the first memcpy is done.
+
     memcpy (in0 - w, in + w, w);
     memcpy (in0 + (w * h), in + (w * h) - 2 * w, w);
+#endif
 
 // create deinterlaced frame of the reference-field in scratch
     for (y = (1 - field); y <= h; y += 2)
