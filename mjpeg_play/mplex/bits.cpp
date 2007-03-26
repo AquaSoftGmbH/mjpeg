@@ -57,7 +57,7 @@ BitStreamBuffering::BitStreamBuffering() :
 void BitStreamBuffering::Release()
 {
     if( bfr != 0)
-        delete bfr;
+        delete [] bfr;
     bfr = 0;
     bfr_size = 0;
     buffered = 0;

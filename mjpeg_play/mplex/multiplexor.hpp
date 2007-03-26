@@ -14,6 +14,7 @@ class Multiplexor
 {
 public:
 	Multiplexor(MultiplexJob &job, OutputStream &output, OutputStream *index);
+        ~Multiplexor ();
 	void Multiplex ();
 
 

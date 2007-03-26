@@ -57,6 +57,16 @@ Multiplexor::Multiplexor(MultiplexJob &job, OutputStream &output, OutputStream *
     vdr_index = index;
 }
 
+Multiplexor::~Multiplexor()
+{
+    delete psstrm;
+    while (!estreams.empty()) {
+        delete estreams.back();
+        estreams.pop_back();
+    }
+    vstreams.clear();
+    astreams.clear();
+}
 
 /******************************************************************
  *
