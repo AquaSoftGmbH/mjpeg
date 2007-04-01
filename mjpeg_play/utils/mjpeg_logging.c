@@ -31,16 +31,25 @@
 
 #include "mjpeg_logging.h"
 
-#define MAX_DEFAULT_ID_SIZE 16
-#define DEFAULT_DEFAULT_ID "???"
-
 #ifdef HAVE___PROGNAME
 extern const char *__progname;
 #endif
 
-static log_level_t mjpeg_log_verbosity = LOG_NONE;
-static char default_handler_id[MAX_DEFAULT_ID_SIZE];
-static char default_handler_id_is_set = 0;
+/*
+ * Put these here and NOT in the exported header file mjpeg_logging.h
+ * 
+ * since ALL program use of these should use the API below (mjpeg_warn, 
+ * mjpeg_error,etc) these symbols do not need to be exported and possibly
+ * conflict with syslog.h
+*/
+
+#define LOG_DEBUG 1
+#define LOG_INFO 2
+#define  LOG_WARN 3
+#define LOG_ERROR 4
+
+static log_level_t mjpeg_log_verbosity = 0;
+static char *default_handler_id = NULL;
 
 static int default_mjpeg_log_filter( log_level_t level )
 {
@@ -67,13 +76,13 @@ default_mjpeg_log_handler(log_level_t level, const char message[])
 
   if( (*_filter)( level ) )
     return;
-  if (default_handler_id_is_set) {
+  if (default_handler_id != NULL) {
     ids = default_handler_id;
   } else {
 #ifdef HAVE___PROGNAME
     ids = __progname;
 #else
-    ids = DEFAULT_DEFAULT_ID;
+    ids = "???";
 #endif
   }
   switch(level) {
@@ -103,15 +112,12 @@ mjpeg_log_set_handler(mjpeg_log_handler_t new_handler)
   mjpeg_log_handler_t old_handler = _handler;
 
   _handler = new_handler;
-
   return old_handler;
 }
 
 /***************
- *
  * Set default log handlers degree of verboseity.
  * 0 = quiet, 1 = info, 2 = debug
- *
  *************/
 
 int
@@ -124,14 +130,15 @@ mjpeg_default_handler_verbosity(int verbosity)
 
 /*
  * Set identifier string used by default handler
- *
  */
 int
 mjpeg_default_handler_identifier(const char *new_id)
 {
   const char *s;
   if (new_id == NULL) {
-    default_handler_id_is_set = 0;
+    if (default_handler_id != NULL)
+       free(default_handler_id);
+    default_handler_id = NULL;
     return 0;
   }
   /* find basename of new_id (remove any directory prefix) */
@@ -139,12 +146,9 @@ mjpeg_default_handler_identifier(const char *new_id)
     s = new_id;
   else
     s = s + 1;
-  strncpy(default_handler_id, s, MAX_DEFAULT_ID_SIZE);
-  default_handler_id[MAX_DEFAULT_ID_SIZE-1] = '\0';
-  default_handler_id_is_set = 1;
+  default_handler_id = strdup(s);
   return 0;
 }
-
 
 static void
 mjpeg_logv(log_level_t level, const char format[], va_list args)
@@ -156,9 +160,7 @@ mjpeg_logv(log_level_t level, const char format[], va_list args)
      lock is needed hence delete.
   */
 
-  
   vsnprintf(buf, sizeof(buf)-1, format, args);
-
   _handler(level, buf);
 }
 
@@ -216,12 +218,3 @@ mjpeg_error_exit1(const char format[], ...)
   va_end(args);           
   exit(EXIT_FAILURE);
 }
-
-
-/* 
- * Local variables:
- *  c-file-style: "gnu"
- *  tab-width: 8
- *  indent-tabs-mode: nil
- * End:
- */

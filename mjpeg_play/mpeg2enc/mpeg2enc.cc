@@ -187,9 +187,7 @@ void Y4MPipeReader::StreamPictureParams( MPEG2EncInVidParams &strm )
    y4m_ratio_t sar;
 
    if ((n = y4m_read_stream_header (pipe_fd, &_si)) != Y4M_OK) {
-       mjpeg_log( LOG_ERROR, 
-                  "Could not read YUV4MPEG2 header: %s!",
-                  y4m_strerr(n));
+       mjpeg_error("Could not read YUV4MPEG2 header: %s!", y4m_strerr(n));
       exit (1);
    }
 
@@ -231,10 +229,8 @@ bool Y4MPipeReader::LoadFrame( ImagePlanes &image )
    if ((y = y4m_read_frame_header (pipe_fd, &_si, &_fi)) != Y4M_OK) 
    {
        if( y != Y4M_ERR_EOF )
-           mjpeg_log (LOG_WARN, 
-                      "Error reading frame header (%d): code%s!", 
-                      frames_read,
-                      y4m_strerr (y));
+           mjpeg_warn("Error reading frame header (%d): code%s!", 
+                      frames_read, y4m_strerr (y));
        return true;
       }
       

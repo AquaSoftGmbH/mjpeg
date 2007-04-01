@@ -166,8 +166,7 @@ main(int argc, char **argv)
 	columns = getint(fdin);
 	rows = getint(fdin);
 	maxval = getint(fdin);
-	mjpeg_log(LOG_INFO, "P5 cols: %d rows: %d maxval: %d", 
-		columns, rows, maxval);
+	mjpeg_info("P5 cols: %d rows: %d maxval: %d", columns, rows, maxval);
 
 	if	(maxval != 255)
 		mjpeg_error_exit1("Maxval (%d) != 255, not mpeg2dec output?",
@@ -212,16 +211,16 @@ main(int argc, char **argv)
 		if	(height == 480 || height == 240)
 			{
 			aspect_ratio = y4m_sar_NTSC_CCIR601;
-			mjpeg_log(LOG_WARN, "sample aspect not specified, using NTSC CCIR601 value based on frame height of %d", height);
+			mjpeg_warn("sample aspect not specified, using NTSC CCIR601 value based on frame height of %d", height);
 			}
 		else if	(height == 576 || height == 288)
 			{
 			aspect_ratio = y4m_sar_PAL_CCIR601;
-			mjpeg_log(LOG_WARN, "sample aspect not specified, using PAL CCIR601 value based on frame height of %d", height);
+			mjpeg_warn("sample aspect not specified, using PAL CCIR601 value based on frame height of %d", height);
 			}
 		else
 			{
-			mjpeg_log(LOG_WARN, "sample aspect not specified and can not be inferred from frame height of %d (leaving sar as unknown", height);
+			mjpeg_warn("sample aspect not specified and can not be inferred from frame height of %d (leaving sar as unknown", height);
 			}
 		}
 	if	(Y4M_RATIO_EQL(rate_ratio, y4m_fps_UNKNOWN))
@@ -229,16 +228,16 @@ main(int argc, char **argv)
 		if	(height == 480 || height == 240)
 			{
 			rate_ratio = y4m_fps_NTSC;
-			mjpeg_log(LOG_WARN, "frame rate not specified, using NTSC value based on frame height of %d", height);
+			mjpeg_warn("frame rate not specified, using NTSC value based on frame height of %d", height);
 			}
 		else if	(height == 576 || height == 288)
 			{
 			rate_ratio = y4m_fps_PAL;
-			mjpeg_log(LOG_WARN, "frame rate not specified, using PAL value based on frame height of %d", height);
+			mjpeg_warn("frame rate not specified, using PAL value based on frame height of %d", height);
 			}
 		else
 			{
-			mjpeg_log(LOG_WARN, "frame rate not specified and can not be inferred from frame height of %d (using NTSC value)", height);
+			mjpeg_warn("frame rate not specified and can not be inferred from frame height of %d (using NTSC value)", height);
 			rate_ratio = y4m_fps_NTSC;
 			}
 		}
@@ -276,7 +275,7 @@ main(int argc, char **argv)
 		magicn = getmagicnumber(fdin);
 		if	(magicn != P5MAGIC)
 			{
-			mjpeg_log(LOG_DEBUG, "frame: %d got magic: %x\n",
+			mjpeg_debug("frame: %d got magic: %x\n",
 				frameno, magicn);
 			break;
 			}
@@ -284,7 +283,7 @@ main(int argc, char **argv)
 		rows = getint(fdin);
 		maxval = getint(fdin);
 		frameno++;
-		mjpeg_log(LOG_DEBUG, "frame: %d P5MAGIC cols: %d rows: %d maxval: %d", frameno, columns, rows, maxval);
+		mjpeg_debug("frame: %d P5MAGIC cols: %d rows: %d maxval: %d", frameno, columns, rows, maxval);
 		}
 	y4m_fini_frame_info(&oframe);
 	y4m_fini_stream_info(&ostream);

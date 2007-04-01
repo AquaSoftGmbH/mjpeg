@@ -181,7 +181,7 @@ main (int argc, char **argv)
 	 mjpeg_error_exit1("444ALPHA (4 plane) chroma not supported!\n");
       default:
 	if (!Stab.nosuper)
-	    mjpeg_log(LOG_INFO, "Cannot supersample %s chroma",
+	    mjpeg_info("Cannot supersample %s chroma",
 		y4m_chroma_description(chroma_ss));
 	Stab.nosuper = 1;
 	break;
@@ -217,7 +217,7 @@ main (int argc, char **argv)
     for (; y4m_read_frame(fdin,&istream,&iframe,yuv1) == Y4M_OK; frames++)
 	{
 	if ((Stab.verbose > 1) || (Stab.verbose && ((frames % 100) == 0)))
-	    mjpeg_log(LOG_INFO, "Frame %d", frames);
+	    mjpeg_info("Frame %d", frames);
 	subsample(yuv1[0], yuv1[3], width, height);
 	subsample(yuv1[3], yuv1[4], width/2, height/2);
 	switch (interlace)
@@ -573,7 +573,7 @@ Stab.gsY = (Stab.gsY * Stab.alphay) + gp->y/2.0;
 shftp->x = -xround(Stab.gsX, ss_h);
 shftp->y = -xround(Stab.gsY, ss_v);
 if (Stab.verbose > 1)
-mjpeg_log(LOG_INFO, "global motion xy*2=<%d,%d>"
+mjpeg_info("global motion xy*2=<%d,%d>"
 " Accumulated xy=<%g,%g> shift xy=%d,%d>\n",
 gp->x, gp->y, Stab.gsX, Stab.gsY, shftp->x, shftp->y);
 }

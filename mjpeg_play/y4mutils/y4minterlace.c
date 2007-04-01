@@ -104,7 +104,7 @@ int main(int argc, char **argv)
 	chroma_id = y4m_si_get_chroma(&istream);
 
 	if	(y4m_chroma_ss_y_ratio(chroma_id).d != 1)
-		mjpeg_log(LOG_WARN, "Vertically subsampled chroma (%s) should be upsampled but will proceed.", y4m_chroma_keyword(chroma_id));
+		mjpeg_warn("Vertically subsampled chroma (%s) should be upsampled but will proceed.", y4m_chroma_keyword(chroma_id));
 
 /*
  * NOTE:  each buffer to be allocated will only hold 1 field or 1/2 a frame.

@@ -162,7 +162,7 @@ int main(int argc, char **argv)
     for (frames=0; y4m_read_frame(fdin,&istream,&iframe,yuvinout) == Y4M_OK; frames++)
 	{
 	    if (verbose && ((frames % 100) == 0))
-		mjpeg_log(LOG_INFO, "Frame %d\n", frames);
+		mjpeg_info("Frame %d\n", frames);
 	    
             convolveFrame(yuvinout[0],ywidth,yheight,interlace,lumaXtaps,lumaYtaps,yuvtmp1,yuvtmp2);
             convolveFrame(yuvinout[1],uvwidth,uvheight,interlace,chromaXtaps,chromaYtaps,yuvtmp1,yuvtmp2);

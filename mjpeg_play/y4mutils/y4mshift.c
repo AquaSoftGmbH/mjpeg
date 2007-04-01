@@ -142,9 +142,6 @@ int main(int argc, char **argv)
         if      (yuv[2] == NULL)
                 mjpeg_error_exit1("malloc() failed for plane 2");
 
-        if      (verbose)
-		y4m_log_stream_info(LOG_INFO, "", &istream);
-
         frames = 0;
         for     (;y4m_read_frame(fdin,&istream,&iframe,yuv) == Y4M_OK; frames++)
                 {
@@ -238,7 +235,7 @@ void black_border (u_char *yuv[], char *borderstring, int W, int H, int SS_H, in
 		if	(i != 4 || (BX0 % SS_H) || (BY0 % (2*SS_V)) || i1 < 0 || i2 < 0 ||
 			 (BX0 + i1 > W) || (BY0 + i2 > H))
 			{
-			mjpeg_log(LOG_WARN, " border args invalid - ignored");
+			mjpeg_warn(" border args invalid - ignored");
 			return;
 			}
 		BX1 = BX0 + i1;
