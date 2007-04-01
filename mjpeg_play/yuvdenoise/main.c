@@ -839,7 +839,7 @@ main (int argc, char *argv[])
   y4m_frame_info_t oframeinfo;
   y4m_stream_info_t ostreaminfo;
 
-  mjpeg_log (LOG_INFO, "yuvdenoise version %s", VERSION);
+  mjpeg_info("yuvdenoise version %s", VERSION);
 
   while ((c = getopt (argc, argv, "qhvt:g:m:M:r:G:")) != -1)
     {
@@ -847,34 +847,33 @@ main (int argc, char *argv[])
 	{
 	case 'h':
 	  {
-  	    mjpeg_log (LOG_INFO, "... | yuvdenoise [OPTIONS] | ...                                                ");
-  	    mjpeg_log (LOG_INFO, "Brief description of the accepted options:\n");
-  	    mjpeg_log (LOG_INFO, "-g [Y=0...255],[U=0...255],[V=0...255]");
-  	    mjpeg_log (LOG_INFO, "   This sets the parameters [Y,U,V] for the gauss-filter. 0 means no filtering,");
-  	    mjpeg_log (LOG_INFO, "    which is the default, 255 is maximum gaussfiltering. Some camera manufacturers");
-  	    mjpeg_log (LOG_INFO, "    think it's a good idea to sharpen the frames extremly. This however will raise");
-  	    mjpeg_log (LOG_INFO, "    typical video-compression-artifacts (ringing, blocking, alias, etc...). If you");
-  	    mjpeg_log (LOG_INFO, "    desire to have a video free of these, you can raise the gauss-filter-values");
-  	    mjpeg_log (LOG_INFO, "    until your image is undesirable soft... (Short: setting decent values helps");
-  	    mjpeg_log (LOG_INFO, "    both: the viewer and the encoder -- setting too high values is ugly.) This may");
-  	    mjpeg_log (LOG_INFO, "    also help with extremly noisy images from a weak air-captured signal...");
-  	    mjpeg_log (LOG_INFO, "    Unlike y4mspatialfilter this will not boost ringing artifacts.\n");
-  	    mjpeg_log (LOG_INFO, "-m [0...255],[0...255],[0...255]");
-  	    mjpeg_log (LOG_INFO, "    Spatial-Pre-Filter. This one helps with really noisy signals. You should not");
-  	    mjpeg_log (LOG_INFO, "    use this with moderate to low noise material. Used with care it helps the tem-");
-	     mjpeg_log (LOG_INFO, "   poral-filter a lot. Misuse will lead to rather dull images (like an overly median-filtered image...");
-  	    mjpeg_log (LOG_INFO, "-t [0...255],[0...255],[0...255]");
-  	    mjpeg_log (LOG_INFO, "    Temporal-Noise-Filter. This one dramaticaly reduces noise without loosing sharpness. If set too high, however, it may introduce visable ghost-images or smear. ");
-  	    mjpeg_log (LOG_INFO, "-M [0...255],[0...255],[0...255]");
-  	    mjpeg_log (LOG_INFO, "    Spatial-Post-Filter. This one removes spatial noise left by the temporal-filter.");
-  	    mjpeg_log (LOG_INFO, "    Used with care it can dramaticaly lower the bitrate. Using it with to high settings will lead to the same artifacts as the spatial-pre-filter produces.");
-  	    mjpeg_log (LOG_INFO, "-G [0...255],[0...255],[0...255]");
-  	    mjpeg_log (LOG_INFO, "    Set -m,-t,-M values at once. -t is boosted by a factor of 2. Useful if you do");
-  	    mjpeg_log (LOG_INFO, "    not want to tweak all the values by hand... which is better.");
-  	    mjpeg_log (LOG_INFO, "-r [0...255],[0...255],[0...255]");
-  	    mjpeg_log (LOG_INFO, "    Add some static masking noise. Might be used as an effect, too... *g*");
-  	    mjpeg_log (LOG_INFO, "-q  HighQuality-Mode. Warning: On almost any machine this is dead slow...");
-
+  	    mjpeg_info("... | yuvdenoise [OPTIONS] | ...");
+  	    mjpeg_info("Brief description of the accepted options:\n");
+  	    mjpeg_info("-g [Y=0...255],[U=0...255],[V=0...255]");
+  	    mjpeg_info("   This sets the parameters [Y,U,V] for the gauss-filter. 0 means no filtering,");
+  	    mjpeg_info("    which is the default, 255 is maximum gaussfiltering. Some camera manufacturers");
+  	    mjpeg_info("    think it's a good idea to sharpen the frames extremly. This however will raise");
+  	    mjpeg_info("    typical video-compression-artifacts (ringing, blocking, alias, etc...). If you");
+  	    mjpeg_info("    desire to have a video free of these, you can raise the gauss-filter-values");
+  	    mjpeg_info("    until your image is undesirable soft... (Short: setting decent values helps");
+  	    mjpeg_info("    both: the viewer and the encoder -- setting too high values is ugly.) This may");
+  	    mjpeg_info("    also help with extremly noisy images from a weak air-captured signal...");
+  	    mjpeg_info("    Unlike y4mspatialfilter this will not boost ringing artifacts.\n");
+  	    mjpeg_info("-m [0...255],[0...255],[0...255]");
+  	    mjpeg_info("    Spatial-Pre-Filter. This one helps with really noisy signals. You should not");
+  	    mjpeg_info("    use this with moderate to low noise material. Used with care it helps the tem-");
+	     mjpeg_info("   poral-filter a lot. Misuse will lead to rather dull images (like an overly median-filtered image...");
+  	    mjpeg_info("-t [0...255],[0...255],[0...255]");
+  	    mjpeg_info("    Temporal-Noise-Filter. This one dramaticaly reduces noise without loosing sharpness. If set too high, however, it may introduce visable ghost-images or smear. ");
+  	    mjpeg_info("-M [0...255],[0...255],[0...255]");
+  	    mjpeg_info("    Spatial-Post-Filter. This one removes spatial noise left by the temporal-filter.");
+  	    mjpeg_info("    Used with care it can dramaticaly lower the bitrate. Using it with to high settings will lead to the same artifacts as the spatial-pre-filter produces.");
+  	    mjpeg_info("-G [0...255],[0...255],[0...255]");
+  	    mjpeg_info("    Set -m,-t,-M values at once. -t is boosted by a factor of 2. Useful if you do");
+  	    mjpeg_info("    not want to tweak all the values by hand... which is better.");
+  	    mjpeg_info("-r [0...255],[0...255],[0...255]");
+  	    mjpeg_info("    Add some static masking noise. Might be used as an effect, too... *g*");
+  	    mjpeg_info("-q  HighQuality-Mode. Warning: On almost any machine this is dead slow...");
 	    exit (0);
 	    break;
 	  }
@@ -931,18 +930,18 @@ main (int argc, char *argv[])
 	}
     }
 
-  mjpeg_log (LOG_INFO, "Using the following thresholds/settings:");
-  mjpeg_log (LOG_INFO, "Gauss-Pre-Filter      [Y,U,V] : [%i,%i,%i]",
+  mjpeg_info("Using the following thresholds/settings:");
+  mjpeg_info("Gauss-Pre-Filter      [Y,U,V] : [%i,%i,%i]",
 	     gauss_Y, gauss_U, gauss_V);
-  mjpeg_log (LOG_INFO, "Median-Pre-Filter     [Y,U,V] : [%i,%i,%i]",
+  mjpeg_info("Median-Pre-Filter     [Y,U,V] : [%i,%i,%i]",
 	     med_pre_Y_thres, med_pre_U_thres, med_pre_V_thres);
-  mjpeg_log (LOG_INFO, "Temporal-Noise-Filter [Y,U,V] : [%i,%i,%i]",
+  mjpeg_info("Temporal-Noise-Filter [Y,U,V] : [%i,%i,%i]",
 	     temp_Y_thres, temp_U_thres, temp_V_thres);
-  mjpeg_log (LOG_INFO, "Median-Post-Filter    [Y,U,V] : [%i,%i,%i]",
+  mjpeg_info("Median-Post-Filter    [Y,U,V] : [%i,%i,%i]",
 	     med_post_Y_thres, med_post_U_thres, med_post_V_thres);
-  mjpeg_log (LOG_INFO, "Renoise               [Y,U,V] : [%i,%i,%i]",
+  mjpeg_info("Renoise               [Y,U,V] : [%i,%i,%i]",
 	     renoise_Y, renoise_U, renoise_V);
-  mjpeg_log (LOG_INFO, "HQ-Mode                       : %s",
+  mjpeg_info("HQ-Mode                       : %s",
 	     (hq_mode==0? "off":"on"));
 
   /* initialize stream-information */
@@ -954,18 +953,14 @@ main (int argc, char *argv[])
 
   /* open input stream */
   if ((err = y4m_read_stream_header (fd_in, &istreaminfo)) != Y4M_OK)
-    {
-      mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!",
-		 y4m_strerr (err));
-      exit (1);
-    }
+      mjpeg_error_exit1("Couldn't read YUV4MPEG header: %s!", y4m_strerr (err));
 
   /* get format information */
   width = y4m_si_get_width (&istreaminfo);
   height = y4m_si_get_height (&istreaminfo);
   input_chroma_subsampling = y4m_si_get_chroma (&istreaminfo);
   input_interlaced = y4m_si_get_interlace (&istreaminfo);
-  mjpeg_log (LOG_INFO, "Y4M-Stream %ix%i(%s)",
+  mjpeg_info("Y4M-Stream %ix%i(%s)",
 	     width,
 	     height, y4m_chroma_description (input_chroma_subsampling));
 
@@ -991,11 +986,11 @@ main (int argc, char *argv[])
   cwidth = width / rx.d;
   cheight = height / ry.d;
 
-  mjpeg_log (LOG_INFO, "%s %s", msg,
+  mjpeg_info("%s %s", msg,
 	     (input_interlaced ==
 	      Y4M_ILACE_NONE) ? "progressive" : "interlaced");
-  mjpeg_log (LOG_INFO, "Luma-Plane      : %ix%i pixels", lwidth, lheight);
-  mjpeg_log (LOG_INFO, "Chroma-Plane    : %ix%i pixels", cwidth, cheight);
+  mjpeg_info("Luma-Plane      : %ix%i pixels", lwidth, lheight);
+  mjpeg_info("Chroma-Plane    : %ix%i pixels", cwidth, cheight);
 
   if (input_interlaced != Y4M_ILACE_NONE)
     {
@@ -1061,7 +1056,7 @@ main (int argc, char *argv[])
     scratchplane1 = buff_offset + (uint8_t *) malloc (buff_size);
     scratchplane2 = buff_offset + (uint8_t *) malloc (buff_size);
 
-    mjpeg_log (LOG_INFO, "Buffers allocated.");
+    mjpeg_info("Buffers allocated.");
   }
 
   /* initialize motion_library */
@@ -1187,7 +1182,7 @@ main (int argc, char *argv[])
 	free (scratchplane1 - buff_offset);
 	free (scratchplane2 - buff_offset);
 
-    mjpeg_log (LOG_INFO, "Buffers freed.");
+    mjpeg_info("Buffers freed.");
   }
 
   /* did stream end unexpectedly ? */
