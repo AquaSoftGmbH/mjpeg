@@ -182,14 +182,14 @@ main(int argc, char **argv)
 	y4m_copy_stream_info(&ostream, &istream);
 	y4m_write_stream_header(fileno(stdout), &ostream);
 
-	mjpeg_log(LOG_INFO, "Luma radius: %f", y_radius);
-	mjpeg_log(LOG_INFO, "Luma amount: %f", y_amount);
-	mjpeg_log(LOG_INFO, "Luma threshold: %d", y_threshold);
+	mjpeg_info("Luma radius: %f", y_radius);
+	mjpeg_info("Luma amount: %f", y_amount);
+	mjpeg_info("Luma threshold: %d", y_threshold);
 	if	(uv_radius != -1.0)
 		{
-		mjpeg_log(LOG_INFO, "Chroma radius: %f", uv_radius);
-		mjpeg_log(LOG_INFO, "Chroma amount: %f", uv_amount);
-		mjpeg_log(LOG_INFO, "Chroma threshold: %d", uv_threshold);
+		mjpeg_info("Chroma radius: %f", uv_radius);
+		mjpeg_info("Chroma amount: %f", uv_amount);
+		mjpeg_info("Chroma threshold: %d", uv_threshold);
 		}
 
 	for	(frameno = 0; y4m_read_frame(fdin, &istream, &iframe, i_yuv) == Y4M_OK; frameno++)
@@ -219,7 +219,7 @@ void y4munsharp(void)
 	int	i, row, col, diff, value;
 	u_char	*i_ptr, *o_ptr;
 
-	mjpeg_log(LOG_DEBUG, "Blurring Luma rows frame %d", frameno);
+	mjpeg_debug("Blurring Luma rows frame %d", frameno);
 
 	for	(row = 0; row < yheight; row++)
 		{
@@ -231,7 +231,7 @@ void y4munsharp(void)
 
 	if	(uv_radius != -1.0)
 		{
-		mjpeg_log(LOG_DEBUG, "Blurring Chroma rows frame %d", frameno);
+		mjpeg_debug("Blurring Chroma rows frame %d", frameno);
 		for	(row = 0; row < uvheight; row++)
 			{
 			blur_line(ctable_uv, cmatrix_uv, cmatrix_uv_len,
@@ -250,7 +250,7 @@ void y4munsharp(void)
 		memcpy(o_yuv[2], i_yuv[2], uvlen);
 		}
 
-	mjpeg_log(LOG_DEBUG, "Blurring Luma columns frame %d", frameno);
+	mjpeg_debug("Blurring Luma columns frame %d", frameno);
 	for	(col = 0; col < ywidth; col++)
 		{
 /*
@@ -290,7 +290,7 @@ void y4munsharp(void)
 	if	(uv_radius == -1)
 		goto merging;
 
-	mjpeg_log(LOG_DEBUG, "Blurring chroma columns frame %d", frameno);
+	mjpeg_debug("Blurring chroma columns frame %d", frameno);
 	for	(col = 0; col < uvwidth; col++)
 		{
 /* U */
@@ -343,7 +343,7 @@ void y4munsharp(void)
 			}
 		}
 merging:
-	mjpeg_log(LOG_DEBUG, "Merging luma frame %d", frameno);
+	mjpeg_debug("Merging luma frame %d", frameno);
 	for	(row = 0, i_ptr = i_yuv[0], o_ptr = o_yuv[0]; row < yheight; row++)
 		{
 		for	(i = 0; i < ywidth; i++, i_ptr++, o_ptr++)
@@ -366,7 +366,7 @@ merging:
 	if	(uv_radius == -1.0)
 		goto done;
 
-	mjpeg_log(LOG_DEBUG, "Merging chroma frame %d", frameno);
+	mjpeg_debug("Merging chroma frame %d", frameno);
 	for	(row = 0, i_ptr = i_yuv[1], o_ptr = o_yuv[1]; row < uvheight; row++)
 		{
 		for	(i = 0; i < uvwidth; i++, i_ptr++, o_ptr++)
