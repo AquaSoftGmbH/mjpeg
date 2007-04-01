@@ -87,11 +87,8 @@ int main(int argc, char *argv[])
 	{
 		fd_in = open (g_pszInputFile, O_RDONLY);
 		if (fd_in == -1)
-		{
-			mjpeg_log (LOG_ERROR, "Couldn't open input file %s: %s!",
+		    mjpeg_error_exit1("Couldn't open input file %s: %s!",
 				g_pszInputFile, y4m_strerr (errno));
-			exit (1);
-		}
 	}
 
 	/* open input stream */
@@ -290,7 +287,7 @@ process_commandline(int argc, char *argv[])
         if(denoiser.radiusY<4)
         {
           denoiser.radiusY=4;
-  	      mjpeg_log (LOG_WARN, "Minimum allowed search radius is 4 pixels.");
+  	  mjpeg_warn("Minimum allowed search radius is 4 pixels.");
         }
         break;
 	  }
@@ -300,7 +297,7 @@ process_commandline(int argc, char *argv[])
         if(denoiser.radiusCbCr<4)
         {
           denoiser.radiusCbCr=4;
-  	      mjpeg_log (LOG_WARN, "Minimum allowed color search radius is 4 pixel.");
+  	  mjpeg_warn("Minimum allowed color search radius is 4 pixel.");
         }
         break;
       }
@@ -348,10 +345,7 @@ process_commandline(int argc, char *argv[])
       {
 	 	int interlaced = atoi (optarg);
 		if (interlaced != 0 && interlaced != 1 && interlaced != 2)
-		{
-      		mjpeg_log (LOG_ERROR, "-I must be either 0, 1, or 2");
-			exit (1);
-		}
+      		    mjpeg_error_exit1("-I must be either 0, 1, or 2");
         denoiser.interlaced = interlaced;
         break;
       }
@@ -359,10 +353,7 @@ process_commandline(int argc, char *argv[])
       {
 	 	int threads = atoi (optarg);
 		if (threads != 0 && threads != 1 && threads != 2)
-		{
-      		mjpeg_log (LOG_ERROR, "-p must be either 0, 1, or 2");
-			exit (1);
-		}
+      		   mjpeg_error_exit1("-p must be either 0, 1, or 2");
         denoiser.threads = threads;
         break;
       }
