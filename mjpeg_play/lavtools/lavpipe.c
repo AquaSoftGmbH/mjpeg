@@ -357,7 +357,7 @@ void open_segment_inputs(PipeSegment *seg, pipe_filter_t *filt,
 	mjpeg_error_exit1("Bad source header!");
 
       mjpeg_debug("read header");
-      y4m_log_stream_info(LOG_DEBUG, "src: ", &(source->streaminfo));
+      y4m_log_stream_info(mjpeg_loglev_t("debug"), "src: ", &(source->streaminfo));
     } else {
       mjpeg_debug("...source %d is still alive.", in_index);
     }
@@ -400,7 +400,7 @@ void setup_segment_filter(PipeSegment *seg, pipe_filter_t *filt, int frame)
     y4m_write_stream_header(filt->out_fd, &(filt->out_streaminfo));
     y4m_read_stream_header(filt->in_fd, &(filt->in_streaminfo));
     mjpeg_debug("SSF:  read filter result stream header");
-    y4m_log_stream_info(LOG_DEBUG, "result: ", &(filt->in_streaminfo));
+    y4m_log_stream_info(mjpeg_loglev_t("debug"), "result: ", &(filt->in_streaminfo));
     alloc_yuv_buffers(filt->yuv, &(filt->out_streaminfo));
   } else {
     /* ...no filter; direct output:

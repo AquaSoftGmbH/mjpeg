@@ -856,9 +856,9 @@ main (int argc, char *argv[])
 
   YUVdeint.field_order = -1;
 
-  mjpeg_log (LOG_INFO, "-------------------------------------------------");
-  mjpeg_log (LOG_INFO, "       Motion-Compensating-Deinterlacer          ");
-  mjpeg_log (LOG_INFO, "-------------------------------------------------");
+  mjpeg_info("-------------------------------------------------");
+  mjpeg_info( "       Motion-Compensating-Deinterlacer");
+  mjpeg_info("-------------------------------------------------");
 
   while ((c = getopt (argc, argv, "hvds:t:ma")) != -1)
     {
@@ -866,22 +866,22 @@ main (int argc, char *argv[])
 	{
 	case 'h':
 	  {
-	    mjpeg_log (LOG_INFO, " Usage of the deinterlacer");
-	    mjpeg_log (LOG_INFO, " -------------------------");
-	    mjpeg_log (LOG_INFO, " -v be verbose");
-	    mjpeg_log (LOG_INFO, " -d output both fields");
-	    mjpeg_log (LOG_INFO, " -m mark moving blocks");
-	    mjpeg_log (LOG_INFO, " -t [nr] (default 4) motion threshold.");
-	    mjpeg_log (LOG_INFO, "         0 -> every block is moving.");
-	    mjpeg_log (LOG_INFO, " -a just antialias the frames! This will");
-	    mjpeg_log (LOG_INFO, "    assume progressive but aliased input.");
-	    mjpeg_log (LOG_INFO, "    you can use this to improve badly deinterlaced");
-	    mjpeg_log (LOG_INFO, "    footage. EG: deinterlaced with cubic-interpolation");
-	    mjpeg_log (LOG_INFO, "    or worse...");
+	    mjpeg_info(" Usage of the deinterlacer");
+	    mjpeg_info(" -------------------------");
+	    mjpeg_info(" -v be verbose");
+	    mjpeg_info(" -d output both fields");
+	    mjpeg_info(" -m mark moving blocks");
+	    mjpeg_info(" -t [nr] (default 4) motion threshold.");
+	    mjpeg_info("         0 -> every block is moving.");
+	    mjpeg_info(" -a just antialias the frames! This will");
+	    mjpeg_info("    assume progressive but aliased input.");
+	    mjpeg_info("    you can use this to improve badly deinterlaced");
+	    mjpeg_info("    footage. EG: deinterlaced with cubic-interpolation");
+	    mjpeg_info("    or worse...");
 
-	    mjpeg_log (LOG_INFO, " -s [n=0/1] forces field-order in case of misflagged streams");
-	    mjpeg_log (LOG_INFO, "    -s0 is top-field-first");
-	    mjpeg_log (LOG_INFO, "    -s1 is bottom-field-first");
+	    mjpeg_info(" -s [n=0/1] forces field-order in case of misflagged streams");
+	    mjpeg_info("    -s0 is top-field-first");
+	    mjpeg_info("    -s1 is bottom-field-first");
 	    exit (0);
 	    break;
 	  }
@@ -893,28 +893,27 @@ main (int argc, char *argv[])
 	case 'd':
 	  {
 	    YUVdeint.both_fields = 1;
-	    mjpeg_log (LOG_INFO, "Regenerating both fields. Please fix the Framerate.");
+	    mjpeg_info("Regenerating both fields. Please fix the Framerate.");
 	    break;
 	  }
 	case 'm':
 	  {
 	    YUVdeint.mark_moving_blocks = 1;
-	    mjpeg_log (LOG_INFO, "I will mark detected moving blocks for you, so you can");
-	    mjpeg_log (LOG_INFO, "fine-tune the motion-threshold (-t)...");
+	    mjpeg_info("I will mark detected moving blocks for you, so you can");
+	    mjpeg_info("fine-tune the motion-threshold (-t)...");
 	    break;
 	  }
 	case 'a':
 	  {
 	    YUVdeint.just_anti_alias = 1;
 	    YUVdeint.field_order = 0;	// just to prevent the program to barf in this case
-	    mjpeg_log (LOG_INFO,
-		       "I will just anti-alias the frames. make sure they are progressive!");
+	    mjpeg_info("I will just anti-alias the frames. make sure they are progressive!");
 	    break;
 	  }
 	case 't':
 	  {
 	    YUVdeint.motion_threshold = atoi (optarg);
-	    mjpeg_log (LOG_INFO, "motion-threshold set to : %i", YUVdeint.motion_threshold);
+	    mjpeg_info("motion-threshold set to : %i", YUVdeint.motion_threshold);
 	    break;
 	  }
 	case 's':
@@ -922,12 +921,12 @@ main (int argc, char *argv[])
 	    YUVdeint.field_order = atoi (optarg);
 	    if (YUVdeint.field_order != 0)
 	      {
-		mjpeg_log (LOG_INFO, "forced top-field-first!");
+		mjpeg_info("forced top-field-first!");
 		YUVdeint.field_order = 1;
 	      }
 	    else
 	      {
-		mjpeg_log (LOG_INFO, "forced bottom-field-first!");
+		mjpeg_info("forced bottom-field-first!");
 		YUVdeint.field_order = 0;
 	      }
 	    break;
@@ -960,7 +959,7 @@ main (int argc, char *argv[])
   YUVdeint.width = y4m_si_get_width (&YUVdeint.Y4MStream.istreaminfo);
   YUVdeint.height = y4m_si_get_height (&YUVdeint.Y4MStream.istreaminfo);
   YUVdeint.input_chroma_subsampling = y4m_si_get_chroma (&YUVdeint.Y4MStream.istreaminfo);
-  mjpeg_log (LOG_INFO, "Y4M-Stream is %ix%i(%s)", YUVdeint.width,
+  mjpeg_info("Y4M-Stream is %ix%i(%s)", YUVdeint.width,
 	     YUVdeint.height, y4m_chroma_keyword (YUVdeint.input_chroma_subsampling));
 
   /* if chroma-subsampling isn't supported bail out ... */
@@ -1003,24 +1002,22 @@ main (int argc, char *argv[])
       if (y4m_si_get_interlace (&YUVdeint.Y4MStream.istreaminfo) == Y4M_ILACE_TOP_FIRST)
 	{
 	  /* got it: Top-field-first... */
-	  mjpeg_log (LOG_INFO, " Stream is interlaced, top-field-first.");
+	  mjpeg_info(" Stream is interlaced, top-field-first.");
 	  YUVdeint.field_order = 1;
 	}
       else if (y4m_si_get_interlace (&YUVdeint.Y4MStream.istreaminfo) == Y4M_ILACE_BOTTOM_FIRST)
 	{
 	  /* got it: Bottom-field-first... */
-	  mjpeg_log (LOG_INFO, " Stream is interlaced, bottom-field-first.");
+	  mjpeg_info(" Stream is interlaced, bottom-field-first.");
 	  YUVdeint.field_order = 0;
 	}
       else
 	{
-	  mjpeg_log (LOG_ERROR, "Unable to determine field-order from input-stream.");
-	  mjpeg_log (LOG_ERROR,
-		     "This is most likely the case when using mplayer to produce the input-stream.");
-	  mjpeg_log (LOG_ERROR, "Either the stream is misflagged or progressive...");
-	  mjpeg_log (LOG_ERROR, "I will stop here, sorry. Please choose a field-order");
-	  mjpeg_log (LOG_ERROR,
-		     "with -s0 or -s1. Otherwise I can't do anything for you. TERMINATED. Thanks...");
+	  mjpeg_error("Unable to determine field-order from input-stream.");
+	  mjpeg_error("This is most likely the case when using mplayer to produce the input-stream.");
+	  mjpeg_error("Either the stream is misflagged or progressive...");
+	  mjpeg_error("I will stop here, sorry. Please choose a field-order");
+	  mjpeg_error("with -s0 or -s1. Otherwise I can't do anything for you. TERMINATED. Thanks...");
 	  exit (-1);
 	}
     }

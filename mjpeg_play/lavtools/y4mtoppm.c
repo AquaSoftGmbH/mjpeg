@@ -204,7 +204,7 @@ int main(int argc, char **argv)
     exit(1);
   }
   mjpeg_info("input stream parameters:");
-  y4m_log_stream_info(LOG_INFO, "<<<", &streaminfo);
+  y4m_log_stream_info(mjpeg_loglev_t("info"), "<<<", &streaminfo);
 
   width = y4m_si_get_width(&streaminfo);
   height = y4m_si_get_height(&streaminfo);

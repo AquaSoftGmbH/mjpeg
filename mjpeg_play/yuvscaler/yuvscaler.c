@@ -267,7 +267,7 @@ yuvscaler_print_information (y4m_stream_info_t in_streaminfo,
    const char NOT_INTER[] = "NOT_INTERLACED";
    const char PROGRESSIVE[] = "PROGRESSIVE";
 
-  y4m_log_stream_info (LOG_INFO, "input: ", &in_streaminfo);
+  y4m_log_stream_info (mjpeg_loglev_t("info"), "input: ", &in_streaminfo);
 
   switch (interlaced)
     {
@@ -1850,7 +1850,7 @@ main (int argc, char *argv[])
 							   (&in_streaminfo)));
   if (no_header == 0)
     y4m_write_stream_header (output_fd, &out_streaminfo);
-  y4m_log_stream_info (LOG_INFO, "output: ", &out_streaminfo);
+  y4m_log_stream_info (mjpeg_loglev_t("info"), "output: ", &out_streaminfo);
    
   
    

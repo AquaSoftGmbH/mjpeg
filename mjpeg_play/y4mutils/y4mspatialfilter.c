@@ -156,7 +156,7 @@ int main(int argc, char **argv)
     set_accel(uvwidth,uvheight);
 
     if (verbose)
-	y4m_log_stream_info(LOG_INFO, "", &istream);
+	y4m_log_stream_info(mjpeg_loglev_t("info"), "", &istream);
     
     /* main processing loop */
     for (frames=0; y4m_read_frame(fdin,&istream,&iframe,yuvinout) == Y4M_OK; frames++)

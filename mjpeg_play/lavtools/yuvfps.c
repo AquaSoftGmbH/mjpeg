@@ -507,7 +507,7 @@ static int parse_interlacing(char *str)
 int main (int argc, char *argv[])
 {
 
-  int verbose = LOG_ERROR ;
+  int verbose = mjpeg_loglev_t("error");
   int change_header_only = 0 ;
   int not_normalize = 0;
   int use_weighted_average = 0;

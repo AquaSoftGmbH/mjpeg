@@ -1151,7 +1151,7 @@ void Multiplexor::Multiplex()
 		case start_segment :
 			mjpeg_info( "New sequence commences..." );
 			SetPosAndSCR(0);
-			MuxStatus( LOG_INFO );
+			MuxStatus( mjpeg_loglev_t("info") );
 
 			for( str = estreams.begin(); str < estreams.end(); ++str )
 			{
@@ -1226,7 +1226,7 @@ void Multiplexor::Multiplex()
                                nextIframe->dorder,
                                runout_PTS/300, 
                                current_SCR/300 );
-                    MuxStatus( LOG_INFO );
+                    MuxStatus( mjpeg_loglev_t("info") );
 					running_out = true;
 					seg_state = runout_segment;
 				}
@@ -1295,7 +1295,7 @@ void Multiplexor::Multiplex()
 							despatch->stream_id, 
 							current_SCR/300, 
 							earliest/300 );
-				MuxStatus( LOG_WARN );
+				MuxStatus( mjpeg_loglev_t("warn") );
 				// Give the stream a chance to recover
 				underrun_ignore = 300;
 				++underruns;
@@ -1361,7 +1361,7 @@ void Multiplexor::Multiplex()
 				packets_left_in_pack = packets_per_pack;
 		}
 
-		MuxStatus( LOG_DEBUG );
+		MuxStatus( mjpeg_loglev_t("debug") );
 		/* Unless sys headers are always required we turn them off after the first
 		   packet has been generated */
 		include_sys_header = always_sys_header_in_pack;
@@ -1373,7 +1373,7 @@ void Multiplexor::Multiplex()
 			if( !(*pcomp) && (*str)->MuxCompleted() )
 			{
 				mjpeg_info( "STREAM %02x completed", (*str)->stream_id );
-				MuxStatus( LOG_DEBUG );
+				MuxStatus( mjpeg_loglev_t("debug") );
 				(*pcomp) = true;
 			}
 			++str;
@@ -1388,7 +1388,7 @@ void Multiplexor::Multiplex()
         vdr_index->Close();
         
 	mjpeg_info( "Multiplex completion at SCR=%lld.", current_SCR/300);
-	MuxStatus( LOG_INFO );
+	MuxStatus( mjpeg_loglev_t("info") );
 	for( str = estreams.begin(); str < estreams.end(); ++str )
 	{
 		(*str)->Close();

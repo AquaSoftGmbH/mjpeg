@@ -67,9 +67,11 @@ mjpeg_error(const char format[], ...) GNUC_PRINTF(1,2);
 void
 mjpeg_error_exit1(const char format[], ...) GNUC_PRINTF(1,2);
 
+log_level_t
+mjpeg_loglev_t(const char *str);
+
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif /* __MJPEG_LOGGING_H__ */

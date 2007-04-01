@@ -262,7 +262,7 @@ yuvcorrect_print_information (general_correction_t * gen_correct,
 {
   // This function print USER'S INFORMATION
 
-  y4m_log_stream_info (LOG_INFO, "input: ", &gen_correct->streaminfo);
+  y4m_log_stream_info (mjpeg_loglev_t("info"), "input: ", &gen_correct->streaminfo);
 
   switch (gen_correct->line_switch)
     {

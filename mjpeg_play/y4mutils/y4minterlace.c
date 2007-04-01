@@ -140,7 +140,7 @@ int main(int argc, char **argv)
 	y4m_si_set_interlace(&ostream, ilace);
 	y4m_si_set_framerate(&ostream, rate_ratio);
 
-	y4m_log_stream_info(LOG_INFO, "ostream", &ostream);
+	y4m_log_stream_info(mjpeg_loglev_t("info"), "ostream", &ostream);
 
 	y4m_write_stream_header(fdout, &ostream);
 	while	((err = y4m_read_fields(fdin, &istream, &iframe, f1_top, f1_bot)) == Y4M_OK)

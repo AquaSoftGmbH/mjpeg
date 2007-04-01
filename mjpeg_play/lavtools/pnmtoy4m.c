@@ -790,10 +790,8 @@ void setup_output_stream(int fdout, cl_info_t *cl,
     mjpeg_error_exit1("Write header failed:  %s", y4m_strerr(err));
 
   mjpeg_info("Output Stream parameters:");
-  y4m_log_stream_info(LOG_INFO, "  ", sinfo);
+  y4m_log_stream_info(mjpeg_loglev_t("info"), "  ", sinfo);
 }
-
-
 
 
 int main(int argc, char **argv)

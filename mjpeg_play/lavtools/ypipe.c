@@ -105,9 +105,9 @@ int main (int argc, char *argv[])
 		      y4m_strerr(err));
   
   mjpeg_info("First stream parameters:");
-  y4m_log_stream_info(LOG_INFO, "1> ", &sinfo0);
+  y4m_log_stream_info(mjpeg_loglev_t("info"), "1> ", &sinfo0);
   mjpeg_info("Second stream parameters:");
-  y4m_log_stream_info(LOG_INFO, "2> ", &sinfo1);
+  y4m_log_stream_info(mjpeg_loglev_t("info"), "2> ", &sinfo1);
   
   if (y4m_si_get_width(&sinfo0) != y4m_si_get_width(&sinfo1))
     mjpeg_error_exit1("Width mismatch");

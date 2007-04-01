@@ -62,7 +62,7 @@ int main(int argc, char **argv)
 	yuv[1] = malloc(plane_length[1]);
 	yuv[2] = malloc(plane_length[2]);
 
-	y4m_log_stream_info(LOG_INFO, "", &istream);
+	y4m_log_stream_info(mjpeg_loglev_t("info"), "", &istream);
 
 	while	(y4m_read_frame(fd_in, &istream, &iframe, yuv) == Y4M_OK)
 		{

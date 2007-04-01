@@ -189,7 +189,7 @@ main (int argc, char **argv)
     width = y4m_si_get_width(&istream);
     height = y4m_si_get_height(&istream);
     if (Stab.verbose)
-	y4m_log_stream_info(LOG_INFO, "", &istream);
+	y4m_log_stream_info(mjpeg_loglev_t("info"), "", &istream);
 
     /* Initialize output stream */
     y4m_init_stream_info(&ostream);
