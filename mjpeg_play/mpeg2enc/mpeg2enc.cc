@@ -1080,18 +1080,17 @@ void YUV4MPEGEncoder::Encode( )
     seqencoder->EncodeStream();
 }
 
-int main( int argc,	char *argv[] )
+int main( int argc, char *argv[] )
 {
+    MPEG2EncCmdLineOptions options;
 
 mjpeg_error_exit1("mpeg2enc is currently broken.  If you really want to use it delete this line and recompile");
 
-	/* Set up error logging.  The initial handling level is LOG_INFO
-	 */
-    MPEG2EncCmdLineOptions options;
-	mjpeg_default_handler_verbosity(options.verbose);
+    mjpeg_default_handler_verbosity(options.verbose);
+
     if( options.SetFromCmdLine( argc, argv ) != 0 )
 		options.Usage();
-	mjpeg_default_handler_verbosity(options.verbose);
+    mjpeg_default_handler_verbosity(options.verbose);
 
     YUV4MPEGEncoder encoder( options );
     encoder.Encode();
@@ -1105,8 +1104,6 @@ mjpeg_error_exit1("mpeg2enc is currently broken.  If you really want to use it d
 #endif
 	return 0;
 }
-
-
 
 
 /* 
