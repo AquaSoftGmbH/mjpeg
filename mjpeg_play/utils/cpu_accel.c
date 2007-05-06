@@ -30,6 +30,14 @@
 #include "cpu_accel.h"
 #include "mjpeg_logging.h"
 
+/*
+ * This WAS a deprecated header but apparently has been resurrected  as a 
+ * place to put memalign.  malloc() itself is in stdlib.h
+*/
+#ifdef	HAVE_MALLOC_H
+#include <malloc.h>
+#endif
+
 #ifdef HAVE_ALTIVEC
 extern int altivec_copy_v0();
 #endif

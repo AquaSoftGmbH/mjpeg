@@ -83,7 +83,7 @@ if test x"$with_extra_cflags" != "x"; then
    CCASFLAGS="$CCASFLAGS $with_extra_cflags"
 fi
 
-AC_CHECK_HEADERS([stdint.h inttypes.h sys/types.h getopt.h sys/soundcard.h])
+AC_CHECK_HEADERS([stdint.h inttypes.h sys/types.h getopt.h malloc.h sys/soundcard.h])
 
 #maddog:  check for math lib, and add it to LIBS (needed for fmax, lround...)
 #maddog:  (How does this interact with cpml stuff below???????)
