@@ -274,7 +274,7 @@ main(int argc, char **argv)
  * compressed formats it seems.
 */
 
-		if	(qtchroma == QUICKTIME_YUV420)
+		if	(strcmp(qtchroma, QUICKTIME_YUV420) == 0)
 			{
 			if	(allow_wrong_yv12 == 0)
 				{
