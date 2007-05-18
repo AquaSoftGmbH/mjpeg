@@ -42,7 +42,6 @@ noinst_HEADERS = \
 	cpu_accel.h \
 	fastintfns.h \
 	mmx.h \
-	motionsearch.h \
 	videodev_mjpeg.h \
 	yuv4mpeg_intern.h
 
@@ -52,6 +51,7 @@ pkginclude_HEADERS = \
 	mjpeg_types.h \
 	mpegconsts.h \
 	mpegtimecode.h \
+	motionsearch.h \
 	yuv4mpeg.h
 
 MAINTAINERCLEANFILES = Makefile.in
