@@ -462,13 +462,13 @@ static int generate_YUV4MPEG(parameters_t *param, char *firstjpeg)
              jpegsize = read_jpeg_data(jpegdata, jpegname, prev_jpegname);
            }
            else {
-             jpegsize = 0;
+             jpegsize = -1;
            }
        }
        
-      mjpeg_info("Numframes %i  jpegsize %i", param->numframes, jpegsize);
+      mjpeg_debug("Numframes %i  jpegsize %i", param->numframes, jpegsize);
        if (jpegsize == -1) {
-			mjpeg_info("in jpegsize < 0"); 
+			mjpeg_debug("in jpegsize < 0"); 
          if (param->numframes == -1) {
            mjpeg_info("No more frames.  Stopping.");
            break;  /* we are done; leave 'while' loop */
