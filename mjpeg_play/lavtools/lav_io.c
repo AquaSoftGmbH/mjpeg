@@ -809,10 +809,6 @@ long lav_read_audio(lav_file_t *lav_file, uint8_t *audbuf, long samps)
    int16_t *qt_audio = (int16_t *)audbuf, **qt_audion;
    int channels = lav_audio_channels(lav_file);
    uint8_t b0, b1;
-
-   qt_audion = malloc(channels * sizeof (int16_t **));
-   for (i = 0; i < channels; i++)
-	qt_audion[i] = (int16_t *)malloc(samps * lav_file->bps);
 #endif
 
    if(!lav_file->has_audio)
@@ -828,6 +824,10 @@ long lav_read_audio(lav_file_t *lav_file, uint8_t *audbuf, long samps)
          return AVI_read_audio(lav_file->avi_fd,audbuf,samps*lav_file->bps)/lav_file->bps;
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
+	qt_audion = malloc(channels * sizeof (int16_t **));
+	for (i = 0; i < channels; i++)
+	    qt_audion[i] = (int16_t *)malloc(samps * lav_file->bps);
+
 	start_pos = quicktime_audio_position(lav_file->qt_fd, 0);
 	lqt_decode_audio_track(lav_file->qt_fd, qt_audion, NULL, samps, 0);
 	last_pos = lqt_last_audio_position(lav_file->qt_fd, 0);
