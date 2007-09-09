@@ -320,6 +320,13 @@ lav_file_t *lav_open_output_file(char *filename, char format,
          if(!lav_fd->qt_fd) { free(lav_fd); return 0; }
          quicktime_set_video(lav_fd->qt_fd, 1, width, height, fps,
                              (interlaced ? QUICKTIME_MJPA : QUICKTIME_JPEG));
+	 if (interlaced)
+	    {
+	    if (lav_fd->interlacing == Y4M_ILACE_TOP_FIRST)
+               lqt_set_fiel(lav_fd->qt_fd, 0, 2, 9);
+	    else if (lav_fd->interlacing == Y4M_ILACE_BOTTOM_FIRST)
+               lqt_set_fiel(lav_fd->qt_fd, 0, 2, 14);
+	    }
          if (asize)
 	    quicktime_set_audio(lav_fd->qt_fd, achans, arate, asize, QUICKTIME_TWOS);
          return lav_fd;
