@@ -717,13 +717,14 @@ if(1)
 
 	y4m_write_frame (Y4MStream.fd_out, &Y4MStream.ostreaminfo, &Y4MStream.oframeinfo, outframe);
 
-	temporal_reconstruct_frame (outframe[0], inframe[0], inframe0[0],  inframe1[0], width, height, 0);
-	temporal_reconstruct_frame (outframe[1], inframe[1], inframe0[1],  inframe1[1], cwidth, cheight, 0);
-	temporal_reconstruct_frame (outframe[2], inframe[2], inframe0[2],  inframe1[2], cwidth, cheight, 0);
-
 	if (both_fields == 1)
-	  y4m_write_frame (Y4MStream.fd_out, &Y4MStream.ostreaminfo,
-			   &Y4MStream.oframeinfo, outframe);
+          {
+            temporal_reconstruct_frame (outframe[0], inframe[0], inframe0[0],  inframe1[0], width, height, 0);
+            temporal_reconstruct_frame (outframe[1], inframe[1], inframe0[1],  inframe1[1], cwidth, cheight, 0);
+            temporal_reconstruct_frame (outframe[2], inframe[2], inframe0[2],  inframe1[2], cwidth, cheight, 0);
+	    y4m_write_frame (Y4MStream.fd_out, &Y4MStream.ostreaminfo,
+                             &Y4MStream.oframeinfo, outframe);
+          }
       }
     else
       {
@@ -733,13 +734,15 @@ if(1)
 
 	y4m_write_frame (Y4MStream.fd_out, &Y4MStream.ostreaminfo, &Y4MStream.oframeinfo, outframe);
 
-	temporal_reconstruct_frame (outframe[0], inframe[0], inframe0[0],  inframe1[0], width, height, 1);
-	temporal_reconstruct_frame (outframe[1], inframe[1], inframe0[1],  inframe1[1], cwidth, cheight, 1);
-	temporal_reconstruct_frame (outframe[2], inframe[2], inframe0[2],  inframe1[2], cwidth, cheight, 1);
-
 	if (both_fields == 1)
-	  y4m_write_frame (Y4MStream.fd_out, &Y4MStream.ostreaminfo,
-			   &Y4MStream.oframeinfo, outframe);
+          {
+            temporal_reconstruct_frame (outframe[0], inframe[0], inframe0[0],  inframe1[0], width, height, 1);
+            temporal_reconstruct_frame (outframe[1], inframe[1], inframe0[1],  inframe1[1], cwidth, cheight, 1);
+            temporal_reconstruct_frame (outframe[2], inframe[2], inframe0[2],  inframe1[2], cwidth, cheight, 1);
+
+	    y4m_write_frame (Y4MStream.fd_out, &Y4MStream.ostreaminfo,
+		             &Y4MStream.oframeinfo, outframe);
+          }
       }
 
   memcpy (inframe1[0],inframe0[0],width*height);
