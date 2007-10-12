@@ -190,7 +190,7 @@ public:
     int64_t bits_used;
     int32_t gop_buffer_correction;
 
-    int32_t target_bits;    // target bits for current frame
+    int target_bits;    // target bits for current frame
 
     double base_quant;
     double gop_Xhi;
