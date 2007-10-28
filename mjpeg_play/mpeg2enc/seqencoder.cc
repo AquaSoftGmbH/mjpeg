@@ -437,6 +437,28 @@ void SeqEncoder::RetainPicture( Picture &picture, RateCtl &ratecontrol)
       pass2ratectl.PictUpdate( picture, dummy );
 }
 
+void SeqEncoder::EncodeStreamOneStep()
+{
+	// For now we simply round-robin schedule the
+	// various passes.  Later - they get split into
+	// seperate processes/threads!!
+	if( !pass1_ss.EndOfStream() )
+	{
+		Pass1Process();
+		pass1_ss.Next( BitsAfterMux() );
+	}
+    
+	if( pass2queue.size() > 0 )
+	{
+		Pass2Process();
+	}
+}
+
+bool SeqEncoder::EncodeStreamWhile()
+{
+	return (pass1coded.size() > 0 || pass2queue.size() > 0);
+}
+
 
 /*********************
  *
@@ -475,20 +497,8 @@ void SeqEncoder::EncodeStream()
     // pass1 rate controller.
     do 
     {
-        // For now we simply round-robin schedule the
-        // various passes.  Later - they get split into
-        // seperate processes/threads!!
-        if( !pass1_ss.EndOfStream() )
-        {
-            Pass1Process();
-            pass1_ss.Next( BitsAfterMux() );
-        }
-        
-        if( pass2queue.size() > 0 )
-        {
-            Pass2Process();
-        }
-    } while( pass1coded.size() > 0 || pass2queue.size() > 0  );
+    	EncodeStreamOneStep();
+    } while( EncodeStreamWhile() );
 
     StreamEnd();
 }

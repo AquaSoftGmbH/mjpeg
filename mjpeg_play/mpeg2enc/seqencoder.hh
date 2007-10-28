@@ -64,6 +64,30 @@ public:
      *
      *********************************/
     void EncodeStream();
+
+	/**********************************
+	*
+	* One Step of EncodeStream function
+	*
+	*********************************/
+	void EncodeStreamOneStep();
+
+	/**********************************
+	*
+	* One Step of EncodeStream function
+	*
+	*********************************/
+	bool EncodeStreamWhile();
+
+	/**********************************
+	*
+	* Perform Epilogue to encoding video stream
+	* Ensure all encoding work still being worked on
+	* is completed and flushed.  Collects statistics etc etc.
+	*
+	*********************************/
+	void StreamEnd();
+
         
 private:
 
@@ -95,17 +119,6 @@ private:
      *
      *********************************/
     void Pass2Process();
-
-
-     /**********************************
-     *
-     * Perform Epilogue to encoding video stream
-     * Ensure all encoding work still being worked on
-     * is completed and flushed.  Collects statistics etc etc.
-     *
-     *********************************/
-   
-    void StreamEnd();
 
     void Pass1RateCtlSetup( Picture &picture );
     void Pass2RateCtlSetup( Picture &picture );
