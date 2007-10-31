@@ -859,7 +859,7 @@ bool SeqEncoder::Pass2EncodePicture(Picture &picture, bool force_reencode)
                picture.present,
                picture.temp_ref,
                pict_type_char[picture.pict_type],
-               picture.AQ,
+               picture.ABQ,
                reencode ? "RECODED" : "RETAINED" );
     return reencode;
 }
@@ -913,7 +913,6 @@ void SeqEncoder::Pass2Process()
         bool reencoded = Pass2EncodePicture( *pic, reference_reencoded );
         reference_reencoded |= reencoded && pic->pict_type != B_TYPE;
         pic->CommitCoding();
-        mjpeg_info( "RELS: %d %d", pic->decode, pic->present );
 
         ReleasePicture( pic );
         pass2queue.pop_front();

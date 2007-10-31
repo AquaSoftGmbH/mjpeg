@@ -442,7 +442,6 @@ void OnTheFlyPass1::PictUpdate( Picture &picture, int &padding_needed)
 	/* For the virtual buffers for quantisation feedback it is the
 	   actual under/overshoot *including* padding.  Otherwise the
 	   buffers go zero.
-       BUGBUGBUG  should'nt this go after the padding calculation?
 	*/
 	vbuf_fullness += frame_overshoot;
 
@@ -452,7 +451,7 @@ void OnTheFlyPass1::PictUpdate( Picture &picture, int &padding_needed)
 	   specified in advance in vbv_buffer_size.
 	*/
 	picture.pad = 0;
-    int padding_bits = 0;
+   	int padding_bits = 0;
 	if( encparams.still_size > 0 && encparams.vbv_buffer_still_size)
 	{
 		if( frame_overshoot > frame_overshoot_margin )
@@ -470,12 +469,12 @@ void OnTheFlyPass1::PictUpdate( Picture &picture, int &padding_needed)
 		if( frame_overshoot < -2048*8 )
 			frame_overshoot += 1024*8;
         
-        // Make sure we pad nicely to byte alignment
-        if( frame_overshoot < 0 )
-        {
-            padding_bits = (((actual_bits-frame_overshoot)>>3)<<3)-actual_bits;
-            picture.pad = 1;
-        }
+		// Make sure we pad nicely to byte alignment
+		if( frame_overshoot < 0 )
+		{
+		padding_bits = (((actual_bits-frame_overshoot)>>3)<<3)-actual_bits;
+		picture.pad = 1;
+		}
 	}
 
     /* Adjust the various bit counting  parameters for the padding bytes that
@@ -597,8 +596,7 @@ void OnTheFlyPass1::PictUpdate( Picture &picture, int &padding_needed)
                  sum_size[P_TYPE]/pict_count[P_TYPE],
                  sum_size[B_TYPE]/pict_count[B_TYPE]
         );
-    
-                
+
     padding_needed = padding_bits/8;
 }
 
@@ -686,7 +684,8 @@ int OnTheFlyPass1::MacroBlockQuant( const MacroBlock &mb )
         else
             act_boost = 1.0;
 
-        cur_base_Q = fmax(dj*62.0/fb_gain,encparams.quant_floor);
+        cur_base_Q =  ClipQuant( picture.q_scale_type,
+                                 fmax(dj*62.0/fb_gain,encparams.quant_floor) );
         cur_mquant = ScaleQuant(picture.q_scale_type,cur_base_Q/act_boost) ;
     }
     --mquant_change_ctr;
@@ -769,6 +768,18 @@ void OnTheFlyPass2::InitSeq()
   bits_transported = bits_used = 0;
   field_rate = 2*encparams.decode_frame_rate;
   fields_per_pict = encparams.fieldpic ? 1 : 2;
+
+  /*
+   * To allow repeated undershooting of the target bit size
+   * to be corrected we allow the smalelr of 1/4 of video a buffers worth
+   * of bits or 1/4 of a seconds worth of transport capacity
+   * to be consumed in excess of transport capacity
+   * per second.
+   */
+
+  buffer_variation_bias =  std::min( encparams.video_buffer_size * (8.0 /4),
+                                     encparams.bit_rate / 4 );
+                        
   if( encparams.still_size > 0 )
   {
     per_pict_bits = encparams.still_size * 8;
@@ -822,19 +833,14 @@ void OnTheFlyPass2::GopSetup( std::deque<Picture *>::iterator gop_begin,
 
 /* ****************************
 *
-* Reinitialize rate control parameters for start of new Picture
+* Reinitialize rate control parameters for start of new GOP
 *
 * ****************************/
 
 void OnTheFlyPass2::InitGOP(  )
 {
   mjpeg_debug( "PASS2 GOP Rate Init" );
-  double feedback_correction = buffer_variation * overshoot_gain;
-  double available_bits = (encparams.bit_rate+feedback_correction)
-                          * fields_in_gop/field_rate;
 
-  double gop_quant = fmax( encparams.quant_floor, gop_Xhi / available_bits );
-  gop_bitrate = gop_Xhi / gop_quant;
   //mjpeg_info( "P2RC: GOP bv %d avail %.0f gq = %0.f gbr %.0f",
   //            buffer_variation, available_bits, gop_quant, gop_bitrate );
 }
@@ -865,14 +871,32 @@ bool OnTheFlyPass2::InitPict(Picture &picture)
 
   // Bitrate model:  bits_picture(i) =  K(i) / quantisation
   // Hence use Complexity metric = bits * quantisation
+
+  // Re-encoding using this model often has a bias to under-allocate bits.
+  // To correct this we slightly skew the allocation by pretending we have
+  // more bits available than can actually be transported.
+  // However, we roll off the correction so its pretty weak unless
+  // the decoders input buffer is (near) full.
+
+  double virtual_buffer_variation = (buffer_variation + buffer_variation_bias);
+  double feedback_correction;
+  if( virtual_buffer_variation > 0.0 )
+  {
+      double bias_gain = overshoot_gain * pow(virtual_buffer_variation/buffer_variation_bias,1.5);
+      feedback_correction =  bias_gain * virtual_buffer_variation;
+  }
+  else
+  {
+     feedback_correction =  overshoot_gain * virtual_buffer_variation;
+  }
+  double available_bits = (encparams.bit_rate+feedback_correction)
+                          * fields_in_gop/field_rate;
+
+
   // TODO: naive constant-quality = constant-quantisation
   // model allocate bits proportionate to complexity.
   // Soon something smarter...
 
-
-
-  double feedback_correction = buffer_variation * overshoot_gain;
-  double available_bits = (gop_bitrate+feedback_correction);
 
   // Work out target bit allocation of frame based complexity statistics
   double Xhi = picture.ABQ * picture.EncodedSize(); 
@@ -886,14 +910,13 @@ bool OnTheFlyPass2::InitPict(Picture &picture)
 
   picture.avg_act = avg_act;
   picture.sum_avg_act = sum_avg_act;
-  
-
 
   int actual_bits = picture.EncodedSize();
   double rel_error = (actual_bits-target_bits) / static_cast<double>(target_bits);
+  double scale_quant_floor = encparams.quant_floor;
   bool reenc_needed =
         rel_error  > encparams.coding_tolerance
-    || (rel_error < -encparams.coding_tolerance && picture.ABQ > encparams.quant_floor * 1.01 );
+    || (rel_error < -encparams.coding_tolerance && picture.ABQ > scale_quant_floor * 1.1 );
 
 
 
@@ -902,15 +925,17 @@ bool OnTheFlyPass2::InitPict(Picture &picture)
   // result.  Ideally we should do some kind of newton iteration here but its probably not needed.
 
 
-  base_Q = fmax( encparams.quant_floor, picture.ABQ * actual_bits / target_bits );
+  base_Q = ClipQuant( picture.q_scale_type,
+                      fmax( encparams.quant_floor, picture.ABQ * actual_bits / target_bits ) );
+
   cur_int_base_Q = floor( base_Q + 0.5 );
   rnd_error = 0.0;
   cur_mquant = ScaleQuant( picture.q_scale_type, cur_int_base_Q );
 
 
-    mjpeg_info( "%s: %d - reencode actual %d (%.1f) target %d (%.1f) ",
+    mjpeg_debug( "%s: %d - reencode actual %d (%.1f/%.1f) target %d (%.1f %.1f) ",
                 reenc_needed ? "RENC" : "SKIP",
-                picture.decode, actual_bits, picture.ABQ, target_bits, base_Q );
+                picture.decode, actual_bits, picture.ABQ, picture.AQ, target_bits, base_Q, scale_quant_floor );
   return reenc_needed;
 }
 
@@ -948,6 +973,7 @@ void OnTheFlyPass2::PictUpdate( Picture &picture, int &padding_needed)
   bits_transported += per_pict_bits;
   buffer_variation  = static_cast<int32_t>(bits_transported - bits_used);
 
+
   if( buffer_variation > 0 )
   {
     bits_transported = bits_used;
@@ -965,6 +991,7 @@ void OnTheFlyPass2::PictUpdate( Picture &picture, int &padding_needed)
     picture.ABQ = sum_base_Q / encparams.mb_per_pict;
     picture.AQ = static_cast<double>(sum_actual_Q ) / encparams.mb_per_pict;
   }
+
 
 
   /* Stats and logging.

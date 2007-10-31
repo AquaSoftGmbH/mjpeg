@@ -194,8 +194,7 @@ public:
 
     double base_quant;
     double gop_Xhi;
-    double gop_bitrate;
-
+    double buffer_variation_bias;
 
     /*
       actsum - Total activity (sum block variances) in frame

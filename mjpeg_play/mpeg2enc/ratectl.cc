@@ -85,6 +85,33 @@ bool RateCtl::PictSetup( Picture &picture)
 
 }
 
+double RateCtl::ClipQuant( int q_scale_type, double quant )
+{
+	double quantf = quant;
+	if ( q_scale_type )
+	{		/* clip to legal (non-linear) range */
+		if (quantf<1)
+		{
+            quantf = 1;
+		}
+		
+		if (quantf>111)
+		{
+			quantf = 112;
+
+		}
+    }
+    else
+    {   		/* clip mquant to legal (linear) range */
+
+		if (quantf<2.0)
+			quantf = 2.0;
+		if (quantf>62.0)
+			quantf = 62.0;
+    }
+    return quantf;
+}
+
 double RateCtl::ScaleQuantf( int q_scale_type, double quant )
 {
 	double quantf;
@@ -94,12 +121,11 @@ double RateCtl::ScaleQuantf( int q_scale_type, double quant )
 		int iquantl, iquanth;
 		double wl, wh;
 
-		/* BUG TODO: This should interpolate the table... */
 		wh = quant-floor(quant);
 		wl = 1.0 - wh;
 		iquantl = (int) floor(quant);
 		iquanth = iquantl+1;
-		/* clip to legal (linear) range */
+		/* clip to legal (non-linear) range */
 		if (iquantl<1)
 		{
 			iquantl = 1;
@@ -133,29 +159,15 @@ double RateCtl::ScaleQuantf( int q_scale_type, double quant )
 
 int RateCtl::ScaleQuant( int q_scale_type , double quant )
 {
-	int iquant;
-	
+	double quantf = ClipQuant( q_scale_type, quant );
+    int iquant = (int)floor(quantf+0.5);
 	if ( q_scale_type  )
 	{
-		iquant = (int) floor(quant+0.5);
-
-		/* clip mquant to legal (linear) range */
-		if (iquant<1)
-			iquant = 1;
-		if (iquant>112)
-			iquant = 112;
-
 		iquant =
 			non_linear_mquant_table[map_non_linear_mquant[iquant]];
 	}
 	else
 	{
-		/* clip mquant to legal (linear) range */
-		iquant = (int)floor(quant+0.5);
-		if (iquant<2)
-			iquant = 2;
-		if (iquant>62)
-			iquant = 62;
 		iquant = (iquant/2)*2; // Must be *even*
 	}
 	return iquant;

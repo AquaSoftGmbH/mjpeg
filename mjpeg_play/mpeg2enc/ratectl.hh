@@ -92,6 +92,7 @@ public:
     // TODO DEBUG
     virtual double SumAvgActivity() = 0;
 
+    static double ClipQuant( int q_scale_type, double quant );
     static double InvScaleQuant(  int q_scale_type, int raw_code );
     static int ScaleQuant( int q_scale_type, double quant );
 protected:

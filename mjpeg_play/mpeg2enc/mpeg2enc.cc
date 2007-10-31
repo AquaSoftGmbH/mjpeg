@@ -1084,10 +1084,6 @@ int main( int argc, char *argv[] )
 {
     MPEG2EncCmdLineOptions options;
 
-mjpeg_warn("mpeg2enc is currently broken.  You HAVE BEEN WARNED!");
-mjpeg_warn("mpeg2enc is currently broken.  You HAVE BEEN WARNED!");
-mjpeg_warn("mpeg2enc is currently broken.  You HAVE BEEN WARNED!");
-
     mjpeg_default_handler_verbosity(options.verbose);
 
     if( options.SetFromCmdLine( argc, argv ) != 0 )

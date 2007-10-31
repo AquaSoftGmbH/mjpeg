@@ -438,7 +438,7 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 	qscale_tab[0] 
 		= qscale_tab[1] 
 		= qscale_tab[2] 
-		= options.mpeg == 1 ? 0 : 1;
+		= options.mpeg == 1 ? 0 : 0;
 
 	intravlc_tab[0] 
 		= intravlc_tab[1] 

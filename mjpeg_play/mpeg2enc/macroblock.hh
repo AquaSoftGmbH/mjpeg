@@ -100,7 +100,7 @@ public:
         }
 
     inline Picture &ParentPicture() const { return *picture; }
-    inline int BaseLumVariance() const { return lum_variance; }
+    inline int BaseLumVariance() const { return best_me->var; }
     inline double Activity() const { return act; }
     inline const int TopleftX() const { return i; }
     inline const int TopleftY() const { return j; }
