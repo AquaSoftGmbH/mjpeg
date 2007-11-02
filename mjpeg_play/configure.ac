@@ -240,9 +240,6 @@ dnl    defines X_DISPLAY_MISSING if no X)
 dnl *********************************************************************
 AC_PATH_XTRA
 
-dnl maddog:  even better -- all that other stuff was unnecessary.
-AM_CONDITIONAL(HAVE_X, test x$have_x = xyes)
-
 dnl ********************************************************************
 dnl Check to see if __progname is provided by the system
 dnl ********************************************************************

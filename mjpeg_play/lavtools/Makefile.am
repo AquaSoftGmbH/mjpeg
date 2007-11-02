@@ -60,9 +60,6 @@ liblavplay_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS) $(X_CFLAGS)
 liblavplay_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
 liblavplay_la_LIBADD = liblavfile.la $(SDL_LIBS) liblavjpeg.la
 liblavplay_la_DEPENDENCIES = liblavfile.la liblavjpeg.la
-if HAVE_X
-  liblavplay_la_LIBADD += $(X_LIBS) -lX11
-endif
 
 # *********************************************************************
 # The tools themselves
@@ -130,10 +127,6 @@ matteblend_flt_LDADD = $(LIBMJPEGUTILS)
 
 multiblend_flt_SOURCES = multiblend.flt.c
 multiblend_flt_LDADD = $(LIBMJPEGUTILS)
-
-if HAVE_X
-  LAVPLAY_X_LIBS = $(X_LIBS) -lX11
-endif
 
 lavplay_SOURCES = lavplay.c
 lavplay_LDADD = $(LIBMJPEGUTILS) \
