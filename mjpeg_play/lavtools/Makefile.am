@@ -59,6 +59,9 @@ liblavplay_la_SOURCES = liblavplay.c audiolib.c
 liblavplay_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS) $(X_CFLAGS)
 liblavplay_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
 liblavplay_la_LIBADD = liblavfile.la $(SDL_LIBS) liblavjpeg.la
+if HAVE_V4L
+   liblavplay_la_LIBADD += ${X_LIBS} -lX11
+endif
 liblavplay_la_DEPENDENCIES = liblavfile.la liblavjpeg.la
 
 # *********************************************************************
@@ -131,7 +134,7 @@ multiblend_flt_LDADD = $(LIBMJPEGUTILS)
 lavplay_SOURCES = lavplay.c
 lavplay_LDADD = $(LIBMJPEGUTILS) \
 	liblavplay.la liblavjpeg.la liblavfile.la \
-	@LIBGETOPT_LIB@ $(PTHREAD_LIBS) $(SDL_LIBS) $(LAVPLAY_X_LIBS)
+	@LIBGETOPT_LIB@ $(PTHREAD_LIBS) $(SDL_LIBS)
 
 lavrec_SOURCES = lavrec.c
 lavrec_LDADD = $(LIBMJPEGUTILS) \
