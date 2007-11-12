@@ -402,7 +402,10 @@ int decode_png(const char *pngname, int process, parameters_t *param)
     }
   png_read_end(png_ptr, info_ptr);
 #endif  
-  png_destroy_read_struct(&png_ptr, &info_ptr, &end_info);
+  if (setjmp(png_ptr->jmpbuf)) {
+    png_destroy_read_struct(&png_ptr, &info_ptr, &end_info);
+    return 2;
+    }
 
   fclose(pngfile);
 
