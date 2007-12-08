@@ -1672,7 +1672,7 @@ main (int argc, char *argv[])
 	    mjpeg_error_exit1
 	      ("Could not allocate memory for padded_top|bottom tables. STOP!");
 	}
-       if (!(intermediate = (int32_t *) malloc(output_active_width*(input_useful_height + height_neighbors)*sizeof(int32_t)))) 
+       if (!(intermediate = (int32_t *) malloc(output_active_width*(input_useful_height + height_neighbors+1)*sizeof(int32_t)))) 
 	     mjpeg_error_exit1
 	     ("Could not allocate memory for intermediate. STOP!");
        
