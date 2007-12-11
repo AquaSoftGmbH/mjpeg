@@ -70,7 +70,7 @@
 #include "../utils/mmx.h"
 #endif
 
-#define yuvscaler_VERSION "15-02-2004"
+#define yuvscaler_VERSION "11-Dec-2007"
 // For pointer address alignement
 #define ALIGNEMENT 16		// 16 bytes alignement for mmx registers in SIMD instructions for Pentium
 #define MAXWIDTHNEIGHBORS 16
@@ -1195,12 +1195,15 @@ main (int argc, char *argv[])
   y4m_stream_info_t out_streaminfo;
   y4m_ratio_t frame_rate = y4m_fps_UNKNOWN;
 
-  // Information output
-  mjpeg_info ("yuvscaler "VERSION" ("yuvscaler_VERSION") is a general scaling utility for yuv frames");
-  mjpeg_info ("(C) 2001-2004 Xavier Biquard <xbiquard@free.fr>, yuvscaler -h for help, or man yuvscaler");
-
   // Initialisation of global variables that are independent of the input stream, input_file in particular
   handle_args_global (argc, argv);
+
+  // Information output
+  if (verbose)
+     {
+     mjpeg_info ("yuvscaler %s %s", PACKAGE_VERSION, yuvscaler_VERSION);
+     mjpeg_info ("(C) 2001-2004 Xavier Biquard <xbiquard@free.fr>, yuvscaler -h for help, or man yuvscaler");
+     }
 
   // mjpeg tools global initialisations
   mjpeg_default_handler_verbosity (verbose);
