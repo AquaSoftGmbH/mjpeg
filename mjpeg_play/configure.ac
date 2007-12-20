@@ -65,7 +65,11 @@ AC_PROG_LIBTOOL
 dnl Checks for programs.
 AC_PROG_AWK
 AC_PROG_CC
-AM_PROG_CC_STDC
+
+# automake 1.9 could use AM_PROG_STDC but 1.10 became picky and needs CC_C_0
+AM_PROG_CC_C_O
+# AM_PROG_CC_STDC
+
 AC_PROG_CXX
 AC_PROG_INSTALL
 AC_PROG_LN_S
