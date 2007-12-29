@@ -161,12 +161,8 @@ case $host in
 		             [Building for Linux - using the video4linux API])],
                   [AC_MSG_ERROR([videodev.h not found - please install the linux kernel headers])])
    ;;
-  *)
-  AC_MSG_WARN([Did not find linux platform - video4linux functionality will be disabled])
-   ;;
 esac
 AM_CONDITIONAL(HAVE_V4L, test x$have_video4linux = xtrue)
-
 
 dnl *********************************************************************
 dnl Figure out how to build with POSIX threads.
@@ -492,8 +488,6 @@ dnl *********************************************************************
 dnl Check for what warnings we want gcc to use and adjust the CFLAGS
 dnl as needed. This only works for GCC.
 dnl We do this last as it can screw up library detection etc...
-
-dnl maddog:  check out AC-COMPILE-WARNINGS ???????
 
 CFLAGS="$ARCHFLAGS $CFLAGS"
 CXXFLAGS="$ARCHFLAGS $CXXFLAGS"
