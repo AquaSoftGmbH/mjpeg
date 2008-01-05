@@ -121,9 +121,6 @@ static void resample(  int fdIn
   for (i = 0; i < y4m_si_get_plane_count(inStrInfo); i++)
     yuv_data[i] = (uint8_t *) checked_malloc(y4m_si_get_plane_length(inStrInfo, i));
  
-  mjpeg_warn( "Converting from %d:%d to %d:%d", 
-               src_frame_rate.n,src_frame_rate.d,frame_rate.n,frame_rate.d  );
-
   /* Initialize counters */
   srcInc = (long long)src_frame_rate.n * (long long)frame_rate.d ;
   dstInc = (long long)frame_rate.n * (long long)src_frame_rate.d ;
@@ -617,13 +614,7 @@ int main (int argc, char *argv[])
   y4m_si_set_framerate( &out_streaminfo, frame_rate );
   y4m_si_set_interlace( &out_streaminfo, interlacing );
   y4m_write_stream_header(fdOut,&out_streaminfo);
-  if( change_header_only )
-  {
-    frame_rate = src_frame_rate;
-    interlacing = src_interlacing;
-    use_weighted_average = 0;
-  }
-    
+
   if (not_normalize == 0)
     { /* Trying to normalize the values */
       normalized_ratio = mpeg_conform_framerate( 
@@ -633,7 +624,21 @@ int main (int argc, char *argv[])
       src_frame_rate.n = normalized_ratio.n;
       src_frame_rate.d = normalized_ratio.d;
     }
-  
+
+/*
+ * Do this BEFORE clobbering frame_rate below!!  Otherwise the wrong
+ * value is printed because the src_rate is copied over to the -r value 
+*/
+  mjpeg_warn( "Converting from %d:%d to %d:%d", 
+               src_frame_rate.n,src_frame_rate.d,frame_rate.n,frame_rate.d  );
+
+  if( change_header_only )
+  {
+    frame_rate = src_frame_rate;
+    interlacing = src_interlacing;
+    use_weighted_average = 0;
+  }
+    
   /* in that function we do all the important work */
   if (use_weighted_average)
     resample_wa( fdIn, &in_streaminfo, src_frame_rate, src_interlacing,

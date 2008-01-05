@@ -467,17 +467,18 @@ static int generate_YUV4MPEG(parameters_t *param, char *firstjpeg)
        }
        
       mjpeg_debug("Numframes %i  jpegsize %i", param->numframes, jpegsize);
-       if (jpegsize == -1) {
-			mjpeg_debug("in jpegsize < 0"); 
-         if (param->numframes == -1) {
-           mjpeg_info("No more frames.  Stopping.");
-           break;  /* we are done; leave 'while' loop */
-         } else {
-           mjpeg_info("Rewriting latest frame instead.");
-         }
+       if (jpegsize <= 0) {
+         mjpeg_debug("in jpegsize <= 0"); 
+         if (param->numframes == -1)
+            {
+            mjpeg_info("No more frames.  Stopping.");
+            break;  /* we are done; leave 'while' loop */
+            }
+         else
+            mjpeg_info("Rewriting latest frame instead.");
        }
          
-       if (jpegsize > 0) { 
+       if (jpegsize > 0) {
          mjpeg_debug("Preparing frame");
          
          /* decode_jpeg_raw:s parameters from 20010826
