@@ -164,8 +164,10 @@ copied to the output, you can use a dash instead of a command line:
 
 .PP
 And here's an example for a complete pipe list that implements
-a transistion from scene1.avi to scene2.avi (remove the comments after #):
-
+a transistion from scene1.avi to scene2.avi
+.sp
+.B REMOVE THE COMMENTS AFTER The  #
+.sp
 .B LAV Pipe List
 .br
 .B PAL
@@ -206,7 +208,6 @@ a transistion from scene1.avi to scene2.avi (remove the comments after #):
 I'm sure there are enough of them. lavpipe often accepts
 malformed pipe lists and then writes out a video that was
 all but intended - without warning.
-
 .SH "NOTES"
 There are also some serious limitations in the system, such
 as frame-by-frame processing. But as the goal when writing
@@ -219,7 +220,8 @@ pipe list as an input for another pipe list by simply
 using the lavpipe command in the source list (see above) -
 this can be already used to do some nice things, if you
 have some nice filters.
-
+.sp
+.B Comments are NOT allowed in pipelist files.  The comments (text after #) above are for illustration only.
 .SH AUTHOR
 This man page was written by pHilipp Zabel.
 .br

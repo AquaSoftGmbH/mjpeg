@@ -38,6 +38,7 @@ int read_pipe_list (char *name, PipeList *pl)
 {
    FILE *fd;
    char  line[1024];
+   PipeSegment *seq;
    int   i, j, n;
 
    fd = fopen (name, "r");
@@ -49,12 +50,10 @@ int read_pipe_list (char *name, PipeList *pl)
 
       fgets (line, 1024, fd);
       if(line[0]!='N' && line[0]!='n' && line[0]!='P' && line[0]!='p')
-      {
-         mjpeg_error("Pipe list second line is not NTSC/PAL");
-         exit (1);
-      }
-	  mjpeg_debug("Pipe list norm is %s",line[0]=='N'||line[0]=='n'?"NTSC":"PAL");
-      if(line[0]=='N'||line[0]=='n')
+         mjpeg_error_exit1("Pipe list second line is not NTSC/PAL");
+     mjpeg_debug("Pipelist norm is %s",line[0]=='N'||line[0]=='n'?"NTSC":"PAL");
+
+     if(line[0]=='N'||line[0]=='n')
          pl->video_norm = 'n';
       else
          pl->video_norm = 'p';
@@ -62,22 +61,18 @@ int read_pipe_list (char *name, PipeList *pl)
       /* 2. input streams */
 
       fgets (line, 1024, fd);
-      if (sscanf (line, "%d", &(pl->source_count)) != 1) {
-         mjpeg_error( "pipelist: # of input streams expected, \"%s\" found", line);
-         return -1;
-      }
+      if (sscanf (line, "%d", &(pl->source_count)) != 1)
+         mjpeg_error_exit1( "pipelist: # of input streams expected, \"%s\" found", line);
 	  
-	  mjpeg_info( "Pipe list contains %d input streams", pl->source_count);
+      mjpeg_info( "Pipe list contains %d input streams", pl->source_count);
 
       pl->source_cmd = (char **) malloc (pl->source_count * sizeof (char *));
 
       for (i=0; i<pl->source_count; i++) {
          fgets(line,1024,fd);
          n = strlen(line);
-         if(line[n-1]!='\n') {
-            mjpeg_error("Input cmdline in pipe list too long");
-            exit(1);
-         }
+         if(line[n-1]!='\n')
+            mjpeg_error_exit1("Input cmdline in pipe list too long");
          line[n-1] = 0; /* Get rid of \n at end */
          pl->source_cmd[i] = (char *) malloc (n);
          strncpy (pl->source_cmd[i], line, n);
@@ -89,34 +84,28 @@ int read_pipe_list (char *name, PipeList *pl)
       pl->segment_count = 0;
       pl->segments = (PipeSegment **) malloc (32 * sizeof (PipeSegment *));
       while (fgets (line, 1024, fd)) {
-
-         PipeSegment *seq = (PipeSegment *) malloc (sizeof (PipeSegment));
+         seq = (PipeSegment *) malloc (sizeof (PipeSegment));
          
          /* 3.1. frames in sequence */
 
-         if (sscanf (line, "%d", &(seq->frame_count)) != 1) {
-            mjpeg_error( "pipelist: # of frames in sequence expected, \"%s\" found", line);
-            return -1;
-         }
-         if (seq->frame_count < 1) {
-			 mjpeg_error_exit1( "Pipe list contains sequence of length < 1 frame");
-         }
-
-		 mjpeg_debug( "Pipe list sequence %d contains %d frames", 
+         if (sscanf (line, "%d", &(seq->frame_count)) != 1)
+            mjpeg_error_exit1( "pipelist: # of frames in sequence expected, \"%s\" found", line);
+         if (seq->frame_count < 1)
+	    mjpeg_error_exit1( "Pipe list contains sequence of length < 1 frame");
+         mjpeg_debug( "Pipe list sequence %d contains %d frames", 
 					  pl->segment_count, seq->frame_count);
          pl->frame_count += seq->frame_count;
          
          /* 3.2. input streams */
      
-         n = !fgets (line, 1024, fd);
-         if (sscanf (line, "%d", &(seq->input_count)) != 1) {
-            mjpeg_error( "pipelist: # of streams in sequence expected, \"%s\" found", line);
-            return -1;
-         }
+         if (fgets (line, 1024, fd) == NULL)
+            mjpeg_error_exit1("pipelist: end of file reading # of streams");
+         if (sscanf (line, "%d", &(seq->input_count)) != 1)
+            mjpeg_error_exit1( "pipelist: # of streams in sequence expected, \"%s\" found", line);
          seq->input_index = (int *) malloc (seq->input_count * sizeof (int));
          seq->input_offset = (unsigned long *) malloc (seq->input_count * sizeof (unsigned long));
          for (i=0; i<seq->input_count; i++) {
-            if (!fgets (line, 1024, fd)) n++;
+            fgets (line, 1024, fd);	/* ignore eof - will detect later */
             j = sscanf (line, "%d %lud", &(seq->input_index[i]), &(seq->input_offset[i]));
             if (j == 1) {
                /* if no offset is given, assume ofs = 0 */
@@ -129,22 +118,18 @@ int read_pipe_list (char *name, PipeList *pl)
             }
             if (seq->input_index[i] >= pl->source_count) {
                mjpeg_error( "Sequence requests input stream that is not contained in pipe list");
-               exit (1);
+               return(-1);
             }
          }
 
          /* 3.3. output cmd */
 
-         fgets (line, 1024, fd);
-         if (n > 0) {
-            mjpeg_error( "Error in pipe list: Unexpected end");
-            mjpeg_error( "\"%s\"", line);
-            exit (1);
-         }
+         if (fgets(line, 1024, fd) == NULL)
+            mjpeg_error_exit1( "Error in pipe list: Unexpected end");
          n = strlen(line);
          if(line[n-1]!='\n') {
             mjpeg_error("Output cmdline in pipe list too long");
-            exit(1);
+            return(-1);
          }
          line[n-1] = 0; /* Get rid of \n at end */
          seq->output_cmd = (char *) malloc (n);
