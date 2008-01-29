@@ -235,11 +235,7 @@ void VideoStream::OutputSector ( )
        N.b.runout_PTS is the PTS of the after which the next I frame
        marks the start of the next sequence.
 	*/
-    
-    /* TODO finish this: Need to look-ahead sufficiently far to
-       guarantee finding an I-FRAME even if its predecessors are very
-       small.  
-    */
+
 	if( muxinto.sector_align_iframeAUs || muxinto.running_out )
 	{
 		max_packet_payload = ExcludeNextIFramePayload();

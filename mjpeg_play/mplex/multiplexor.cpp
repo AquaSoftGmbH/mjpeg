@@ -1566,7 +1566,9 @@ void Multiplexor::OutputPadding (bool vcd_audio_pad)
  *	OutputGOPControlSector
  *  DVD System headers are carried in peculiar sectors carrying 2
  *  PrivateStream2 packets.   We're sticking 0's in the packets
- *  as we have no idea what's supposed to be in there.
+ * for anything other than the substream IDs as they're
+ * merely being inserted as place-holders to provide gaps the
+ * DVD authoring SW can fill in later.
  *
  * Thanks to Brent Byeler who worked out this work-around.
  *
@@ -1579,11 +1581,11 @@ void Multiplexor::OutputDVDPriv2 (	)
     uint8_t *sector_buf = new uint8_t[sector_size];
     unsigned int tozero;
     assert( sector_size == 2048 );
-    PS_Stream::BufferSectorHeader( sector_buf,
+    psstrm->BufferSectorHeader( sector_buf,
                                 pack_header_ptr,
                                 &sys_header,
                                 index );
-    PS_Stream::BufferPacketHeader( index,
+    psstrm->BufferPacketHeader( index,
                                    PRIVATE_STR_2,
                                    2,      // MPEG 2
                                    false,  // No buffers
@@ -1597,10 +1599,11 @@ void Multiplexor::OutputDVDPriv2 (	)
                                    index );
     tozero = sector_buf+1024-index;
     memset( index, 0, tozero);
+    index[0] = 0x00; // Substream 1 (PCI)
     index += tozero;
-    PS_Stream::BufferPacketSize( packet_size_field, index );    
+    psstrm->BufferPacketSize( packet_size_field, index );    
 
-    PS_Stream::BufferPacketHeader( index,
+    psstrm->BufferPacketHeader( index,
                                    PRIVATE_STR_2,
                                    2,      // MPEG 2
                                    false,  // No buffers
@@ -1614,8 +1617,9 @@ void Multiplexor::OutputDVDPriv2 (	)
                                    index );
     tozero = sector_buf+2048-index;
     memset( index, 0, tozero );
+    index[0] = 0x01; // Substream 1 (DSI)
     index += tozero;
-    PS_Stream::BufferPacketSize( packet_size_field, index );
+    psstrm->BufferPacketSize( packet_size_field, index );
 
     WriteRawSector( sector_buf, sector_size );
 

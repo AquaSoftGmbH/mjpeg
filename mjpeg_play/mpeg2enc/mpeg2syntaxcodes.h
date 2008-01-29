@@ -40,6 +40,7 @@
 #define ISO_END_CODE       0x1B9L
 #define PACK_START_CODE    0x1BAL
 #define SYSTEM_START_CODE  0x1BBL
+#define FFFF_VBV_DELAY     0xFFFF
 
 /* picture coding type */
 enum PICTURE_CODING

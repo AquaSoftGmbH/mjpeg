@@ -259,7 +259,7 @@ void LookaheadRCPass1::InitGOP(  )
   *
   * ****************************/
 
-bool LookaheadRCPass1::InitPict(Picture &picture)
+void LookaheadRCPass1::InitPict(Picture &picture)
 {
     int available_bits;
     double Xsum,varsum;
@@ -394,8 +394,6 @@ bool LookaheadRCPass1::InitPict(Picture &picture)
     cur_mquant = ScaleQuant( picture.q_scale_type,
                              fmax( vbuf_fullness*62.0/fb_gain, encparams.quant_floor) );
     mquant_change_ctr = encparams.mb_width/2;
-
-    return true;    // In pass-1 we have no previous encoding to rely on
 }
 
 

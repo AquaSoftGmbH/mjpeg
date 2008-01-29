@@ -72,7 +72,7 @@ public:
     *
     ********************/
 
-    virtual bool PictSetup (Picture &picture);
+    virtual void PictSetup (Picture &picture);
 
     /*********************
     *
@@ -117,11 +117,11 @@ protected:
     *
     * Reinitialize rate control parameters for start of new Picture
     *
-    * @return (re)encoding of picture necessary to achieve rate-control
+    * @return (re)encoding of picture to achieve rate-control mandatory
     *
     * ****************************/
 
-    virtual bool InitPict( Picture &picture ) = 0;
+    virtual void InitPict( Picture &picture ) = 0;
 
 
     double ScaleQuantf( int q_scale_type, double quant );
@@ -156,6 +156,14 @@ public:
     ********************/
     virtual void GopSetup( std::deque<Picture *>::iterator gop_begin,
                            std::deque<Picture *>::iterator gop_end ) = 0;
+
+    /*********************
+    * @pre PictureSetup called...
+    * @return Re-encoding of picture to achieve rate control mandatory
+    *
+    *********************/
+ 
+    virtual bool ReencodeRequired() const = 0;
 };
 
 /* 

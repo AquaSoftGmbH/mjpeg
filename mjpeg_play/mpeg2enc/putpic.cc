@@ -205,7 +205,7 @@ void Picture::PutHeader()
 	coding->PutBits(PICTURE_START_CODE,32); /* picture_start_code */
 	coding->PutBits(temp_ref,10); /* temporal_reference */
 	coding->PutBits(pict_type,3); /* picture_coding_type */
-	coding->PutBits(vbv_delay,16); /* vbv_delay */
+	coding->PutBits(FFFF_VBV_DELAY,16); /* vbv_delay */
 
 	if (pict_type==P_TYPE || pict_type==B_TYPE)
 	{

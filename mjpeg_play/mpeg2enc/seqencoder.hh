@@ -67,14 +67,23 @@ public:
 
 	/**********************************
 	*
-	* One Step of EncodeStream function
+	* Do a unit of encocoding: Pass1 encode
+    * a buffered frame (if available)
+    * Pass2 encode a buffered Pass1 encoded
+    * frame if enough are buffer.
 	*
 	*********************************/
 	void EncodeStreamOneStep();
 
 	/**********************************
 	*
-	* One Step of EncodeStream function
+	* There are still Pass1-coded frames
+    * buffered remaining to be committed for Pass2
+    * or pass-2 coded.
+    *
+    * NOTE: Result is only correct
+    * when called AFTER
+    * EncodeStreamOneStep().
 	*
 	*********************************/
 	bool EncodeStreamWhile();

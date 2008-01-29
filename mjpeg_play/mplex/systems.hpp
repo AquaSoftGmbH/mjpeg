@@ -81,22 +81,22 @@ public:
                                clockticks   	 DTS,
                                uint8_t 	 timestamps
         );
-    static void BufferSectorHeader( uint8_t *buf,
+    void BufferSectorHeader( uint8_t *buf,
                              Pack_struc	 	 *pack,
                              Sys_header_struc *sys_header,
                              uint8_t *&header_end );
-    static void BufferPacketHeader( uint8_t *buf,
-                                    uint8_t type,
-                                    unsigned int mpeg_version,
-                                    bool buffers,
-                                    unsigned int buffer_size,
-                                    uint8_t buffer_scale,
-                                    clockticks   	 PTS,
-                                    clockticks   	 DTS,
-                                    uint8_t 	 timestamps,
-                                    unsigned int min_pes_hdr_len,
-                                    uint8_t     *&size_field,
-                                    uint8_t     *&header_end );
+    void BufferPacketHeader( uint8_t *buf,
+                            uint8_t type,
+                            unsigned int mpeg_version,
+                            bool buffers,
+                            unsigned int buffer_size,
+                            uint8_t buffer_scale,
+                            clockticks   	 PTS,
+                            clockticks   	 DTS,
+                            uint8_t 	 timestamps,
+                            unsigned int min_pes_hdr_len,
+                            uint8_t     *&size_field,
+                            uint8_t     *&header_end );
     
     static inline void 
     BufferPacketSize( uint8_t *size_field, uint8_t *packet_end )
@@ -130,7 +130,7 @@ public:
     bool SegmentLimReached();
     inline int SegmentNum() const { return output_strm.SegmentNum(); }
     inline bitcount_t LastPackStart() const { return last_pack_start; }
-private:
+protected:
     static void 
     BufferDtsPtsMpeg1ScrTimecode (clockticks    timecode,
                                   uint8_t  marker,
@@ -139,6 +139,9 @@ private:
                                         uint8_t *&buffer);
     void BufferPaddingPacket( int padding,
                               uint8_t *&buffer );
+
+    virtual bool StreamWithMPeg2HeaderExt( uint8_t type );
+
 private:
     OutputStream &output_strm; 
     unsigned int mpeg_version;

@@ -136,7 +136,7 @@ protected:
 
     virtual void InitSeq( );
     virtual void InitGOP( ) ;
-    virtual bool InitPict( Picture &picture );
+    virtual void InitPict( Picture &picture );
 
 private:
 
@@ -194,7 +194,12 @@ public:
 
     double base_quant;
     double gop_Xhi;
-    double buffer_variation_bias;
+
+    /*
+      Moving average of the final ration actual_bits/target_bits after
+      re-encoding of pictures.  Used to avoid a bias to under / over correction
+     */
+    double mean_reencode_T_A_ratio;
 
     /*
       actsum - Total activity (sum block variances) in frame
@@ -208,12 +213,6 @@ public:
     double sum_avg_act;
     double avg_act;
     double sum_avg_quant;
-
-
-
-    // Some statistics for measuring if things are going well.
-    double sum_size[NUM_PICT_TYPES];
-    int pict_count[NUM_PICT_TYPES];
 
 };
 
@@ -232,12 +231,14 @@ public:
     virtual int  InitialMacroBlockQuant();
 
     double SumAvgActivity()  { return sum_avg_act; }
+
+    bool ReencodeRequired() const { return reencode; }
 protected:
     virtual int  TargetPictureEncodingSize();
 
     virtual void InitSeq( );
     virtual void InitGOP( ) ;
-    virtual bool InitPict( Picture &picture );
+    virtual void InitPict( Picture &picture );
 
 private:
 
@@ -255,12 +256,15 @@ private:
     int     cur_mquant;       // Current macroblock quantisation
     int     mquant_change_ctr;
 
-
+                            // Window used for moving average of
+                            // target / actual bits ratio
+                            // for re-encoded frames.
+    static const int RENC_T_A_RATIO_WINDOW = 8;
+    bool   reencode;  // Current Picture flagged for re-encode to better hit
+                      // target bitrate.
 
     double sum_base_Q;        // Accumulates base quantisations encoding
     int sum_actual_Q;         // Accumulates actual quantisation
-
-
 };
 
 

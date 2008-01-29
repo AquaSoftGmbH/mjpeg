@@ -39,7 +39,7 @@
  * design.
  *
  */
-
+
 #include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -124,7 +124,7 @@ void Despatcher::Init( unsigned int _parallelism )
 
 {
     parallelism = _parallelism;
-    mjpeg_info( "PAR = %d\n", parallelism );
+    mjpeg_debug( "PAR = %d\n", parallelism );
     if( parallelism > 0 )
     {
         jobpool.resize(parallelism);
@@ -154,7 +154,7 @@ void Despatcher::Init( unsigned int _parallelism )
         {
             jobpool[i].working = false;
             jobpool[i].stripe = i;
-            mjpeg_info("Creating worker thread %d", i );
+            mjpeg_debug("Creating worker thread %d", i );
             if( pthread_create( &worker_threads[i], pattr,
                                 &Despatcher::ParallelPerformWrapper,
                                 this ) != 0 )
@@ -200,15 +200,15 @@ void Despatcher::ParallelWorker()
 	for(;;)
 	{
         // Get Job to do and do it!!
-     mjpeg_info( "Worker: getting" );
+     mjpeg_debug( "Worker: getting" );
       
         jobstodo.Get( job );
         if( job->shutdown )
         {
-            mjpeg_info ("SHUTDOWN worker" );
+            mjpeg_debug("SHUTDOWN worker" );
             pthread_exit( 0 );
         }
-        mjpeg_info( "Working: stripe %d/%d %d", job->stripe, parallelism, job->pattern );
+        mjpeg_debug( "Working: stripe %d/%d %d", job->stripe, parallelism, job->pattern );
         Picture *picture = job->picture;
         vector<MacroBlock>::iterator macroblocks_begin;
         vector<MacroBlock>::iterator macroblocks_end;
@@ -254,7 +254,7 @@ void Despatcher::ParallelWorker()
         {
             (*mbi.*job->encodingFunc)();
         }
-        mjpeg_info( "Worker: stripe %d done", job->stripe );
+        mjpeg_debug( "Worker: stripe %d done", job->stripe );
         job->working = false;
     }
 }
@@ -703,7 +703,7 @@ void SeqEncoder::Pass1GopSplitting( Picture &picture)
         int old_present = picture.present;
         if( (!pass1_ss.NextGopClosed() || pass1_ss.BGroupLength() == 1) )
         {
-            mjpeg_info( "DEVEL: GOP split point found here... %d %d %.0f%% intra coded",
+            mjpeg_debug( "GOP split point found here... %d %d %.0f%% intra coded",
                         pass1_ss.NextGopClosed(), pass1_ss.BGroupLength(),
                         picture.IntraCodedBlocks() * 100.0 );
             pass1_ss.ForceIFrame();
@@ -717,7 +717,7 @@ void SeqEncoder::Pass1GopSplitting( Picture &picture)
             // the current P frame.
             // Solution: we need to back up and code the remainder of the GOP without
             // B frames to allow the I frame to be inserted at the right spot.
-            mjpeg_info( "DEVEL: GOP split forces P-frames only... %.0f%% intra coded", 
+            mjpeg_debug( "GOP split forces P-frames only... %.0f%% intra coded", 
                         picture.IntraCodedBlocks() * 100.0 );
             pass1_ss.SuppressBFrames();
             picture.org_img = reader.ReadFrame( pass1_ss.PresentationNum() );
@@ -837,8 +837,8 @@ uint64_t    SeqEncoder::BitsAfterMux() const
 bool SeqEncoder::Pass2EncodePicture(Picture &picture, bool force_reencode)
 {
 
-    bool rate_reencode = pass2ratectl.PictSetup(picture);
-    bool reencode = rate_reencode || force_reencode;
+    pass2ratectl.PictSetup(picture);
+    bool reencode = pass2ratectl.ReencodeRequired() || force_reencode;
     if( reencode )
     {
       // Flush any previous encoding

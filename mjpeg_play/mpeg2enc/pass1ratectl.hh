@@ -137,7 +137,7 @@ protected:
 
     virtual void InitSeq( );
     virtual void InitGOP( ) ;
-    virtual bool InitPict( Picture &picture );
+    virtual void InitPict( Picture &picture );
 
 private:
 

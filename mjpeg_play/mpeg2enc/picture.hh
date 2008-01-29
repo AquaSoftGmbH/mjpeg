@@ -108,7 +108,7 @@ public:
     double ActivityBestMotionComp();
     double VarSumBestMotionComp();
     double VarSumBestFwdMotionComp();
-    
+    double MinVarBestMotionComp();
     //
     //
     inline bool Legal( const MotionVector &mv ) const
@@ -205,7 +205,7 @@ public:
     int gop_decode;              /* Frame number in gop (decode order) */
     int bgrp_decode;            /* Frame number in 'B group' (decode order) */
     PICTURE_CODING pict_type;   /* picture coding type for current field (I, P or B) */
-	int vbv_delay; /* video buffering verifier delay (1/90000 seconds) */
+	int vbv_delay;              /* video buffering verifier delay (1/90000 seconds) */
 	int forw_hor_f_code, forw_vert_f_code;
 	int back_hor_f_code, back_vert_f_code; /* motion vector ranges */
 	int dc_prec;				/* DC coefficient prec for intra blocks */

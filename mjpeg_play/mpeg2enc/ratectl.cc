@@ -67,7 +67,7 @@ RateCtl::RateCtl( EncoderParams &_encparams, RateCtlState &_state ) :
 {
 }
 
-bool RateCtl::PictSetup( Picture &picture)
+void RateCtl::PictSetup( Picture &picture)
 {
     /* Handle splitting of output stream into sequences of desired size */
     if(  picture.new_seq )
@@ -81,7 +81,7 @@ bool RateCtl::PictSetup( Picture &picture)
     }
 
 
-    return InitPict( picture );
+    InitPict( picture );
 
 }
 

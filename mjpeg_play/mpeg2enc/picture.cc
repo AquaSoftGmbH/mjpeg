@@ -46,6 +46,7 @@
 
 #include "config.h"
 #include <cassert>
+#include <math.h>
 #include "mjpeg_types.h"
 #include "mjpeg_logging.h"
 #include "mpeg2syntaxcodes.h"
@@ -95,6 +96,14 @@ Picture::Picture( EncoderParams &_encparams,
     org_img = 0;
     fwd_rec = fwd_org = 0;
     bwd_rec = bwd_org = 0;
+
+    // This is really just a dummy for the non 0xffff case.  Its ignored by decodes
+    // anyhow (completely useless piece of information - only a Committee creation
+    // like MPEG could have included it).
+	if( !encparams.mpeg1 || encparams.quant_floor != 0 || encparams.still_size > 0)
+		vbv_delay =  FFFF_VBV_DELAY;
+	else if( encparams.still_size > 0 )
+		vbv_delay =  static_cast<int>(90000.0/encparams.frame_rate/4);
 }
 
 
@@ -323,6 +332,18 @@ double Picture::VarSumBestMotionComp()
         var_sum += i->best_me->var;
     }
     return var_sum;
+}
+
+double Picture::MinVarBestMotionComp()
+{
+    double min_var = 1.0e26;
+    vector<MacroBlock>::iterator i;
+    for( i = mbinfo.begin(); i < mbinfo.end(); ++i )
+    {
+        min_var = fmin( min_var,
+                        static_cast<double>(i->best_me->var) );
+    }
+    return min_var;
 }
 
 double Picture::VarSumBestFwdMotionComp()

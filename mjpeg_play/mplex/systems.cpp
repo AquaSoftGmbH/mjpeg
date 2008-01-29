@@ -258,6 +258,25 @@ PS_Stream::BufferSectorHeader( uint8_t *index,
     header_end = index;
 }
 
+/************************
+ *
+ * Is this a stream where for the MPEG-2
+ * header extensionsappear?
+ *
+ * The version below is correct at least forDVD
+ * authoring.   The function is virtual in case sometime
+ * someplace a different format where PRIVATE_STR_2 is used
+ * differently is encountered.
+ *
+ ************************/
+
+
+bool PS_Stream::StreamWithMPeg2HeaderExt( uint8_t type )
+{
+   return type != PADDING_STR
+       && type != PRIVATE_STR_2;
+}
+
 /******************************************
  *
  * BufferPacketHeader
@@ -328,7 +347,7 @@ void PS_Stream::BufferPacketHeader( uint8_t *buf,
 			break;
 		}
 	}
-	else if( type != PADDING_STR )
+	else if( StreamWithMPeg2HeaderExt( type )  )
 	{
 	  	/* MPEG-2 packet syntax header flags. */
         /* These *DO NOT* appear in padding packets 			*/
@@ -376,7 +395,7 @@ void PS_Stream::BufferPacketHeader( uint8_t *buf,
             *(index++)=static_cast<uint8_t>(STUFFING_BYTE);
 	}
 
-    if( mpeg_version == 2 && type != PADDING_STR )
+    if( mpeg_version != 1 && StreamWithMPeg2HeaderExt( type )  )
     {
         *pes_header_len_field = 
             static_cast<uint8_t>(index-(pes_header_len_field+1));	
