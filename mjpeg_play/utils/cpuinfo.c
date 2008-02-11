@@ -83,6 +83,7 @@ main(int argc, char **argv)
 	unsigned max_cpuid;
 	unsigned max_ext_cpuid;
 	unsigned int amd_flags;
+	unsigned int cpuType, cpuModel;
 	char *model_name = "Unknown CPU";
 	int i;
 	char processor_name[49];
@@ -172,12 +173,21 @@ main(int argc, char **argv)
 		int i;
 
 		regs = cpuid(1);
+
+		cpuType = (regs.eax >> 8) & 0xf;
+		cpuModel = (regs.eax >> 4) & 0xf;
+
+		if (cpuType == 0xf)
+		   cpuType = 0xf + ((regs.eax >> 20) & 0xf); // extended family
+		if (cpuType == 0xf || cpuType == 6)
+		   cpuModel |= ((regs.eax >> 16) & 0xf) << 4;
+
 		printf("cpu family\t: %d\n"
 		       "model\t\t: %d\n"
 		       "stepping\t: %d\n" ,
-			(regs.eax >>  8) & 0xf,
-			(regs.eax >>  4) & 0xf,
-			 regs.eax        & 0xf);
+			cpuType,
+			cpuModel,
+			regs.eax        & 0xf);
 		
 		printf("flags\t\t:");
 		for (i = 0; cap[i].bit >= 0; i++) {
