@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 
 #ifdef __MINGW32__
 #include <sys/timeb.h>
