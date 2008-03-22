@@ -40,25 +40,24 @@ LAV_ALL_LIB_OPTS = \
 
 liblavfile_la_SOURCES = editlist.c lav_io.c avilib.c
 liblavfile_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS) $(JPEG_CFLAGS)
-liblavfile_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) \
-	$(LIBQUICKTIME_LIBS) $(JPEG_LIBS) $(LIBDV_LIBS)
-liblavfile_la_LIBADD = $(LIBMJPEGUTILS)
+liblavfile_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
+liblavfile_la_LIBADD = $(LIBQUICKTIME_LIBS) $(JPEG_LIBS) $(LIBDV_LIBS) $(LIBMJPEGUTILS)
 
 liblavjpeg_la_SOURCES = jpegutils.c
 liblavjpeg_la_CPPFLAGS = $(AM_CPPFLAGS) $(JPEG_CFLAGS)
-liblavjpeg_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) $(JPEG_LIBS)
-liblavjpeg_la_LIBADD = $(LIBMJPEGUTILS)
+liblavjpeg_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
+liblavjpeg_la_LIBADD = $(JPEG_LIBS) $(LIBMJPEGUTILS)
 
 liblavrec_la_SOURCES = liblavrec.c audiolib.c frequencies.c
 liblavrec_la_CPPFLAGS = $(AM_CPPFLAGS) # so automake doesn't complain about audiolib & frequencies
 liblavrec_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
-liblavrec_la_LIBADD = liblavfile.la liblavjpeg.la
+liblavrec_la_LIBADD = liblavfile.la liblavjpeg.la $(LIBMJPEGUTILS)
 liblavrec_la_DEPENDENCIES = liblavfile.la liblavjpeg.la
 
 liblavplay_la_SOURCES = liblavplay.c audiolib.c
 liblavplay_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS) $(X_CFLAGS)
 liblavplay_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
-liblavplay_la_LIBADD = liblavfile.la $(SDL_LIBS) liblavjpeg.la
+liblavplay_la_LIBADD = liblavfile.la $(SDL_LIBS) liblavjpeg.la $(LIBDV_LIBS) $(LIBMJPEGUTILS)
 if HAVE_V4L
    liblavplay_la_LIBADD += ${X_LIBS} -lX11
 endif
