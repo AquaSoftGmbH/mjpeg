@@ -78,7 +78,7 @@ libmpeg2encpp_la_LDFLAGS = \
 
 libmpeg2encpp_la_DEPENDENCIES = $(LIBMJPEGUTILS)
 
-libmpeg2encpp_la_LIBADD = $(LIBMJPEGUTILS)
+libmpeg2encpp_la_LIBADD = $(LIBMJPEGUTILS) $(PTHREAD_LIBS)
 
 mpeg2enc_DEPENDENCIES = \
 	$(LIBMJPEGUTILS) \
