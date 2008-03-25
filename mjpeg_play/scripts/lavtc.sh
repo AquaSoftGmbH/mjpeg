@@ -791,7 +791,7 @@ do
 		break;
 	fi
 done
-if [[ -n ${needToCleanupFifo ]]; then
+if [[ -n ${needToCleanupFifo} ]]; then
 	cleanupFifo ;
 fi
 log_debug "chmod -x ${output}"
