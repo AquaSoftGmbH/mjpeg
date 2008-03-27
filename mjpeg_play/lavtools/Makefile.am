@@ -133,15 +133,15 @@ multiblend_flt_LDADD = $(LIBMJPEGUTILS)
 lavplay_SOURCES = lavplay.c
 lavplay_LDADD = $(LIBMJPEGUTILS) \
 	liblavplay.la liblavjpeg.la liblavfile.la \
-	@LIBGETOPT_LIB@ $(PTHREAD_LIBS) $(SDL_LIBS)
+	@LIBGETOPT_LIB@ @PTHREAD_LIBS@ $(SDL_LIBS)
 
 lavrec_SOURCES = lavrec.c
 lavrec_LDADD = $(LIBMJPEGUTILS) \
 	liblavrec.la liblavfile.la liblavjpeg.la \
-	@LIBGETOPT_LIB@ $(PTHREAD_LIBS)
+	@LIBGETOPT_LIB@ @PTHREAD_LIBS@
 
 testrec_SOURCES = testrec.c audiolib.c
-testrec_LDADD = $(PTHREAD_LIBS) $(LIBMJPEGUTILS)
+testrec_LDADD = @PTHREAD_LIBS@ $(LIBMJPEGUTILS)
 
 lav2yuv_SOURCES = lav2yuv.c lav_common.c
 lav2yuv_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS)
