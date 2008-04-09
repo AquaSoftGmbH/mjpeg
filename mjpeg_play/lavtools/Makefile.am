@@ -153,7 +153,8 @@ jpeg2yuv_CPPFLAGS = $(AM_CPPFLAGS) $(JPEG_CFLAGS)
 jpeg2yuv_LDADD = $(LIBMJPEGUTILS) liblavjpeg.la $(JPEG_LIBS)
 
 png2yuv_SOURCES = png2yuv.c colorspace.c subsample.c
-png2yuv_LDADD = $(LIBMJPEGUTILS) -lpng -lz -lm
+png2yuv_CPPFLAGS = $(AM_CPPFLAGS) $(LIBPNG_CFLAGS)
+png2yuv_LDADD = $(LIBMJPEGUTILS) $(LIBPNG_LIBS) -lz -lm
 
 lavpipe_SOURCES = lavpipe.c pipelist.c
 lavpipe_LDADD = $(LIBMJPEGUTILS)
