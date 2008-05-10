@@ -57,19 +57,19 @@ private:
 		// Will give good sorting for up to e^10 items.
 	
 public:
-	typedef Allocator<Node,HEADERCHUNK> Allocator;
+	typedef Allocator<Node,HEADERCHUNK> Allocator_t;
 		// The type of node allocator to use.
 
-	static Allocator sm_oNodeAllocator;
+	static Allocator_t sm_oNodeAllocator;
 		// The default node allocator.
 
 	SkipList (const PRED &a_rPred = PRED(),
-			Allocator &a_rAlloc = sm_oNodeAllocator);
+			Allocator_t &a_rAlloc = sm_oNodeAllocator);
 		// Default constructor.  Must be followed by Init().
 
 	SkipList (Status_t &a_reStatus, bool a_bAllowDuplicates,
 			uint32_t a_nRandSeed, const PRED &a_rPred = PRED(),
-			Allocator &a_rAlloc = sm_oNodeAllocator);
+			Allocator_t &a_rAlloc = sm_oNodeAllocator);
 		// Constructor.  Specify whether or not duplicates are allowed,
 		// and provide a random number seed.
 
@@ -255,7 +255,7 @@ public:
 
 private:
 	
-	Allocator &m_rNodeAllocator;
+	Allocator_t &m_rNodeAllocator;
 		// Where we get memory to allocate nodes.
 
 	bool m_bAllowDuplicates;
@@ -337,7 +337,7 @@ private:
 
 // The default node allocator.  Allocates 64K at a time.
 template <class KEY, class VALUE, class KEYFN, class PRED>
-typename SkipList<KEY,VALUE,KEYFN,PRED>::Allocator
+typename SkipList<KEY,VALUE,KEYFN,PRED>::Allocator_t
 	SkipList<KEY,VALUE,KEYFN,PRED>::sm_oNodeAllocator (65536);
 
 
@@ -345,7 +345,7 @@ typename SkipList<KEY,VALUE,KEYFN,PRED>::Allocator
 // Default constructor.  Must be followed by Init().
 template <class KEY, class VALUE, class KEYFN, class PRED>
 SkipList<KEY,VALUE,KEYFN,PRED>::SkipList (const PRED &a_rPred,
-		Allocator &a_rAlloc)
+		Allocator_t &a_rAlloc)
 	: m_rNodeAllocator (a_rAlloc), m_oPred (a_rPred)
 {
 	// Set up some defaults.
@@ -371,7 +371,7 @@ SkipList<KEY,VALUE,KEYFN,PRED>::SkipList (const PRED &a_rPred,
 template <class KEY, class VALUE, class KEYFN, class PRED>
 SkipList<KEY,VALUE,KEYFN,PRED>::SkipList (Status_t &a_reStatus,
 		bool a_bAllowDuplicates, uint32_t a_nRandSeed,
-		const PRED &a_rPred, Allocator &a_rAlloc)
+		const PRED &a_rPred, Allocator_t &a_rAlloc)
 	: m_rNodeAllocator (a_rAlloc), m_oPred (a_rPred)
 {
 	// Make sure they didn't start us off with an error.

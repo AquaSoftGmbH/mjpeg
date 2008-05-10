@@ -31,6 +31,7 @@
 #include <getopt.h>
 #endif
 #include <string>
+#include <string.h>
 #include <memory>
 #include <sys/stat.h>
 #ifndef _WIN32

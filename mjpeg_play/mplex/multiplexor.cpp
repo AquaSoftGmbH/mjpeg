@@ -22,6 +22,7 @@
 #include <config.h>
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <mjpeg_types.h>
 #include <mjpeg_logging.h>

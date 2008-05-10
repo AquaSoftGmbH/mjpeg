@@ -23,7 +23,7 @@ private:
 		// How we implement ourselves.
 	
 public:
-	typedef typename Imp::Allocator Allocator;
+	typedef typename Imp::Allocator_t Allocator;
 		// The type of allocator to use to allocate items in the set.
 
 	Set (const PRED &a_rPred = PRED(),

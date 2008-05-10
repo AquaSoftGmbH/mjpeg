@@ -21,6 +21,7 @@
 
 #include <stdio.h>
 #include <cassert>
+#include <limits.h>
 
 #include "macroblock.hh"
 #include "mpeg2syntaxcodes.h"

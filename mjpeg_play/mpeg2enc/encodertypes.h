@@ -25,6 +25,8 @@
  */
 
 
+#include <stdlib.h>
+
 class Parity
 {
 public:

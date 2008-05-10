@@ -23,6 +23,7 @@
 #include "picturereader.hh"
 #include "mpeg2encoder.hh"
 #include "imageplanes.hh"
+#include <limits.h>
 //#include <stdio.h>
 //#include <stdlib.h>
 //#include <unistd.h>

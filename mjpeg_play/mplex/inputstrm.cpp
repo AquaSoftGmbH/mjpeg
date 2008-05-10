@@ -23,6 +23,7 @@
 
 #include <config.h>
 #include <assert.h>
+#include <limits.h>
 
 #include "mjpeg_types.h"
 #include "inputstrm.hpp"
