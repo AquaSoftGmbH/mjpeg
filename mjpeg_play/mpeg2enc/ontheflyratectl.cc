@@ -714,13 +714,6 @@ OnTheFlyPass2::OnTheFlyPass2(EncoderParams &encparams ) :
         bits_transported = 0;
         bits_used = 0;
         sum_avg_act = 0.0;
-        
-        /* TODO: These values should are really MPEG-1/2 and material type
-           dependent.  The encoder should probably run over the first 100
-           frames or so look-ahead to tune theses dynamically before doing
-           real encoding... alternative a config file should  be written!
-        */
-
         sum_avg_quant = 0.0;
 
 }
@@ -914,6 +907,23 @@ void OnTheFlyPass2::InitPict(Picture &picture)
   {
      target_ABQ = debiased_target_ABQ;
   }
+
+  double raw_base_Q;
+  if( encparams.quant_floor < target_ABQ )
+  {
+      sample_T_A = reencode;
+      raw_base_Q = target_ABQ;
+  }
+  else
+  {
+    // If we've hit the quantisation floor we *expect* 
+    // (A)ctual bits < (T)arget bits so its not
+    // useful to use the T/A ratio to update our estimate
+    // of bias in our T/A ratio when we're trying to actually
+    // hit the target bits.
+    raw_base_Q = encparams.quant_floor;
+    sample_T_A = false;
+  }
   base_Q = ClipQuant( picture.q_scale_type,
                       fmax( encparams.quant_floor, target_ABQ ) );
 
@@ -943,7 +953,7 @@ void OnTheFlyPass2::PictUpdate( Picture &picture, int &padding_needed)
   actual_bits = picture.EncodedSize();
   frame_overshoot = (int)actual_bits-(int)target_bits;
 
-  if( reencode )
+  if( sample_T_A )
   {
       double T_A_ratio = static_cast<double>(target_bits) / actual_bits;
       mean_reencode_T_A_ratio = 

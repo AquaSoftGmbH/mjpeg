@@ -262,6 +262,9 @@ private:
     static const int RENC_T_A_RATIO_WINDOW = 8;
     bool   reencode;  // Current Picture flagged for re-encode to better hit
                       // target bitrate.
+    bool   sample_T_A;      // Finaly (T)arget and (A)ctual bit ratio should be sampled
+                            // to maintain an estimate of current systematic mean T/A ratio after
+                            // pass 2 re-encoding.
 
     double sum_base_Q;        // Accumulates base quantisations encoding
     int sum_actual_Q;         // Accumulates actual quantisation

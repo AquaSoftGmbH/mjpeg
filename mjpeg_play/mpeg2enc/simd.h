@@ -1,6 +1,6 @@
 /*
  *
- * qblockdist_sse.simd.h
+ * simd.h
  * Copyright (C) 2000 Andrew Stevens <as@comlab.ox.ac.uk>
  *
  *
@@ -27,7 +27,6 @@
  */
 #ifndef __SIMD_H__
 #define __SIMD_H__
-#include <config.h>
 #include "stdlib.h"
 #include "mjpeg_types.h"
 
