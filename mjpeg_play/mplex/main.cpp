@@ -34,7 +34,7 @@
 #include <string.h>
 #include <memory>
 #include <sys/stat.h>
-#ifndef _WIN32
+#if !defined(_WIN32) || defined(__MINGW32__)
 #include <sys/param.h>
 #endif
 #include <ctype.h>
