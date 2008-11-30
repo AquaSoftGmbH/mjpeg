@@ -144,6 +144,9 @@ case "$pvendor" in
 			    # synonym for 'k8'
 			   proc=k8
 			   ;;
+			16)
+			   proc=barcelona
+			   ;;
 			*) proc=athlon-xp
 			   ;;
 		esac
