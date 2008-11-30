@@ -719,7 +719,7 @@
 
   >mplayer -nosound -noframedrop -vo yuv4mpeg anyfile.mpg
 
-  >mplayer -vo null -ao pcm:anyfile.wav anyfile.mpg
+  >mplayer -vo null -ao pcm:file=anyfile.wav anyfile.mpg
 
   Now you have for example a mjpeg encoded AVI without sound. The sound
   will be in anyfile.wav. Now you can choose if you want to add the

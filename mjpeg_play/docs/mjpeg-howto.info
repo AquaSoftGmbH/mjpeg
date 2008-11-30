@@ -719,7 +719,7 @@ commandline also with newer and older versions
 
    `>mplayer -nosound -noframedrop -vo yuv4mpeg anyfile.mpg'
 
-   `>mplayer -vo null -ao pcm:anyfile.wav anyfile.mpg'
+   `>mplayer -vo null -ao pcm:file=anyfile.wav anyfile.mpg'
 
    Now you have for example a mjpeg encoded AVI without sound. The
 sound will be in anyfile.wav. Now you can choose if you want to add the
@@ -3002,57 +3002,57 @@ Node: Hey what about NTSC movies ?22541
 Node: Creating videos from other sources23864
 Node: Creating videos from images24449
 Node: Decoding streams with mplayer27625
-Node: Decoding MPEG2 streams with mpeg2dec28996
-Node: Other things to know30050
-Node: Checking if recording was successful30648
-Node: Edit the video32912
-Node: Edit with glav33220
-Node: Unify videos34668
-Node: Separate sound35158
-Node: Separate images35585
-Node: Creating movie transitions36580
-Node: Converting the stream to MPEG or DIVx videos40301
-Node: Creating sound42041
-Node: Converting video43844
-Node: Scaling45571
-Node: Putting the streams together47843
-Node: Creating MPEG1 Videos50136
-Node: MPEG1 Audio creation Example51033
-Node: MPEG1 Video creation Example51840
-Node: MPEG1 Multiplexing Example56383
-Node: Creating MPEG2 Videos57256
-Node: MPEG2 Audio creation Example58311
-Node: MPEG2 Video creation Example58918
-Node: Which values should be used for VBR Encoding61359
-Node: Encoding destination TV (interlaced) or Monitor (progressive)63676
-Node: MPEG2 Multiplexing Example66232
-Node: Creating Video-CD's67050
-Node: VCD Audio creation Example68124
-Node: VCD Video creation Example68683
-Node: VCD Multiplexing Example70209
-Node: Creating the CD70575
-Node: Notes71136
-Node: Storing MPEGs72139
-Node: Creating SVCD73482
-Node: SVCD Audio creation Example74295
-Node: SVCD Video creation Example75277
-Node: SVCD Multiplexing Example77704
-Node: SVCD Creating the CD78251
-Node: Creating DVD's78939
-Node: DVD Audio creation Example79896
-Node: DVD Video creation Example80453
-Node: DVD Multiplexing Example81438
-Node: DVD creation Example81957
-Node: Creating DIVX Videos82981
-Node: lav2avi-sh83186
-Node: Optimizing the stream85794
-Node: Scaling and offset correction96519
-Node: Frame rate conversion99033
-Node: Transcoding of existing MPEG-2101888
-Node: If you want to do every step on your own it will look something like this105208
-Node: Trading Quality/Speed109517
-Node: Creating streams to be played from disk using Software players110743
-Node: SMP and distributed Encoding111566
-Node: Interoperability115208
+Node: Decoding MPEG2 streams with mpeg2dec29001
+Node: Other things to know30055
+Node: Checking if recording was successful30653
+Node: Edit the video32917
+Node: Edit with glav33225
+Node: Unify videos34673
+Node: Separate sound35163
+Node: Separate images35590
+Node: Creating movie transitions36585
+Node: Converting the stream to MPEG or DIVx videos40306
+Node: Creating sound42046
+Node: Converting video43849
+Node: Scaling45576
+Node: Putting the streams together47848
+Node: Creating MPEG1 Videos50141
+Node: MPEG1 Audio creation Example51038
+Node: MPEG1 Video creation Example51845
+Node: MPEG1 Multiplexing Example56388
+Node: Creating MPEG2 Videos57261
+Node: MPEG2 Audio creation Example58316
+Node: MPEG2 Video creation Example58923
+Node: Which values should be used for VBR Encoding61364
+Node: Encoding destination TV (interlaced) or Monitor (progressive)63681
+Node: MPEG2 Multiplexing Example66237
+Node: Creating Video-CD's67055
+Node: VCD Audio creation Example68129
+Node: VCD Video creation Example68688
+Node: VCD Multiplexing Example70214
+Node: Creating the CD70580
+Node: Notes71141
+Node: Storing MPEGs72144
+Node: Creating SVCD73487
+Node: SVCD Audio creation Example74300
+Node: SVCD Video creation Example75282
+Node: SVCD Multiplexing Example77709
+Node: SVCD Creating the CD78256
+Node: Creating DVD's78944
+Node: DVD Audio creation Example79901
+Node: DVD Video creation Example80458
+Node: DVD Multiplexing Example81443
+Node: DVD creation Example81962
+Node: Creating DIVX Videos82986
+Node: lav2avi-sh83191
+Node: Optimizing the stream85799
+Node: Scaling and offset correction96524
+Node: Frame rate conversion99038
+Node: Transcoding of existing MPEG-2101893
+Node: If you want to do every step on your own it will look something like this105213
+Node: Trading Quality/Speed109522
+Node: Creating streams to be played from disk using Software players110748
+Node: SMP and distributed Encoding111571
+Node: Interoperability115213
 
 End Tag Table
