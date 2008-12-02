@@ -39,7 +39,7 @@ playing back and encoding (to mpeg) video under linux. Recording can
 be done with zoran-based MJPEG-boards (LML33, Iomega Buz, Pinnacle
 DC10(+), Marvel G200/G400), these can also playback video using the
 hardware. With the rest of the tools, this video can be edited and
-encoded into mpeg1/2 or divx video.
+encoded into mpeg1/2. With tools from you can create mor formats.
 
 %prep
 %setup -q -n %{name}-%{version} 
@@ -122,6 +122,11 @@ of the mjpegtools package.
 %{_libdir}/*.so
 
 %changelog
+* Tue Dec 02 2008 Bernhard Praschinger <shadowlord@utanet.at>
+  No we have everything together to release a new RC4
+  That will be very close to the next relase.
+  There are much changes for new CPU's
+
 * Fri Jun 02 2006 Steven Schultz <sms@2bsd.com>
   jpeg-mmx is not supported, it crashes on IA32 systems, will not build on
   X86_64 or PPC systems and even when it did work didn't provide  much of
