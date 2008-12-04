@@ -169,11 +169,13 @@ void OnTheFlyPass1::Init()
                                  ? encparams.bit_rate / field_rate
                                  : encparams.bit_rate / encparams.decode_frame_rate
                 );
-        int buffer_safe = 3 * per_pict_bits ;
-        undershoot_carry = (encparams.video_buffer_size - buffer_safe)/6;
+       
+        int buffer_danger = 3 * per_pict_bits ;
+        int buffer_variation_danger =  (encparams.video_buffer_size - buffer_danger)/6;
+        undershoot_carry = buffer_variation_danger/6;
         if( undershoot_carry < 0 )
             mjpeg_error_exit1("Rate control can't cope with a video buffer smaller 4 frame intervals");
-        overshoot_gain =  encparams.bit_rate / (encparams.video_buffer_size-buffer_safe);
+        overshoot_gain =  encparams.bit_rate / buffer_variation_danger;
     }
 
 
@@ -732,19 +734,21 @@ void OnTheFlyPass2::Init()
      buffer space above the buffer safe margin is large.
 
     Gain is currently set to so that if the buffer is down to the buffer_safe
-    margin the deficit should be recovered in three seconds.  This is *much* lower than
-    the pass-1 gain because in pass-2 we allocate bitsbased on the known complexity of
+    margin the deficit should be recovered in two seconds.  This is lower than
+    the pass-1 gain because in pass-2 we allocate bits based on the known complexity of
     pictures in a GOP and choose quantisations that should roughly hit those bit allocations.
-    Feedback must thus cope only with the difference between the bit allocation chosen and that
-    actually produced by the selected quantisation.
+    Feedback must thus cope only with the differences caused by inaccuracy
+    in the bit-allocaiton model rather than recover after-the-fact from incorrect guesses
+    about frame complexity..
   */
   per_pict_bits =
         static_cast<int32_t>(encparams.fieldpic
                                 ? encparams.bit_rate / field_rate
                                 : encparams.bit_rate / encparams.decode_frame_rate
             );
-  int buffer_safe = 3 * per_pict_bits ;
-  overshoot_gain =  (1.0/3.0) * encparams.bit_rate /  (encparams.video_buffer_size-buffer_safe);
+  int buffer_danger = 3 * per_pict_bits ;
+  buffer_variation_danger = (encparams.video_buffer_size-buffer_danger);
+  overshoot_gain =  (1.0/2.0) * encparams.bit_rate /  buffer_variation_danger;
 
 }
 
@@ -777,7 +781,7 @@ void OnTheFlyPass2::InitSeq()
                           );
   }
 
-  mean_reencode_T_A_ratio = 1.0;
+  mean_reencode_A_T_ratio = 1.0;
 }
 
 
@@ -888,9 +892,14 @@ void OnTheFlyPass2::InitPict(Picture &picture)
   int actual_bits = picture.EncodedSize();
   double rel_error = (actual_bits-target_bits) / static_cast<double>(target_bits);
   double scale_quant_floor = encparams.quant_floor;
+  //
+  // Tolerance of undershoot drops to zero from encparams.coding_tolerance as
+  // buffer_variation goes to danger level...
+  double undershoot_tolerance = encparams.coding_tolerance 
+                                * (1.0 - std::max( 1.0, -buffer_variation/buffer_variation_danger ));
   reencode =
-        rel_error  > encparams.coding_tolerance
-    || (rel_error < -encparams.coding_tolerance && picture.ABQ > scale_quant_floor * 1.1 );
+        rel_error  > undershoot_tolerance
+    || (rel_error < -encparams.coding_tolerance && picture.ABQ > scale_quant_floor  );
 
 
 
@@ -901,7 +910,7 @@ void OnTheFlyPass2::InitPict(Picture &picture)
   
   double target_ABQ = picture.ABQ * actual_bits / target_bits;
   // If the correction of the correction looks reasonable... use it...
-  double debiased_target_ABQ = target_ABQ * mean_reencode_T_A_ratio;
+  double debiased_target_ABQ = target_ABQ * mean_reencode_A_T_ratio;
   if( actual_bits > target_bits &&  debiased_target_ABQ > picture.ABQ ||
       actual_bits < target_bits && debiased_target_ABQ < picture.ABQ )
   {
@@ -932,9 +941,9 @@ void OnTheFlyPass2::InitPict(Picture &picture)
   cur_mquant = ScaleQuant( picture.q_scale_type, cur_int_base_Q );
 
 
-  mjpeg_debug( "%s: %d - reencode actual %d (%.1f) target %d Q=%.1f Mean T/A = %.4f ",
+  mjpeg_info( "%s: %d - reencode actual %d (%.1f) target %d Q=%.1f BV  = %.2f T_A =%.2f ",
                 reencode ? "RENC" : "SKIP",
-                picture.decode, actual_bits, picture.ABQ, target_bits, base_Q, mean_reencode_T_A_ratio );
+                picture.decode, actual_bits, picture.ABQ, target_bits, base_Q, buffer_variation/((double)encparams.video_buffer_size), mean_reencode_A_T_ratio );
 }
 
 
@@ -955,9 +964,9 @@ void OnTheFlyPass2::PictUpdate( Picture &picture, int &padding_needed)
 
   if( sample_T_A )
   {
-      double T_A_ratio = static_cast<double>(target_bits) / actual_bits;
-      mean_reencode_T_A_ratio = 
-        ( RENC_T_A_RATIO_WINDOW * mean_reencode_T_A_ratio + T_A_ratio ) / (RENC_T_A_RATIO_WINDOW+1);
+      double A_T_ratio = actual_bits / static_cast<double>(target_bits);
+      mean_reencode_A_T_ratio = 
+        ( RENC_A_T_RATIO_WINDOW * mean_reencode_A_T_ratio + A_T_ratio ) / (RENC_A_T_RATIO_WINDOW+1);
   }
 
   /*

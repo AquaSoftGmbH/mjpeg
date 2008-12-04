@@ -199,7 +199,7 @@ public:
       Moving average of the final ration actual_bits/target_bits after
       re-encoding of pictures.  Used to avoid a bias to under / over correction
      */
-    double mean_reencode_T_A_ratio;
+    double mean_reencode_A_T_ratio;
 
     /*
       actsum - Total activity (sum block variances) in frame
@@ -257,9 +257,9 @@ private:
     int     mquant_change_ctr;
 
                             // Window used for moving average of
-                            // target / actual bits ratio
+                            // post-correction actual / target bits ratio
                             // for re-encoded frames.
-    static const int RENC_T_A_RATIO_WINDOW = 8;
+    static const int RENC_A_T_RATIO_WINDOW = 4;
     bool   reencode;  // Current Picture flagged for re-encode to better hit
                       // target bitrate.
     bool   sample_T_A;      // Finaly (T)arget and (A)ctual bit ratio should be sampled
@@ -268,6 +268,8 @@ private:
 
     double sum_base_Q;        // Accumulates base quantisations encoding
     int sum_actual_Q;         // Accumulates actual quantisation
+    double buffer_variation_danger; // Buffer variation level below full
+                                    // at which serious risk of data under-run in muxed stream
 };
 
 
