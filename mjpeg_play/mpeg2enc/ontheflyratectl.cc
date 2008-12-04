@@ -941,7 +941,7 @@ void OnTheFlyPass2::InitPict(Picture &picture)
   cur_mquant = ScaleQuant( picture.q_scale_type, cur_int_base_Q );
 
 
-  mjpeg_info( "%s: %d - reencode actual %d (%.1f) target %d Q=%.1f BV  = %.2f T_A =%.2f ",
+  mjpeg_debug( "%s: %d - reencode actual %d (%.1f) target %d Q=%.1f BV  = %.2f T_A =%.2f ",
                 reencode ? "RENC" : "SKIP",
                 picture.decode, actual_bits, picture.ABQ, target_bits, base_Q, buffer_variation/((double)encparams.video_buffer_size), mean_reencode_A_T_ratio );
 }
