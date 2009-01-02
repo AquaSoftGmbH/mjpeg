@@ -1,8 +1,8 @@
-.TH "MJPEG tools" "1" "MJPEG Linux Square" "MJPEG tools manual"
+.\"
+.TH "MJPEG tools" "MJPEG Linux Square" "MJPEG tools manual"
 .LP
 
-.SH "NAME"
-mjpegtools \- An introduction to the MJPEG-tools
+MJPEG HOWTO - An introduction to the MJPEG-toolsPraschinger Bernhardv1.50MJPEG capture/editting/replay and MPEG encoding toolset description
 .PP
 Introduction
 
@@ -94,6 +94,7 @@ And this driver only works with the 2.4.20 kernel and the 2.5.* development kern
 .PP
 One last thing about the data you get before we start:
 .PP
+.DS
 .sp 
 .ft RR
 .nf
@@ -107,6 +108,7 @@ PAL HALF Size : (352 * 288 * 25 * 80) / (200 * 1024) = 990 kB/sec
 PAL FULL size : (720 * 576 * 25 * 80) / (200 * 1024) = 4050 kB/sec
 NTSC HALF size: (352 * 240 * 30 * 80) / (200 * 1024) = 990 kB/sec
 NTSC FULL size: (720 * 480 * 30 * 80) / (200 * 1024) = 4050 kB/sec
+.DE
 .fi 
 .ec
 .ft P
@@ -445,6 +447,7 @@ There are three bad things that can happen with fields
 .nr el +1
 .nr t\n(ll 1
 .nr e\n(el 0 1
+.af e\n(el \*(f\n(el
 .if \n(ll>1 .RS
 .nr bi 1
 .PP
@@ -486,6 +489,7 @@ How can I recognize if I have one of these Problems ?
 .nr el +1
 .nr t\n(ll 1
 .nr e\n(el 0 1
+.af e\n(el \*(f\n(el
 .if \n(ll>1 .RS
 .nr bi 1
 .PP
@@ -531,6 +535,7 @@ How can you fix it?
 .nr el +1
 .nr t\n(ll 1
 .nr e\n(el 0 1
+.af e\n(el \*(f\n(el
 .if \n(ll>1 .RS
 .nr bi 1
 .PP
@@ -560,6 +565,7 @@ flag (-z b\(brt)\fP that tells the decoder which field order to use.
 have, you need to extract some frames from the recorded stream and take a
 look at them:\fP
 .PP
+.DS
 .sp 
 .ft RR
 .nf
@@ -568,6 +574,7 @@ look at them:\fP
 > rm pnm/image?.pnm 
 > cd pnm 
 > xv 
+.DE
 .fi 
 .ec
 .ft P
@@ -1071,6 +1078,7 @@ Now we have the whole command for creating a transition:
 The resulting video can be written as a LAV Edit List, a plain text file
 containing the following lines:
 .PP
+.DS
 .sp 
 .ft RR
 .nf
@@ -1083,6 +1091,7 @@ epilogue.mov
 0 0 224
 1 0 24
 2 25 999
+.DE
 .fi 
 .ec
 .ft P
@@ -1614,6 +1623,7 @@ For SVCD/DVD you can expect a result like the one described if the
 maximal bitrate is not set too low:
 .PP
 
+.DS
 .sp 
 .ft RR
 .nf
@@ -1622,6 +1632,7 @@ maximal bitrate is not set too low:
    q >= 10 average quality
    q >= 11 not that good
    q >= 13 here even still sequences might look blocky
+.DE
 .fi 
 .ec
 .ft P
@@ -1832,10 +1843,12 @@ Audio frame
 .PP
 The approximate frame length formula for MPEG-1 layer-II is:
 .PP
+.DS
 .sp 
 .ft RR
 .nf
 (frame length in bytes) = 144 * (byte rate) / (sample rate)
+.DE
 .fi 
 .ec
 .ft P
@@ -2723,12 +2736,14 @@ First run:
 .PP
 You should get something like this:
 .PP
+.DS
 .sp 
 .ft RR
 .nf
 Found stream id 0xE0 = Video Stream 0
 Found stream id 0xC0 = MPEG Audio Stream 0
 Found stream id 0xBE = Padding Stream
+.DE
 .fi 
 .ec
 .ft P
