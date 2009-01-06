@@ -98,9 +98,9 @@ make prefix=${RPM_BUILD_ROOT}%{prefix} INSTALL_INFO= install
 %{_bindir}/mjpeg_simd_helper
 %{_bindir}/*.flt
 %{_libdir}/*.so.*
-%{_prefix}/man/man1/*
-%{_prefix}/man/man5/*
-%{_prefix}/info/
+%{_prefix}/share/man/man1/*
+%{_prefix}/share/man/man5/*
+%{_prefix}/share/info/
 
 %package devel
 Summary: Development headers and libraries for the mjpegtools
