@@ -636,16 +636,16 @@ for (i = 0; i < h; i++)
 {
 if (shift > 0)
 {
-bcopy(vsrc, vdst+shift, w-shift);
+memmove(vdst + shift, vsrc, w - shift);
 memset(vdst, blk, shift); /* black */
 }
 else if (shift < 0)
 {
-bcopy(vsrc-shift, vdst, w+shift);
+memmove(vdst, vsrc - shift, w + shift);
 memset(vdst+w+shift, blk, -shift);
 }
 else
-bcopy(vsrc, vdst, w);
+memmove(vdst, vsrc, w);
 vsrc += ws;
 vdst += ws;
 }
