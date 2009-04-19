@@ -241,13 +241,16 @@ int main(int argc, char *argv[])
 
 /* If no desired format option was given, we try to detect the format with */
 /* the last 4 char of the filename */
+   dotptr = strrchr(param_output, '.');
+   if (dotptr && (param_format == 'x'))
+      {
 #ifdef HAVE_LIBQUICKTIME 
-	dotptr = strrchr(param_output, '.');
-	if ( (!strcasecmp(dotptr+1, "mov")) && (param_format == 'x') )
-		param_format = 'q';
+	if (!strcasecmp(dotptr+1, "mov"))
+	   param_format = 'q';
 #endif
-	if ( (!strcasecmp(dotptr+1, "avi")) && (param_format == 'x') )
-		param_format = 'a';
+	if (!strcasecmp(dotptr+1, "avi"))
+	   param_format = 'a';
+      }
 
 /* Telling the people which format we really use */
 	if (param_format == 'a')
