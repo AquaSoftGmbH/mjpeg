@@ -66,15 +66,15 @@ make prefix=${RPM_BUILD_ROOT}%{prefix} INSTALL_INFO= install
 %post
 /sbin/install-info \
 	--entry=%{infoentry} \
-	--info-dir=%{_prefix}/info \
-	%{_prefix}/info/%{infofile}
+	--info-dir=%{_prefix}/share/info \
+	%{_prefix}/share/info/%{infofile}
 /sbin/ldconfig
 
 %postun
 /sbin/install-info \
 	--remove \
-	--info-dir=%{_prefix}/info \
-	%{_prefix}/info/%{infofile}
+	--info-dir=%{_prefix}/share/info \
+	%{_prefix}/share/info/%{infofile}
 
 %clean
 [ -n "${RPM_BUILD_ROOT}" -a "${RPM_BUILD_ROOT}" != / ] \
