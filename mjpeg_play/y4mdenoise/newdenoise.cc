@@ -201,6 +201,11 @@ private:
 	
 	static void *WorkLoop (void *a_pThread);
 		// The thread function stub.  Calls the virtual WorkLoop().
+
+public:
+	void WorkLoopExit (void);
+		// Clean up after WorkLoop() exits.
+		// To be called only by the static WorkLoop().
 	
 protected:
 	bool m_bWaitingForInput, m_bWaitingForOutput;
@@ -1974,7 +1979,8 @@ BasicThread::Shutdown (void)
 	m_bWorkLoop = false;
 
 	// If anyone is waiting, stop them.  They should notice
-	// that m_bWorkLoop is now false, and gracefully exit.
+	// that m_bWorkLoop is now false (or that m_nWorkRetval
+	// is not Y4M_OK) and gracefully exit.
 	if (m_bWaitingForInput)
 		SignalInput();
 	if (m_bWaitingForOutput)
@@ -2001,8 +2007,41 @@ BasicThread::WorkLoop (void *a_pThread)
 	// Call the real work loop.
 	(static_cast<BasicThread *>(a_pThread))->WorkLoop();
 
+	// Clean up after WorkLoop() exits.
+	(static_cast<BasicThread *>(a_pThread))->WorkLoopExit();
+
 	// Mandatory return value.
 	return NULL;
+}
+
+
+
+// Clean up after WorkLoop() exits.
+// To be called only by the static WorkLoop().
+void
+BasicThread::WorkLoopExit (void)
+{
+	// If the work loop stopped due of an error, clean up.
+	// This is similar to Shutdown(), but without the pthread_join().
+	if (m_nWorkRetval != Y4M_OK)
+	{
+		// Get exclusive access.
+		Lock();
+
+		// Tell the thread to stop looping.
+		m_bWorkLoop = false;
+
+		// If anyone is waiting, stop them.  They should notice
+		// that m_bWorkLoop is now false (or that m_nWorkRetval
+		// is not Y4M_OK) and gracefully exit.
+		if (m_bWaitingForInput)
+			SignalInput();
+		if (m_bWaitingForOutput)
+			SignalOutput();
+
+		// Release exclusive access.
+		Unlock();
+	}
 }
 
 
@@ -2021,9 +2060,6 @@ BasicThread::WorkLoop (void)
 		if (m_nWorkRetval != Y4M_OK)
 			break;
 	}
-
-	// Remember that the work loop has stopped.
-	m_bWorkLoop = false;
 }
 
 
@@ -2078,9 +2114,6 @@ DenoiserThread::WorkLoop (void)
 			SignalOutput();
 		Unlock();
 	}
-
-	// Remember that the work loop has stopped.
-	m_bWorkLoop = false;
 }
 
 
@@ -2899,9 +2932,6 @@ DenoiserThreadWrite::WorkLoop (void)
 		if (m_nWorkRetval != Y4M_OK)
 			break;
 	}
-
-	// Remember that the work loop has stopped.
-	m_bWorkLoop = false;
 }
 
 
