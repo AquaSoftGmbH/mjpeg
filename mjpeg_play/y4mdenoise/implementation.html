@@ -57,7 +57,8 @@
 	<li><a href="#ImplementationMotionSearcher">MotionSearcher,
 	  SearchWindow, SearchBorder</a>
     <ul>
-	  <li><a href="#ImplementationMotionSearcherVersion0">Version 1</a>
+	  <li><a href="#ImplementationMotionSearcherVersion1">Version 1</a>
+	  <li><a href="#ImplementationMotionSearcherVersion2">Version 2</a>
     </ul>
   </ul>
   <li><a href="#FutureExtensions">Future Extensions</a>
@@ -308,6 +309,14 @@
   denoised in a thread separate from intensity denoising, and
   reading/writing frames can be moved into separate threads too.
 
+<a name="ImplementationMotionSearcherVersion2"><h3>Version 2</h3></a>
+<p>If match-size-throttling is in use (which is usually is), now it
+  picks the largest such match, instead of the first match that's larger
+  than the throttle size.  This led to a pretty serious increase in quality!
+<p>Parallel processing was modified so that the reader/writer threads can be
+  used independently of the denoiser threads.  This may not be very useful,
+  but there was no good reason to prevent it.
+
 <!--
 <a name="ImplementationXXX"><h2>XXX</h2></a>
 <p>
@@ -316,8 +325,8 @@
 <a name="FutureExtensions"><h1>Future Extensions</h1></a>
 <p>The motion-detector is highly parallel, and a better multi-threaded
   version should be written.  So far, color and intensity can be
-  analyzed separately.  But a thread could conceivably denoise one half of the
-  remaining area of an image plane.  The pixel-sorter would have to
+  analyzed separately.  But a thread could conceivably denoise one half of
+  the remaining area of an image plane.  The pixel-sorter would have to
   become its own class for this to work, since there'd now be more than
   one per search-window, and the search-window would have to keep
   pixel-sorters from colliding with each other (i.e. the areas being
@@ -351,10 +360,10 @@
 <p>I think the search-window could replace the radius-search in
   yuvmedianfilter.  It could even do motion-detection for mpeg2enc.
 
-<p>Copyright (C) 2004 by
+<p>Copyright (C) 2004-2009 by
   <a href="mailto:ulatec@users.sourceforge.net">Steven Boswell</a>.
   All rights reserved, and all that stuff.
-<br>Released to the public under the GNU General Public License.
+<br>Released to the public under the GNU General Public License v2.
   See the file COPYING for more information.
 </body>
 </html>

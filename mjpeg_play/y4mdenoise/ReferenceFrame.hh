@@ -1,8 +1,8 @@
 #ifndef __REFERENCE_FRAME_H__
 #define __REFERENCE_FRAME_H__
 
-// This file (C) 2004 Steven Boswell.  All rights reserved.
-// Released to the public under the GNU General Public License.
+// This file (C) 2004-2009 Steven Boswell.  All rights reserved.
+// Released to the public under the GNU General Public License v2.
 // See the file COPYING for more information.
 
 #include "config.h"
@@ -36,12 +36,6 @@ public:
 	Pixel (const Pixel<NUM,DIM,TOL> &a_rOther);
 		// Copy constructor.
 
-	void MakeInvalid (void);
-		// Make the pixel invalid.
-
-	bool IsPixelInvalid (void) const;
-		// Return whether the pixel is invalid.
-
 	NUM &operator[] (int a_nDim) { return m_atnVal[a_nDim]; }
 	NUM operator[] (int a_nDim) const { return m_atnVal[a_nDim]; }
 		// Get the value of this pixel.
@@ -68,12 +62,6 @@ private:
 	NUM m_atnVal[DIM];
 		// The pixel value.
 };
-
-
-
-// Pixel types we use.
-typedef Pixel<uint8_t,1,int32_t> PixelY;
-typedef Pixel<uint8_t,2,int32_t> PixelCbCr;
 
 
 
@@ -137,12 +125,6 @@ private:
 		// The value of this pixel, i.e. m_nSumY / m_nYCount.
 		// Calculated on demand.
 };
-
-
-
-// Reference-pixel types we use.
-typedef ReferencePixel<uint16_t,uint8_t,1,PixelY> ReferencePixelY;
-typedef ReferencePixel<uint16_t,uint8_t,2,PixelCbCr> ReferencePixelCbCr;
 
 
 
@@ -228,14 +210,6 @@ private:
 
 
 
-// Reference-frame types we use.
-typedef ReferenceFrame<ReferencePixelY, int16_t, int32_t>
-	ReferenceFrameY;
-typedef ReferenceFrame<ReferencePixelCbCr, int16_t, int32_t>
-	ReferenceFrameCbCr;
-
-
-
 // Initializing constructor.
 template <class NUM, int DIM, class TOL>
 Pixel<NUM,DIM,TOL>::Pixel (const NUM a_atnVal[DIM])
@@ -254,28 +228,6 @@ Pixel<NUM,DIM,TOL>::Pixel (const Pixel<NUM,DIM,TOL> &a_rOther)
 	// Copy the values.
 	for (int i = 0; i < DIM; ++i)
 		m_atnVal[i] = a_rOther.m_atnVal[i];
-}
-
-
-
-// Make the pixel invalid.
-template <class NUM, int DIM, class TOL>
-void
-Pixel<NUM,DIM,TOL>::MakeInvalid (void)
-{
-	// 0 isn't a valid value for pixels.
-	m_atnVal[0] = 0;
-}
-
-
-
-// Return whether the pixel is invalid.
-template <class NUM, int DIM, class TOL>
-inline bool
-Pixel<NUM,DIM,TOL>::IsPixelInvalid (void) const
-{
-	// Return whether the first pixel value is invalid.
-	return m_atnVal[0] == 0;
 }
 
 
@@ -310,18 +262,6 @@ Pixel<NUM,1,TOL>::MakeTolerance (NUM a_tnTolerance)
 
 
 
-// Turn an integer tolerance value into what's appropriate for
-// the pixel type.
-template <>
-int32_t
-PixelY::MakeTolerance (uint8_t a_tnTolerance)
-{
-	// For a one-dimensional pixel, just use the given number.
-	return int32_t (a_tnTolerance);
-}
-
-
-
 #if 0
 
 // This is what I mean, but C++ templates can't do this.
@@ -337,18 +277,6 @@ Pixel<NUM,2,TOL>::MakeTolerance (NUM a_tnTolerance)
 }
 
 #endif
-
-
-
-// Turn an integer tolerance value into what's appropriate for
-// the pixel type.
-template <>
-int32_t
-PixelCbCr::MakeTolerance (uint8_t a_tnTolerance)
-{
-	// For a two-dimensional pixel, use the square of the given number.
-	return int32_t (a_tnTolerance) * int32_t (a_tnTolerance);
-}
 
 	
 
@@ -369,35 +297,6 @@ Pixel<NUM,1,TOL>::IsWithinTolerance
 }
 
 #endif
-
-
-
-// Return true if the two pixels are within the specified tolerance.
-template <>
-bool
-PixelY::IsWithinTolerance (const PixelY &a_rOther,
-	int32_t a_tnTolerance) const
-{
-	// Check to see if the absolute value of the difference between
-	// the two pixels is within our tolerance value.
-	return AbsoluteValue (int32_t (m_atnVal[0])
-		- int32_t (a_rOther.m_atnVal[0])) <= a_tnTolerance;
-}
-
-
-
-// Return true if the two pixels are within the specified tolerance.
-template <>
-bool
-PixelY::IsWithinTolerance (const PixelY &a_rOther,
-	int32_t a_tnTolerance, int32_t &a_rtnSAD) const
-{
-	// Check to see if the absolute value of the difference between
-	// the two pixels is within our tolerance value.
-	a_rtnSAD = AbsoluteValue (int32_t (m_atnVal[0])
-		- int32_t (a_rOther.m_atnVal[0]));
-	return a_rtnSAD <= a_tnTolerance;
-}
 
 
 
@@ -423,52 +322,6 @@ Pixel<NUM,2,TOL>::IsWithinTolerance
 }
 
 #endif
-
-
-
-// Return true if the two pixels are within the specified tolerance.
-template <>
-bool
-PixelCbCr::IsWithinTolerance
-	(const PixelCbCr &a_rOther, int32_t a_tnTolerance) const
-{
-	// Calculate the vector difference between the two pixels.
-	int32_t tnX = int32_t (m_atnVal[0])
-		- int32_t (a_rOther.m_atnVal[0]);
-	int32_t tnY = int32_t (m_atnVal[1])
-		- int32_t (a_rOther.m_atnVal[1]);
-
-	// Check to see if the length of the vector difference is within
-	// our tolerance value.  (Technically, we check the squares of
-	// the values, but that's just as valid & much faster than
-	// calculating a square root.)
-	return tnX * tnX + tnY * tnY <= a_tnTolerance;
-}
-
-
-
-// Return true if the two pixels are within the specified tolerance.
-template <>
-bool
-PixelCbCr::IsWithinTolerance
-	(const PixelCbCr &a_rOther, int32_t a_tnTolerance,
-	int32_t &a_rtnSAD) const
-{
-	// Calculate the vector difference between the two pixels.
-	int32_t tnX = int32_t (m_atnVal[0])
-		- int32_t (a_rOther.m_atnVal[0]);
-	int32_t tnY = int32_t (m_atnVal[1])
-		- int32_t (a_rOther.m_atnVal[1]);
-
-	// Calculate the sample-array-difference.
-	a_rtnSAD = tnX * tnX + tnY * tnY;
-
-	// Check to see if the length of the vector difference is within
-	// our tolerance value.  (Technically, we check the squares of
-	// the values, but that's just as valid & much faster than
-	// calculating a square root.)
-	return a_rtnSAD <= a_tnTolerance;
-}
 
 
 
@@ -500,13 +353,13 @@ template <class ACCUM_NUM, class PIXEL_NUM, int DIM, class PIXEL>
 void
 ReferencePixel<ACCUM_NUM,PIXEL_NUM,DIM,PIXEL>::Reset (void)
 {
-	// Reset the accumulated sum.
+	// Reset the accumulated sum, and get rid of any existing pixel value.
 	for (int i = 0; i < DIM; i++)
+	{
 		m_atSum[i] = ACCUM_NUM (0);
-	m_tCount = 0;
-
-	// Get rid of any existing pixel value.
-	m_oPixel.MakeInvalid();
+		m_oPixel[i] = PIXEL_NUM (0);
+	}
+	m_tCount = ACCUM_NUM (0);
 }
 
 
@@ -520,14 +373,15 @@ ReferencePixel<ACCUM_NUM,PIXEL_NUM,DIM,PIXEL>::AddSample
 	// Make sure this pixel is in use.
 	assert (m_nFrameReferences > 0);
 
-	// TODO: detect & handle m_atSum[] overflowing.
-
-	// HACK: do something cheesy to handle overflow.
-	if (m_tCount >= 10)
+	// If the number of samples is getting close to causing overflow
+	// problems, deal with it by losing a little resolution.
+	// (These divides should turn into bit-shifts with integer types,
+	// and therefore not be a performance issue.)
+	if (m_tCount >= 10 /* HACK (Limits<ACCUM_NUM>::Max / ACCUM_NUM (2)) */)
 	{
 		for (int i = 0; i < DIM; i++)
-			m_atSum[i] >>= 1;
-		m_tCount >>= 1;
+			m_atSum[i] /= ACCUM_NUM (2);
+		m_tCount /= ACCUM_NUM (2);
 	}
 
 	// Add the value to our accumulated sum.
@@ -535,22 +389,7 @@ ReferencePixel<ACCUM_NUM,PIXEL_NUM,DIM,PIXEL>::AddSample
 		m_atSum[i] += a_rPixel[i];
 	++m_tCount;
 
-	// Remember that the pixel value needs to be recalculated.
-	m_oPixel.MakeInvalid();
-}
-
-
-
-// Return the pixel's value.
-template <class ACCUM_NUM, class PIXEL_NUM, int DIM, class PIXEL>
-const PIXEL &
-ReferencePixel<ACCUM_NUM,PIXEL_NUM,DIM,PIXEL>::GetValue (void)
-{
-	// Make sure this pixel is in use.
-	assert (m_nFrameReferences > 0);
-
-	// If we have to recalculate the pixel value, do so.
-	if (m_oPixel.IsPixelInvalid())
+	// Recalculate the pixel value.
 	{
 		static float afDivisors[] = { 0.0f, 1.0f, 1.0f / 2.0f,
 				1.0f / 3.0f, 1.0f / 4.0f, 1.0f / 5.0f, 1.0f / 6.0f,
@@ -571,8 +410,16 @@ ReferencePixel<ACCUM_NUM,PIXEL_NUM,DIM,PIXEL>::GetValue (void)
 					/ float (m_tCount)) + 0.5f);
 		}
 	}
+}
 
-	// Give our caller the pixel value.
+
+
+// Return the pixel's value.
+template <class ACCUM_NUM, class PIXEL_NUM, int DIM, class PIXEL>
+const PIXEL &
+ReferencePixel<ACCUM_NUM,PIXEL_NUM,DIM,PIXEL>::GetValue (void)
+{
+	// Easy enough.
 	return m_oPixel;
 }
 
@@ -648,7 +495,11 @@ PixelAllocator<REFERENCEPIXEL,FRAMESIZE>::Allocate (void)
 	{
 		// Get the next pixel.
 		pPixel = m_pPixels + m_tnNext;
-		m_tnNext = (m_tnNext + 1) % m_tnCount;
+		//m_tnNext = (m_tnNext + 1) % m_tnCount;
+		++m_tnNext;		// (faster...no divide)
+		assert (m_tnNext <= m_tnCount);
+		if (m_tnNext == m_tnCount)
+			m_tnNext = 0;
 
 		// If this pixel is unallocated, reset it & return it.
 		if (pPixel->GetFrameReferences() == 0)

@@ -1,8 +1,8 @@
 #ifndef __BITMAPREGION2D_H__
 #define __BITMAPREGION2D_H__
 
-// This file (C) 2004 Steven Boswell.  All rights reserved.
-// Released to the public under the GNU General Public License.
+// This file (C) 2004-2009 Steven Boswell.  All rights reserved.
+// Released to the public under the GNU General Public License v2.
 // See the file COPYING for more information.
 
 // BitmapRegion2D tracks a 2-dimensional region of arbitrary points,
@@ -249,10 +249,16 @@ public:
 template <class INDEX, class SIZE>
 class BitmapRegion2D<INDEX,SIZE>::FloodFillControl
 #ifndef GCC_295_WORKAROUND
-	: public Region2D<INDEX,SIZE>::
-		template FloodFillControl<BitmapRegion2D<INDEX,SIZE> >
+	: public Region2D<INDEX,SIZE>::template
+		FloodFillControl<BitmapRegion2D<INDEX,SIZE> >
 #endif // ! GCC_295_WORKAROUND
 {
+private:
+	typedef Region2D<INDEX,SIZE> BaseRegion;
+	typedef BitmapRegion2D<INDEX,SIZE> OurRegion;
+	typedef typename BaseRegion::template FloodFillControl<OurRegion>
+			BaseClass;
+		// Keep track of who our base class is.
 public:
 #ifdef GCC_295_WORKAROUND
 	// (Although these fields are public, they should be considered
@@ -284,22 +290,6 @@ public:
 	
 	void Init (Status_t &a_reStatus, INDEX a_tnWidth, INDEX a_tnHeight);
 		// Initializer.  Must be called on default-constructed objects.
-
-#ifdef GCC_295_WORKAROUND
-	// Methods to be redefined by clients implementing specific
-	// flood-fills.
-
-	bool ShouldUseExtent (Extent &a_rExtent) { return true; }
-		// Return true if the flood-fill should examine the given
-		// extent.  Clients should redefine this to define their own
-		// criteria for when extents should be used, and to modify the
-		// extent as needed (e.g. to clip the extent to a bounding box).
-	
-	bool IsPointInRegion (INDEX a_tnX, INDEX a_tnY) { return false; }
-		// Returns true if the given point should be included in the
-		// flood-fill.  Clients must redefine this to explain their
-		// flood-fill criteria.
-#endif // GCC_295_WORKAROUND
 };
 
 
@@ -853,6 +843,9 @@ BitmapRegion2D<INDEX,SIZE>::FloodFill (Status_t &a_reStatus,
 	// Make sure they didn't start us off with an error.
 	assert (a_reStatus == g_kNoError);
 
+	// Make the compiler shut up.
+	oFoundExtent.m_tnXStart = oFoundExtent.m_tnXEnd = 0;
+
 	// How we set up depends on whether we're to verify all existing
 	// region extents.
 	if (a_bVerify)
@@ -1289,6 +1282,7 @@ BitmapRegion2D<INDEX,SIZE>::FindLastSetBit (unsigned int a_nWord,
 {
 	// Not written yet.
 	assert (false);
+	return 0;
 }
 
 
@@ -1301,6 +1295,7 @@ BitmapRegion2D<INDEX,SIZE>::FindLastClearBit (unsigned int a_nWord,
 {
 	// Not written yet.
 	assert (false);
+	return 0;
 }
 
 
@@ -1418,13 +1413,13 @@ BitmapRegion2D<INDEX,SIZE>::FloodFillControl::Init
 	assert (a_reStatus == g_kNoError);
 
 	// Initialize our helper regions.
-	BitmapRegion2D<INDEX,SIZE>::FloodFillControl::m_oToDo.Init (a_reStatus, a_tnWidth, a_tnHeight);
+	BaseClass::m_oToDo.Init (a_reStatus, a_tnWidth, a_tnHeight);
 	if (a_reStatus != g_kNoError)
 		return;
-	BitmapRegion2D<INDEX,SIZE>::FloodFillControl::m_oAlreadyDone.Init (a_reStatus, a_tnWidth, a_tnHeight);
+	BaseClass::m_oAlreadyDone.Init (a_reStatus, a_tnWidth, a_tnHeight);
 	if (a_reStatus != g_kNoError)
 		return;
-	BitmapRegion2D<INDEX,SIZE>::FloodFillControl::m_oNextToDo.Init (a_reStatus, a_tnWidth, a_tnHeight);
+	BaseClass::m_oNextToDo.Init (a_reStatus, a_tnWidth, a_tnHeight);
 	if (a_reStatus != g_kNoError)
 		return;
 }

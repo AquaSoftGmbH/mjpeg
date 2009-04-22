@@ -1,8 +1,8 @@
 #ifndef __SEARCH_WINDOW_H__
 #define __SEARCH_WINDOW_H__
 
-// This file (C) 2004 Steven Boswell.  All rights reserved.
-// Released to the public under the GNU General Public License.
+// This file (C) 2004-2009 Steven Boswell.  All rights reserved.
+// Released to the public under the GNU General Public License v2.
 // See the file COPYING for more information.
 
 #include "config.h"
@@ -247,7 +247,8 @@ private:
 		// analyze the image.
 		// m_ppSearchWindow consists of pointers to various areas within
 		// m_pSearchWindowStorage; this is done solely to keep the code
-		// for accessing cells simpler & easier to understand.
+		// for accessing cells simpler & easier to understand (i.e. the
+		// code might be slightly more optimal otherwise).
 
 	PIXELINDEX m_tnSearchWindowPixelLeft, m_tnSearchWindowPixelRight,
 			m_tnSearchWindowPixelTop, m_tnSearchWindowPixelBottom;
@@ -281,8 +282,8 @@ private:
 			// A cell that contains the split values for each dimension
 			// of each pixel of the groups being partitioned.  The
 			// contained forward/backward pointers are used to form a
-			// list of all real pixel groups (i.e. pixel groups within
-			// the search radius) connected to this node.
+			// list of all reference-frame pixel groups (within the
+			// search radius) connected to this node.
 
 		enum { m_knBranches = 1 << (PGH * PGW * DIM) };
 			// The number of branches from each node.  There's two for
@@ -341,8 +342,9 @@ private:
 				SORTERBITMASK &a_rtnChildIndex,
 				bool &a_rbMatchAtThisLevel) const;
 			// If the given pixel group straddles this level of the tree
-			// (i.e. because one of its pixel values equals its
-			// corresponding split point), then return true.
+			// (i.e. because one of its pixel values is within the
+			// tolerance value of its corresponding split point), then
+			// return true.
 			// Otherwise, calculate the index of the child branch that
 			// should take this cell, and return false.
 			// In either case, determine whether any search-window cells
@@ -376,10 +378,10 @@ private:
 	SearchWindowCell m_oRangeMin, m_oRangeMax;
 		// Cells that contain the minimum/maximum values for pixels
 		// at the current level of the pixel-sorter tree.  Used to
-		// generate values for new branch nodes.  (These were local
-		// variables in PixelSorter_Add(), but the construction &
-		// destruction cost actually showed up in the profile!  So
-		// they were moved here.)
+		// generate values for new branch nodes.
+		// (These were local variables in PixelSorter_Add(), but the
+		// construction & destruction cost actually showed up in the
+		// profile!  So they were moved here.)
 
 	PixelSorterBranchNode *PixelSorter_Add (Status_t &a_reStatus,
 			SearchWindowCell *a_pCell,
@@ -510,7 +512,7 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		&& a_tnSearchRadiusY <= a_tnHeight);
 
 	// Make sure the tolerance is reasonable.  (A zero tolerance can
-	// be used for MPEG-encoding-style motion detection.)
+	// be used for lossless motion detection.)
 	assert (a_tnTolerance >= 0);
 
 	// Calculate the number of pixels in each frame.
@@ -518,7 +520,8 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 
 	// Allocate enough cells for our search window.
 	m_pSearchWindowStorage = new SearchWindowCell
-		[(a_tnHeight - PGH + 1) * (a_tnWidth - PGW + 1)];
+		[FRAMESIZE (a_tnHeight - PGH + 1)
+			* FRAMESIZE (a_tnWidth - PGW + 1)];
 	if (m_pSearchWindowStorage == NULL)
 	{
 		a_reStatus = g_kOutOfMemory;
@@ -558,7 +561,7 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		{
 			atnMin[i] = Limits<PixelValue_t>::Min;
 			atnHalf[i] = (Limits<PixelValue_t>::Min
-				+ Limits<PixelValue_t>::Max) / 2;
+				+ Limits<PixelValue_t>::Max) / PixelValue_t (2);
 			atnMax[i] = Limits<PixelValue_t>::Max;
 		}
 
@@ -583,7 +586,8 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	m_tnSearchRadiusX = a_tnSearchRadiusX;
 	m_tnSearchRadiusY = a_tnSearchRadiusY;
 	m_tnTolerance = Pixel_t::MakeTolerance (a_tnTolerance);
-	m_tnTwiceTolerance = Pixel_t::MakeTolerance (2 * a_tnTolerance);
+	m_tnTwiceTolerance = Pixel_t::MakeTolerance (Tolerance_t (2)
+		* a_tnTolerance);
 }
 
 
@@ -745,6 +749,9 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 {
 	// Make sure they gave us a frame.
 	assert (a_pReferenceFrame != NULL);
+
+	// Make sure we didn't already have a frame.
+	assert (m_pReferenceFrame == NULL);
 	
 	// Remember the frame we're operating on this pass.
 	m_pReferenceFrame = a_pReferenceFrame;
@@ -867,7 +874,8 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 			pCell = &(m_ppSearchWindow[tnY][tnX]);
 
 			// If this cell was invalidated previously, skip it.
-			if (pCell->m_eDoneSorting && pCell->m_pSorter == NULL)
+			if (pCell->m_eDoneSorting != SearchWindowCell::m_knNotDone
+				&& pCell->m_pSorter == NULL)
 			{
 				assert (pCell->m_pForward == NULL);
 				assert (pCell->m_pBackward == NULL);
@@ -1128,6 +1136,9 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		tnLeft = rExtent.m_tnXStart - PGW + PIXELINDEX (1)
 			+ a_tnOffsetX;
 		tnRight = rExtent.m_tnXEnd + a_tnOffsetX;
+
+		// Clip the range of search-window cells to the boundaries of
+		// the frame.
 		if (tnTop < 0)
 			tnTop = 0;
 		if (tnBottom > m_tnHeight - PGH + PIXELINDEX (1))
@@ -1195,14 +1206,16 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		// removed from the search-window.
 
 	// If the leftmost edge of the search-window isn't at the edge of
-	// the active area, we can stop now.
+	// the active area, then there's nothing to invalidate on that side,
+	// and we can stop now.
 	if (m_tnX - m_tnSearchRadiusX != m_tnSearchWindowPixelLeft)
 	{
 		++m_tnX;
 		return;
 	}
 
-	// If the search-window is zero width, we can stop now.
+	// If the search-window is zero width (i.e. invalid anyway), we can
+	// stop now.
 	if (m_tnSearchWindowPixelLeft == m_tnSearchWindowPixelRight)
 	{
 		++m_tnX;
@@ -1261,7 +1274,8 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		// removed from the search-window.
 
 	// If the rightmost edge of the search-window isn't at the edge of
-	// the active area, we can stop now.
+	// the active area, then there's nothing to invalidate on that side,
+	// and we can stop now.
 	if (m_tnX + m_tnSearchRadiusX
 			!= m_tnSearchWindowPixelRight - PIXELINDEX (1))
 	{
@@ -1269,7 +1283,8 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		return;
 	}
 	
-	// If the search-window is zero width, we can stop now.
+	// If the search-window is zero width (i.e. invalid anyway), we can
+	// stop now.
 	if (m_tnSearchWindowPixelLeft == m_tnSearchWindowPixelRight)
 	{
 		--m_tnX;
@@ -1472,12 +1487,8 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	PGW,PGH,SORTERBITMASK,PIXEL,REFERENCEPIXEL,REFERENCEFRAME>
 	::PixelSorterBranchNode::~PixelSorterBranchNode()
 {
-#ifndef NDEBUG
-	// One less instance.
-	--sm_ulInstances;
-#endif // NDEBUG
-
-	// Make sure we're the only one in our circular list.
+	// Make sure we're the only one in our circular list (i.e. that
+	// no search-window cells are still attached to us).
 	assert (m_oSplitValue.m_pForward == &m_oSplitValue);
 
 	// Finish off the circular list.
@@ -1486,6 +1497,11 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	// Recursively destroy the tree.
 	for (int i = 0; i < m_knBranches; ++i)
 		delete m_apBranches[i];
+
+#ifndef NDEBUG
+	// One less instance.
+	--sm_ulInstances;
+#endif // NDEBUG
 }
 
 
@@ -1560,7 +1576,7 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 			// bitmask that we use to determine the index of the
 			// child branch that this cell should descend into.
 			// Also calculate the min/max for this branch.
-			for (i = 0; i < DIM; i++)
+			for (i = 0; i < DIM; ++i)
 			{
 				// If this is a multi-dimensional pixel, we have to
 				// make sure that none of its axes are within the
@@ -1724,7 +1740,7 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 				m_oSplitValue.m_atPixels[tnY][tnX][nDim] = PIXEL_NUM
 					((PIXEL_TOL (a_rMin.m_atPixels[tnY][tnX][nDim])
 					+ PIXEL_TOL (a_rMax.m_atPixels[tnY][tnX][nDim]))
-						/ 2);
+						/ PIXEL_TOL (2));
 }
 
 

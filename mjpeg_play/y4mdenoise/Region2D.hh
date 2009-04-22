@@ -1,8 +1,8 @@
 #ifndef __REGION2D_H__
 #define __REGION2D_H__
 
-// This file (C) 2004 Steven Boswell.  All rights reserved.
-// Released to the public under the GNU General Public License.
+// This file (C) 2004-2009 Steven Boswell.  All rights reserved.
+// Released to the public under the GNU General Public License v2.
 // See the file COPYING for more information.
 
 // Region2D tracks a 2-dimensional region of arbitrary points.
@@ -16,7 +16,6 @@
 
 #include "Status_t.h"
 #include <iostream>
-#include <cassert>
 
 
 
@@ -90,7 +89,7 @@ public:
 	//SIZE NumberOfPoints (void) const;
 		// Return the total number of points contained by the region.
 
-	//void Clear (void);
+	void Clear (void);
 		// Clear the region, emptying it of all extents.
 
 	//void Union (Status_t &a_reStatus, INDEX a_tnY, INDEX a_tnXStart,
@@ -381,7 +380,7 @@ Region2D<INDEX,SIZE>::Assign (Status_t &a_reStatus,
 	assert (a_reStatus == g_kNoError);
 
 	// Assign the other region's extents to ourselves.
-	Region2D<INDEX,SIZE>::Clear();
+	Clear();
 	for (typename REGION::ConstIterator itHere = a_rOther.Begin();
 		 itHere != a_rOther.End();
 		 ++itHere)
@@ -603,37 +602,6 @@ error:
 // remove from the current region any areas that exist in the
 // other region.
 template <class INDEX, class SIZE>
-template <class REGION>
-void
-Region2D<INDEX,SIZE>::Subtract (Status_t &a_reStatus,
-	const REGION &a_rOther)
-{
-	typename REGION::ConstIterator itHere;
-		// Where we are in the other region's extents.
-
-	// Make sure they didn't start us off with an error.
-	assert (a_reStatus == g_kNoError);
-
-	// Run through the extents in the other region, subtract them from
-	// the current region.
-	for (itHere = a_rOther.Begin();
-		 itHere != a_rOther.End();
-		 ++itHere)
-	{
-		// Subtract this extent from the current region.
-		Subtract (a_reStatus, (*itHere).m_tnY, (*itHere).m_tnXStart,
-			(*itHere).m_tnXEnd, a_rOther, itHere.itNext);
-		if (a_reStatus != g_kNoError)
-			return;
-	}
-}
-
-
-
-// Subtract the other region from the current region, i.e.
-// remove from the current region any areas that exist in the
-// other region.
-template <class INDEX, class SIZE>
 template <class REGION, class REGION_O, class REGION_TEMP>
 void
 Region2D<INDEX,SIZE>::SubtractDebug (Status_t &a_reStatus,
@@ -754,7 +722,7 @@ Region2D<INDEX,SIZE>::FloodFill (Status_t &a_reStatus,
 			a_rControl.m_oToDo.Assign (a_reStatus, *this);
 			if (a_reStatus != g_kNoError)
 				return;
-			Region2D<INDEX,SIZE>::Clear();
+			Clear();
 		}
 	}
 	else
@@ -889,7 +857,7 @@ Region2D<INDEX,SIZE>::MakeBorder (Status_t &a_reStatus,
 	assert (a_reStatus == g_kNoError);
 
 	// Start with an empty region.
-	Region2D<INDEX,SIZE>::Clear();
+	Clear();
 
 	// For every extent in the other region, add every surrounding
 	// extent.  That creates a region that looks like the other region,

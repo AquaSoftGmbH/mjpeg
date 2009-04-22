@@ -1,8 +1,8 @@
 #ifndef __NEWDENOISE_H__
 #define __NEWDENOISE_H__
 
-// This file (C) 2004 Steven Boswell.  All rights reserved.
-// Released to the public under the GNU General Public License.
+// This file (C) 2004-2009 Steven Boswell.  All rights reserved.
+// Released to the public under the GNU General Public License v2.
 // See the file COPYING for more information.
 
 #ifdef  __cplusplus
@@ -70,7 +70,7 @@ typedef struct DNSR_GLOBAL
 	int thresholdCbCr;		/* color error threshold */
 	int matchCountThrottle;	/* match throttle on count */
 	int matchSizeThrottle;	/* match throttle on size */
-	int threads;			/* 0=none, 1=rw only, 2=color in parallel */
+	int threads;			/* bit 0=rw only, bit 1=color in parallel */
 	struct
 	{
 		int w, h;			/* width/height of intensity frame */

@@ -1,8 +1,8 @@
 #ifndef __MOTION_SEARCHER_H__
 #define __MOTION_SEARCHER_H__
 
-// This file (C) 2004 Steven Boswell.  All rights reserved.
-// Released to the public under the GNU General Public License.
+// This file (C) 2004-2009 Steven Boswell.  All rights reserved.
+// Released to the public under the GNU General Public License v2.
 // See the file COPYING for more information.
 
 #include "config.h"
@@ -80,6 +80,10 @@
 
 
 // Define this to include the code for using the search-border.
+// (The search-border is no longer part of the current denoising
+// logic, but it may be again one day, if it's repurposed to detect
+// different types of noise, so I'd like to keep the code that
+// integrates it into the motion-searcher, for reference.)
 //#define USE_SEARCH_BORDER
 
 
@@ -124,7 +128,7 @@
 // It sorts the found pixel-groups by sum-of-absolute-differences,
 // and keeps the best match-count-throttle matches.  Once the search is
 // done, it tries to flood-fill each match, and the first match to be
-// large enough (i.e.  to be match-size-throttle pixel-groups in size or
+// large enough (i.e. to be match-size-throttle pixel-groups in size or
 // larger) is applied to the image.  Any areas of the frame not resolved
 // by this method are new information, and new reference pixels are
 // allocated for them.
@@ -299,7 +303,7 @@ private:
 
 	MovedRegion m_oMatchThrottleRegion;
 		// The region that's applied to the frame before motion
-		// detection is done.  Allocated here to avoid lots of
+		// detection is finished.  Allocated here to avoid lots of
 		// creation & destruction.
 	
 	void ApplyRegionToNewFrame (Status_t &a_reStatus,
@@ -354,6 +358,11 @@ private:
 	MatchedPixelGroupSet m_setMatches;
 		// All the matches for the current pixel-group that we
 		// want to use.
+
+	MovedRegion m_oBestMatchRegion;
+		// The region corresponding to the best match found out of all the
+		// matched pixel-groups.  Allocated here to avoid lots of creation
+		// and destruction.
 
 #endif // THROTTLE_PIXELSORTER_WITH_SAD
 
@@ -521,17 +530,18 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		REFERENCEFRAME>::MotionSearcher()
 	:
 #ifdef USE_SEARCH_BORDER
-	  m_oSearchBorder (m_setRegions),
+	m_oSearchBorder (m_setRegions),
 #endif // USE_SEARCH_BORDER
-									  m_oRegionAllocator (1048576),
-	  m_oMatchThrottleRegion (m_oRegionAllocator)
+	m_oRegionAllocator (1048576),
+	m_oMatchThrottleRegion (m_oRegionAllocator)
+#ifdef THROTTLE_PIXELSORTER_WITH_SAD
+	, m_oBestMatchRegion (m_oRegionAllocator)
+#endif // THROTTLE_PIXELSORTER_WITH_SAD
 #ifndef ZERO_MOTION_FLOOD_FILL_WITH_BITMAP_REGIONS
-												 ,
-	  m_oZeroMotionFloodFillControl (m_oRegionAllocator)
+	, m_oZeroMotionFloodFillControl (m_oRegionAllocator)
 #endif // ZERO_MOTION_FLOOD_FILL_WITH_BITMAP_REGIONS
 #ifndef MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
-													 	,
-	  m_oMatchThrottleFloodFillControl (m_oRegionAllocator)
+	, m_oMatchThrottleFloodFillControl (m_oRegionAllocator)
 #endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
 {
 	// No frames yet.
@@ -625,6 +635,8 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	assert (a_reStatus == g_kNoError);
 
 	// Make sure they gave us a reasonable number of frames.
+	// (We need at least one for the new frame and one to
+	// compare against the new frame.)
 	assert (a_nFrames >= 2);
 
 	// Make sure the width & height are reasonable.
@@ -691,12 +703,12 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 
 #ifdef THROTTLE_PIXELSORTER_WITH_SAD
 
-		// Initialize our set of matches.  (We'll use this to sort the
-		// incoming matches by how closely it matches the current
-		// pixel-group, and we'll throw away bad matches.)
-		m_setMatches.Init (a_reStatus, true);
-		if (a_reStatus != g_kNoError)
-			return;
+	// Initialize our set of matches.  (We'll use this to sort the
+	// incoming matches by how closely it matches the current
+	// pixel-group, and we'll throw away bad matches.)
+	m_setMatches.Init (a_reStatus, true);
+	if (a_reStatus != g_kNoError)
+		return;
 
 #endif // THROTTLE_PIXELSORTER_WITH_SAD
 
@@ -722,6 +734,15 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	m_oMatchThrottleRegion.Init (a_reStatus);
 	if (a_reStatus != g_kNoError)
 		return;
+	
+#ifdef THROTTLE_PIXELSORTER_WITH_SAD
+
+	// Initialize our best-match region.
+	m_oBestMatchRegion.Init (a_reStatus);
+	if (a_reStatus != g_kNoError)
+		return;
+
+#endif // THROTTLE_PIXELSORTER_WITH_SAD
 
 #ifdef USE_SEARCH_BORDER
 
@@ -879,6 +900,7 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 				// true if we've started finding an extent.
 
 			oFoundExtent.m_tnY = y;
+			oFoundExtent.m_tnXStart = oFoundExtent.m_tnXEnd = 0;
 			bStartedExtent = false;
 			for (x = 0; x <= m_tnWidth; ++x, ++i)
 			{
@@ -1338,7 +1360,11 @@ noMatch:
 					// HACK
 					//fprintf (stderr, ", consulting pixel-sorter.\n");
 	
-#ifndef THROTTLE_PIXELSORTER_WITH_SAD
+#ifdef THROTTLE_PIXELSORTER_WITH_SAD
+					FRAMESIZE tnBestMatch;
+						// The number of pixels in the region formed by
+						// flood-filling the best match.
+#else // THROTTLE_PIXELSORTER_WITH_SAD
 					PIXELINDEX tnBestMotionX, tnBestMotionY;
 					FRAMESIZE tnBestMotionXXYY;
 						// The best match found, and its length.
@@ -1384,6 +1410,40 @@ noMatch:
 							<= m_tnSearchRadiusX);
 						assert (AbsoluteValue (pMatch->m_tnY - m_tnY)
 							<= m_tnSearchRadiusY);
+
+#ifndef NDEBUG
+#ifdef USE_REFERENCEFRAMEPIXELS_ONCE
+
+						// Make sure all matches refer to unused
+						// reference-frame pixels.
+						{
+							PIXELINDEX x, y;
+								// Used to loop through the current
+								// pixel-group's pixels.
+			
+							for (y = 0; y < PGH; ++y)
+							{
+								for (x = 0; x < PGW; ++x)
+								{
+									PIXELINDEX tnPixelX, tnPixelY;
+										// The index of the current pixel.
+				
+									// Calculate the index of the current
+									// pixel.
+									tnPixelX = pMatch->m_tnX + x;
+									tnPixelY = pMatch->m_tnY + y;
+				
+									// Make sure this reference-frame pixel
+									// hasn't been used already.
+									assert (!m_oUsedReferencePixels
+										.DoesContainPoint (tnPixelY,
+											tnPixelX));
+								}
+							}
+						}
+
+#endif // USE_REFERENCEFRAMEPIXELS_ONCE
+#endif // !NDEBUG
 		
 #ifdef THROTTLE_PIXELSORTER_WITH_SAD
 
@@ -1473,6 +1533,9 @@ noMatch:
 		
 #ifdef THROTTLE_PIXELSORTER_WITH_SAD
 
+					// No best match found yet.
+					tnBestMatch = 0;
+
 					// Now loop through all the good matches found,
 					// flood-fill each one, and use the first one that
 					// fills a large enough area.
@@ -1546,33 +1609,45 @@ noMatch:
 							= m_oMatchThrottleRegion.NumberOfPoints();
 
 						// If this match is big enough, keep it.
-						if (tnThisMatch
-							>= m_nMatchSizeThrottle * PGH * PGW)
+						if (tnThisMatch > tnBestMatch)
 						{
-							ApplyRegionToNewFrame (a_reStatus,
-								m_oMatchThrottleRegion);
-							if (a_reStatus != g_kNoError)
-								return;
-		
-							// That's one more match.
-							++tnMatches;
+							// Save the new best match.
+							m_oBestMatchRegion.Clear();
+							m_oBestMatchRegion.Move
+								(m_oMatchThrottleRegion);
 
-							// That's more pixels found by
-							// flood-filling.
-							if (tnMotionX == 0 && tnMotionY == 0)
-								tnNotMovedFloodedPixels
-									+= tnThisMatch;
-							else
-								tnFloodedPixels += tnThisMatch;
-		
-							// Stop looking.
-							break;
+							// Remember how big it was.
+							tnBestMatch = tnThisMatch;
 						}
 #endif // USE_SEARCH_BORDER
 					}
 
+					// If the best match's region is big enough, use it.
+					if (tnBestMatch >= m_nMatchSizeThrottle * PGH * PGW)
+					{
+						ApplyRegionToNewFrame (a_reStatus,
+							m_oBestMatchRegion);
+						if (a_reStatus != g_kNoError)
+							return;
+	
+						// That's one more match.
+						++tnMatches;
+	
+						// That's more pixels found by
+						// flood-filling.
+						PIXELINDEX tnMotionX, tnMotionY;
+						m_oBestMatchRegion.GetMotionVector (tnMotionX,
+							tnMotionY);
+						if (tnMotionX == 0 && tnMotionY == 0)
+							tnNotMovedFloodedPixels += tnBestMatch;
+						else
+							tnFloodedPixels += tnBestMatch;
+					}
+
 					// All done with the matches.
 					m_setMatches.Clear();
+					m_oMatchThrottleRegion.Clear();
+					m_oBestMatchRegion.Clear();
 
 #else // THROTTLE_PIXELSORTER_WITH_SAD
 
@@ -1706,8 +1781,8 @@ noMatch:
 
 nextGroup:
 				// Move to the next pixel-group.
-				if (m_tnStepX == 1 && m_tnX == tnLastX
-				|| m_tnStepX == -1 && m_tnX == 0)
+				if ((m_tnStepX == 1 && m_tnX == tnLastX)
+				|| (m_tnStepX == -1 && m_tnX == 0))
 				{
 					// We need to move down a line.  If we're already on
 					// the last line, we're done with the frame.
@@ -1916,15 +1991,15 @@ nextGroup:
 	
 #ifndef NDEBUG
 	// Print the allocation totals.
-	fprintf (stderr, "%lu regions, %lu pixel-sorters, "
+	fprintf (stderr, "%lu regions, %lu pixel-sorters"
 #ifdef USE_SEARCH_BORDER
-													 "%lu RUCs"
+													 ", %lu RUCs"
 #endif // USE_SEARCH_BORDER
 															 "\n",
-		MovedRegion::GetInstances(),
-		m_oSearchWindow.GetPixelSorterNodeCount()
+		(unsigned long) MovedRegion::GetInstances(),
+		(unsigned long) m_oSearchWindow.GetPixelSorterNodeCount()
 #ifdef USE_SEARCH_BORDER
-		, m_oSearchBorder.GetRegionUnderConstructionCount()
+		, (unsigned long) m_oSearchBorder.GetRegionUnderConstructionCount()
 #endif // USE_SEARCH_BORDER
 														   );
 #endif // NDEBUG

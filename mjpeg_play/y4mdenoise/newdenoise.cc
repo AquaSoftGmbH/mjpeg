@@ -1,5 +1,5 @@
-// This file (C) 2004 Steven Boswell.  All rights reserved.
-// Released to the public under the GNU General Public License.
+// This file (C) 2004-2009 Steven Boswell.  All rights reserved.
+// Released to the public under the GNU General Public License v2.
 // See the file COPYING for more information.
 
 #ifdef HAVE_CONFIG_H
@@ -17,6 +17,20 @@
 #include <stdio.h>
 #include "newdenoise.hh"
 #include "MotionSearcher.hh"
+
+// Pixel types we use.
+typedef Pixel<uint8_t,1,int32_t> PixelY;
+typedef Pixel<uint8_t,2,int32_t> PixelCbCr;
+
+// Reference-pixel types we use.
+typedef ReferencePixel<uint16_t,uint8_t,1,PixelY> ReferencePixelY;
+typedef ReferencePixel<uint16_t,uint8_t,2,PixelCbCr> ReferencePixelCbCr;
+
+// Reference-frame types we use.
+typedef ReferenceFrame<ReferencePixelY, int16_t, int32_t>
+	ReferenceFrameY;
+typedef ReferenceFrame<ReferencePixelCbCr, int16_t, int32_t>
+	ReferenceFrameCbCr;
 
 // The denoisers.  (We have to make these classes, in order to keep gdb
 // from crashing.  I didn't even know one could crash gdb. ;-)
@@ -78,6 +92,7 @@ public:
 		// Unlock the mutex.
 	
 	operator pthread_mutex_t * (void) { return &m_oMutex; }
+	operator const pthread_mutex_t * (void) const { return &m_oMutex; }
 		// Accessor.
 
 private:
@@ -117,9 +132,10 @@ private:
 	pthread_cond_t m_oCondition;
 		// The way the condition gets signaled if another thread is
 		// waiting for it.  Protected by the mutex.
-	bool m_bFlag;
-		// The way the condition gets signaled if another thread is
-		// not waiting for it.  Protected by the mutex.
+#ifndef NDEBUG
+	bool m_bSignaled;
+		// Whether or not a condition has been signaled.
+#endif // NDEBUG
 };
 
 // A basic input/output-oriented thread.
@@ -131,10 +147,13 @@ public:
 	
 	virtual ~BasicThread();
 		// Destructor.
+	
+	void ForceShutdown (void);
+		// Force the thread to terminate.
 
 protected:
 	virtual int Work (void) = 0;
-		// Denoise the current frame.
+		// Do some work.
 		// Must be implemented by the subclass.
 
 	void Initialize (void);
@@ -146,6 +165,13 @@ protected:
 	
 	void Unlock (void);
 		// Unlock the mutex that guards the conditions.
+
+#ifndef NDEBUG
+
+	bool IsLocked (void) const;
+		// True if the mutex is locked.
+
+#endif // !NDEBUG
 
 	void SignalInput (void);
 		// Signal that input has been provided to the thread.
@@ -167,7 +193,8 @@ protected:
 	
 private:
 	ThreadMutex m_oMutex;
-		// A mutex to guard the following conditions.
+		// A mutex to guard general shared access to the thread's
+		// data, as well as the following conditions.
 
 	ThreadCondition m_oInputCondition, m_oOutputCondition;
 		// Conditions to signal input-ready and output-ready.
@@ -220,15 +247,25 @@ public:
 	
 	//void Shutdown (subclass parameters);
 		// Shut down the worker thread.
-	
-	void Shutdown (void);
-		// Stop the thread.
 
 protected:
 
 	virtual void WorkLoop (void);
 		// The thread function.  Loop, calling Work(), until told to
 		// stop.
+	
+	void AddFrame (void);
+		// Add a frame to the denoiser.
+		// Te be called by the subclass' AddFrame().
+	
+	void WaitForAddFrame (void);
+		// Wait for the frame to be added & output possibly generated.
+		// Te be called by the subclass' WaitForAddFrame().
+
+private:
+	enum { m_kWaitingForFrame, m_kGivenFrame, m_kFinishedFrame };
+	int m_eWorkStatus;
+		// Where we are in the process of denoising.
 };
 
 // A class to run the intensity denoiser in a separate thread.
@@ -255,9 +292,6 @@ public:
 	int WaitForAddFrame (void);
 		// Get the next denoised frame, if any.
 		// Returns the result of Work().
-	
-	void Shutdown (void);
-		// Stop the thread.
 
 protected:
 	virtual int Work (void);
@@ -295,9 +329,6 @@ public:
 	int WaitForAddFrame (void);
 		// Get the next denoised frame, if any.
 		// Returns the result of Work().
-	
-	void Shutdown (void);
-		// Stop the thread.
 
 protected:
 	virtual int Work (void);
@@ -341,6 +372,8 @@ protected:
 		// The type of a frame.
 	Frame *m_apFrames;
 		// Space for frames being read from input.
+	enum { m_kNumFrames = 4 };
+		// The number of frames to allocate.
 	Frame *m_pValidFramesHead, *m_pValidFramesTail, *m_pCurrentFrame,
 			*m_pFreeFramesHead;
 		// A list of frames containing data, the current frame, and
@@ -387,14 +420,11 @@ public:
 		// Destructor.
 
 	int ReadFrame (uint8_t **a_apPlanes);
-		// Read a frame from input.  m_apPlanes[] gets backpatched
+		// Read a frame from input.  a_apPlanes[] gets backpatched
 		// with pointers to valid frame data, and they are valid until
 		// the next call to ReadFrame().
 		// Returns Y4M_OK if it succeeds, Y4M_ERR_EOF at the end of
 		// the stream.  (Returns other errors too.)
-	
-	void Shutdown (void);
-		// Stop the thread.
 
 protected:
 	virtual int Work (void);
@@ -424,17 +454,16 @@ public:
 		// Write a frame to output.  The a_apPlanes[] previously set up
 		// by GetSpaceToWriteFrame() must be filled with video data by
 		// the client.
-	
-	void Shutdown (void);
-		// Stop the thread.
 
 protected:
-	virtual int Work (void);
-		// Write frames to the raw-video stream.
-
 	virtual void WorkLoop (void);
 		// The thread function.  Loop, calling Work(), until told to
 		// stop.
+		// Differs from BasicThread's implementation because it waits until
+		// all pending frames are written before it stops.
+	
+	virtual int Work (void);
+		// Write frames to the raw-video stream.
 };
 
 // Threads for denoising intensity & color.
@@ -474,7 +503,7 @@ int newdenoise_init (int a_nFrames, int a_nWidthY, int a_nHeightY,
 	
 	// If input/output should be handled in separate threads, set that
 	// up.
-	if (denoiser.threads >= 1)
+	if (denoiser.threads & 1)
 	{
 		g_oDenoiserThreadRead.Initialize (a_nInputFD,
 			a_pStreamInfo, a_pFrameInfo, a_nWidthY, a_nHeightY,
@@ -488,7 +517,7 @@ int newdenoise_init (int a_nFrames, int a_nWidthY, int a_nHeightY,
 	if (a_nWidthY != 0 && a_nHeightY != 0)
 	{
 		g_bMotionSearcherY = true;
-		g_nPixelsY = a_nWidthY * a_nHeightY / nInterlace;
+		g_nPixelsY = (a_nWidthY * a_nHeightY) / nInterlace;
 		g_pPixelsY = new MotionSearcherY::Pixel_t [g_nPixelsY];
 		if (g_pPixelsY == NULL)
 			return -1;
@@ -510,10 +539,13 @@ int newdenoise_init (int a_nFrames, int a_nWidthY, int a_nHeightY,
 	if (a_nWidthCbCr != 0 && a_nHeightCbCr != 0)
 	{
 		g_bMotionSearcherCbCr = true;
-		g_nPixelsCbCr = a_nWidthCbCr * a_nHeightCbCr / nInterlace;
+		g_nPixelsCbCr = (a_nWidthCbCr * a_nHeightCbCr) / nInterlace;
 		g_pPixelsCbCr = new MotionSearcherCbCr::Pixel_t [g_nPixelsCbCr];
 		if (g_pPixelsCbCr == NULL)
+		{
+			delete[] g_pPixelsY;
 			return -1;
+		}
 		g_oMotionSearcherCbCr.Init (eStatus, nInterlace * a_nFrames,
 			a_nWidthCbCr, a_nHeightCbCr / nInterlace,
 			denoiser.radiusCbCr / denoiser.frame.ss_h,
@@ -521,11 +553,15 @@ int newdenoise_init (int a_nFrames, int a_nWidthY, int a_nHeightY,
 			denoiser.zThresholdCbCr, denoiser.thresholdCbCr,
 			denoiser.matchCountThrottle, denoiser.matchSizeThrottle);
 		if (eStatus != g_kNoError)
+		{
+			delete[] g_pPixelsCbCr;
+			delete[] g_pPixelsY;
 			return -1;
+		}
 
 		// If color should be denoised in a separate thread, set that
 		// up.
-		if (denoiser.threads == 2)
+		if (denoiser.threads & 2)
 			g_oDenoiserThreadCbCr.Initialize();
 	}
 	else
@@ -540,12 +576,15 @@ int
 newdenoise_shutdown (void)
 {
 	// If color was denoised in a separate thread, shut that down.
-	if (g_bMotionSearcherCbCr && denoiser.threads == 2)
-		g_oDenoiserThreadCbCr.Shutdown();
-	if (denoiser.threads >= 1)
+	if (g_bMotionSearcherCbCr && (denoiser.threads & 2))
+		g_oDenoiserThreadCbCr.ForceShutdown();
+	
+	// If reading/writing is being done in separate threads, shut
+	// them down.
+	if (denoiser.threads & 1)
 	{
-		g_oDenoiserThreadRead.Shutdown();
-		g_oDenoiserThreadWrite.Shutdown();
+		g_oDenoiserThreadRead.ForceShutdown();
+		g_oDenoiserThreadWrite.ForceShutdown();
 	}
 	
 	// No errors.
@@ -557,7 +596,7 @@ int
 newdenoise_read_frame (uint8_t **a_apPlanes)
 {
 	// Make sure the read/write threads are being used.
-	assert (denoiser.threads >= 1);
+	assert (denoiser.threads & 1);
 
 	// Easy enough.
 	return g_oDenoiserThreadRead.ReadFrame (a_apPlanes);
@@ -569,7 +608,7 @@ int
 newdenoise_get_write_frame (uint8_t **a_apPlanes)
 {
 	// Make sure the read/write threads are being used.
-	assert (denoiser.threads >= 1);
+	assert (denoiser.threads & 1);
 
 	// Easy enough.
 	return g_oDenoiserThreadWrite.GetSpaceToWriteFrame (a_apPlanes);
@@ -580,13 +619,15 @@ int
 newdenoise_write_frame (void)
 {
 	// Make sure the read/write threads are being used.
-	assert (denoiser.threads >= 1);
+	assert (denoiser.threads & 1);
 
 	// Easy enough.
 	g_oDenoiserThreadWrite.WriteFrame();
 	return Y4M_OK;
 }
 
+// (This routine isn't used any more, but I think it should be kept around
+// as a reference.)
 int
 newdenoise_frame0 (const uint8_t *a_pInputY, const uint8_t *a_pInputCb,
 	const uint8_t *a_pInputCr, uint8_t *a_pOutputY,
@@ -610,7 +651,7 @@ newdenoise_frame0 (const uint8_t *a_pInputY, const uint8_t *a_pInputCb,
 	// If it's time to purge, do so.
 	{
 		extern int frame;
-		if (frame % 10 == 0)
+		if (frame % denoiser.frames == 0)
 		{
 			g_oMotionSearcherY.Purge();
 			g_oMotionSearcherCbCr.Purge();
@@ -689,8 +730,8 @@ newdenoise_frame0 (const uint8_t *a_pInputY, const uint8_t *a_pInputCb,
 		|| (pFrameY != NULL && pFrameCbCr != NULL));
 
 	// Return whether there was an output frame this time.
-	return (g_bMotionSearcherY && pFrameY != NULL
-		|| g_bMotionSearcherCbCr && pFrameCbCr != NULL) ? 0 : 1;
+	return ((g_bMotionSearcherY && pFrameY != NULL)
+		|| (g_bMotionSearcherCbCr && pFrameCbCr != NULL)) ? 0 : 1;
 }
 
 int
@@ -841,20 +882,23 @@ newdenoise_frame (const uint8_t *a_pInputY, const uint8_t *a_pInputCb,
 	// Make the compiler shut up.
 	bY = bCbCr = 0;
 
-	// Denoise intensity & color.
-	if (g_bMotionSearcherCbCr && denoiser.threads == 2)
+	// Denoise intensity & color.  (Do intensity in the current
+	// thread.)
+	if (g_bMotionSearcherCbCr && (denoiser.threads & 2))
 		g_oDenoiserThreadCbCr.AddFrame (a_pInputCb, a_pInputCr,
 			a_pOutputCb, a_pOutputCr);
 	if (g_bMotionSearcherY)
 		bY = newdenoise_frame_intensity (a_pInputY, a_pOutputY);
-	if (g_bMotionSearcherCbCr && denoiser.threads != 2)
+	if (g_bMotionSearcherCbCr && !(denoiser.threads & 2))
 		bCbCr = newdenoise_frame_color (a_pInputCb, a_pInputCr,
 			a_pOutputCb, a_pOutputCr);
-	if (g_bMotionSearcherCbCr && denoiser.threads == 2)
+	if (g_bMotionSearcherCbCr && (denoiser.threads & 2))
 		bCbCr = g_oDenoiserThreadCbCr.WaitForAddFrame();
 
 	// If we're denoising both color & intensity, make sure we
-	// either got two reference frames or none at all.
+	// either got two reference frames or none at all.  (This is
+	// a sanity check, to make sure there are as many intensity
+	// frames as color frames.)
 	assert (!g_bMotionSearcherY || !g_bMotionSearcherCbCr
 		|| (bY != 0 && bCbCr != 0)
 		|| (bY == 0 && bCbCr == 0));
@@ -887,7 +931,8 @@ static void output_frame
 		{
 			pY = a_pFrameY->GetPixel (i);
 			assert (pY != NULL);
-			a_pOutputY[i] = pY->GetValue()[0];
+			const PixelY &rY = pY->GetValue();
+			a_pOutputY[i] = rY[0];
 		}
 	}
 	if (a_pFrameCbCr != NULL)
@@ -911,6 +956,8 @@ static void output_frame
 	}
 }
 
+// (This routine isn't used any more, but I think it should be kept around
+// as a reference.)
 int
 newdenoise_interlaced_frame0 (const uint8_t *a_pInputY,
 	const uint8_t *a_pInputCb, const uint8_t *a_pInputCr,
@@ -937,7 +984,7 @@ newdenoise_interlaced_frame0 (const uint8_t *a_pInputY,
 	// If it's time to purge, do so.
 	{
 		extern int frame;
-		if (frame % 10 == 0)
+		if (frame % denoiser.frames == 0)
 		{
 			g_oMotionSearcherY.Purge();
 			g_oMotionSearcherCbCr.Purge();
@@ -1083,8 +1130,8 @@ newdenoise_interlaced_frame0 (const uint8_t *a_pInputY,
 		|| (pFrameY != NULL && pFrameCbCr != NULL));
 
 	// Return whether there was an output frame this time.
-	return (g_bMotionSearcherY && pFrameY != NULL
-		|| g_bMotionSearcherCbCr && pFrameCbCr != NULL) ? 0 : 1;
+	return ((g_bMotionSearcherY && pFrameY != NULL)
+		|| (g_bMotionSearcherCbCr && pFrameCbCr != NULL)) ? 0 : 1;
 }
 
 int
@@ -1316,17 +1363,18 @@ newdenoise_interlaced_frame (const uint8_t *a_pInputY,
 	// Make the compiler shut up.
 	bY = bCbCr = 0;
 
-	// Denoise intensity & color.
-	if (g_bMotionSearcherCbCr && denoiser.threads == 2)
+	// Denoise intensity & color.  (Intensity is denoised in the
+	// current thread.)
+	if (g_bMotionSearcherCbCr && (denoiser.threads & 2))
 		g_oDenoiserThreadCbCr.AddFrame (a_pInputCb, a_pInputCr,
 			a_pOutputCb, a_pOutputCr);
 	if (g_bMotionSearcherY)
 		bY = newdenoise_interlaced_frame_intensity (a_pInputY,
 			a_pOutputY);
-	if (g_bMotionSearcherCbCr && denoiser.threads != 2)
+	if (g_bMotionSearcherCbCr && !(denoiser.threads & 2))
 		bCbCr = newdenoise_interlaced_frame_color (a_pInputCb,
 			a_pInputCr, a_pOutputCb, a_pOutputCr);
-	if (g_bMotionSearcherCbCr && denoiser.threads == 2)
+	if (g_bMotionSearcherCbCr && (denoiser.threads & 2))
 		bCbCr = g_oDenoiserThreadCbCr.WaitForAddFrame();
 
 	// If we're denoising both color & intensity, make sure we
@@ -1365,7 +1413,8 @@ static void output_field
 			{
 				pY = a_pFrameY->GetPixel (i);
 				assert (pY != NULL);
-				a_pOutputY[y * g_nWidthY + x] = pY->GetValue()[0];
+				const PixelY &rY = pY->GetValue();
+				a_pOutputY[y * g_nWidthY + x] = rY[0];
 			}
 		}
 	}
@@ -1391,6 +1440,109 @@ static void output_field
 			}
 		}
 	}
+}
+
+
+
+// Pixel methods.
+
+
+
+// Turn an integer tolerance value into what's appropriate for
+// the pixel type.
+template <>
+int32_t
+PixelY::MakeTolerance (uint8_t a_tnTolerance)
+{
+	// For a one-dimensional pixel, just use the given number.
+	return int32_t (a_tnTolerance);
+}
+
+
+
+// Turn an integer tolerance value into what's appropriate for
+// the pixel type.
+template <>
+int32_t
+PixelCbCr::MakeTolerance (uint8_t a_tnTolerance)
+{
+	// For a two-dimensional pixel, use the square of the given number.
+	return int32_t (a_tnTolerance) * int32_t (a_tnTolerance);
+}
+
+
+
+// Return true if the two pixels are within the specified tolerance.
+template <>
+bool
+PixelY::IsWithinTolerance (const PixelY &a_rOther,
+	int32_t a_tnTolerance) const
+{
+	// Check to see if the absolute value of the difference between
+	// the two pixels is within our tolerance value.
+	return AbsoluteValue (int32_t (m_atnVal[0])
+		- int32_t (a_rOther.m_atnVal[0])) <= a_tnTolerance;
+}
+
+
+
+// Return true if the two pixels are within the specified tolerance.
+template <>
+bool
+PixelY::IsWithinTolerance (const PixelY &a_rOther,
+	int32_t a_tnTolerance, int32_t &a_rtnSAD) const
+{
+	// Check to see if the absolute value of the difference between
+	// the two pixels is within our tolerance value.
+	a_rtnSAD = AbsoluteValue (int32_t (m_atnVal[0])
+		- int32_t (a_rOther.m_atnVal[0]));
+	return a_rtnSAD <= a_tnTolerance;
+}
+
+
+
+// Return true if the two pixels are within the specified tolerance.
+template <>
+bool
+PixelCbCr::IsWithinTolerance
+	(const PixelCbCr &a_rOther, int32_t a_tnTolerance) const
+{
+	// Calculate the vector difference between the two pixels.
+	int32_t tnX = int32_t (m_atnVal[0])
+		- int32_t (a_rOther.m_atnVal[0]);
+	int32_t tnY = int32_t (m_atnVal[1])
+		- int32_t (a_rOther.m_atnVal[1]);
+
+	// Check to see if the length of the vector difference is within
+	// our tolerance value.  (Technically, we check the squares of
+	// the values, but that's just as valid & much faster than
+	// calculating a square root.)
+	return tnX * tnX + tnY * tnY <= a_tnTolerance;
+}
+
+
+
+// Return true if the two pixels are within the specified tolerance.
+template <>
+bool
+PixelCbCr::IsWithinTolerance
+	(const PixelCbCr &a_rOther, int32_t a_tnTolerance,
+	int32_t &a_rtnSAD) const
+{
+	// Calculate the vector difference between the two pixels.
+	int32_t tnX = int32_t (m_atnVal[0])
+		- int32_t (a_rOther.m_atnVal[0]);
+	int32_t tnY = int32_t (m_atnVal[1])
+		- int32_t (a_rOther.m_atnVal[1]);
+
+	// Calculate the sample-array-difference.
+	a_rtnSAD = tnX * tnX + tnY * tnY;
+
+	// Check to see if the length of the vector difference is within
+	// our tolerance value.  (Technically, we check the squares of
+	// the values, but that's just as valid & much faster than
+	// calculating a square root.)
+	return a_rtnSAD <= a_tnTolerance;
 }
 
 
@@ -1454,6 +1606,9 @@ ThreadMutex::Lock (void)
 	int nErr;
 		// An error that may occur.
 
+	// Note that the mutex could either be locked or unlocked when this
+	// method is called.  If it's locked, we'll have to wait our turn.
+
 	// Get exclusive access.
 	nErr = pthread_mutex_lock (&m_oMutex);
 	if (nErr != 0)
@@ -1461,8 +1616,13 @@ ThreadMutex::Lock (void)
 			strerror (nErr));
 
 #ifndef NDEBUG
+
+	// Make sure it wasn't locked already.
+	assert (!m_bLocked);
+
 	// Now it's locked.
 	m_bLocked = true;
+
 #endif // NDEBUG
 }
 
@@ -1479,9 +1639,10 @@ ThreadMutex::Unlock (void)
 	assert (m_bLocked);
 
 #ifndef NDEBUG
-	// Now it's unlocked.  (Another thread may lock it immediately, but
-	// that's not our concern.)
+
+	// Now it's unlocked.
 	m_bLocked = false;
+
 #endif // NDEBUG
 
 	// Release exclusive access.
@@ -1520,8 +1681,12 @@ ThreadCondition::ThreadCondition (ThreadMutex &a_rMutex)
 		mjpeg_error_exit1 ("pthread_condattr_destroy() failed: %s",
 			strerror (nErr));
 	
-	// Initialize the flag.
-	m_bFlag = false;
+#ifndef NDEBUG
+
+	// No signal yet.
+	m_bSignaled = false;
+
+#endif // NDEBUG
 }
 
 
@@ -1531,9 +1696,6 @@ ThreadCondition::~ThreadCondition()
 {
 	int nErr;
 		// An error that may occur.
-	
-	// Make sure any signaled condition got taken care of.
-	//assert (!m_bFlag);
 
 	// Destroy the condition.
 	nErr = pthread_cond_destroy (&m_oCondition);
@@ -1554,14 +1716,21 @@ ThreadCondition::Signal (void)
 	// Make sure our mutex is locked.
 	assert (m_rMutex.m_bLocked);
 
+#ifndef NDEBUG
+
+	// Make sure we haven't been signaled already.
+	assert (!m_bSignaled);
+
+	// Remember we've been signaled.
+	m_bSignaled = true;
+
+#endif // NDEBUG
+
 	// Signal the condition.
 	nErr = pthread_cond_signal (&m_oCondition);
 	if (nErr != 0)
 		mjpeg_error_exit1 ("pthread_cond_signal() failed: %s",
 			strerror (nErr));
-
-	// Set the flag.  (It may have been set already, but that's OK.)
-	m_bFlag = true;
 }
 
 
@@ -1576,26 +1745,40 @@ ThreadCondition::Wait (void)
 	// Make sure our mutex is locked.
 	assert (m_rMutex.m_bLocked);
 
-	// If a condition hasn't been signaled yet, wait for one to be.
-	if (!m_bFlag)
-	{
-		// Wait for the condition to be signaled.
-		nErr = pthread_cond_wait (&m_oCondition, m_rMutex);
-		if (nErr != 0)
-			mjpeg_error_exit1 ("pthread_cond_wait() failed: %s",
-				strerror (nErr));
-	
-		// Make sure the condition was signaled properly.
-		assert (m_bFlag);
+	// Make sure a condition hasn't been signaled.  (We have to wait
+	// for it first, in order for signaling to mean anything.)
+	assert (!m_bSignaled);
 
 #ifndef NDEBUG
-		// The mutex is still locked, though it may not know it.
-		m_rMutex.m_bLocked = true;
-#endif // NDEBUG
-	}
 
-	// Clear the flag.
-	m_bFlag = false;
+	// Waiting on the condition will unlock the mutex.
+	m_rMutex.m_bLocked = false;
+
+#endif // NDEBUG
+
+	// Wait for the condition to be signaled.
+	nErr = pthread_cond_wait (&m_oCondition, m_rMutex);
+	if (nErr != 0)
+		mjpeg_error_exit1 ("pthread_cond_wait() failed: %s",
+			strerror (nErr));
+
+	// Make sure the condition was signaled properly.
+	assert (m_bSignaled);
+
+	// Make sure the mutex thinks it's still unlocked.
+	// (It's actually locked...the mutex was re-acquired
+	// when the wait succeeded.)
+	assert (!m_rMutex.m_bLocked);
+
+#ifndef NDEBUG
+
+	// Remember that the mutex is actually locked.
+	m_rMutex.m_bLocked = true;
+
+	// The signal has been delivered.
+	m_bSignaled = false;
+
+#endif // NDEBUG
 }
 
 
@@ -1619,7 +1802,7 @@ BasicThread::BasicThread()
 
 	// Nothing additional to do.  m_oInputCondition and
 	// m_oOutputCondition are already constructed, and m_oThreadInfo is
-	// initialized by pthread_create().
+	// initialized by pthread_create(), called in Initialize().
 }
 
 
@@ -1630,6 +1813,19 @@ BasicThread::~BasicThread()
 	// Nothing additional to do.  m_oInputCondition and
 	// m_oOutputCondition are destroyed by default, and m_oThreadInfo
 	// apparently does not need to be destroyed.
+}
+
+
+
+// Force the thread to terminate.
+void
+BasicThread::ForceShutdown (void)
+{
+	// Get exclusive access.
+	Lock();
+
+	// Shut down the thread.  (No need to unlock; Shutdown() will do that.)
+	Shutdown();
 }
 
 
@@ -1689,12 +1885,26 @@ BasicThread::Unlock (void)
 
 
 
+#ifndef NDEBUG
+
+// Returns true if the mutex is locked.
+bool
+BasicThread::IsLocked (void) const
+{
+	// Easy enough.
+	return m_oMutex.m_bLocked;
+}
+
+#endif // !NDEBUG
+
+
+
 // Signal that input has been provided to the thread.
 void
 BasicThread::SignalInput (void)
 {
 	// Make sure the mutex is locked.
-	assert (m_oMutex.m_bLocked);
+	assert (IsLocked());
 
 	// Easy enough.
 	m_oInputCondition.Signal();
@@ -1708,7 +1918,10 @@ void
 BasicThread::WaitForInput (void)
 {
 	// Make sure the mutex is locked.
-	assert (m_oMutex.m_bLocked);
+	assert (IsLocked());
+
+	// Make sure we're not already waiting for input.
+	assert (!m_bWaitingForInput);
 
 	// Easy enough.
 	m_bWaitingForInput = true;
@@ -1724,7 +1937,7 @@ void
 BasicThread::SignalOutput (void)
 {
 	// Make sure the mutex is locked.
-	assert (m_oMutex.m_bLocked);
+	assert (IsLocked());
 
 	// Easy enough.
 	m_oOutputCondition.Signal();
@@ -1737,7 +1950,10 @@ void
 BasicThread::WaitForOutput (void)
 {
 	// Make sure the mutex is locked.
-	assert (m_oMutex.m_bLocked);
+	assert (IsLocked());
+
+	// Make sure we're not already waiting for output.
+	assert (!m_bWaitingForOutput);
 
 	// Easy enough.
 	m_bWaitingForOutput = true;
@@ -1752,10 +1968,25 @@ void
 BasicThread::Shutdown (void)
 {
 	// Make sure we have exclusive access.
-	assert (m_oMutex.m_bLocked);
+	assert (IsLocked());
 
 	// Tell the thread to stop looping.
 	m_bWorkLoop = false;
+
+	// If anyone is waiting, stop them.  They should notice
+	// that m_bWorkLoop is now false, and gracefully exit.
+	if (m_bWaitingForInput)
+		SignalInput();
+	if (m_bWaitingForOutput)
+		SignalOutput();
+
+	// Release exclusive access.
+	Unlock();
+
+	// Wait for the loop to stop.
+	int nErr = pthread_join (m_oThreadInfo, NULL);
+	if (nErr != 0)
+		mjpeg_error_exit1 ("pthread_join() failed: %s", strerror (nErr));
 }
 
 
@@ -1781,12 +2012,8 @@ void
 BasicThread::WorkLoop (void)
 {
 	// Loop and do work until told to quit.
-	for (;;)
+	while (m_bWorkLoop)
 	{
-		// If we're out of work, stop.
-		if (!m_bWorkLoop)
-			break;
-
 		// Do work.
 		m_nWorkRetval = Work();
 
@@ -1808,7 +2035,8 @@ BasicThread::WorkLoop (void)
 // Default constructor.
 DenoiserThread::DenoiserThread()
 {
-	// Nothing additional to do.
+	// No work done yet.
+	m_eWorkStatus = m_kWaitingForFrame;
 }
 
 
@@ -1821,52 +2049,79 @@ DenoiserThread::~DenoiserThread()
 
 
 
-// Stop the thread.
-void
-DenoiserThread::Shutdown (void)
-{
-	// Get exclusive access.
-	Lock();
-
-	// Call the base class version.
-	BaseClass::Shutdown();
-
-	// Wake up the thread from waiting for input.
-	SignalInput();
-
-	// Release exclusive access.
-	Unlock();
-}
-
-
-
 // The thread function.  Loop, calling Work(), until told to stop.
 void
 DenoiserThread::WorkLoop (void)
 {
 	// Loop and do work until told to quit.
-	for (;;)
+	while (m_bWorkLoop)
 	{
 		// Wait for an input frame.
 		Lock();
-		WaitForInput();
+		if (m_eWorkStatus != m_kGivenFrame)
+			WaitForInput();
+		bool bWorkLoop = m_bWorkLoop;
 		Unlock();
 
-		// If we're out of work, stop.
-		if (!m_bWorkLoop)
+		// If there's no more work to do, stop.
+		if (!bWorkLoop)
 			break;
 
 		// Do work.
+		assert (m_eWorkStatus == m_kGivenFrame);
 		m_nWorkRetval = Work();
 
 		// Signal that there's output.
 		Lock();
-		SignalOutput();
+		m_eWorkStatus = m_kFinishedFrame;
+		if (m_bWaitingForOutput)
+			SignalOutput();
 		Unlock();
 	}
 
 	// Remember that the work loop has stopped.
 	m_bWorkLoop = false;
+}
+
+
+
+// Add a frame to the denoiser.
+void
+DenoiserThread::AddFrame (void)
+{
+	// Make sure we have exclusive access.
+	assert (IsLocked());
+
+	// Make sure they're waiting for a frame.
+	assert (m_eWorkStatus == m_kWaitingForFrame);
+
+	// Now they've been given a frame.
+	m_eWorkStatus = m_kGivenFrame;
+
+	// Signal the availability of input.
+	if (m_bWaitingForInput)
+		SignalInput();
+}
+
+
+
+// Get the next denoised frame, if any.
+void
+DenoiserThread::WaitForAddFrame (void)
+{
+	// Make sure we have exclusive access.
+	assert (IsLocked());
+
+	// Make sure that we know we're working.
+	assert (m_eWorkStatus != m_kWaitingForFrame);
+
+	// Wait for the current frame to finish denoising.
+	if (m_eWorkStatus != m_kFinishedFrame)
+		WaitForOutput();
+	assert (m_eWorkStatus == m_kFinishedFrame);
+
+	// Now we're waiting for another frame.
+	m_eWorkStatus = m_kWaitingForFrame;
 }
 
 
@@ -1906,16 +2161,25 @@ DenoiserThreadY::Initialize (void)
 
 // Add a frame to the denoiser.
 void
-DenoiserThreadY::AddFrame (const uint8_t *a_pInputY,
-	uint8_t *a_pOutputY)
+DenoiserThreadY::AddFrame (const uint8_t *a_pInputY, uint8_t *a_pOutputY)
 {
+	// Make sure they gave us a new frame to denoise.
+	assert (a_pInputY != NULL && a_pOutputY != NULL);
+
+	// Get exclusive access.
+	Lock();
+
+	// Make sure there's not a current frame already.
+	assert (m_pInputY == NULL && m_pOutputY == NULL);
+
 	// Store the parameters.
 	m_pInputY = a_pInputY;
 	m_pOutputY = a_pOutputY;
 
 	// Signal the availability of input.
-	Lock();
-	SignalInput();
+	BaseClass::AddFrame();
+
+	// Release exclusive access.
 	Unlock();
 }
 
@@ -1925,27 +2189,24 @@ DenoiserThreadY::AddFrame (const uint8_t *a_pInputY,
 int
 DenoiserThreadY::WaitForAddFrame (void)
 {
-	// Wait for output to be ready.
+	// Get exclusive access.
 	Lock();
-	WaitForOutput();
+
+	// Make sure we're denoising a frame.
+	assert (m_pInputY != NULL && m_pOutputY != NULL);
+
+	// Wait for the current frame to finish denoising.
+	BaseClass::WaitForAddFrame();
+
+	// We're done denoising this frame.
+	m_pInputY = NULL;
+	m_pOutputY = NULL;
+
+	// Release exclusive access.
 	Unlock();
+
+	// Let our caller know if there's another frame.
 	return m_nWorkRetval;
-}
-
-
-
-// Stop the thread.
-void
-DenoiserThreadY::Shutdown (void)
-{
-	// Call the base class version.
-	BaseClass::Shutdown();
-
-	// Wait for the loop to stop.
-	int nErr = pthread_join (m_oThreadInfo, NULL);
-	if (nErr != 0)
-		mjpeg_error_exit1 ("DenoiserThreadRead pthread_join() "
-			"failed: %s", strerror (nErr));
 }
 
 
@@ -1954,6 +2215,10 @@ DenoiserThreadY::Shutdown (void)
 int
 DenoiserThreadY::Work (void)
 {
+	// Make sure we're denoising a frame.
+	assert (m_pInputY != NULL && m_pOutputY != NULL);
+
+	// Denoise the current frame.
 	return ((denoiser.interlaced != 0)
 			? newdenoise_interlaced_frame_intensity
 			: newdenoise_frame_intensity)
@@ -2003,6 +2268,21 @@ DenoiserThreadCbCr::AddFrame (const uint8_t *a_pInputCb,
 	const uint8_t *a_pInputCr, uint8_t *a_pOutputCb,
 	uint8_t *a_pOutputCr)
 {
+	// Make sure they gave us a frame to denoise.  (Actually,
+	// a null input frame means that the end of input has
+	// been reached, which is OK, but there always needs to
+	// be space for an output frame.)
+	assert ((a_pInputCb == NULL && a_pInputCr == NULL)
+		|| (a_pInputCb != NULL && a_pInputCr != NULL));
+	assert (a_pOutputCb != NULL && a_pOutputCr != NULL);
+
+	// Get exclusive access.
+	Lock();
+
+	// Make sure there isn't already a current frame.
+	assert (m_pInputCb == NULL && m_pInputCr == NULL
+		&& m_pOutputCb == NULL && m_pOutputCr == NULL);
+	
 	// Store the parameters.
 	m_pInputCb = a_pInputCb;
 	m_pInputCr = a_pInputCr;
@@ -2010,8 +2290,9 @@ DenoiserThreadCbCr::AddFrame (const uint8_t *a_pInputCb,
 	m_pOutputCr = a_pOutputCr;
 
 	// Signal the availability of input.
-	Lock();
-	SignalInput();
+	BaseClass::AddFrame();
+
+	// Release exclusive access.
 	Unlock();
 }
 
@@ -2021,27 +2302,31 @@ DenoiserThreadCbCr::AddFrame (const uint8_t *a_pInputCb,
 int
 DenoiserThreadCbCr::WaitForAddFrame (void)
 {
-	// Wait for output to be ready.
+	// Get exclusive access.
 	Lock();
-	WaitForOutput();
+
+	// Make sure there's a current frame.  (Actually,
+	// a null input frame means that the end of input has
+	// been reached, which is OK, but there always needs to
+	// be space for an output frame.)
+	assert ((m_pInputCb == NULL && m_pInputCr == NULL)
+		|| (m_pInputCb != NULL && m_pInputCr != NULL));
+	assert (m_pOutputCb != NULL && m_pOutputCr != NULL);
+
+	// Wait for the frame to finish denoising.
+	BaseClass::WaitForAddFrame();
+
+	// We're done denoising this frame.
+	m_pInputCb = NULL;
+	m_pInputCr = NULL;
+	m_pOutputCb = NULL;
+	m_pOutputCr = NULL;
+
+	// Release exclusive access.
 	Unlock();
+
+	// Let our caller know if there's a new frame.
 	return m_nWorkRetval;
-}
-
-
-
-// Stop the thread.
-void
-DenoiserThreadCbCr::Shutdown (void)
-{
-	// Call the base class version.
-	BaseClass::Shutdown();
-
-	// Wait for the loop to stop.
-	int nErr = pthread_join (m_oThreadInfo, NULL);
-	if (nErr != 0)
-		mjpeg_error_exit1 ("DenoiserThreadRead pthread_join() "
-			"failed: %s", strerror (nErr));
 }
 
 
@@ -2050,6 +2335,15 @@ DenoiserThreadCbCr::Shutdown (void)
 int
 DenoiserThreadCbCr::Work (void)
 {
+	// Make sure there's a current frame.  (Actually,
+	// a null input frame means that the end of input has
+	// been reached, which is OK, but there always needs to
+	// be space for an output frame.)
+	assert ((m_pInputCb == NULL && m_pInputCr == NULL)
+		|| (m_pInputCb != NULL && m_pInputCr != NULL));
+	assert (m_pOutputCb != NULL && m_pOutputCr != NULL);
+
+	// Denoise the current frame.
 	return ((denoiser.interlaced != 0)
 			? newdenoise_interlaced_frame_color
 			: newdenoise_frame_color)
@@ -2084,8 +2378,7 @@ ReadWriteThread::~ReadWriteThread()
 	// Free up all the frames.
 	if (m_apFrames != NULL)
 	{
-		int i;
-		for (i = 0; i < 4; ++i)
+		for (int i = 0; i < m_kNumFrames; ++i)
 		{
 			delete[] m_apFrames[i].planes[0];
 			delete[] m_apFrames[i].planes[1];
@@ -2116,13 +2409,12 @@ ReadWriteThread::Initialize (int a_nFD,
 	m_pStreamInfo = a_pStreamInfo;
 	m_pFrameInfo = a_pFrameInfo;
 
-	// Allocate space for frames.  For now, hardcode the number of
-	// frame buffers at 4.
-	m_apFrames = new Frame[4];
+	// Allocate space for frames.
+	m_apFrames = new Frame[m_kNumFrames];
 	nSizeY = a_nWidthY * a_nHeightY;
 	assert (nSizeY > 0);
 	nSizeCbCr = a_nWidthCbCr * a_nHeightCbCr;
-	for (i = 0; i < 4; ++i)
+	for (i = 0; i < m_kNumFrames; ++i)
 	{
 		// Allocate space for each frame.  Don't allocate space for
 		// color unless we're denoising color.
@@ -2134,7 +2426,9 @@ ReadWriteThread::Initialize (int a_nFD,
 		}
 		else
 		{
-			// This is a hack just to see if this solves the problem.
+			// Space must be allocated anyway, since the incoming
+			// frames have color information that needs to be read
+			// in (even though it's not used).
 			m_apFrames[i].planes[1] = new uint8_t[denoiser.frame.Cw
 				* denoiser.frame.Ch];
 			m_apFrames[i].planes[2] = new uint8_t[denoiser.frame.Cw
@@ -2159,6 +2453,9 @@ ReadWriteThread::GetFirstValidFrame (void)
 	Frame *pFrame;
 		// The frame we get.
 
+	// Make sure we have exclusive access.
+	assert (IsLocked());
+
 	// Make sure there's a valid frame.
 	assert (m_pValidFramesHead != NULL);
 
@@ -2180,6 +2477,9 @@ ReadWriteThread::GetFirstValidFrame (void)
 void
 ReadWriteThread::AddFrameToValidList (Frame *a_pFrame)
 {
+	// Make sure we have exclusive access.
+	assert (IsLocked());
+
 	// Make sure they gave us a frame to add.
 	assert (a_pFrame != NULL);
 
@@ -2210,6 +2510,9 @@ ReadWriteThread::GetFreeFrame (void)
 	Frame *pFrame;
 		// The frame we get.
 
+	// Make sure we have exclusive access.
+	assert (IsLocked());
+
 	// Make sure there's a free frame.
 	assert (m_pFreeFramesHead != NULL);
 
@@ -2229,6 +2532,9 @@ ReadWriteThread::GetFreeFrame (void)
 void
 ReadWriteThread::AddFrameToFreeList (Frame *a_pFrame)
 {
+	// Make sure we have exclusive access.
+	assert (IsLocked());
+
 	// Make sure they gave us a frame.
 	assert (a_pFrame != NULL);
 
@@ -2243,6 +2549,9 @@ ReadWriteThread::AddFrameToFreeList (Frame *a_pFrame)
 void
 ReadWriteThread::MoveValidFrameToCurrent (void)
 {
+	// Make sure we have exclusive access.
+	assert (IsLocked());
+
 	// Make sure there's a valid frame.
 	assert (m_pValidFramesHead != NULL);
 
@@ -2259,6 +2568,9 @@ ReadWriteThread::MoveValidFrameToCurrent (void)
 void
 ReadWriteThread::MoveCurrentFrameToValidList (void)
 {
+	// Make sure we have exclusive access.
+	assert (IsLocked());
+
 	// Make sure there's a current frame.
 	assert (m_pCurrentFrame != NULL);
 
@@ -2275,6 +2587,9 @@ ReadWriteThread::MoveCurrentFrameToValidList (void)
 void
 ReadWriteThread::MoveFreeFrameToCurrent (void)
 {
+	// Make sure we have exclusive access.
+	assert (IsLocked());
+
 	// Make sure there's a free frame.
 	assert (m_pFreeFramesHead != NULL);
 
@@ -2291,6 +2606,9 @@ ReadWriteThread::MoveFreeFrameToCurrent (void)
 void
 ReadWriteThread::MoveCurrentFrameToFreeList (void)
 {
+	// Make sure we have exclusive access.
+	assert (IsLocked());
+
 	// Make sure there's a current frame.
 	assert (m_pCurrentFrame != NULL);
 
@@ -2355,16 +2673,21 @@ DenoiserThreadRead::ReadFrame (uint8_t **a_apPlanes)
 	// valid frames at this point, then we're at the end of the stream.
 	if (m_pValidFramesHead != NULL)
 		MoveValidFrameToCurrent();
+	
+	// Remember the current frame.  (It could conceivably get changed
+	// once we release exclusive access.  The code, as presently written,
+	// doesn't do that, but I like to plan for random future extensions.)
+	Frame *pCurrentFrame = m_pCurrentFrame;
 
 	// Release exclusive access.
 	Unlock();
 
 	// Backpatch the frame info.
-	if (m_pCurrentFrame != NULL)
+	if (pCurrentFrame != NULL)
 	{
-		a_apPlanes[0] = m_pCurrentFrame->planes[0];
-		a_apPlanes[1] = m_pCurrentFrame->planes[1];
-		a_apPlanes[2] = m_pCurrentFrame->planes[2];
+		a_apPlanes[0] = pCurrentFrame->planes[0];
+		a_apPlanes[1] = pCurrentFrame->planes[1];
+		a_apPlanes[2] = pCurrentFrame->planes[2];
 		return Y4M_OK;
 	}
 
@@ -2378,80 +2701,78 @@ DenoiserThreadRead::ReadFrame (uint8_t **a_apPlanes)
 
 
 
-// Stop the thread.
-void
-DenoiserThreadRead::Shutdown (void)
-{
-	// Get exclusive access.
-	Lock();
-
-	// Call the base class version.
-	BaseClass::Shutdown();
-
-	// Release exclusive access.
-	Unlock();
-
-	// Wait for the loop to stop.
-	int nErr = pthread_join (m_oThreadInfo, NULL);
-	if (nErr != 0)
-		mjpeg_error_exit1 ("DenoiserThreadRead pthread_join() "
-			"failed: %s", strerror (nErr));
-}
-
-
-
 // Read frames from the raw-video stream.
 int
 DenoiserThreadRead::Work (void)
 {
-	Frame *pFrame;
-		// Space for reading a frame into memory.
 	int nErr;
 		// An error that may occur.
+	Frame *pFrame;
+		// Space for reading a frame into memory.
+
+	// No errors yet.
+	nErr = Y4M_OK;
+
+	// No frame yet.
+	pFrame = NULL;
 
 	// Get exclusive access.
 	Lock();
 
-	// If there are no free buffers, wait for some.
+	// Are there no free buffers?
 	if (m_pFreeFramesHead == NULL)
-		WaitForInput();
-	
-	// Make sure there's a free buffer.
-	assert (m_pFreeFramesHead != NULL);
-
-	// Get the free buffer.
-	pFrame = GetFreeFrame();
-
-	// Release exclusive access.
-	Unlock();
-
-	// Read the next frame into the buffer.
-	nErr = y4m_read_frame (m_nFD, m_pStreamInfo, m_pFrameInfo,
-	    pFrame->planes);
-
-	// Get exclusive access.
-	Lock();
-
-	// Did we successfully read a frame?
-	if (nErr == Y4M_OK)
 	{
-		// Yes.  Put the frame into the valid-frames list.
-		AddFrameToValidList (pFrame);
-
-		// If there are no other valid frames, then signal
-		// that there's some output now.
-		if (m_bWaitingForOutput)
-			SignalOutput();
+		// If we've been asked to quit, do so.
+		if (!m_bWorkLoop)
+			nErr = Y4M_ERR_EOF;
 		
+		// Otherwise, wait for space to read in frames.
+		else
+			WaitForInput();
 	}
-	else
-	{
-		// No.  Put the frame back into the free-frames list.
-		AddFrameToFreeList (pFrame);
-	}
+
+	// If there is still no space to read in frames, we're done.
+	if (nErr == Y4M_OK && m_pFreeFramesHead == NULL)
+		nErr = Y4M_ERR_EOF;
+
+	// Otherwise, get a free buffer.
+	if (nErr == Y4M_OK)
+		pFrame = GetFreeFrame();
 
 	// Release exclusive access.
 	Unlock();
+
+	// If there's space to read in another frame, do so.
+	if (nErr == Y4M_OK && pFrame != NULL)
+	{
+		// Read the next frame into the buffer.
+		nErr = y4m_read_frame (m_nFD, m_pStreamInfo, m_pFrameInfo,
+		    pFrame->planes);
+	
+		// Get exclusive access.
+		Lock();
+	
+		// Did we successfully read a frame?
+		if (nErr == Y4M_OK)
+		{
+			// Yes.  Put the frame into the valid-frames list.
+			AddFrameToValidList (pFrame);
+	
+			// If there are no other valid frames, then signal
+			// that there's some output now.
+			if (m_bWaitingForOutput)
+				SignalOutput();
+			
+		}
+		else
+		{
+			// No.  Put the frame back into the free-frames list.
+			AddFrameToFreeList (pFrame);
+		}
+	
+		// Release exclusive access.
+		Unlock();
+	}
 
 	// Return whether we successfully read a frame.
 	return nErr;
@@ -2485,46 +2806,44 @@ DenoiserThreadWrite::~DenoiserThreadWrite()
 int
 DenoiserThreadWrite::GetSpaceToWriteFrame (uint8_t **a_apPlanes)
 {
-	int nErr;
-		// An error that may occur.
-
-	// No errors yet.
-	nErr = Y4M_OK;
-
 	// Get exclusive access.
 	Lock();
 
 	// Make sure there's no current frame.
 	assert (m_pCurrentFrame == NULL);
 
-	// If there are no free frames, wait for one.
-	if (m_pFreeFramesHead == NULL)
+	// If there are no free frames, and the thread is still writing
+	// frames, then wait for it to free up a frame.
+	if (m_pFreeFramesHead == NULL && m_bWorkLoop)
 		WaitForInput();
 	
-	// If there are still no free frames, something is wrong.
-	// Return that to our caller.
-	if (m_pFreeFramesHead == NULL)
-	{
-		assert (m_nWorkRetval != Y4M_OK);
-		nErr = m_nWorkRetval;
-	}
-	
-	// Otherwise, make a free frame the current frame.
-	else
-	{
+	// Make a free frame the current frame.
+	if (m_pFreeFramesHead != NULL)
 		MoveFreeFrameToCurrent();
-
-		// Backpatch the frame info, for all the info we're denoising.
-		a_apPlanes[0] = m_pCurrentFrame->planes[0];
-		a_apPlanes[1] = m_pCurrentFrame->planes[1];
-		a_apPlanes[2] = m_pCurrentFrame->planes[2];
-	}
+	
+	// Remember the current frame.  (It could conceivably get changed
+	// once we release exclusive access.  The code, as presently written,
+	// doesn't do that, but I like to plan for random future extensions.)
+	Frame *pCurrentFrame = m_pCurrentFrame;
 
 	// Release exclusive access.
 	Unlock();
 
-	// Let our caller know what happened.
-	return nErr;
+	// Backpatch the frame info, for all the info we're denoising.
+	if (pCurrentFrame != NULL)
+	{
+		a_apPlanes[0] = pCurrentFrame->planes[0];
+		a_apPlanes[1] = pCurrentFrame->planes[1];
+		a_apPlanes[2] = pCurrentFrame->planes[2];
+		return Y4M_OK;
+	}
+
+	// Make sure we got an error at the end of stream (hopefully
+	// Y4M_ERR_EOF).
+	assert (m_nWorkRetval != Y4M_OK);
+
+	// Return whatever error we got at the end of the stream.
+	return m_nWorkRetval;
 }
 
 
@@ -2554,27 +2873,35 @@ DenoiserThreadWrite::WriteFrame (void)
 
 
 
-// Stop the thread.
+// The thread function.  Loop, calling Work(), until told to stop.
+// Differs from BasicThread's implementation because it waits until
+// all frames are written before it stops.
 void
-DenoiserThreadWrite::Shutdown (void)
+DenoiserThreadWrite::WorkLoop (void)
 {
-	// Get exclusive access.
-	Lock();
+	// Loop and do work until told to quit.
+	for (;;)
+	{
+		// Determine if we should continue looping.
+		// This requires exclusive access because of the test
+		// for remaining frames to write.
+		bool bContinue;
+		Lock();
+		bContinue = (m_bWorkLoop || m_pValidFramesHead != NULL);
+		Unlock();
+		if (!bContinue)
+			break;
 
-	// Call the base class version.
-	BaseClass::Shutdown();
+		// Do work.
+		m_nWorkRetval = Work();
 
-	// Wake up the thread from waiting for output.
-	SignalOutput();
+		// If it returned non-OK, stop.
+		if (m_nWorkRetval != Y4M_OK)
+			break;
+	}
 
-	// Release exclusive access.
-	Unlock();
-
-	// Wait for the loop to stop.
-	int nErr = pthread_join (m_oThreadInfo, NULL);
-	if (nErr != 0)
-		mjpeg_error_exit1 ("DenoiserThreadRead pthread_join() "
-			"failed: %s", strerror (nErr));
+	// Remember that the work loop has stopped.
+	m_bWorkLoop = false;
 }
 
 
@@ -2638,25 +2965,4 @@ DenoiserThreadWrite::Work (void)
 
 	// Let our caller know what happened.
 	return nErr;
-}
-
-
-
-// The thread function.  Loop, calling Work(), until we're out of input.
-void
-DenoiserThreadWrite::WorkLoop (void)
-{
-	// Loop and do work until told to quit.
-	for (;;)
-	{
-		// Do work.
-		m_nWorkRetval = Work();
-
-		// If it returned non-OK, stop.
-		if (m_nWorkRetval != Y4M_OK)
-			break;
-	}
-
-	// Remember that the work loop has stopped.
-	m_bWorkLoop = false;
 }

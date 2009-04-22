@@ -1,8 +1,8 @@
 #ifndef __SETREGION2D_H__
 #define __SETREGION2D_H__
 
-// This file (C) 2004 Steven Boswell.  All rights reserved.
-// Released to the public under the GNU General Public License.
+// This file (C) 2004-2009 Steven Boswell.  All rights reserved.
+// Released to the public under the GNU General Public License v2.
 // See the file COPYING for more information.
 
 // SetRegion2D tracks a 2-dimensional region of arbitrary points.
@@ -1263,6 +1263,9 @@ SetRegion2D<INDEX,SIZE>::FloodFill (Status_t &a_reStatus,
 
 	// Make sure they didn't start us off with an error.
 	assert (a_reStatus == g_kNoError);
+
+	// Make the compiler shut up.
+	oFoundExtent.m_tnXStart = oFoundExtent.m_tnXEnd = 0;
 
 	// How we set up depends on whether we're to verify all existing
 	// region extents.

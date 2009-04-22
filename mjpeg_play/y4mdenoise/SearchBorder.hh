@@ -1,8 +1,8 @@
 #ifndef __SEARCH_BORDER_H__
 #define __SEARCH_BORDER_H__
 
-// This file (C) 2004 Steven Boswell.  All rights reserved.
-// Released to the public under the GNU General Public License.
+// This file (C) 2004-2009 Steven Boswell.  All rights reserved.
+// Released to the public under the GNU General Public License v2.
 // See the file COPYING for more information.
 
 #include "config.h"
@@ -154,6 +154,11 @@ public:
 
 		virtual ~MovedRegion();
 			// Destructor.
+
+		inline void Move (MovedRegion &a_rOther);
+			// Move the contents of the other region into the current
+			// region.
+			// The current region must be empty.
 
 		inline void SetMotionVector (PIXELINDEX a_tnX,
 				PIXELINDEX a_tnY);
@@ -515,6 +520,24 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::MovedRegion::Assign
 	BaseClass::Assign (a_reStatus, a_rOther);
 	if (a_reStatus != g_kNoError)
 		return;
+
+	// Copy the motion vector.
+	m_tnX = a_rOther.m_tnX;
+	m_tnY = a_rOther.m_tnY;
+	m_tnSquaredLength = a_rOther.m_tnSquaredLength;
+}
+
+
+
+// Move the contents of the other region into the current region.
+// The current region must be empty.
+template <class PIXELINDEX, class FRAMESIZE>
+void
+SearchBorder<PIXELINDEX,FRAMESIZE>::MovedRegion::Move
+	(MovedRegion &a_rOther)
+{
+	// Move the base class.
+	BaseClass::Move (a_rOther);
 
 	// Copy the motion vector.
 	m_tnX = a_rOther.m_tnX;

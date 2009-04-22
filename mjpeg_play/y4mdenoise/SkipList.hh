@@ -1,8 +1,8 @@
 #ifndef __SKIPLIST_H__
 #define __SKIPLIST_H__
 
-// This file (C) 2004 Steven Boswell.  All rights reserved.
-// Released to the public under the GNU General Public License.
+// This file (C) 2004-2009 Steven Boswell.  All rights reserved.
+// Released to the public under the GNU General Public License v2.
 // See the file COPYING for more information.
 
 /* A skip list is a sorted data structure with probabilistic balancing
@@ -130,22 +130,28 @@ public:
 	friend class Iterator;
 	class Iterator : public ConstIterator
 	{
+		private:
+			typedef ConstIterator BaseClass;
+				// Keep track of who our base class is.
+
 		public:
 			Iterator() : ConstIterator() {}
 			Iterator (Node *a_pNode) : ConstIterator (a_pNode) {}
-			VALUE &operator*() {return ConstIterator::m_pNode->m_oValue; }
-			Iterator& operator++() { ConstIterator::m_pNode = ConstIterator::m_pNode->m_apForward[0];
-				return *this; }
+			VALUE &operator*() {return BaseClass::m_pNode->m_oValue; }
+			Iterator& operator++() { BaseClass::m_pNode
+				= BaseClass::m_pNode->m_apForward[0]; return *this; }
 			Iterator operator++(int) { Iterator oTmp = *this; ++*this;
 				return oTmp; }
-			Iterator& operator--() { ConstIterator::m_pNode = ConstIterator::m_pNode->m_pBackward;
-				return *this; }
+			Iterator& operator--() { BaseClass::m_pNode
+				= BaseClass::m_pNode->m_pBackward; return *this; }
 			Iterator operator--(int) { Iterator oTmp = *this; --*this;
 				return oTmp; }
 			bool operator== (const Iterator &a_rOther) const
-				{ return (ConstIterator::m_pNode == a_rOther.m_pNode) ? true : false; }
+				{ return (BaseClass::m_pNode == a_rOther.m_pNode)
+					? true : false; }
 			bool operator!= (const Iterator &a_rOther) const
-				{ return (ConstIterator::m_pNode != a_rOther.m_pNode) ? true : false; }
+				{ return (BaseClass::m_pNode != a_rOther.m_pNode)
+					? true : false; }
 	};
 	
 	//

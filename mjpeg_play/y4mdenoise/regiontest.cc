@@ -1,9 +1,10 @@
 #include "config.h"
 #include <stdio.h>
+#include <assert.h>
 #include "SetRegion2D.hh"
 
-// This file (C) 2004 Steven Boswell.  All rights reserved.
-// Released to the public under the GNU General Public License.
+// This file (C) 2004-2009 Steven Boswell.  All rights reserved.
+// Released to the public under the GNU General Public License v2.
 // See the file COPYING for more information.
 
 // The type of region we're testing.

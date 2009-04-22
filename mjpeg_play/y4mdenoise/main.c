@@ -1,13 +1,12 @@
 /***********************************************************
  * A new denoiser for the mjpegtools project               *
  * ------------------------------------------------------- *
- * (C) 2004 Steven Boswell.                                *
+ * (C) 2004-2009 Steven Boswell.                                *
  * Based on yuvdenoise/main.c, (C) 2001,2002 Stefan Fendt  *
  *                                                         *
  * Licensed and protected by the GNU-General-Public-       *
- * License version 2 or if you prefer any later version of *
- * that license). See the file COPYING for detailed infor- *
- * mation.                                                 *
+ * License version 2. See the file COPYING for detailed    *
+ * information.                                            *
  ***********************************************************/
 
 #ifdef HAVE_CONFIG_H
@@ -18,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 #include "mjpeg_types.h"
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
   denoiser.thresholdCbCr      = -1;
   denoiser.matchCountThrottle = 15;
   denoiser.matchSizeThrottle  = 3;
-  denoiser.threads            = 0;
+  denoiser.threads            = 1;
   
   /* process commandline */
   process_commandline(argc, argv);
@@ -87,8 +87,10 @@ int main(int argc, char *argv[])
 	{
 		fd_in = open (g_pszInputFile, O_RDONLY);
 		if (fd_in == -1)
-		    mjpeg_error_exit1("Couldn't open input file %s: %s!",
+		{
+			mjpeg_error_exit1 ("Couldn't open input file %s: %s!",
 				g_pszInputFile, y4m_strerr (errno));
+		}
 	}
 
 	/* open input stream */
@@ -109,7 +111,7 @@ int main(int argc, char *argv[])
   y4m_write_stream_header (fd_out, &streaminfo); 
 
   /* allocate memory for frames */
-  if (denoiser.threads == 0)
+  if (!(denoiser.threads & 1))
   	alloc_buffers();
 	
   /* set interlacing, if it hasn't been yet. */
@@ -150,7 +152,7 @@ int main(int argc, char *argv[])
 		mjpeg_error_exit1( "Could not initialize denoiser");
 
 	/* get space for the first output frame, if necessary */
-	if (denoiser.threads >= 1)
+	if (denoiser.threads & 1)
 	{
 		errno = newdenoise_get_write_frame (denoiser.frame.out);
 		if (errno)
@@ -167,7 +169,7 @@ int main(int argc, char *argv[])
 	if (!bInputStreamEnded)
 	{
 		/* Read the next frame. */
-		if (denoiser.threads == 0)
+		if (!(denoiser.threads & 1))
 			errno = y4m_read_frame (fd_in, &streaminfo, &frameinfo, 
 				denoiser.frame.in);
 		else
@@ -188,12 +190,6 @@ int main(int argc, char *argv[])
 	  //if (frame < 5395) continue;	// MAJOR HACK MAJOR HACK MAJOR HACK
 	  //if (frame == 5455) break;	// MAJOR HACK MAJOR HACK MAJOR HACK
 	  // fprintf (stderr, "Frame %d\r", frame);	// HACK
-	  // MAJOR HACK: cut out commercials
-	  //if ((frame < 54692)
-	  //|| (frame >= 20829 && frame <= 28231)
-	  //|| (frame >= 42737 && frame <= 45764)
-	  //|| (frame >= 68541 && frame <= 74895)
-	  //|| (frame >= 92217 && frame <= 95814))
 
 		/* denoise the current frame */
 		errno = ((denoiser.interlaced == 0) ? newdenoise_frame
@@ -225,7 +221,7 @@ int main(int argc, char *argv[])
 			}
 
 			/* Write the frame. */
-			if (denoiser.threads == 0)
+			if (!(denoiser.threads & 1))
 	    		errno = y4m_write_frame ( fd_out, &streaminfo,
 					&frameinfo, denoiser.frame.out);
 			else
@@ -234,7 +230,7 @@ int main(int argc, char *argv[])
 				mjpeg_error_exit1 ("Could not write frame %d", frame);
 
 			/* Get space for the next frame.*/
-			if (denoiser.threads >= 1)
+			if (denoiser.threads & 1)
 			{
 				errno = newdenoise_get_write_frame (denoiser.frame.out);
 				if (errno)
@@ -287,7 +283,7 @@ process_commandline(int argc, char *argv[])
         if(denoiser.radiusY<4)
         {
           denoiser.radiusY=4;
-  	  mjpeg_warn("Minimum allowed search radius is 4 pixels.");
+  	      mjpeg_warn ("Minimum allowed search radius is 4 pixels.");
         }
         break;
 	  }
@@ -297,7 +293,7 @@ process_commandline(int argc, char *argv[])
         if(denoiser.radiusCbCr<4)
         {
           denoiser.radiusCbCr=4;
-  	  mjpeg_warn("Minimum allowed color search radius is 4 pixel.");
+  	      mjpeg_warn ("Minimum allowed color search radius is 4 pixel.");
         }
         break;
       }
@@ -345,15 +341,19 @@ process_commandline(int argc, char *argv[])
       {
 	 	int interlaced = atoi (optarg);
 		if (interlaced != 0 && interlaced != 1 && interlaced != 2)
-      		    mjpeg_error_exit1("-I must be either 0, 1, or 2");
+		{
+      		mjpeg_error_exit1 ("-I must be either 0, 1, or 2");
+		}
         denoiser.interlaced = interlaced;
         break;
       }
       case 'p':
       {
 	 	int threads = atoi (optarg);
-		if (threads != 0 && threads != 1 && threads != 2)
-      		   mjpeg_error_exit1("-p must be either 0, 1, or 2");
+		if (threads < 0 || threads > 3)
+		{
+      		mjpeg_error_exit1 ("-p must be either 0, 1, 2, or 3");
+		}
         denoiser.threads = threads;
         break;
       }
@@ -406,15 +406,15 @@ display_help (void)
 	"y4mdenoise options\n"
 	"------------------\n"
 	"-p    parallelism: 0=no threads, 1=r/w thread only, 2=do color in\n"
-	"      separate thread (default: 0)\n"
+	"      separate thread (default: 1)\n"
 	"-r    Radius for motion-search (default: 16)\n"
 	"-R    Radius for color motion-search (default: -r setting)\n"
 	"-t    Error tolerance (default: 3)\n"
 	"-T    Color error tolerance (default: -t setting)\n"
 	"-z    Error tolerance for zero-motion pass (default: 2)\n"
-	"-Z    Error tolerance for color's zero-motion pass (default: -Z setting)\n"
+	"-Z    Error tolerance for color's zero-motion pass (default: -z setting)\n"
 	"-m    Match-count throttle (keep this many of the best pixel-group\n"
-	"      matches found in a radius search) (default: 10)\n"
+	"      matches found in a radius search) (default: 15)\n"
 	"-M    Match-size throttle (apply first match whose flood-fill is the\n"
 	"      size of this many pixel-groups or greater) (default: 3)\n"
 	"-f    Number of reference frames (default: 10)\n"
