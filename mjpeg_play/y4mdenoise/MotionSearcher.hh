@@ -889,237 +889,242 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		// pixel-groups within the specified tolerance, and set them up
 		// in the new reference frame.  Then flood-fill that region,
 		// to catch all the borders.
+		//
+		// Skip if they specified a zero for the tolerance.
 		m_oUsedReferencePixels.Clear();
-#if 1
-		// (Search for rows of at least 3 pixels.)
-		for (i = y = 0; y < m_tnHeight; ++y)
+		if (m_tnZeroTolerance != 0)
 		{
-			typename Region_t::Extent oFoundExtent;
-				// Any extent of matching pixels we found.
-			bool bStartedExtent;
-				// true if we've started finding an extent.
-
-			oFoundExtent.m_tnY = y;
-			oFoundExtent.m_tnXStart = oFoundExtent.m_tnXEnd = 0;
-			bStartedExtent = false;
-			for (x = 0; x <= m_tnWidth; ++x, ++i)
+#if 1
+			// (Search for rows of at least 3 pixels.)
+			for (i = y = 0; y < m_tnHeight; ++y)
 			{
-				bool bPixelMatched;
-					// True if the new-frame pixel matches the
-					// corresponding reference-frame pixel.
-	
-				// Sanity check.
-				assert (y * m_tnWidth + x == i);
+				typename Region_t::Extent oFoundExtent;
+					// Any extent of matching pixels we found.
+				bool bStartedExtent;
+					// true if we've started finding an extent.
 
-				// If these pixels are within the tolerance, then use
-				// the previous frame's value in the new frame.
-				bPixelMatched = false;
-				if (x < m_tnWidth)
+				oFoundExtent.m_tnY = y;
+				oFoundExtent.m_tnXStart = oFoundExtent.m_tnXEnd = 0;
+				bStartedExtent = false;
+				for (x = 0; x <= m_tnWidth; ++x, ++i)
 				{
-					ReferencePixel_t *pPrevPixel;
-						// The pixel from the previous frame.
+					bool bPixelMatched;
+						// True if the new-frame pixel matches the
+						// corresponding reference-frame pixel.
+		
+					// Sanity check.
+					assert (y * m_tnWidth + x == i);
 
-					// Get the two pixels to compare.
-					pPrevPixel = m_pReferenceFrame->GetPixel (i);
-					assert (pPrevPixel != NULL);
-					const Pixel_t &rPrevPixel = pPrevPixel->GetValue();
-					const Pixel_t &rNewPixel = a_pPixels[i];
-	
-					// Compare them.
-					if (rPrevPixel.IsWithinTolerance (rNewPixel,
-						m_tnZeroTolerance))
-					{
-						// Remember it matched.
-						bPixelMatched = true;
-
-#if 0
-						// HACK
-						fprintf (stderr, " (%d,%d)",
-							int (i % m_tnWidth),
-							int (i / m_tnWidth));
-#endif
-					}
-				}
-
-				// Build a region containing all the used
-				// reference-frame pixels.
-				if (bPixelMatched)
-				{
-					// This point is in the region.  Start a new
-					// extent if we didn't have one already, and add
-					// the point to it.
-					if (!bStartedExtent)
-					{
-						oFoundExtent.m_tnXStart = x;
-						bStartedExtent = true;
-					}
-					oFoundExtent.m_tnXEnd = x + 1;
-				}
-
-				// This point is not in the region.  Any extent
-				// we're building is done.
-				else if (bStartedExtent)
-				{
-					// Add this extent to the region, but only if it's
-					// big enough.
-					if (oFoundExtent.m_tnXEnd
-						- oFoundExtent.m_tnXStart > 2)
+					// If these pixels are within the tolerance, then use
+					// the previous frame's value in the new frame.
+					bPixelMatched = false;
+					if (x < m_tnWidth)
 					{
 						ReferencePixel_t *pPrevPixel;
 							// The pixel from the previous frame.
-						PIXELINDEX tnX;
-						FRAMESIZE tnI;
-	
-						for (tnX = oFoundExtent.m_tnXStart;
-							 tnX < oFoundExtent.m_tnXEnd;
-							 ++tnX)
-						{
-							// Calculate the pixel index.
-							tnI = oFoundExtent.m_tnY * m_tnWidth + tnX;
 
-							// Get the two pixels.
-							pPrevPixel = m_pReferenceFrame
-								->GetPixel (tnX, oFoundExtent.m_tnY);
-							assert (pPrevPixel != NULL);
-							const Pixel_t &rNewPixel = a_pPixels[tnI];
+						// Get the two pixels to compare.
+						pPrevPixel = m_pReferenceFrame->GetPixel (i);
+						assert (pPrevPixel != NULL);
+						const Pixel_t &rPrevPixel = pPrevPixel->GetValue();
+						const Pixel_t &rNewPixel = a_pPixels[i];
 		
+						// Compare them.
+						if (rPrevPixel.IsWithinTolerance (rNewPixel,
+							m_tnZeroTolerance))
+						{
+							// Remember it matched.
+							bPixelMatched = true;
+
+#if 0
+							// HACK
+							fprintf (stderr, " (%d,%d)",
+								int (i % m_tnWidth),
+								int (i / m_tnWidth));
+#endif
+						}
+					}
+
+					// Build a region containing all the used
+					// reference-frame pixels.
+					if (bPixelMatched)
+					{
+						// This point is in the region.  Start a new
+						// extent if we didn't have one already, and add
+						// the point to it.
+						if (!bStartedExtent)
+						{
+							oFoundExtent.m_tnXStart = x;
+							bStartedExtent = true;
+						}
+						oFoundExtent.m_tnXEnd = x + 1;
+					}
+
+					// This point is not in the region.  Any extent
+					// we're building is done.
+					else if (bStartedExtent)
+					{
+						// Add this extent to the region, but only if it's
+						// big enough.
+						if (oFoundExtent.m_tnXEnd
+							- oFoundExtent.m_tnXStart > 2)
+						{
+							ReferencePixel_t *pPrevPixel;
+								// The pixel from the previous frame.
+							PIXELINDEX tnX;
+							FRAMESIZE tnI;
+		
+							for (tnX = oFoundExtent.m_tnXStart;
+								 tnX < oFoundExtent.m_tnXEnd;
+								 ++tnX)
+							{
+								// Calculate the pixel index.
+								tnI = oFoundExtent.m_tnY * m_tnWidth + tnX;
+
+								// Get the two pixels.
+								pPrevPixel = m_pReferenceFrame
+									->GetPixel (tnX, oFoundExtent.m_tnY);
+								assert (pPrevPixel != NULL);
+								const Pixel_t &rNewPixel = a_pPixels[tnI];
+			
+								// Accumulate the value from the new frame.
+								pPrevPixel->AddSample (rNewPixel);
+				
+								// Store the pixel in the new reference
+								// frame.
+								m_pNewFrame->SetPixel (tnX,
+									oFoundExtent.m_tnY, pPrevPixel);
+							}
+		
+							m_oUsedReferencePixels.Merge (a_reStatus,
+								oFoundExtent.m_tnY,
+								oFoundExtent.m_tnXStart,
+								oFoundExtent.m_tnXEnd);
+							if (a_reStatus != g_kNoError)
+								return;
+				
+							// That's more pixels that were found not to
+							// have moved.
+							tnNotMovedPixels += oFoundExtent.m_tnXEnd
+								- oFoundExtent.m_tnXStart;
+						}
+
+						// Look for another extent.
+						bStartedExtent = false;
+					}
+				}
+				--i;	// (we slightly overshot above)
+
+				// Make sure we finished any extent we started.
+				assert (!bStartedExtent);
+			}
+#else
+			// (Search for entire pixel-groups.)
+			y = 0;
+			for (;;)
+			{
+				PIXELINDEX tnPixelX, tnPixelY;
+					// Used to loop through pixels in the pixel-group.
+
+				x = 0;
+				for (;;)
+				{
+					ReferencePixel_t *pPrevPixel;
+						// The pixel from the previous frame.
+		
+					// Loop through the pixels to compare, see if they all
+					// match within the tolerance.
+					for (tnPixelY = y;
+						 tnPixelY < y + PGH;
+						 ++tnPixelY)
+					{
+						for (tnPixelX = x;
+							 tnPixelX < x + PGW;
+							 ++tnPixelX)
+						{
+							// Get the two pixels to compare.
+							pPrevPixel = m_pReferenceFrame->GetPixel
+								(tnPixelX, tnPixelY);
+							assert (pPrevPixel != NULL);
+							const Pixel_t &rPrevPixel
+								= pPrevPixel->GetValue();
+							const Pixel_t &rNewPixel
+								= a_pPixels[tnPixelY * m_tnHeight
+									+ tnPixelX];
+			
+							// Compare them.
+							if (!rPrevPixel.IsWithinTolerance (rNewPixel,
+								m_tnZeroTolerance))
+							{
+								// No match.
+								goto noMatch;
+							}
+						}
+					}
+
+					// These pixels are within the tolerance.  Use the
+					// previous frame's value in the new frame.
+					for (tnPixelY = y;
+						 tnPixelY < y + PGH;
+						 ++tnPixelY)
+					{
+						for (tnPixelX = x;
+							 tnPixelX < x + PGW;
+							 ++tnPixelX)
+						{
+							// Get the two pixels.
+							pPrevPixel = m_pReferenceFrame->GetPixel
+								(tnPixelX, tnPixelY);
+							assert (pPrevPixel != NULL);
+							const Pixel_t &rNewPixel
+								= a_pPixels[tnPixelY * m_tnHeight
+									+ tnPixelX];
+			
 							// Accumulate the value from the new frame.
 							pPrevPixel->AddSample (rNewPixel);
 			
 							// Store the pixel in the new reference
 							// frame.
-							m_pNewFrame->SetPixel (tnX,
-								oFoundExtent.m_tnY, pPrevPixel);
+							m_pNewFrame->SetPixel (tnPixelX, tnPixelY,
+								pPrevPixel);
 						}
-	
-						m_oUsedReferencePixels.Merge (a_reStatus,
-							oFoundExtent.m_tnY,
-							oFoundExtent.m_tnXStart,
-							oFoundExtent.m_tnXEnd);
-						if (a_reStatus != g_kNoError)
-							return;
-			
-						// That's more pixels that were found not to
-						// have moved.
-						tnNotMovedPixels += oFoundExtent.m_tnXEnd
-							- oFoundExtent.m_tnXStart;
-					}
-
-					// Look for another extent.
-					bStartedExtent = false;
-				}
-			}
-			--i;	// (we slightly overshot above)
-
-			// Make sure we finished any extent we started.
-			assert (!bStartedExtent);
-		}
-#else
-		// (Search for entire pixel-groups.)
-		y = 0;
-		for (;;)
-		{
-			PIXELINDEX tnPixelX, tnPixelY;
-				// Used to loop through pixels in the pixel-group.
-
-			x = 0;
-			for (;;)
-			{
-				ReferencePixel_t *pPrevPixel;
-					// The pixel from the previous frame.
-	
-				// Loop through the pixels to compare, see if they all
-				// match within the tolerance.
-				for (tnPixelY = y;
-					 tnPixelY < y + PGH;
-					 ++tnPixelY)
-				{
-					for (tnPixelX = x;
-						 tnPixelX < x + PGW;
-						 ++tnPixelX)
-					{
-						// Get the two pixels to compare.
-						pPrevPixel = m_pReferenceFrame->GetPixel
-							(tnPixelX, tnPixelY);
-						assert (pPrevPixel != NULL);
-						const Pixel_t &rPrevPixel
-							= pPrevPixel->GetValue();
-						const Pixel_t &rNewPixel
-							= a_pPixels[tnPixelY * m_tnHeight
-								+ tnPixelX];
-		
-						// Compare them.
-						if (!rPrevPixel.IsWithinTolerance (rNewPixel,
-							m_tnZeroTolerance))
-						{
-							// No match.
-							goto noMatch;
-						}
-					}
-				}
-
-				// These pixels are within the tolerance.  Use the
-				// previous frame's value in the new frame.
-				for (tnPixelY = y;
-					 tnPixelY < y + PGH;
-					 ++tnPixelY)
-				{
-					for (tnPixelX = x;
-						 tnPixelX < x + PGW;
-						 ++tnPixelX)
-					{
-						// Get the two pixels.
-						pPrevPixel = m_pReferenceFrame->GetPixel
-							(tnPixelX, tnPixelY);
-						assert (pPrevPixel != NULL);
-						const Pixel_t &rNewPixel
-							= a_pPixels[tnPixelY * m_tnHeight
-								+ tnPixelX];
-		
-						// Accumulate the value from the new frame.
-						pPrevPixel->AddSample (rNewPixel);
-		
-						// Store the pixel in the new reference
-						// frame.
-						m_pNewFrame->SetPixel (tnPixelX, tnPixelY,
-							pPrevPixel);
-					}
 
 #ifdef USE_REFERENCEFRAMEPIXELS_ONCE
 
-					// Add this extent to the region.
-					m_oUsedReferencePixels.Union (a_reStatus, tnPixelY,
-						x, x + PGW);
-					if (a_reStatus != g_kNoError)
-						return;
+						// Add this extent to the region.
+						m_oUsedReferencePixels.Union (a_reStatus, tnPixelY,
+							x, x + PGW);
+						if (a_reStatus != g_kNoError)
+							return;
 
 #endif // USE_REFERENCEFRAMEPIXELS_ONCE
-				}
+					}
 
-				// Remember how many not-moved pixels we found.
-				tnNotMovedPixels += PGW * PGH;
+					// Remember how many not-moved pixels we found.
+					tnNotMovedPixels += PGW * PGH;
 
 noMatch:
-				// Now move X forward, but in a way that handles
+					// Now move X forward, but in a way that handles
+					// frames whose dimensions are not even multiples of
+					// the pixel-group dimension.
+					if (x + PGW == m_tnWidth)
+						break;
+					x += PGW;
+					if (x > m_tnWidth - PGW)
+						x = m_tnWidth - PGW;
+				}
+
+				// Now move Y forward, but in a way that handles
 				// frames whose dimensions are not even multiples of
 				// the pixel-group dimension.
-				if (x + PGW == m_tnWidth)
+				if (y + PGH == m_tnHeight)
 					break;
-				x += PGW;
-				if (x > m_tnWidth - PGW)
-					x = m_tnWidth - PGW;
+				y += PGH;
+				if (y > m_tnHeight - PGH)
+					y = m_tnHeight - PGH;
 			}
-
-			// Now move Y forward, but in a way that handles
-			// frames whose dimensions are not even multiples of
-			// the pixel-group dimension.
-			if (y + PGH == m_tnHeight)
-				break;
-			y += PGH;
-			if (y > m_tnHeight - PGH)
-				y = m_tnHeight - PGH;
-		}
 #endif
+		}
 
 		// All zero-motion pixel-group-sized chunks have been found.
 		// Now flood-fill the region, to smoothly resolve all the
@@ -1829,11 +1834,13 @@ nextGroup:
 					--m_tnX;
 				}
 			}
+
+			// Get all the remaining moved regions from the search-border.
 #ifdef USE_SEARCH_BORDER
 			m_oSearchBorder.FinishFrame (a_reStatus);
-#endif // USE_SEARCH_BORDER
 			if (a_reStatus != g_kNoError)
 				return;
+#endif // USE_SEARCH_BORDER
 	
 			// We've found all the possible moved regions between the
 			// new frame and the reference frame.
