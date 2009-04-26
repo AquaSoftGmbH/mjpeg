@@ -1913,6 +1913,9 @@ BasicThread::SignalInput (void)
 
 	// Easy enough.
 	m_oInputCondition.Signal();
+
+	// We're no longer waiting for output.
+	m_bWaitingForInput = false;
 }
 
 
@@ -1931,7 +1934,7 @@ BasicThread::WaitForInput (void)
 	// Easy enough.
 	m_bWaitingForInput = true;
 	m_oInputCondition.Wait();
-	m_bWaitingForInput = false;
+	assert (!m_bWaitingForInput);
 }
 
 
@@ -1946,6 +1949,9 @@ BasicThread::SignalOutput (void)
 
 	// Easy enough.
 	m_oOutputCondition.Signal();
+
+	// We're no longer waiting for output.
+	m_bWaitingForOutput = false;
 }
 
 
@@ -1963,7 +1969,7 @@ BasicThread::WaitForOutput (void)
 	// Easy enough.
 	m_bWaitingForOutput = true;
 	m_oOutputCondition.Wait();
-	m_bWaitingForOutput = false;
+	assert (!m_bWaitingForOutput);
 }
 
 
