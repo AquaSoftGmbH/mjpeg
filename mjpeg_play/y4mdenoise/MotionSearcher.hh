@@ -287,6 +287,8 @@ private:
 	typedef Set<MovedRegion *,
 		typename MovedRegion::SortBySizeThenMotionVectorLength>
 		MovedRegionSet;
+	typedef typename MovedRegionSet::Allocator MovedRegionAllocator_t;
+	MovedRegionAllocator_t m_oMovedRegionAllocator;
 	MovedRegionSet m_setRegions;
 		// All moving areas detected so far.
 		// Sorted by decreasing size, then increasing motion vector
@@ -353,8 +355,10 @@ private:
 	typedef Set<MatchedPixelGroup,
 			typename MatchedPixelGroup::SortBySAD>
 			MatchedPixelGroupSet;
+	typedef typename MatchedPixelGroupSet::Allocator MPGS_Allocator_t;
 		// The type for a set of matched pixel-groups.
 
+	MPGS_Allocator_t m_oMatchAllocator;
 	MatchedPixelGroupSet m_setMatches;
 		// All the matches for the current pixel-group that we
 		// want to use.
@@ -529,20 +533,26 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		PGW,PGH,SORTERBITMASK,PIXEL,REFERENCEPIXEL,
 		REFERENCEFRAME>::MotionSearcher()
 	:
-#ifdef USE_SEARCH_BORDER
-	m_oSearchBorder (m_setRegions),
-#endif // USE_SEARCH_BORDER
 	m_oRegionAllocator (1048576),
+	m_oMovedRegionAllocator (262144),
+	m_setRegions (typename MovedRegion::SortBySizeThenMotionVectorLength(),
+		m_oMovedRegionAllocator),
 	m_oMatchThrottleRegion (m_oRegionAllocator)
-#ifdef THROTTLE_PIXELSORTER_WITH_SAD
+	#ifdef THROTTLE_PIXELSORTER_WITH_SAD
+	, m_oMatchAllocator (65536),
+	m_setMatches (typename MatchedPixelGroup::SortBySAD(),
+		m_oMatchAllocator)
 	, m_oBestMatchRegion (m_oRegionAllocator)
-#endif // THROTTLE_PIXELSORTER_WITH_SAD
-#ifndef ZERO_MOTION_FLOOD_FILL_WITH_BITMAP_REGIONS
+	#endif // THROTTLE_PIXELSORTER_WITH_SAD
+	#ifdef USE_SEARCH_BORDER
+	, m_oSearchBorder (m_setRegions, m_oRegionAllocator)
+	#endif // USE_SEARCH_BORDER
+	#ifndef ZERO_MOTION_FLOOD_FILL_WITH_BITMAP_REGIONS
 	, m_oZeroMotionFloodFillControl (m_oRegionAllocator)
-#endif // ZERO_MOTION_FLOOD_FILL_WITH_BITMAP_REGIONS
-#ifndef MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+	#endif // ZERO_MOTION_FLOOD_FILL_WITH_BITMAP_REGIONS
+	#ifndef MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
 	, m_oMatchThrottleFloodFillControl (m_oRegionAllocator)
-#endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+	#endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
 {
 	// No frames yet.
 	m_nFrames = 0;
