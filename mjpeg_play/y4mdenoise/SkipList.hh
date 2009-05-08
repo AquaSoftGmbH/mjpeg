@@ -63,18 +63,33 @@ public:
 	static Allocator_t sm_oNodeAllocator;
 		// The default node allocator.
 
+	// A structure that contains all of our initialization parameters.
+	struct InitParams
+	{
+	public:
+		uint32_t m_nRandSeed;
+			// The skip list's random number seed.
+
+		InitParams() : m_nRandSeed (rand()) {}
+			// Default constructor.
+			// Gets the random seed from the system.
+
+		InitParams (uint32_t a_nRandSeed) : m_nRandSeed (a_nRandSeed) {}
+			// Initializing constructor.
+	};
+
 	SkipList (const PRED &a_rPred = PRED(),
 			Allocator_t &a_rAlloc = sm_oNodeAllocator);
 		// Default constructor.  Must be followed by Init().
 
 	SkipList (Status_t &a_reStatus, bool a_bAllowDuplicates,
-			uint32_t a_nRandSeed, const PRED &a_rPred = PRED(),
+			const InitParams &a_rInitParams, const PRED &a_rPred = PRED(),
 			Allocator_t &a_rAlloc = sm_oNodeAllocator);
 		// Constructor.  Specify whether or not duplicates are allowed,
 		// and provide a random number seed.
 
 	void Init (Status_t &a_reStatus, bool a_bAllowDuplicates,
-			uint32_t a_nRandSeed);
+			const InitParams &a_rInitParams);
 		// Construction method.  Specify whether or not duplicates are
 		// allowed, and provide a random number seed.
 
@@ -376,7 +391,7 @@ SkipList<KEY,VALUE,KEYFN,PRED>::SkipList (const PRED &a_rPred,
 // provide a random number seed.
 template <class KEY, class VALUE, class KEYFN, class PRED>
 SkipList<KEY,VALUE,KEYFN,PRED>::SkipList (Status_t &a_reStatus,
-		bool a_bAllowDuplicates, uint32_t a_nRandSeed,
+		bool a_bAllowDuplicates, const InitParams &a_rInitParams,
 		const PRED &a_rPred, Allocator_t &a_rAlloc)
 	: m_rNodeAllocator (a_rAlloc), m_oPred (a_rPred)
 {
@@ -396,7 +411,7 @@ SkipList<KEY,VALUE,KEYFN,PRED>::SkipList (Status_t &a_reStatus,
 #endif // DEBUG_SKIPLIST
 	
 	// Init() does all the work.
-	Init (a_reStatus, a_bAllowDuplicates, a_nRandSeed);
+	Init (a_reStatus, a_bAllowDuplicates, a_rInitParams);
 }
 
 
@@ -406,7 +421,7 @@ SkipList<KEY,VALUE,KEYFN,PRED>::SkipList (Status_t &a_reStatus,
 template <class KEY, class VALUE, class KEYFN, class PRED>
 void
 SkipList<KEY,VALUE,KEYFN,PRED>::Init (Status_t &a_reStatus,
-	bool a_bAllowDuplicates, uint32_t a_nRandSeed)
+	bool a_bAllowDuplicates, const InitParams &a_rInitParams)
 {
 	// Make sure they didn't start us off with an error.
 	assert (a_reStatus == g_kNoError);
@@ -418,7 +433,7 @@ SkipList<KEY,VALUE,KEYFN,PRED>::Init (Status_t &a_reStatus,
 	m_bAllowDuplicates = a_bAllowDuplicates;
 	m_nHeaderLevel = 0;
 	m_nItems = 0;
-	m_nRandSeed = a_nRandSeed;
+	m_nRandSeed = a_rInitParams.m_nRandSeed;
 	
 	// Allocate our necessary nodes.
 	m_pHeader = GetNewNode (HEADERCHUNK);
@@ -966,6 +981,12 @@ SkipList<KEY,VALUE,KEYFN,PRED>::Move
 {
 	Node *p;
 		// Used to swap structures.
+
+#ifdef DEBUG_SKIPLIST
+	// Make sure we're all intact.
+	Invariant();
+	a_rOther.Invariant();
+#endif // DEBUG_SKIPLIST
 
 	// Make sure the skip-lists can move items between themselves.
 	assert (CanMove (a_rOther));

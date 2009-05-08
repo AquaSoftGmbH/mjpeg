@@ -24,7 +24,8 @@
 // The 2-dimensional region class.  Parameterized by the numeric type
 // to use for point indices, and the numeric type to use to count the
 // contained number of points.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE,
+	class SETIMP = SkipList<typename Region2D<INDEX,SIZE>::Extent,typename Region2D<INDEX,SIZE>::Extent,Ident<typename Region2D<INDEX,SIZE>::Extent,typename Region2D<INDEX,SIZE>::Extent>,Less<typename Region2D<INDEX,SIZE>::Extent> > >
 class SetRegion2D : public Region2D<INDEX,SIZE>
 {
 private:
@@ -34,7 +35,11 @@ public:
 	typedef typename BaseClass::Extent Extent;
 		// (Wouldn't we automatically have access to Extent because
 		// we're a subclass of Region2D<>?  Why is this needed?)
-	typedef Set<Extent> Extents;
+	typedef Set<Extent,Less<Extent>,SETIMP> Extents;
+		// The container type that stores our extents.
+	typedef typename Extents::InitParams InitParams;
+		// The structure for our container's initialization parameters.
+
 private:
 	Extents m_setExtents;
 		// The extents that make up the region.
@@ -47,19 +52,21 @@ public:
 			= Extents::Imp::sm_oNodeAllocator);
 		// Default constructor.  Must be followed by Init().
 
-	SetRegion2D (Status_t &a_reStatus, Allocator &a_rAlloc
-			= Extents::Imp::sm_oNodeAllocator);
+	SetRegion2D (Status_t &a_reStatus,
+			const InitParams &a_rInitParams = InitParams(),
+			Allocator &a_rAlloc = Extents::Imp::sm_oNodeAllocator);
 		// Initializing constructor.  Creates an empty region.
 
 	SetRegion2D (Status_t &a_reStatus,
-			const SetRegion2D<INDEX,SIZE> &a_rOther);
+			const SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther);
 		// Copy constructor.
 	
-	void Init (Status_t &a_reStatus);
+	void Init (Status_t &a_reStatus,
+			const InitParams &a_rInitParams = InitParams());
 		// Initializer.  Must be called on default-constructed regions.
 
 	void Assign (Status_t &a_reStatus,
-			const SetRegion2D<INDEX,SIZE> &a_rOther);
+			const SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther);
 		// Make the current region a copy of the other region.
 
 	virtual ~SetRegion2D();
@@ -93,19 +100,19 @@ public:
 		// The new extent can't intersect any of the region's existing
 		// extents (including being horizontally contiguous).
 
-	void Merge (SetRegion2D<INDEX,SIZE> &a_rOther);
+	void Merge (SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther);
 		// Merge the other region into ourselves, emptying the other
 		// region.  Like Union(), but doesn't allocate any new memory.
 		// Also, the other region can't intersect any of the region's
 		// existing extents (including being horizontally contiguous),
 		// and both regions must use the same allocator.
 
-	void Move (SetRegion2D<INDEX,SIZE> &a_rOther);
+	void Move (SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther);
 		// Move the contents of the other region into the current
 		// region.
 		// The current region must be empty.
 
-	bool CanMove (const SetRegion2D<INDEX,SIZE> &a_rOther) const;
+	bool CanMove (const SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther) const;
 		// Returns true if the other region's contents can be moved
 		// into the current region.
 
@@ -116,7 +123,7 @@ public:
 		// Region2D<> subclass.)
 
 	void Intersection (Status_t &a_reStatus,
-			const SetRegion2D<INDEX,SIZE> &a_rOther);
+			const SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther);
 		// Make the current region represent the intersection between
 		// itself and the other given region.
 
@@ -126,10 +133,16 @@ public:
 		// that a_tnXEnd is technically one past the end of the extent.
 
 	void Subtract (Status_t &a_reStatus,
-			const SetRegion2D<INDEX,SIZE> &a_rOther);
+			const SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther);
 		// Subtract the other region from the current region, i.e.
 		// remove from the current region any extents that exist in the
 		// other region.
+
+	void SubtractWithOffset (Status_t &a_reStatus,
+			const SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther,
+			INDEX a_tnXOffset, INDEX a_tnYOffset);
+		// Subtract the other region from the current region, but offset
+		// the other region by the given amounts.
 	
 	void Offset (INDEX a_tnXOffset, INDEX a_tnYOffset);
 		// Move all extents by the given offset.
@@ -155,10 +168,11 @@ public:
 
 	template <class CONTROL>
 	void FloodFill (Status_t &a_reStatus, CONTROL &a_rControl,
-			bool a_bVerify);
-		// Flood-fill the current region.  All points bordering the
-		// current region are tested for inclusion; if a_bVerify is
-		// true, all existing region points are tested first.
+			bool a_bVerify, bool a_bExpand);
+		// Flood-fill the current region.
+		// If a_bVerify is true, all existing region points are re-tested.
+		// If a_bExpand is true, all points bordering the current region
+		// are tested for inclusion.
 
 	template <class REGION>
 	void MakeBorder (Status_t &a_reStatus, const REGION &a_rOther);
@@ -176,7 +190,7 @@ private:
 		// The total number of points contained by the region.
 
 	void Subtract (Status_t &a_reStatus, INDEX a_tnY, INDEX a_tnXStart,
-			INDEX a_tnXEnd, const SetRegion2D<INDEX,SIZE> &a_rOther,
+			INDEX a_tnXEnd, const SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther,
 			typename Extents::ConstIterator &a_ritHere);
 		// Subtract the given horizontal extent from the region.  Note
 		// that a_tnXEnd is technically one past the end of the extent.
@@ -187,6 +201,14 @@ private:
 		// location of the first extent in a_rOther to intersect it.
 		// This allows region subtractions to skip past irrelevant
 		// areas.
+
+	void SubtractWithOffset (Status_t &a_reStatus,
+			INDEX a_tnY, INDEX a_tnXStart, INDEX a_tnXEnd,
+			INDEX a_tnXOffset, INDEX a_tnYOffset,
+			const SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther,
+			typename Extents::ConstIterator &a_ritHere);
+		// Subtract the given horizontal extent from the region, with
+		// the given offset.
 
 #ifdef DEBUG_SETREGION2D
 
@@ -209,11 +231,11 @@ public:
 
 
 // The flood-fill-control class.
-template <class INDEX, class SIZE>
-class SetRegion2D<INDEX,SIZE>::FloodFillControl
+template <class INDEX, class SIZE, class SETIMP>
+class SetRegion2D<INDEX,SIZE,SETIMP>::FloodFillControl
 {
 private:
-	typedef SetRegion2D<INDEX,SIZE> Region_t;
+	typedef SetRegion2D<INDEX,SIZE,SETIMP> Region_t;
 		// Keep track of our region class.
 public:
 	// (Although these fields are public, they should be considered
@@ -268,8 +290,8 @@ public:
 
 
 // Default constructor.  Must be followed by Init().
-template <class INDEX, class SIZE>
-SetRegion2D<INDEX,SIZE>::SetRegion2D (Allocator &a_rAlloc)
+template <class INDEX, class SIZE, class SETIMP>
+SetRegion2D<INDEX,SIZE,SETIMP>::SetRegion2D (Allocator &a_rAlloc)
 	: m_setExtents (Less<Extent>(), a_rAlloc)
 {
 #ifndef NDEBUG
@@ -292,10 +314,11 @@ SetRegion2D<INDEX,SIZE>::SetRegion2D (Allocator &a_rAlloc)
 
 
 // Initializing constructor.  Creates an empty region.
-template <class INDEX, class SIZE>
-SetRegion2D<INDEX,SIZE>::SetRegion2D (Status_t &a_reStatus,
-		Allocator &a_rAlloc)
-	: m_setExtents (a_reStatus, false, Less<Extent>(), a_rAlloc)
+template <class INDEX, class SIZE, class SETIMP>
+SetRegion2D<INDEX,SIZE,SETIMP>::SetRegion2D (Status_t &a_reStatus,
+		const InitParams &a_rInitParams, Allocator &a_rAlloc)
+	: m_setExtents (a_reStatus, false, a_rInitParams, Less<Extent>(),
+		a_rAlloc)
 {
 #ifndef NDEBUG
 	// One more instance.
@@ -317,9 +340,9 @@ SetRegion2D<INDEX,SIZE>::SetRegion2D (Status_t &a_reStatus,
 
 
 // Copy constructor.
-template <class INDEX, class SIZE>
-SetRegion2D<INDEX,SIZE>::SetRegion2D (Status_t &a_reStatus,
-		const SetRegion2D<INDEX,SIZE> &a_rOther)
+template <class INDEX, class SIZE, class SETIMP>
+SetRegion2D<INDEX,SIZE,SETIMP>::SetRegion2D (Status_t &a_reStatus,
+		const SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther)
 	: m_setExtents (a_reStatus, false, Less<Extent>(),
 		a_rOther.m_setExtents.m_oImp.m_rNodeAllocator)
 {
@@ -361,15 +384,16 @@ SetRegion2D<INDEX,SIZE>::SetRegion2D (Status_t &a_reStatus,
 
 
 // Initializer.  Must be called on default-constructed regions.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 void
-SetRegion2D<INDEX,SIZE>::Init (Status_t &a_reStatus)
+SetRegion2D<INDEX,SIZE,SETIMP>::Init (Status_t &a_reStatus,
+	const InitParams &a_rInitParams)
 {
 	// Make sure they didn't start us off with an error.
 	assert (a_reStatus == g_kNoError);
 
 	// Initialize our set of extents.
-	m_setExtents.Init (a_reStatus, false);
+	m_setExtents.Init (a_reStatus, false, a_rInitParams);
 	if (a_reStatus != g_kNoError)
 		return;
 }
@@ -377,10 +401,10 @@ SetRegion2D<INDEX,SIZE>::Init (Status_t &a_reStatus)
 
 
 // Make the current region a copy of the other region.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 void
-SetRegion2D<INDEX,SIZE>::Assign (Status_t &a_reStatus,
-	const SetRegion2D<INDEX,SIZE> &a_rOther)
+SetRegion2D<INDEX,SIZE,SETIMP>::Assign (Status_t &a_reStatus,
+	const SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther)
 {
 	// Make sure they didn't start us off with an error.
 	assert (a_reStatus == g_kNoError);
@@ -408,8 +432,8 @@ SetRegion2D<INDEX,SIZE>::Assign (Status_t &a_reStatus,
 
 
 // Destructor.
-template <class INDEX, class SIZE>
-SetRegion2D<INDEX,SIZE>::~SetRegion2D()
+template <class INDEX, class SIZE, class SETIMP>
+SetRegion2D<INDEX,SIZE,SETIMP>::~SetRegion2D()
 {
 #ifndef NDEBUG
 	// One less instance.
@@ -423,9 +447,9 @@ SetRegion2D<INDEX,SIZE>::~SetRegion2D()
 
 // Set whether to run the region invariant before and after
 // methods.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 void
-SetRegion2D<INDEX,SIZE>::SetDebug (bool a_bDebug)
+SetRegion2D<INDEX,SIZE,SETIMP>::SetDebug (bool a_bDebug)
 {
 	// Easy enough.
 	m_bDebug = a_bDebug;
@@ -442,9 +466,9 @@ SetRegion2D<INDEX,SIZE>::SetDebug (bool a_bDebug)
 
 
 // Thoroughly analyze the region for structural integrity.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 void
-SetRegion2D<INDEX,SIZE>::Invariant (void) const
+SetRegion2D<INDEX,SIZE,SETIMP>::Invariant (void) const
 {
 	SIZE tnPoints;
 		// Our total of the number of points in the region.
@@ -495,9 +519,9 @@ SetRegion2D<INDEX,SIZE>::Invariant (void) const
 
 
 // Return the total number of points contained by the region.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 inline SIZE
-SetRegion2D<INDEX,SIZE>::NumberOfPoints (void) const
+SetRegion2D<INDEX,SIZE,SETIMP>::NumberOfPoints (void) const
 {
 	// Easy enough.
 	return m_tnPoints;
@@ -506,9 +530,9 @@ SetRegion2D<INDEX,SIZE>::NumberOfPoints (void) const
 
 
 // Clear the region, emptying it of all extents.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 void
-SetRegion2D<INDEX,SIZE>::Clear (void)
+SetRegion2D<INDEX,SIZE,SETIMP>::Clear (void)
 {
 	// Easy enough.
 	m_setExtents.Clear();
@@ -518,9 +542,9 @@ SetRegion2D<INDEX,SIZE>::Clear (void)
 
 
 // Add the given horizontal extent to the region.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 void
-SetRegion2D<INDEX,SIZE>::Union (Status_t &a_reStatus, INDEX a_tnY,
+SetRegion2D<INDEX,SIZE,SETIMP>::Union (Status_t &a_reStatus, INDEX a_tnY,
 	INDEX a_tnXStart, INDEX a_tnXEnd)
 {
 	Extent oKey;
@@ -700,9 +724,9 @@ SetRegion2D<INDEX,SIZE>::Union (Status_t &a_reStatus, INDEX a_tnY,
 
 // Merge this extent into the current region.
 // The new extent can't intersect the region in any way.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 void
-SetRegion2D<INDEX,SIZE>::Merge (Status_t &a_reStatus, INDEX a_tnY,
+SetRegion2D<INDEX,SIZE,SETIMP>::Merge (Status_t &a_reStatus, INDEX a_tnY,
 	INDEX a_tnXStart, INDEX a_tnXEnd)
 {
 	Extent oExtent;
@@ -757,9 +781,10 @@ SetRegion2D<INDEX,SIZE>::Merge (Status_t &a_reStatus, INDEX a_tnY,
 
 
 // Merge the other region into ourselves, emptying the other region.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 void
-SetRegion2D<INDEX,SIZE>::Merge (SetRegion2D<INDEX,SIZE> &a_rOther)
+SetRegion2D<INDEX,SIZE,SETIMP>::Merge
+	(SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther)
 {
 	// Make sure we can move extents between regions.
 	assert (CanMove (a_rOther));
@@ -835,9 +860,10 @@ SetRegion2D<INDEX,SIZE>::Merge (SetRegion2D<INDEX,SIZE> &a_rOther)
 
 // Move the contents of the other region into the current region.
 // The current region must be empty.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 void
-SetRegion2D<INDEX,SIZE>::Move (SetRegion2D<INDEX,SIZE> &a_rOther)
+SetRegion2D<INDEX,SIZE,SETIMP>::Move
+	(SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther)
 {
 	// Make sure we're allowed to do this.
 	assert (CanMove (a_rOther));
@@ -857,10 +883,10 @@ SetRegion2D<INDEX,SIZE>::Move (SetRegion2D<INDEX,SIZE> &a_rOther)
 
 // Returns true if the other region's contents can be moved
 // into the current region.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 bool
-SetRegion2D<INDEX,SIZE>::CanMove
-	(const SetRegion2D<INDEX,SIZE> &a_rOther) const
+SetRegion2D<INDEX,SIZE,SETIMP>::CanMove
+	(const SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther) const
 {
 	// Return whether our extents can be moved.
 	return m_setExtents.CanMove (a_rOther.m_setExtents);
@@ -870,10 +896,10 @@ SetRegion2D<INDEX,SIZE>::CanMove
 
 // Make the current region represent the intersection between
 // itself and the other given region.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 void
-SetRegion2D<INDEX,SIZE>::Intersection (Status_t &a_reStatus,
-	const SetRegion2D<INDEX,SIZE> &a_rOther)
+SetRegion2D<INDEX,SIZE,SETIMP>::Intersection (Status_t &a_reStatus,
+	const SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther)
 {
 	// Make sure they didn't start us off with an error.
 	assert (a_reStatus == g_kNoError);
@@ -886,11 +912,12 @@ SetRegion2D<INDEX,SIZE>::Intersection (Status_t &a_reStatus,
 
 
 // Subtract the given horizontal extent from the region.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 void
-SetRegion2D<INDEX,SIZE>::Subtract (Status_t &a_reStatus, INDEX a_tnY,
+SetRegion2D<INDEX,SIZE,SETIMP>::Subtract
+	(Status_t &a_reStatus, INDEX a_tnY,
 	INDEX a_tnXStart, INDEX a_tnXEnd,
-	const SetRegion2D<INDEX,SIZE> &a_rOther,
+	const SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther,
 	typename Extents::ConstIterator &a_ritHere)
 {
 	Extent oKey;
@@ -1112,11 +1139,244 @@ SetRegion2D<INDEX,SIZE>::Subtract (Status_t &a_reStatus, INDEX a_tnY,
 
 
 
-// Subtract the given horizontal extent from the region.
-template <class INDEX, class SIZE>
+// Subtract the given horizontal extent from the region, with the given
+// offset.
+template <class INDEX, class SIZE, class SETIMP>
 void
-SetRegion2D<INDEX,SIZE>::Subtract (Status_t &a_reStatus, INDEX a_tnY,
-	INDEX a_tnXStart, INDEX a_tnXEnd)
+SetRegion2D<INDEX,SIZE,SETIMP>::SubtractWithOffset (Status_t &a_reStatus,
+	INDEX a_tnY, INDEX a_tnXStart, INDEX a_tnXEnd,
+	INDEX a_tnXOffset, INDEX a_tnYOffset,
+	const SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther,
+	typename Extents::ConstIterator &a_ritHere)
+{
+	Extent oKey;
+		// Used to search through the existing extents.
+	typename Extents::Iterator itStart, itEnd;
+		// The range of existing extents that gets removed because of
+		// the subtraction of the new extent.
+
+	// Make sure they didn't start us off with an error.
+	assert (a_reStatus == g_kNoError);
+
+	// Make sure they gave us a non-empty extent.
+	assert (a_tnXStart < a_tnXEnd);
+
+#ifdef DEBUG_SETREGION2D
+
+	// Make sure we're intact.
+	Invariant();
+
+#endif // DEBUG_SETREGION2D
+
+	// Find the first extent that may get removed or modified by this
+	// subtraction.  (That's the first existing extent
+	// that's >= (y, x-start).)
+	oKey.m_tnY = a_tnY + a_tnYOffset;
+	oKey.m_tnXStart = a_tnXStart + a_tnXOffset;
+	itStart = m_setExtents.LowerBound (oKey);
+
+	// Figure out if no existing extents intersect with the beginning
+	// of the extent we're trying to subtract.
+	if (itStart == m_setExtents.End()
+	|| (*itStart).m_tnY != a_tnY + a_tnYOffset
+	|| (*itStart).m_tnXStart > a_tnXStart + a_tnXOffset)
+	{
+		// The found extent is past any extent that the beginning would
+		// intersect with.  Move back one.
+		--itStart;
+
+		// See if this extent intersects the beginning of the range
+		// we're trying to subtract.
+		if (itStart == m_setExtents.End()
+		|| (*itStart).m_tnY != a_tnY + a_tnYOffset
+		|| (*itStart).m_tnXEnd <= a_tnXStart + a_tnXOffset)
+		{
+			// Move forward again.  If that extent is on a different
+			// line, or it starts after the removed range ends, then
+			// leave: there's nothing to subtract.
+			++itStart;
+			if (itStart == m_setExtents.End()
+			|| (*itStart).m_tnY != a_tnY + a_tnYOffset
+			|| (*itStart).m_tnXStart >= a_tnXEnd + a_tnXOffset)
+			{
+				// There's nothing to subtract.  Find the first extent
+				// in a_rOther that may intersect with one of our
+				// extents.
+				if (a_ritHere != a_rOther.m_setExtents.End()
+					&& itStart != m_setExtents.End())
+				{
+					oKey.m_tnY = (*itStart).m_tnY - a_tnYOffset;
+					oKey.m_tnXStart = (*itStart).m_tnXStart - a_tnXOffset;
+					a_ritHere = a_rOther.m_setExtents.UpperBound (oKey);
+					--a_ritHere;
+				}
+				return;
+			}
+		}
+	}
+
+	// We found the first extent that may intersect with the range we're
+	// trying to subtract.
+
+	// Sanity check: make sure the found extent is on the same line as
+	// the range we're trying to subtract.
+	assert (itStart != m_setExtents.End()
+		&& (*itStart).m_tnY == a_tnY + a_tnYOffset);
+
+	// We have 4 cases: that extent has its beginning chopped off,
+	// its end chopped off, gets removed completely, or gets broken in
+	// half.
+	if ((*itStart).m_tnXStart >= a_tnXStart + a_tnXOffset)
+	{
+		if ((*itStart).m_tnXEnd > a_tnXEnd + a_tnXOffset)
+		{
+			// The found extent gets its beginning cut off, and then
+			// we're done.
+			m_tnPoints -= (a_tnXEnd + a_tnXOffset) - (*itStart).m_tnXStart;
+			(*itStart).m_tnXStart = a_tnXEnd + a_tnXOffset;
+			return;
+		}
+		else
+		{
+			// The found extent gets removed completely.
+			// Fall through to deal with the end of the range being
+			// subtracted.
+		}
+	}
+	else
+	{
+		if ((*itStart).m_tnXEnd > a_tnXEnd + a_tnXOffset)
+		{
+			// The found extent gets broken in half.
+
+			Extent oInserted;
+				// The second half of the broken extent.
+
+			// Prepare to break the extent in half, by generating the
+			// second half of the extent.
+			oInserted.m_tnY = a_tnY + a_tnYOffset;
+			oInserted.m_tnXStart = a_tnXEnd + a_tnXOffset;
+			oInserted.m_tnXEnd = (*itStart).m_tnXEnd;
+
+			// Insert the second half of the broken extent.  Note that
+			// if this succeeds, this creates an inconsistent region
+			// temporarily, but it'll be fixed by the next statement.
+			{
+				#ifndef NDEBUG
+				typename Extents::InsertResult oInsertResult =
+				#endif // NDEBUG
+					m_setExtents.Insert (a_reStatus, oInserted);
+				if (a_reStatus != g_kNoError)
+					return;
+				assert (oInsertResult.m_bInserted);
+			}
+
+			// Now modify the found extent so that it becomes the first
+			// half of the broken extent.  The region is consistent
+			// again.
+			(*itStart).m_tnXEnd = a_tnXStart + a_tnXOffset;
+
+			// We removed this many points.
+			m_tnPoints -= a_tnXEnd - a_tnXStart;
+
+			// We're done.
+			return;
+		}
+		else
+		{
+			// The found extent gets its end cut off.
+
+			// Remember the end of the found extent.
+			INDEX nOldEnd = (*itStart).m_tnXEnd + a_tnXOffset;
+
+			// Cut off the end of the found extent.
+			m_tnPoints -= (*itStart).m_tnXEnd - (a_tnXStart + a_tnXOffset);
+			(*itStart).m_tnXEnd = a_tnXStart + a_tnXOffset;
+
+			// If the extent being subtracted ends at the same place
+			// as this found extent, then we're done.
+			if (nOldEnd == a_tnXEnd + a_tnXOffset)
+				return;
+
+			// Move forward, and fall through to deal with the end of
+			// the range being subtracted.
+			++itStart;
+		}
+	}
+
+	// Find the last extent that may get removed or modified by this
+	// subtraction.  (That's the first existing extent
+	// that's >= (y, x-end).)
+	oKey.m_tnY = a_tnY + a_tnYOffset;
+	oKey.m_tnXStart = a_tnXEnd + a_tnXOffset;
+	itEnd = m_setExtents.LowerBound (oKey);
+
+	// If that put us past any extent we'll have to remove, we can just
+	// skip to the end, where the range we located will be removed.
+	// Otherwise, we have to figure out the implications of the end of
+	// the subtracted range.
+	if (itEnd == m_setExtents.End()
+	|| (*itEnd).m_tnY != a_tnY + a_tnYOffset
+	|| (*itEnd).m_tnXStart > a_tnXEnd + a_tnXOffset)
+	{
+		// Move back one.
+		--itEnd;
+
+		// If that didn't put us out of the range of existing extents
+		// that are getting removed, we have 2 cases: either the entire
+		// extent is getting removed, or its beginning is getting
+		// chopped off.
+		if (itEnd != m_setExtents.End()
+			&& (*itEnd).m_tnY == a_tnY + a_tnYOffset)
+		{
+			// How much of this extent is getting removed?
+			if ((*itEnd).m_tnXEnd <= a_tnXEnd + a_tnXOffset)
+			{
+				// The entire extent is getting removed.  Move forward
+				// again.
+				++itEnd;
+			}
+			else
+			{
+				// The found extent's beginning is getting chopped off.
+				// (The search above ensures that this extent starts
+				// before the end of the range being removed, but we
+				// check our sanity anyway.)
+				assert ((*itEnd).m_tnXStart < a_tnXEnd + a_tnXOffset);
+				m_tnPoints -= (a_tnXEnd + a_tnXOffset)
+					- (*itEnd).m_tnXStart;
+				(*itEnd).m_tnXStart = a_tnXEnd + a_tnXOffset;
+			}
+		}
+	}
+
+	// Loop through the range of extents to remove, subtract their
+	// contribution to our point total.
+	for (typename Extents::Iterator itHere = itStart;
+		 itHere != itEnd;
+		 itHere++)
+	{
+		m_tnPoints -= (*itHere).m_tnXEnd - (*itHere).m_tnXStart;
+	}
+
+	// Remove any range of extents found.
+	m_setExtents.Erase (itStart, itEnd);
+
+#ifdef DEBUG_SETREGION2D
+
+	// Make sure we're intact.
+	Invariant();
+
+#endif // DEBUG_SETREGION2D
+}
+
+
+
+// Subtract the given horizontal extent from the region.
+template <class INDEX, class SIZE, class SETIMP>
+void
+SetRegion2D<INDEX,SIZE,SETIMP>::Subtract (Status_t &a_reStatus,
+	INDEX a_tnY, INDEX a_tnXStart, INDEX a_tnXEnd)
 {
 	// Defer to our private helper function.
 	ConstIterator itUnused = m_setExtents.End();
@@ -1129,10 +1389,10 @@ SetRegion2D<INDEX,SIZE>::Subtract (Status_t &a_reStatus, INDEX a_tnY,
 // Subtract the other region from the current region, i.e.
 // remove from the current region any areas that exist in the
 // other region.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 void
-SetRegion2D<INDEX,SIZE>::Subtract (Status_t &a_reStatus,
-	const SetRegion2D<INDEX,SIZE> &a_rOther)
+SetRegion2D<INDEX,SIZE,SETIMP>::Subtract (Status_t &a_reStatus,
+	const SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther)
 {
 	typename Extents::ConstIterator itHere, itNext;
 		// Where we are in the other region's extents.
@@ -1167,10 +1427,53 @@ SetRegion2D<INDEX,SIZE>::Subtract (Status_t &a_reStatus,
 
 
 
-// Move all extents by the given offset.
-template <class INDEX, class SIZE>
+// Subtract the other region from the current region, but offset
+// the other region by the given amounts.
+template <class INDEX, class SIZE, class SETIMP>
 void
-SetRegion2D<INDEX,SIZE>::Offset (INDEX a_tnXOffset, INDEX a_tnYOffset)
+SetRegion2D<INDEX,SIZE,SETIMP>::SubtractWithOffset (Status_t &a_reStatus,
+	const SetRegion2D<INDEX,SIZE,SETIMP> &a_rOther,
+	INDEX a_tnXOffset, INDEX a_tnYOffset)
+{
+	typename Extents::ConstIterator itHere, itNext;
+		// Where we are in the other region's extents.
+
+	// Make sure they didn't start us off with an error.
+	assert (a_reStatus == g_kNoError);
+
+	// Run through the extents in the other region, subtract them from
+	// the current region.
+	for (itHere = a_rOther.m_setExtents.Begin();
+		 itHere != a_rOther.m_setExtents.End();
+		 itHere = itNext)
+	{
+		// Subtract this extent from the current region.
+		itNext = itHere;
+		SubtractWithOffset (a_reStatus, (*itHere).m_tnY,
+			(*itHere).m_tnXStart, (*itHere).m_tnXEnd,
+			a_tnXOffset, a_tnYOffset, a_rOther, itNext);
+		if (a_reStatus != g_kNoError)
+			return;
+
+		// If this region is now empty, leave.
+		if (m_setExtents.Size() == 0)
+			return;
+		
+		// If there was no intersection, then itNext has the location of
+		// the first extent in a_rOther that intersects one of our
+		// extents.  Otherwise, move forward.
+		if (itHere == itNext)
+			++itNext;
+	}
+}
+
+
+
+// Move all extents by the given offset.
+template <class INDEX, class SIZE, class SETIMP>
+void
+SetRegion2D<INDEX,SIZE,SETIMP>::Offset
+	(INDEX a_tnXOffset, INDEX a_tnYOffset)
 {
 	typename Extents::Iterator itHere;
 		// Where we're offsetting an extent.
@@ -1192,9 +1495,9 @@ SetRegion2D<INDEX,SIZE>::Offset (INDEX a_tnXOffset, INDEX a_tnYOffset)
 
 
 // Returns true if the region contains the given point.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 bool
-SetRegion2D<INDEX,SIZE>::DoesContainPoint (INDEX a_tnY, INDEX a_tnX)
+SetRegion2D<INDEX,SIZE,SETIMP>::DoesContainPoint (INDEX a_tnY, INDEX a_tnX)
 {
 	Extent oKey;
 	ConstIterator itKey;
@@ -1219,9 +1522,9 @@ SetRegion2D<INDEX,SIZE>::DoesContainPoint (INDEX a_tnY, INDEX a_tnX)
 
 
 // Returns true if the region contains the given point.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 bool
-SetRegion2D<INDEX,SIZE>::DoesContainPoint (INDEX a_tnY, INDEX a_tnX,
+SetRegion2D<INDEX,SIZE,SETIMP>::DoesContainPoint (INDEX a_tnY, INDEX a_tnX,
 	ConstIterator &a_ritHere)
 {
 	Extent oKey;
@@ -1250,11 +1553,11 @@ SetRegion2D<INDEX,SIZE>::DoesContainPoint (INDEX a_tnY, INDEX a_tnX,
 
 
 // Flood-fill the current region.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 template <class CONTROL>
 void
-SetRegion2D<INDEX,SIZE>::FloodFill (Status_t &a_reStatus,
-	CONTROL &a_rControl, bool a_bVerify)
+SetRegion2D<INDEX,SIZE,SETIMP>::FloodFill (Status_t &a_reStatus,
+	CONTROL &a_rControl, bool a_bVerify, bool a_bExpand)
 {
 	typename CONTROL::ConstIterator itExtent;
 		// An extent we're examining.
@@ -1369,13 +1672,16 @@ SetRegion2D<INDEX,SIZE>::FloodFill (Status_t &a_reStatus,
 				if (a_reStatus != g_kNoError)
 					return;
 
-				// Now add all surrounding extents to the to-do-next
-				// list.
-				a_rControl.m_oNextToDo.UnionSurroundingExtents
-					(a_reStatus, oFoundExtent.m_tnY,
-						oFoundExtent.m_tnXStart, oFoundExtent.m_tnXEnd);
-				if (a_reStatus != g_kNoError)
-					return;
+				// Now add all surrounding extents to the to-do-next list.
+				if (a_bExpand)
+				{
+					a_rControl.m_oNextToDo.UnionSurroundingExtents
+						(a_reStatus, oFoundExtent.m_tnY,
+							oFoundExtent.m_tnXStart,
+							oFoundExtent.m_tnXEnd);
+					if (a_reStatus != g_kNoError)
+						return;
+				}
 
 				// Look for another extent.
 				bStartedExtent = false;
@@ -1395,7 +1701,7 @@ nextExtent:
 			if (a_reStatus != g_kNoError)
 				return;
 			a_rControl.m_oToDo.Clear();
-			a_rControl.m_oToDo.Merge (a_rControl.m_oNextToDo);
+			a_rControl.m_oToDo.Move (a_rControl.m_oNextToDo);
 			
 			// Start over at the beginning.
 			itExtent = a_rControl.m_oToDo.Begin();
@@ -1408,10 +1714,10 @@ nextExtent:
 // Make the current region represent the border of the other
 // region, i.e. every pixel that borders the region but isn't
 // already in the region.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 template <class REGION>
 void
-SetRegion2D<INDEX,SIZE>::MakeBorder (Status_t &a_reStatus,
+SetRegion2D<INDEX,SIZE,SETIMP>::MakeBorder (Status_t &a_reStatus,
 	const REGION &a_rOther)
 {
 	typename REGION::ConstIterator itExtent;
@@ -1446,9 +1752,9 @@ SetRegion2D<INDEX,SIZE>::MakeBorder (Status_t &a_reStatus,
 
 
 // Add all extents surrounding the given extent.  Used by FloodFill().
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 void
-SetRegion2D<INDEX,SIZE>::UnionSurroundingExtents (Status_t &a_reStatus,
+SetRegion2D<INDEX,SIZE,SETIMP>::UnionSurroundingExtents (Status_t &a_reStatus,
 	INDEX a_tnY, INDEX a_tnXStart, INDEX a_tnXEnd)
 {
 	// Make sure they didn't start us off with an error.
@@ -1473,15 +1779,15 @@ SetRegion2D<INDEX,SIZE>::UnionSurroundingExtents (Status_t &a_reStatus,
 
 
 #ifndef NDEBUG
-template <class INDEX, class SIZE>
-uint32_t SetRegion2D<INDEX,SIZE>::sm_ulInstances;
+template <class INDEX, class SIZE, class SETIMP>
+uint32_t SetRegion2D<INDEX,SIZE,SETIMP>::sm_ulInstances;
 #endif // NDEBUG
 
 
 
 // Default constructor.  Must be followed by a call to Init().
-template <class INDEX, class SIZE>
-SetRegion2D<INDEX,SIZE>::FloodFillControl::FloodFillControl
+template <class INDEX, class SIZE, class SETIMP>
+SetRegion2D<INDEX,SIZE,SETIMP>::FloodFillControl::FloodFillControl
 		(Allocator &a_rAllocator)
 	: m_oToDo (a_rAllocator),
 	  m_oAlreadyDone (a_rAllocator),
@@ -1493,8 +1799,8 @@ SetRegion2D<INDEX,SIZE>::FloodFillControl::FloodFillControl
 
 
 // Initializing constructor.
-template <class INDEX, class SIZE>
-SetRegion2D<INDEX,SIZE>::FloodFillControl::FloodFillControl
+template <class INDEX, class SIZE, class SETIMP>
+SetRegion2D<INDEX,SIZE,SETIMP>::FloodFillControl::FloodFillControl
 		(Status_t &a_reStatus, Allocator &a_rAllocator)
 	: m_oToDo (a_rAllocator),
 	  m_oAlreadyDone (a_rAllocator),
@@ -1512,9 +1818,10 @@ SetRegion2D<INDEX,SIZE>::FloodFillControl::FloodFillControl
 
 
 // Initializer.  Must be called on default-constructed objects.
-template <class INDEX, class SIZE>
+template <class INDEX, class SIZE, class SETIMP>
 void
-SetRegion2D<INDEX,SIZE>::FloodFillControl::Init (Status_t &a_reStatus)
+SetRegion2D<INDEX,SIZE,SETIMP>::FloodFillControl::Init
+	(Status_t &a_reStatus)
 {
 	// Make sure they didn't start us off with an error.
 	assert (a_reStatus == g_kNoError);

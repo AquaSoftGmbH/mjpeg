@@ -974,7 +974,7 @@ nextExtent:
 			if (a_reStatus != g_kNoError)
 				return;
 			a_rControl.m_oToDo.Clear();
-			a_rControl.m_oToDo.Merge (a_rControl.m_oNextToDo);
+			a_rControl.m_oToDo.Move (a_rControl.m_oNextToDo);
 			
 			// Start over at the beginning.
 			itExtent = a_rControl.m_oToDo.Begin();

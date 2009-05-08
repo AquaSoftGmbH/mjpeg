@@ -35,7 +35,6 @@ void display_help (void);
 DNSR_GLOBAL denoiser;
 int frame = 0;
 int verbose = 1;
-char *g_pszInputFile = NULL;		// HACK
 
 /***********************************************************
  *                                                         *
@@ -59,7 +58,7 @@ int main(int argc, char *argv[])
   y4m_init_stream_info (&streaminfo);
   y4m_init_frame_info (&frameinfo);
   
-  /* setup denoiser's global variables */
+  /* setup default values for denoiser's parameters */
   denoiser.frames             = 10;
   denoiser.interlaced         = -1;
   denoiser.bwonly             = 0;
@@ -67,14 +66,17 @@ int main(int argc, char *argv[])
   denoiser.radiusCbCr         = -1;
   denoiser.zThresholdY        = 2; /* assume medium noise material */
   denoiser.zThresholdCbCr     = -1;
-  denoiser.thresholdY         = 3; /* assume medium noise material */
+  denoiser.thresholdY         = 4; /* assume medium noise material */
   denoiser.thresholdCbCr      = -1;
-  denoiser.matchCountThrottle = 15;
-  denoiser.matchSizeThrottle  = 3;
+  denoiser.matchCountThrottle = 48;
+  denoiser.matchSizeThrottle  = 128;
   denoiser.threads            = 1;
   
   /* process commandline */
   process_commandline(argc, argv);
+
+  /* If color-specific settings were not specified, copy them
+     from the intensity settings. */
   if (denoiser.radiusCbCr == -1)
   	denoiser.radiusCbCr = denoiser.radiusY;
   if (denoiser.thresholdCbCr == -1)
@@ -82,15 +84,33 @@ int main(int argc, char *argv[])
   if (denoiser.zThresholdCbCr == -1)
   	denoiser.zThresholdCbCr = denoiser.zThresholdY;
 
-	/* HACK: open input file. */
-	if (g_pszInputFile != NULL)
+	/* Make sure the parameters are consistent. */
 	{
-		fd_in = open (g_pszInputFile, O_RDONLY);
-		if (fd_in == -1)
+		int isConsistent = 1;
+
+		/* The zero-motion error threshold has to be lower than the
+		   motion-compensated error threshold.  The zero-motion
+		   pass is just a way to speed up detection of unambiguous
+		   zero-motion areas, so a higher error threshold would defeat
+		   the purpose. */
+		if (denoiser.zThresholdY > denoiser.thresholdY)
 		{
-			mjpeg_error_exit1 ("Couldn't open input file %s: %s!",
-				g_pszInputFile, y4m_strerr (errno));
+			mjpeg_error ("-z setting (%d) cannot be larger than "
+				"-t setting (%d)\n", denoiser.zThresholdY,
+				denoiser.thresholdY);
+			isConsistent = 0;
 		}
+		if (denoiser.zThresholdCbCr > denoiser.thresholdCbCr)
+		{
+			mjpeg_error ("-Z setting (%d) cannot be larger than "
+				"-T setting (%d)\n", denoiser.zThresholdCbCr,
+				denoiser.thresholdCbCr);
+			isConsistent = 0;
+		}
+
+		/* If the parameters weren't consistent, quit with an error. */
+		if (!isConsistent)
+			exit (1);
 	}
 
 	/* open input stream */
@@ -256,15 +276,10 @@ process_commandline(int argc, char *argv[])
 {
   char c;
 
-  while ((c = getopt (argc, argv, "h?z:Z:t:T:r:R:m:M:f:BI:p:v:i:")) != -1)	// HACK
+  while ((c = getopt (argc, argv, "h?z:Z:t:T:r:R:m:M:f:BI:p:v:")) != -1)
   {
     switch (c)
     {
-	  case 'i':	// HACK
-	  {
-	  	g_pszInputFile = optarg;
-		break;
-	  }
       case 'h':
       {
         display_help();

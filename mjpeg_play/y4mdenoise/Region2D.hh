@@ -221,10 +221,11 @@ public:
 
 	template <class CONTROL>
 	void FloodFill (Status_t &a_reStatus, CONTROL &a_rControl,
-			bool a_bVerify);
-		// Flood-fill the current region.  All points bordering the
-		// current region are tested for inclusion; if a_bVerify is
-		// true, all existing region points are tested first.
+			bool a_bVerify, bool a_bExpand);
+		// Flood-fill the current region.
+		// If a_bVerify is true, all existing region points are re-tested.
+		// If a_bExpand is true, all points bordering the current region
+		// are tested for inclusion.
 
 	template <class REGION>
 	void MakeBorder (Status_t &a_reStatus, const REGION &a_rOther);
@@ -693,7 +694,7 @@ template <class INDEX, class SIZE>
 template <class CONTROL>
 void
 Region2D<INDEX,SIZE>::FloodFill (Status_t &a_reStatus,
-	CONTROL &a_rControl, bool a_bVerify)
+	CONTROL &a_rControl, bool a_bVerify, bool a_bExpand)
 {
 	typename CONTROL::ConstIterator itExtent;
 		// An extent we're examining.
@@ -805,13 +806,15 @@ Region2D<INDEX,SIZE>::FloodFill (Status_t &a_reStatus,
 				if (a_reStatus != g_kNoError)
 					return;
 
-				// Now add all surrounding extents to the to-do-next
-				// list.
-				a_rControl.m_oNextToDo.UnionSurroundingExtents
-					(a_reStatus, oFoundExtent.m_tnY,
-						oFoundExtent.m_tnXStart, oFoundExtent.m_tnXEnd);
-				if (a_reStatus != g_kNoError)
-					return;
+				// Now add all surrounding extents to the to-do-next list.
+				if (a_bExpand)
+				{
+					a_rControl.m_oNextToDo.UnionSurroundingExtents
+						(a_reStatus, oFoundExtent.m_tnY,
+							oFoundExtent.m_tnXStart, oFoundExtent.m_tnXEnd);
+					if (a_reStatus != g_kNoError)
+						return;
+				}
 
 				// Look for another extent.
 				bStartedExtent = false;
@@ -831,7 +834,7 @@ nextExtent:
 			if (a_reStatus != g_kNoError)
 				return;
 			a_rControl.m_oToDo.Clear();
-			a_rControl.m_oToDo.Merge (a_rControl.m_oNextToDo);
+			a_rControl.m_oToDo.Move (a_rControl.m_oNextToDo);
 			
 			// Start over at the beginning.
 			itExtent = a_rControl.m_oToDo.Begin();

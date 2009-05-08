@@ -13,11 +13,17 @@
 
 
 
-template <class TYPE, class PRED = Less<TYPE> >
+template <class TYPE, class PRED = Less<TYPE>,
+	class IMP = SkipList<TYPE,TYPE,Ident<TYPE,TYPE>,PRED> >
 class Set
 {
 public:
-	typedef SkipList<TYPE,TYPE,Ident<TYPE,TYPE>,PRED> Imp;
+	typedef IMP Imp;
+		// The type that implements our internal operations.
+
+	typedef typename Imp::InitParams InitParams;
+		// How that internal type is initialized.
+
 private:
 	Imp m_oImp;
 		// How we implement ourselves.
@@ -32,14 +38,16 @@ public:
 		// Default constructor.  Must be followed by Init().
 	
 	Set (Status_t &a_reStatus, bool a_bAllowDuplicates = false,
+			const InitParams &a_rInitParams = InitParams(),
 			const PRED &a_rPred = PRED(),
 			Allocator &a_rAlloc = Imp::sm_oNodeAllocator)
-		: m_oImp (a_reStatus, a_bAllowDuplicates, rand(), a_rPred,
+		: m_oImp (a_reStatus, a_bAllowDuplicates, a_rInitParams, a_rPred,
 			a_rAlloc) {}
 		// Initializing constructor.
 	
-	void Init (Status_t &a_reStatus, bool a_bAllowDuplicates = false)
-			{ m_oImp.Init (a_reStatus, a_bAllowDuplicates, rand()); }
+	void Init (Status_t &a_reStatus, bool a_bAllowDuplicates = false,
+				const InitParams &a_rInitParams = InitParams())
+			{ m_oImp.Init (a_reStatus, a_bAllowDuplicates, a_rInitParams); }
 		// Construction method.
 	
 	virtual ~Set (void) {}
@@ -114,13 +122,13 @@ public:
 	void Clear (void) { m_oImp.Clear(); }
 		// Empty the list.
 	
-	InsertResult Move (Set<TYPE,PRED> &a_rOther, Iterator a_itHere)
+	InsertResult Move (Set<TYPE,PRED,IMP> &a_rOther, Iterator a_itHere)
 			{ return m_oImp.Move (a_rOther.m_oImp, a_itHere); }
 		// Remove an item from another set and insert it into ourselves.
 		// Just like an Erase() followed by an Insert(), except that
 		// there's no possibility of the operation failing.
 	
-	void Move (Set<TYPE,PRED> &a_rOther, Iterator a_itFirst,
+	void Move (Set<TYPE,PRED,IMP> &a_rOther, Iterator a_itFirst,
 				Iterator a_itLast)
 			{ m_oImp.Move (a_rOther.m_oImp, a_itFirst, a_itLast); }
 		// Remove a range of items from another set and insert them
@@ -128,17 +136,17 @@ public:
 		// Just like an Erase() followed by an Insert(), except that
 		// there's no possibility of the operation failing.
 	
-	void Move (Set<TYPE,PRED> &a_rOther)
+	void Move (Set<TYPE,PRED,IMP> &a_rOther)
 			{ m_oImp.Move (a_rOther.m_oImp); }
 		// Move all items from the other set to ourself.
 		// The current set must be empty.
 
-	bool CanMove (const Set<TYPE,PRED> &a_rOther) const
+	bool CanMove (const Set<TYPE,PRED,IMP> &a_rOther) const
 			{ return m_oImp.CanMove (a_rOther.m_oImp); }
 		// Returns true if the two sets can move items between
 		// each other.
 
-	void Assign (Status_t &a_reStatus, const Set<TYPE,PRED> &a_rOther)
+	void Assign (Status_t &a_reStatus, const Set<TYPE,PRED,IMP> &a_rOther)
 			{ m_oImp.Assign (a_reStatus, a_rOther.m_oImp); }
 		// Assign the contents of the other set to ourselves.
 	
