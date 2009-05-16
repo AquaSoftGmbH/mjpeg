@@ -408,7 +408,7 @@ int decode_png(const char *pngname, int process, parameters_t *param)
     }
 
   fclose(pngfile);
-
+  png_destroy_read_struct(&png_ptr, &info_ptr, &end_info);
   return 1;
 }
 
