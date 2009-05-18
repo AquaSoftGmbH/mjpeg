@@ -13,25 +13,28 @@
 // An allocator for small classes.  It gets large chunks from the
 // standard memory allocator & divides it up.  It's able to handle
 // several different object sizes at once.
-template <class TYPE, size_t SIZES>
+template <size_t SIZES>
 class Allocator
 {
 public:
 	Allocator (size_t a_nChunkSize);
 		// Constructor.  Specify the number of bytes to allocate at a
 		// time from the standard memory allocator.
-	
+
 	~Allocator();
 		// Destructor.
 
 	void *Allocate (size_t a_nSize, size_t a_nBytes);
-		// Allocate memory for another object of type TYPE.
+		// Allocate memory for another object.
 		// Use the given size-bucket, which must be for the given number
 		// of bytes.
 		// Returns NULL if memory is exhausted.
-	
-	void Deallocate (size_t a_nSize, void *a_pMemory);
+
+	void Deallocate (size_t a_nSize, size_t a_nBytes, void *a_pMemory);
 		// Deallocate previously-allocated memory.
+
+	uint32_t GetNumAllocated (void) const { return m_ulAllocated; }
+		// Get the number of allocated blocks.
 
 private:
 	// One chunk of memory.
@@ -48,12 +51,12 @@ private:
 		// The size of allocated chunks.  Set by the constructor.
 
 	Chunk *m_pChunks;
-		// All the allocated chunks.
-	
+		// A linked-list of all the allocated chunks.
+
 	char *m_pFreeChunk;
 		// The next piece of unallocated memory in the
 		// most-recently-allocated chunk.
-	
+
 	void *m_apFree[SIZES];
 		// Linked lists of freed pieces of memory, for all the sizes we
 		// manage.
@@ -62,15 +65,13 @@ private:
 		// The number of live allocations, i.e. those that haven't been
 		// deleted yet.
 
-#ifndef NDEBUG
-
+	#ifndef NDEBUG
 	size_t m_aiSizes[SIZES];
+	#endif // NDEBUG
 		// The size of the pieces of memory in each bucket.
 		// Used to make sure they always ask for the same memory size
 		// in each bucket.
 
-#endif // NDEBUG
-	
 	void Purge (void);
 		// Free up all chunks.
 		// Only safe if there are no live allocations.
@@ -80,8 +81,8 @@ private:
 
 // Constructor.  Specify the number of bytes to allocate at a
 // time from the standard memory allocator.
-template <class TYPE, size_t SIZES>
-Allocator<TYPE,SIZES>::Allocator (size_t a_nChunkSize)
+template <size_t SIZES>
+Allocator<SIZES>::Allocator (size_t a_nChunkSize)
 	: m_pChunks (NULL), m_pFreeChunk (NULL)
 {
 	// Round our chunk size up to the nearest pointer size.
@@ -93,12 +94,10 @@ Allocator<TYPE,SIZES>::Allocator (size_t a_nChunkSize)
 	{
 		m_apFree[i] = NULL;
 
-#ifndef NDEBUG
-
 		// (We don't know the memory-size of each bucket yet.)
+		#ifndef NDEBUG
 		m_aiSizes[i] = Limits<size_t>::Max;
-
-#endif // NDEBUG
+		#endif // NDEBUG
 	}
 
 	// No allocations yet.
@@ -108,8 +107,8 @@ Allocator<TYPE,SIZES>::Allocator (size_t a_nChunkSize)
 
 
 // Destructor.
-template <class TYPE, size_t SIZES>
-Allocator<TYPE,SIZES>::~Allocator()
+template <size_t SIZES>
+Allocator<SIZES>::~Allocator()
 {
 	// If all allocated objects were deallocated, go ahead and free
 	// up our memory.  (If there are any allocated objects left, then
@@ -123,13 +122,13 @@ Allocator<TYPE,SIZES>::~Allocator()
 
 
 
-// Allocate memory for another object of type TYPE.
+// Allocate memory for another object.
 // Use the given size-bucket, which must be for the given number
 // of bytes.
 // Returns NULL if memory is exhausted.
-template <class TYPE, size_t SIZES>
+template <size_t SIZES>
 void *
-Allocator<TYPE,SIZES>::Allocate (size_t a_nSize, size_t a_nBytes)
+Allocator<SIZES>::Allocate (size_t a_nSize, size_t a_nBytes)
 {
 	void *pAlloc;
 		// The memory we allocate.
@@ -144,13 +143,14 @@ Allocator<TYPE,SIZES>::Allocate (size_t a_nSize, size_t a_nBytes)
 	a_nBytes = ((a_nBytes + sizeof (Chunk *) - 1)
 		/ sizeof (Chunk *)) * sizeof (Chunk *);
 
-#ifndef NDEBUG
+	// Make sure the requested size fits within our chunk size.
+	assert (a_nBytes <= m_nChunkSize - sizeof (Chunk *));
 
 	// If we don't know the size of this bucket, we do now.
+	#ifndef NDEBUG
 	if (m_aiSizes[a_nSize] == Limits<size_t>::Max)
 		m_aiSizes[a_nSize] = a_nBytes;
-
-#endif // NDEBUG
+	#endif // NDEBUG
 
 	// Make sure they ask for the same number of bytes each time.
 	assert (m_aiSizes[a_nSize] == a_nBytes);
@@ -160,7 +160,7 @@ Allocator<TYPE,SIZES>::Allocate (size_t a_nSize, size_t a_nBytes)
 	{
 		// Remember the allocated memory.
 		pAlloc = m_apFree[a_nSize];
-		
+
 		// Remove it from our list.
 		m_apFree[a_nSize] = *(void **)m_apFree[a_nSize];
 
@@ -201,8 +201,7 @@ Allocator<TYPE,SIZES>::Allocate (size_t a_nSize, size_t a_nBytes)
 	// Add a new chunk to our list.
 	{
 		// Allocate a new chunk.
-		Chunk *pNewChunk = (Chunk *) new Chunk *
-			[m_nChunkSize / sizeof (Chunk *)];
+		Chunk *pNewChunk = (Chunk *) malloc (m_nChunkSize);
 		if (pNewChunk == NULL)
 			return NULL;
 
@@ -224,9 +223,10 @@ Allocator<TYPE,SIZES>::Allocate (size_t a_nSize, size_t a_nBytes)
 
 
 // Deallocate previously-allocated memory.
-template <class TYPE, size_t SIZES>
+template <size_t SIZES>
 void
-Allocator<TYPE,SIZES>::Deallocate (size_t a_nSize, void *a_pMemory)
+Allocator<SIZES>::Deallocate (size_t a_nSize, size_t /* a_nBytes */,
+	void *a_pMemory)
 {
 	// Make sure they gave us a valid size.
 	assert (a_nSize >= 0 && a_nSize < SIZES);
@@ -246,9 +246,9 @@ Allocator<TYPE,SIZES>::Deallocate (size_t a_nSize, void *a_pMemory)
 
 
 // Free up all chunks.
-template <class TYPE, size_t SIZES>
+template <size_t SIZES>
 void
-Allocator<TYPE,SIZES>::Purge (void)
+Allocator<SIZES>::Purge (void)
 {
 	// Make sure there are no live allocations
 	assert (m_ulAllocated == 0UL);
@@ -256,6 +256,7 @@ Allocator<TYPE,SIZES>::Purge (void)
 	// Empty the free-space list.
 	for (size_t i = 0; i < SIZES; ++i)
 		m_apFree[i] = NULL;
+	m_pFreeChunk = NULL;
 
 	// Free all allocated chunks.
 	while (m_pChunks != NULL)
@@ -263,9 +264,8 @@ Allocator<TYPE,SIZES>::Purge (void)
 		// Remember the next chunk.
 		Chunk *pNextChunk = m_pChunks->m_pNext;
 
-		// Free this chunk.  (It was allocated as an array of chunk
-		// pointers.)
-		delete[] m_pChunks;
+		// Free this chunk.
+		free (m_pChunks);
 
 		// Move to the next chunk.
 		m_pChunks = pNextChunk;

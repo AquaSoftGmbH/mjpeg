@@ -7,10 +7,12 @@
 
 #include "config.h"
 #include <assert.h>
+#include <new>
 #include "mjpeg_types.h"
 #include "TemplateLib.hh"
 #include "Limits.hh"
 #include "DoublyLinkedList.hh"
+#include "Allocator.hh"
 #include "SetRegion2D.hh"
 
 // HACK: for development error messages.
@@ -153,6 +155,10 @@ public:
 		// Hand a completed region to our client.  Subclasses must
 		// override this to describe how to do this.
 
+	void DeleteRegion (MovedRegion *a_pRegion);
+		// Delete a region that was returned by ChooseBestActiveRegion()
+		// or OnCompletedRegion().
+
 	// A moved region of pixels that has been detected.
 	// All extents are in the coordinate system of the new frame; that
 	// makes it easy to unify/subtract regions without regard to their
@@ -162,6 +168,13 @@ public:
 	private:
 		typedef Region_t BaseClass;
 			// Keep track of who our base class is.
+
+		void *operator new (size_t);
+		void operator delete (void *) {}
+		void *operator new[] (size_t);
+		void operator delete[] (void *);
+			// Disallow allocation from system memory.
+			// (This helps enforce the use of DeleteRegion().)
 
 	public:
 		MovedRegion (typename BaseClass::Allocator &a_rAlloc
@@ -410,6 +423,10 @@ private:
 		// Fix the last/current/first-border startpoints/endpoint
 		// iterators.  Necessary after adding or removing a region.
 
+	bool m_bFixStartpointEndpointIterators;
+		// True if the startpoint/endpoint-iterators need to be fixed.
+		// Used to avoid needless recalculation during match-throttling.
+
 	typedef Set<BorderExtentBoundary, typename BorderExtentBoundary
 		::SortByMotionVectorThenTypeThenRegionAddress>
 		IntersectingRegionsSet;
@@ -427,6 +444,10 @@ private:
 		// set.  This extra sort criteria is used to help us find the
 		// range of regions that all have the same motion vector, to let
 		// us set up an umambiguous upper-bound for the search.)
+
+	typedef Allocator<1> MovedRegionAllocator_t;
+	MovedRegionAllocator_t m_oMovedRegionAllocator;
+		// Where we get memory to allocate MovedRegion instances.
 
 #ifndef NDEBUG
 public:
@@ -452,7 +473,8 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::SearchBorder
 	m_oBorderRegionsAllocator (131072),
 	m_setBorderRegions (typename BorderExtentBoundary
 		::SortByMotionVectorThenTypeThenRegionAddress(),
-		m_oBorderRegionsAllocator)
+		m_oBorderRegionsAllocator),
+	m_oMovedRegionAllocator (262144)
 {
 	// No frame dimensions yet.
 	m_tnWidth = m_tnHeight = PIXELINDEX (0);
@@ -471,6 +493,9 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::SearchBorder
 
 	// No startpoint/endpoint iterators yet.
 	m_paitBorderStartpoints = m_paitBorderEndpoints = NULL;
+
+	// No need to recalculate startpoint/endpoint-iterators yet.
+	m_bFixStartpointEndpointIterators = false;
 }
 
 
@@ -513,15 +538,19 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::Init (Status_t &a_reStatus,
 	assert (a_tnHeight > PIXELINDEX (0));
 
 	// Initialize the sets that implement our border-regions.
-	m_setBorderStartpoints.Init (a_reStatus, true);
+	m_setBorderStartpoints.Init (a_reStatus, false);
 	if (a_reStatus != g_kNoError)
 		goto cleanup0;
-	m_setBorderEndpoints.Init (a_reStatus, true);
+	m_setBorderEndpoints.Init (a_reStatus, false);
 	if (a_reStatus != g_kNoError)
 		goto cleanup0;
-	m_setBorderRegions.Init (a_reStatus, false);
-	if (a_reStatus != g_kNoError)
-		goto cleanup0;
+	{
+		typename IntersectingRegionsSet::InitParams oInitSetBorderRegions
+			(rand(), true /* allocate internal nodes from allocator */);
+		m_setBorderRegions.Init (a_reStatus, false, oInitSetBorderRegions);
+		if (a_reStatus != g_kNoError)
+			goto cleanup0;
+	}
 
 	// Allocate space for our iterators into the startpoint/endpoint
 	// sets.  (These move left/right/down with the current pixel-group,
@@ -560,8 +589,10 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::Init (Status_t &a_reStatus,
 //	delete[] m_pMotionVectorMatches;
 cleanup2:
 	delete[] m_paitBorderEndpoints;
+	m_paitBorderEndpoints = NULL;
 cleanup1:
 	delete[] m_paitBorderStartpoints;
+	m_paitBorderStartpoints = NULL;
 cleanup0:
 	;
 }
@@ -721,6 +752,11 @@ void
 SearchBorder<PIXELINDEX,FRAMESIZE>::MovedRegion::Move
 	(MovedRegion &a_rOther)
 {
+	// Make sure neither region is already in the search-border, i.e.
+	// has any references.
+	assert (m_tnReferences == 0);
+	assert (a_rOther.m_tnReferences == 0);
+
 	// Move the base class.
 	BaseClass::Move (a_rOther);
 
@@ -1042,12 +1078,19 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::StartFrame (Status_t &a_reStatus)
 	assert (m_setBorderEndpoints.Size() == 0);
 	assert (m_setBorderRegions.Size() == 0);
 
+	// Make sure there are no leftover moved-regions from last time.
+	assert (m_oMovedRegionAllocator.GetNumAllocated() == 0);
+	assert (m_rSetRegionExtentAllocator.GetNumAllocated() == 0);
+
 	// Set up our iterators into the borders.
 	for (int i = 0; i <= m_tnPGH + 1; ++i)
 	{
 		m_paitBorderStartpoints[i] = m_setBorderStartpoints.End();
 		m_paitBorderEndpoints[i] = m_setBorderEndpoints.End();
 	}
+
+	// No need to recalculate startpoint/endpoint-iterators yet.
+	m_bFixStartpointEndpointIterators = false;
 
 	// Start in the upper-left corner, and prepare to move to the right.
 	m_tnX = m_tnY = PIXELINDEX (0);
@@ -1176,6 +1219,13 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::MoveRight (Status_t &a_reStatus)
 		}
 	}
 	#endif // PRINT_SEARCHBORDER
+
+	// If we need to recalculate startpoint/endpoint-iterators, do so.
+	if (m_bFixStartpointEndpointIterators)
+	{
+		FixStartpointEndpointIterators();
+		m_bFixStartpointEndpointIterators = false;
+	}
 
 	// All active regions with a current-border endpoint at old X, and
 	// all active regions with a first/last-border endpoint at old X + 1,
@@ -1341,6 +1391,13 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::MoveLeft (Status_t &a_reStatus)
 		}
 	}
 	#endif // PRINT_SEARCHBORDER
+
+	// If we need to recalculate startpoint/endpoint-iterators, do so.
+	if (m_bFixStartpointEndpointIterators)
+	{
+		FixStartpointEndpointIterators();
+		m_bFixStartpointEndpointIterators = false;
+	}
 
 	// All active regions with a current-border startpoint at
 	// old X + m_tnPGW, and all active regions with a last-border
@@ -1555,6 +1612,13 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::MoveDown (Status_t &a_reStatus)
 	// Make sure they didn't start us off with an error.
 	assert (a_reStatus == g_kNoError);
 
+	// If we need to recalculate startpoint/endpoint-iterators, do so.
+	if (m_bFixStartpointEndpointIterators)
+	{
+		FixStartpointEndpointIterators();
+		m_bFixStartpointEndpointIterators = false;
+	}
+
 	// Run through the last border, disconnect the regions from all
 	// endpoints.  If that leaves a region with no references and no
 	// siblings, then the region is fully constructed, and it gets
@@ -1597,7 +1661,7 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::MoveDown (Status_t &a_reStatus)
 				OnCompletedRegion (a_reStatus, pRegion);
 				if (a_reStatus != g_kNoError)
 				{
-					delete pRegion;
+					DeleteRegion (pRegion);
 					return;
 				}
 			}
@@ -2246,14 +2310,25 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::AddNewRegion (Status_t &a_reStatus,
 		// Used to loop through the newly added region.
 	BorderExtentBoundary oStartpoint, oEndpoint;
 		// New startpoints/endpoints as we create them.
+	typename BorderExtentBoundarySet::Iterator itStart, itEnd;
+		// Any startpoint/endpoint inserted into the set, as they're
+		// inserted.
 
 	// Make sure they didn't start us off with an error.
 	assert (a_reStatus == g_kNoError);
 
-	// Create a new region.
-	pRegion = new MovedRegion (a_reStatus, m_rSetRegionExtentAllocator);
+	// Make space for a new region.
+	pRegion = (MovedRegion *) m_oMovedRegionAllocator.Allocate (0,
+		sizeof (MovedRegion));
 	if (pRegion == NULL)
+	{
+		a_reStatus = g_kOutOfMemory;
 		goto cleanup0;
+	}
+
+	// Create a new region.
+	::new ((void *) pRegion) MovedRegion (a_reStatus,
+		m_rSetRegionExtentAllocator);
 	if (a_reStatus != g_kNoError)
 		goto cleanup1;
 
@@ -2274,13 +2349,21 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::AddNewRegion (Status_t &a_reStatus,
 	// and endpoint for each one.  If the extent intersects or borders
 	// the current pixel-group, make an entry for it in the active-regions
 	// list.
-	for (itHere = pRegion->Begin(); itHere != pRegion->End(); ++itHere)
+	// Extents before the first-border can be ignored -- their time
+	// has already passed.
+	for (itHere = (m_tnY == PIXELINDEX (0)) ? pRegion->Begin()
+			: pRegion->LowerBound (m_tnY - PIXELINDEX (1), PIXELINDEX (0));
+		 itHere != pRegion->End();
+		 ++itHere)
 	{
 		// Get the current extent.
 		const typename MovedRegion::Extent &a_rExtent = *itHere;
 		PIXELINDEX tnY = a_rExtent.m_tnY;
 		PIXELINDEX tnXStart = a_rExtent.m_tnXStart;
 		PIXELINDEX tnXEnd = a_rExtent.m_tnXEnd;
+
+		// Make sure it's not before the first-border.  (Sanity check.)
+		assert (tnY + PIXELINDEX (1) >= m_tnY);
 
 		// Create the startpoint and endpoint that represent this extent.
 		oStartpoint.m_tnIndex = tnXStart;
@@ -2298,6 +2381,9 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::AddNewRegion (Status_t &a_reStatus,
 			goto cleanup2;
 		assert (oStartInsertResult.m_bInserted);
 
+		// Remember where this startpoint was inserted.
+		itStart = oStartInsertResult.m_itPosition;
+
 		// The new startpoint contains another reference to the region.
 		++pRegion->m_tnReferences;
 
@@ -2308,16 +2394,17 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::AddNewRegion (Status_t &a_reStatus,
 			goto cleanup3;
 		assert (oEndInsertResult.m_bInserted);
 
+		// Remember where this endpoint was inserted.
+		itEnd = oEndInsertResult.m_itPosition;
+
 		// The new endpoint contains another reference to the region.
 		++pRegion->m_tnReferences;
 
 		// Now that startpoint & endpoint are inserted, we can set up
 		// their counterpart links.
 		#ifndef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-		(*(oStartInsertResult.m_itPosition)).m_pCounterpart
-			= &(*(oEndInsertResult.m_itPosition));
-		(*(oEndInsertResult.m_itPosition)).m_pCounterpart
-			= &(*(oStartInsertResult.m_itPosition));
+		(*itStart).m_pCounterpart = &(*itEnd);
+		(*itEnd).m_pCounterpart = &(*itStart);
 		#endif // !BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
 
 		// If this extent intersects/borders the current pixel-group,
@@ -2333,8 +2420,7 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::AddNewRegion (Status_t &a_reStatus,
 		{
 			// Add a reference to this region.
 			typename IntersectingRegionsSet::InsertResult oInsertResult
-				= m_setBorderRegions.Insert (a_reStatus,
-					*(oStartInsertResult.m_itPosition));
+				= m_setBorderRegions.Insert (a_reStatus, *itStart);
 			if (a_reStatus != g_kNoError)
 				goto cleanup4;
 			assert (oInsertResult.m_bInserted);
@@ -2343,23 +2429,42 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::AddNewRegion (Status_t &a_reStatus,
 		}
 	}
 
-	// Any number of new startpoints/endpoints could have been inserted,
-	// so fix the iterators that keep track of which startpoints/endpoints
-	// intersect the current pixel-group.
-	FixStartpointEndpointIterators();
+	// Does the search-border have any references to this region?
+	if (pRegion->m_tnReferences != 0)
+	{
+		// Yes.  Any number of new startpoints/endpoints could have been
+		// inserted, so remember to fix the iterators that keep track of
+		// which startpoints/endpoints intersect the current pixel-group.
+		m_bFixStartpointEndpointIterators = true;
+	}
+	else
+	{
+		// No.  The region is fully constructed.  Move it to
+		// the list of regions that'll get applied to the
+		// new frame's reference-image representation.
+		OnCompletedRegion (a_reStatus, pRegion);
+		if (a_reStatus != g_kNoError)
+		{
+			DeleteRegion (pRegion);
+			return;
+		}
+	}
 
 	// All done.
 	return;
 
 	// Clean up after errors.
 cleanup4:
+	--pRegion->m_tnReferences;
+	m_setBorderEndpoints.Erase (itEnd);
 cleanup3:
+	--pRegion->m_tnReferences;
+	m_setBorderStartpoints.Erase (itStart);
 cleanup2:
-	// TODO: Properly clean this up.  For now, just return.
-	// (This is safe, just not clean.)
-	return;
+	RemoveRegion (pRegion);
+	pRegion->~MovedRegion();
 cleanup1:
-	delete pRegion;
+	m_oMovedRegionAllocator.Deallocate (0, sizeof (MovedRegion), pRegion);
 cleanup0:
 	;
 }
@@ -2517,9 +2622,9 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::RemoveRegion (MovedRegion *a_pRegion)
 	assert (a_pRegion->m_tnReferences == 0);
 
 	// Any number of startpoints/endpoints could have been removed,
-	// so fix the iterators that keep track of which startpoints/endpoints
-	// intersect the current pixel-group.
-	FixStartpointEndpointIterators();
+	// so remember to fix the iterators that keep track of which
+	// startpoints/endpoints intersect the current pixel-group.
+	m_bFixStartpointEndpointIterators = true;
 }
 
 
@@ -2697,6 +2802,26 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::FinishFrame (Status_t &a_reStatus)
 	assert (m_setBorderStartpoints.Size() == 0);
 	assert (m_setBorderEndpoints.Size() == 0);
 	assert (m_setBorderRegions.Size() == 0);
+
+	// Make sure our temporary memory allocations have been purged.
+	assert (m_oBorderExtentsAllocator.GetNumAllocated() == 0);
+}
+
+
+
+// Delete a region that was returned by ChooseBestActiveRegion()
+// or OnCompletedRegion().
+template <class PIXELINDEX, class FRAMESIZE>
+void
+SearchBorder<PIXELINDEX,FRAMESIZE>::DeleteRegion (MovedRegion *a_pRegion)
+{
+	// Make sure they gave us a region to delete.
+	assert (a_pRegion != NULL);
+
+	// Easy enough.
+	a_pRegion->~MovedRegion();
+	m_oMovedRegionAllocator.Deallocate (0, sizeof (MovedRegion),
+		a_pRegion);
 }
 
 

@@ -122,6 +122,9 @@ public:
 	void Clear (void) { m_oImp.Clear(); }
 		// Empty the list.
 	
+	void Purge (void) { m_oImp.Purge(); }
+		// Purge all internally-allocated memory.
+	
 	InsertResult Move (Set<TYPE,PRED,IMP> &a_rOther, Iterator a_itHere)
 			{ return m_oImp.Move (a_rOther.m_oImp, a_itHere); }
 		// Remove an item from another set and insert it into ourselves.
@@ -172,6 +175,14 @@ public:
 	ConstIterator UpperBound (const TYPE &a_rKey) const
 			{ return m_oImp.UpperBound (a_rKey); }
 		// Return the position of the first item that's > the key.
+
+	size_t GetSizeOfLargestNode (void) const
+			{ return m_oImp.GetSizeOfLargestNode(); }
+		// Return the size of the largest possible skip-list node.
+		//
+		// (Not generally useful...needed by VariableSizeAllocator,
+		// to make sure all free-space blocks can become part of an
+		// in-place skip-list.)
 };
 
 

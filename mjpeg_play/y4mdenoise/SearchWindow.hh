@@ -7,9 +7,11 @@
 
 #include "config.h"
 #include <assert.h>
+#include <new>
 #include "mjpeg_types.h"
 #include "TemplateLib.hh"
 #include "Limits.hh"
+#include "Allocator.hh"
 #include "ReferenceFrame.hh"
 
 
@@ -84,13 +86,13 @@ public:
 			PIXELINDEX a_tnSearchRadiusY, PixelValue_t a_nTolerance);
 		// Initializer.  Provide the dimensions of the frames, the
 		// search radius, and the error tolerance.
-	
+
 	void PurgePixelSorter (void);
 		// Purge the pixel sorter.
 		// Should be called every once in a while (e.g. every 100
 		// frames).  Otherwise, it uses up way too much memory and
-		// starts hitting virtual memory & otherwise performs bad.
-	
+		// starts hitting virtual memory & otherwise performs badly.
+
 	// A pixel group.
 	class PixelGroup
 	{
@@ -109,10 +111,10 @@ public:
 
 		bool IsWithinTolerance (const PixelGroup &a_rOther,
 				Tolerance_t a_tnTolerance
-#ifdef CALCULATE_SAD
+				#ifdef CALCULATE_SAD
 				, Tolerance_t &a_rtnSAD
-#endif // CALCULATE_SAD
-									   ) const;
+				#endif // CALCULATE_SAD
+				) const;
 			// Returns true if the two pixels groups are equal, within
 			// the given tolerance, and backpatches the sum-of-absolute-
 			// differences in a_rtnSAD.  a_tnTolerance must have been
@@ -133,7 +135,7 @@ public:
 		// them there.
 		// This must be called before StartSearch()/FoundNextMatch() if
 		// any of the Move*() methods have been called.
-	
+
 #ifdef OPTIONALLY_SORT_PIXEL_GROUPS
 
 	const SearchWindowCell &GetCell (PIXELINDEX a_tnY,
@@ -176,19 +178,19 @@ public:
 
 	const PixelGroup *FoundNextMatch
 			(PixelSorterIterator &a_rIterator
-#ifdef CALCULATE_SAD
+			#ifdef CALCULATE_SAD
 			, Tolerance_t &a_rtnSAD
-#endif // CALCULATE_SAD
-								   ) const;
+			#endif // CALCULATE_SAD
+			) const;
 		// If there is another pixel group that matches the one being
 		// searched for, returns the matched pixel group, and
 		// backpatches the sum-of-absolute-differences.
 		// If the search is over, returns NULL.
 
-#ifndef NDEBUG
+	#ifndef NDEBUG
 	static uint32_t GetPixelSorterNodeCount (void);
+	#endif // NDEBUG
 		// Return the number of allocated pixel-sorters.
-#endif // NDEBUG
 
 private:
 	PIXELINDEX m_tnWidth;
@@ -208,13 +210,13 @@ private:
 	ReferenceFrame_t *m_pReferenceFrame;
 		// The reference frame, against which the new frame is
 		// compared.
-	
+
 	PIXELINDEX m_tnX, m_tnY;
 		// The index of the current pixel group.  Actually the index
 		// of the top-left pixel in the current pixel group.  This
 		// gets moved in a zigzag pattern, back and forth across the
 		// frame and then down, until the end of the frame is reached.
-	
+
 	// A pixel group within the search radius of the current
 	// pixel group.  Lists of these are attached to pixel-sorter
 	// nodes (defined below).
@@ -277,6 +279,13 @@ private:
 	// current pixel group in quasi-logarithmic time.
 	class PixelSorterBranchNode
 	{
+	private:
+		void *operator new (size_t);
+		void operator delete (void *) {}
+		void *operator new[] (size_t);
+		void operator delete[] (void *);
+			// Disallow allocation from system memory.
+
 	public:
 		SearchWindowCell m_oSplitValue;
 			// A cell that contains the split values for each dimension
@@ -356,18 +365,18 @@ private:
 			// Set our split values to the midpoint between the given
 			// minimum & maximum.
 
-#ifndef NDEBUG
-
 		// Count the number of pixel-sorter objects in existence.
+		#ifndef NDEBUG
 		private:
 			static uint32_t sm_ulInstances;
 		public:
 			static uint32_t GetInstances (void)
 				{ return sm_ulInstances; }
-	
-#endif // NDEBUG
+		#endif // NDEBUG
 	};
 
+	typedef Allocator<1> PSBN_Allocator_t;
+	PSBN_Allocator_t m_oPSBNAllocator;
 	PixelSorterBranchNode m_oPixelSorter;
 		// The pixel sorter, i.e. the root of a tree of pixel-sorter
 		// branch nodes that partitions all unresolved pixel-groups
@@ -402,6 +411,9 @@ private:
 		// branch nodes will most likely become useful again at some
 		// later time.
 
+	void DeletePixelSorterBranchNode (PixelSorterBranchNode *a_pNode);
+		// Delete a pixel-sorter-branch-node.
+
 public:
 	// A class to keep track of our progress during a search inside the
 	// pixel sorter.  (This has to be public, in order to allow clients
@@ -435,6 +447,7 @@ template <class PIXEL_NUM, int DIM, class PIXEL_TOL, class PIXELINDEX,
 SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	PGW,PGH,SORTERBITMASK,PIXEL,REFERENCEPIXEL,
 	REFERENCEFRAME>::SearchWindow()
+	: m_oPSBNAllocator (262144)
 {
 	// No frames yet.
 	m_tnWidth = m_tnHeight = PIXELINDEX (0);
@@ -471,6 +484,10 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	// Destroy the search window.
 	delete[] m_ppSearchWindow;
 	delete[] m_pSearchWindowStorage;
+
+	// Purge the pixel-sorter.  (The PixelSorterBranchNode destructor 
+	// doesn't have access to the allocator.)
+	PurgePixelSorter();
 }
 
 
@@ -607,10 +624,41 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	{
 		if (m_oPixelSorter.m_apBranches[i] != NULL)
 		{
-			delete m_oPixelSorter.m_apBranches[i];
+			DeletePixelSorterBranchNode (m_oPixelSorter.m_apBranches[i]);
 			m_oPixelSorter.m_apBranches[i] = NULL;
 		}
 	}
+
+	// Make sure there are no more allocated pixel-sorter-branch-nodes.
+	assert (m_oPSBNAllocator.GetNumAllocated() == 0);
+}
+
+
+
+// Delete a pixel-sorter-branch-node.
+template <class PIXEL_NUM, int DIM, class PIXEL_TOL, class PIXELINDEX,
+	class FRAMESIZE, PIXELINDEX PGW, PIXELINDEX PGH,
+	class SORTERBITMASK, class PIXEL, class REFERENCEPIXEL,
+	class REFERENCEFRAME>
+void
+SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
+	PGW,PGH,SORTERBITMASK,PIXEL,REFERENCEPIXEL,REFERENCEFRAME>
+	::DeletePixelSorterBranchNode (PixelSorterBranchNode *a_pNode)
+{
+	// Delete all the branches recursively.
+	for (SORTERBITMASK i = 0; i < a_pNode->m_knBranches; ++i)
+	{
+		if (a_pNode->m_apBranches[i] != NULL)
+		{
+			DeletePixelSorterBranchNode (a_pNode->m_apBranches[i]);
+			a_pNode->m_apBranches[i] = NULL;
+		}
+	}
+
+	// Delete the given node.
+	a_pNode->~PixelSorterBranchNode();
+	m_oPSBNAllocator.Deallocate (0, sizeof (PixelSorterBranchNode),
+		a_pNode);
 }
 
 
@@ -655,27 +703,27 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	PGW,PGH,SORTERBITMASK,PIXEL,REFERENCEPIXEL,REFERENCEFRAME>
 	::PixelGroup::IsWithinTolerance (const PixelGroup &a_rOther,
 	Tolerance_t a_tnTolerance
-#ifdef CALCULATE_SAD
-							 , Tolerance_t &a_rtnSAD
-#endif // CALCULATE_SAD
-													) const
+	#ifdef CALCULATE_SAD
+	, Tolerance_t &a_rtnSAD
+	#endif // CALCULATE_SAD
+	) const
 {
 	PIXELINDEX tnX, tnY;
 		// Used to loop through pixels.
 
 	// Compare the two pixel groups, pixel by pixel.
-#ifdef CALCULATE_SAD
+	#ifdef CALCULATE_SAD
 	a_rtnSAD = 0;
-#endif // CALCULATE_SAD
+	#endif // CALCULATE_SAD
 	for (tnY = 0; tnY < PGH; ++tnY)
 	{
 		for (tnX = 0; tnX < PGW; ++tnX)
 		{
-#ifdef CALCULATE_SAD
+			#ifdef CALCULATE_SAD
 			Tolerance_t tnSAD;
+			#endif // CALCULATE_SAD
 				// The sum-of-absolute-differences between these two
 				// pixels.
-#endif // CALCULATE_SAD
 
 			// Get the two pixels of interest.
 			const Pixel_t &rThisPixel = m_atPixels[tnY][tnX];
@@ -683,20 +731,19 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 
 			// If this pixel value is not within the tolerance of
 			// the corresponding pixel in the other group, exit now.
-			if (!rThisPixel.IsWithinTolerance (rOtherPixel,
-				a_tnTolerance
-#ifdef CALCULATE_SAD
-							 , tnSAD
-#endif // CALCULATE_SAD
-									))
+			if (!rThisPixel.IsWithinTolerance (rOtherPixel, a_tnTolerance
+				#ifdef CALCULATE_SAD
+				, tnSAD
+				#endif // CALCULATE_SAD
+				))
 			{
 				return false;
 			}
 
-#ifdef CALCULATE_SAD
 			// Sum up the sum-of-absolute-differences.
+			#ifdef CALCULATE_SAD
 			a_rtnSAD += tnSAD;
-#endif // CALCULATE_SAD
+			#endif // CALCULATE_SAD
 		}
 	}
 
@@ -752,10 +799,10 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 
 	// Make sure we didn't already have a frame.
 	assert (m_pReferenceFrame == NULL);
-	
+
 	// Remember the frame we're operating on this pass.
 	m_pReferenceFrame = a_pReferenceFrame;
-	
+
 	// We'll be checking the upper-left corner first.
 	m_tnX = m_tnY = PIXELINDEX (0);
 }
@@ -789,13 +836,11 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	// Make sure they didn't start us off with an error.
 	assert (a_reStatus == g_kNoError);
 
-#ifndef OPTIONALLY_SORT_PIXEL_GROUPS
-
 	// (If we're not doing the expanding-regions variant, make sure
 	// they always want to add search-window cells to the pixel-sorter.)
+	#ifndef OPTIONALLY_SORT_PIXEL_GROUPS
 	assert (a_bSortPixels);
-
-#endif // OPTIONALLY_SORT_PIXEL_GROUPS
+	#endif // OPTIONALLY_SORT_PIXEL_GROUPS
 
 	// Make sure we have a new frame & reference frame to work with.
 	assert (m_pReferenceFrame != NULL);
@@ -915,11 +960,11 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 			// Remember that this cell's pixels are set up (by putting
 			// the cell into a circular list with itself).
 			pCell->m_pForward = pCell->m_pBackward = pCell;
-	
+
 sortCell:;
-#ifndef OPTIONALLY_SORT_PIXEL_GROUPS
 			// Put this cell into the pixel-sorter, if it's not
 			// there already.
+			#ifndef OPTIONALLY_SORT_PIXEL_GROUPS
 			if (pCell->m_pForward == pCell)
 			{
 				// (Sanity check: the backward pointer should be
@@ -935,7 +980,7 @@ sortCell:;
 				if (a_reStatus != g_kNoError)
 					return;
 			}
-#endif // OPTIONALLY_SORT_PIXEL_GROUPS
+			#endif // OPTIONALLY_SORT_PIXEL_GROUPS
 
 nextXPixel:;
 		}
@@ -972,7 +1017,7 @@ nextXPixel:;
 		tnSearchWindowSortTop = m_tnY - m_tnSearchRadiusY;
 		tnSearchWindowSortBottom = m_tnY + m_tnSearchRadiusY
 			+ PIXELINDEX (1);
-	
+
 		// Then it gets clipped by the frame boundaries.
 		tnSearchWindowSortLeft = Max (tnSearchWindowSortLeft,
 			PIXELINDEX (0));
@@ -982,7 +1027,7 @@ nextXPixel:;
 			PIXELINDEX (0));
 		tnSearchWindowSortBottom = Min (tnSearchWindowSortBottom,
 			PIXELINDEX (m_tnHeight - PGH + 1));
-	
+
 		// If we only have to loop through part of the search window, do
 		// so, to save time.
 		tnSearchLeft = tnSearchWindowSortLeft;
@@ -1032,10 +1077,10 @@ nextXPixel:;
 					tnX = m_tnSearchWindowSortRight - PIXELINDEX (1);
 					continue;
 				}
-	
+
 				// Get the cell that we'll be setting up.
 				pCell = &(m_ppSearchWindow[tnY][tnX]);
-	
+
 				// Put this cell into the pixel-sorter, if it's not
 				// there already.
 				if (pCell->m_pForward == pCell)
@@ -1062,6 +1107,7 @@ nextXPixel:;
 		m_tnSearchWindowSortTop = tnSearchWindowSortTop;
 		m_tnSearchWindowSortBottom = tnSearchWindowSortBottom;
 	}
+
 #endif // OPTIONALLY_SORT_PIXEL_GROUPS
 }
 
@@ -1125,10 +1171,10 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		PIXELINDEX tnTop, tnBottom, tnLeft, tnRight;
 			// The range of search-window cells invalidated by the
 			// current applied-region extent.
-	
+
 		// Get the current extent.
 		const typename REGION::Extent &rExtent = *itExtent;
-	
+
 		// Determine the range of search-window cells invalidated by
 		// this extent.
 		tnTop = rExtent.m_tnY - PGH + PIXELINDEX (1) + a_tnOffsetY;
@@ -1147,7 +1193,7 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 			tnLeft = 0;
 		if (tnRight > m_tnWidth - PGW + PIXELINDEX (1))
 			tnRight = m_tnWidth - PGW + PIXELINDEX (1);
-	
+
 		// Loop through the search-window cells intersected by the
 		// current extent, and invalidate them.
 		for (tnY = tnTop; tnY < tnBottom; ++tnY)
@@ -1160,18 +1206,18 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 
 				// Get the cell.
 				pCell = &(m_ppSearchWindow[tnY][tnX]);
-	
+
 				// If the cell is in use, remove it from service.
 				if (pCell->m_pForward != NULL)
 				{
 					// (Sanity check.)
 					assert (pCell->m_pBackward != NULL);
-	
+
 					// Remove this cell from the pixel-sorter, if it's
 					// in there.
 					if (pCell->m_pForward != pCell)
 						PixelSorter_Remove (pCell);
-	
+
 					// Invalidate this cell.
 					assert (pCell->m_pForward == pCell);
 					pCell->Remove();
@@ -1282,7 +1328,7 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		--m_tnX;
 		return;
 	}
-	
+
 	// If the search-window is zero width (i.e. invalid anyway), we can
 	// stop now.
 	if (m_tnSearchWindowPixelLeft == m_tnSearchWindowPixelRight)
@@ -1422,7 +1468,7 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 			{
 				// (Sanity check.)
 				assert (pCell->m_pBackward != NULL);
-	
+
 				// If this cell is in the pixel-sorter, remove it.
 				if (pCell->m_pForward != pCell)
 					PixelSorter_Remove (pCell);
@@ -1444,7 +1490,7 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		= m_tnSearchWindowSortLeft = m_tnSearchWindowSortRight
 		= m_tnSearchWindowSortTop = m_tnSearchWindowSortBottom
 		= PIXELINDEX (0);
-	
+
 	// We're done with this frame.  Expect our caller to give us a new
 	// one.
 	m_pReferenceFrame = NULL;
@@ -1461,10 +1507,10 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	PGW,PGH,SORTERBITMASK,PIXEL,REFERENCEPIXEL,REFERENCEFRAME>
 	::PixelSorterBranchNode::PixelSorterBranchNode()
 {
-#ifndef NDEBUG
 	// One more instance.
+	#ifndef NDEBUG
 	++sm_ulInstances;
-#endif // NDEBUG
+	#endif // NDEBUG
 
 	// The attached search-window-cells form a circular list.  So
 	// start the circle.
@@ -1491,17 +1537,20 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	// no search-window cells are still attached to us).
 	assert (m_oSplitValue.m_pForward == &m_oSplitValue);
 
+	// Make sure the tree has already been destroyed.
+	// (We don't have a reference to our own allocator.)
+	#ifndef NDEBUG
+	for (int i = 0; i < m_knBranches; ++i)
+		assert (m_apBranches[i] == NULL);
+	#endif // NDEBUG
+
 	// Finish off the circular list.
 	m_oSplitValue.Remove();
 
-	// Recursively destroy the tree.
-	for (int i = 0; i < m_knBranches; ++i)
-		delete m_apBranches[i];
-
-#ifndef NDEBUG
 	// One less instance.
+	#ifndef NDEBUG
 	--sm_ulInstances;
-#endif // NDEBUG
+	#endif // NDEBUG
 }
 
 
@@ -1591,7 +1640,7 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 					for (int j = 0; j < DIM; ++j)
 						if (j != i)
 							oCellPixel[j] = oSplitPixel[j];
-					
+
 					// If this axis, all by itself, is within the
 					// tolerance, stop here.
 					if (oCellPixel.IsWithinTolerance (oSplitPixel,
@@ -1647,7 +1696,7 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	bool bPixelGroupStopsHere;
 		// True if one of the pixel-group's pixels exactly matches
 		// its corresponding split-point.
-	
+
 	// Make sure they gave us a pixel-group.
 	assert (a_pPixelGroup != NULL);
 
@@ -1696,7 +1745,7 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 					for (int j = 0; j < DIM; ++j)
 						if (j != i)
 							oGroupPixel[j] = oSplitPixel[j];
-					
+
 					// If this axis, all by itself, is within twice the
 					// tolerance, then we can no longer rule out matches
 					// at this level.
@@ -1860,7 +1909,8 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 
 		// Try to create the child branch that the cell should go into.
 		pCurrentBranch->m_apBranches[tnChildIndex]
-			= new PixelSorterBranchNode;
+			= (PixelSorterBranchNode *) m_oPSBNAllocator.Allocate (0,
+				sizeof (PixelSorterBranchNode));
 		if (pCurrentBranch->m_apBranches[tnChildIndex] == NULL)
 		{
 			// We ran out of memory.  Just put the cell here.
@@ -1869,6 +1919,8 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 			a_reDoneSorting = SearchWindowCell::m_knDoneEnough;
 			return pCurrentBranch;
 		}
+		::new ((void *)pCurrentBranch->m_apBranches[tnChildIndex])
+			PixelSorterBranchNode;
 		pCurrentBranch = pCurrentBranch->m_apBranches[tnChildIndex];
 
 		// Set its split value to the midpoint between the min/max for
@@ -1954,12 +2006,11 @@ const typename SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,
 	REFERENCEFRAME>::PixelGroup *
 SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	PGW,PGH,SORTERBITMASK,PIXEL,REFERENCEPIXEL,
-	REFERENCEFRAME>::FoundNextMatch
-	(PixelSorterIterator &a_rIterator
-#ifdef CALCULATE_SAD
-									 , Tolerance_t &a_rtnSAD
-#endif // CALCULATE_SAD
-															) const
+	REFERENCEFRAME>::FoundNextMatch (PixelSorterIterator &a_rIterator
+		#ifdef CALCULATE_SAD
+		, Tolerance_t &a_rtnSAD
+		#endif // CALCULATE_SAD
+		) const
 {
 	SORTERBITMASK tnChildIndex;
 		// The index of the branch node child that the search
@@ -1995,25 +2046,25 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		while (a_rIterator.m_pCell
 			!= &(a_rIterator.m_pBranch->m_oSplitValue))
 		{
-#ifndef NDEBUG
 			// If there are not supposed to be any matches at this
 			// level of the search-tree, and the current search-window
 			// cell is stuck at this level, then make sure there's no
 			// match.
+			#ifndef NDEBUG
 			if (!bMatchesAtThisLevel
 				&& a_rIterator.m_pCell->m_eDoneSorting
 					== SearchWindowCell::m_knDone)
 			{
-#ifdef CALCULATE_SAD
+				#ifdef CALCULATE_SAD
 				assert (!a_rIterator.m_pCell->IsWithinTolerance
 					(*(a_rIterator.m_pSearch), m_tnTolerance,
 					a_rtnSAD));
-#else // CALCULATE_SAD
+				#else // CALCULATE_SAD
 				assert (!a_rIterator.m_pCell->IsWithinTolerance
 					(*(a_rIterator.m_pSearch), m_tnTolerance));
-#endif // CALCULATE_SAD
+				#endif // CALCULATE_SAD
 			}
-#endif // NDEBUG
+			#endif // NDEBUG
 
 			// If the two pixel groups match, return the match.
 			if ((bMatchesAtThisLevel
@@ -2021,10 +2072,10 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 					!= SearchWindowCell::m_knDone)
 			&& a_rIterator.m_pCell->IsWithinTolerance
 					(*(a_rIterator.m_pSearch), m_tnTolerance
-#ifdef CALCULATE_SAD
-															, a_rtnSAD
-#endif // CALCULATE_SAD
-																	  ))
+					#ifdef CALCULATE_SAD
+					, a_rtnSAD
+					#endif // CALCULATE_SAD
+					))
 				return a_rIterator.m_pCell;
 
 			// Move to the next cell to match against.

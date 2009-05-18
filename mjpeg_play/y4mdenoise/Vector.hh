@@ -13,7 +13,7 @@
 #include <new>
 #include "mjpeg_types.h"
 #include "Status_t.h"
-#include "Allocator.hh"
+#include "VariableSizeAllocator.hh"
 
 
 
@@ -33,6 +33,12 @@ private:
 	{
 		VALUE m_oValue;
 			// The data held by this node.
+
+		Node() : m_oValue() {}
+			// Default constructor.
+
+		explicit Node (const VALUE &a_rValue) : m_oValue (a_rValue) {}
+			// Initializing constructor.
 	};
 
 	Vector (const Vector<KEY,VALUE,KEYFN,PRED> &a_rOther);
@@ -41,7 +47,7 @@ private:
 		// Disallow copying and assignment.
 
 public:
-	typedef Allocator<Node,1> Allocator_t;
+	typedef VariableSizeAllocator Allocator_t;
 		// The type of node allocator to use.
 
 	static Allocator_t sm_oNodeAllocator;
@@ -124,7 +130,19 @@ public:
 			ConstIterator (const Iterator &a_rOther)
 				: m_pNode (a_rOther.m_pNode), m_nNode (a_rOther.m_nNode),
 					m_pVector (a_rOther.m_pVector) {}
-			const VALUE &operator*() const {return m_pNode->m_oValue; }
+			const VALUE &operator*() const
+			{
+				// Make sure this iterator is associated with a vector.
+				assert (m_pVector != NULL);
+
+				// Make sure this iterator points within this vector.
+				// (This helps to detect stale iterators.)
+				assert (m_pNode >= m_pVector->Begin().m_pNode);
+				assert (m_pNode <= m_pVector->Last().m_pNode);
+
+				// Easy enough.
+				return m_pNode->m_oValue;
+			}
 			ConstIterator& operator++()
 			{
 				// Make sure this iterator is associated with a vector.
@@ -212,7 +230,21 @@ public:
 			Iterator (Node *a_pNode, uint32_t a_nNode,
 					Vector *a_pVector)
 				: BaseClass (a_pNode, a_nNode, a_pVector) {}
-			VALUE &operator*() {return BaseClass::m_pNode->m_oValue; }
+			VALUE &operator*()
+			{
+				// Make sure this iterator is associated with a vector.
+				assert (BaseClass::m_pVector != NULL);
+
+				// Make sure this iterator points within this vector.
+				// (This helps to detect stale iterators.)
+				assert (BaseClass::m_pNode
+					>= BaseClass::m_pVector->Begin().m_pNode);
+				assert (BaseClass::m_pNode
+					<= BaseClass::m_pVector->Last().m_pNode);
+
+				// Easy enough.
+				return BaseClass::m_pNode->m_oValue;
+			}
 			Iterator& operator++() { ++((BaseClass &)*this);
 				return *this; }
 			Iterator operator++(int) { Iterator oTmp = *this; ++*this;
@@ -308,6 +340,9 @@ public:
 
 	void Clear (void);
 		// Empty the list.
+	
+	void Purge (void);
+		// Purge all internally-allocated memory.
 
 	void Move (Vector<KEY,VALUE,KEYFN,PRED> &a_rOther);
 		// Move all items from the other vector to ourself.
@@ -339,6 +374,11 @@ public:
 
 	ConstIterator UpperBound (const KEY &a_rKey) const;
 		// Return the position of the first item that's > the key.
+
+	size_t GetSizeOfLargestNode (void) const { return sizeof (Node); }
+		// Return the size of the largest possible node.
+		// (Not used -- it's only to preserve interface compatibility
+		// with SkipList<>.)
 
 private:
 
@@ -482,7 +522,12 @@ Vector<KEY,VALUE,KEYFN,PRED>::~Vector (void)
 
 	// If we have anything to delete, delete it.
 	if (m_pItems != NULL)
-		delete[] m_pItems;
+	{
+		for (uint32_t i = 0; i < m_nSpace; ++i)
+			m_pItems[i].~Node();
+		m_rNodeAllocator.Deallocate (0, m_nSpace * sizeof (Node),
+			(void *) m_pItems);
+	}
 }
 
 
@@ -643,7 +688,7 @@ Vector<KEY,VALUE,KEYFN,PRED>::Insert (Status_t &a_reStatus,
 
 	// The new item has to fit where this iterator points.
 	Iterator oBefore = a_itPosition; --oBefore;
-	if ((a_itPosition.m_pNode != NULL
+	if ((a_itPosition.m_pNode != m_pItems + m_nItems
 		&& m_oPred (m_oKeyFn (a_itPosition.m_pNode->m_oValue), rKey))
 	|| (oBefore.m_pNode != NULL
 		&& m_oPred (rKey, m_oKeyFn (oBefore.m_pNode->m_oValue))))
@@ -849,9 +894,11 @@ Vector<KEY,VALUE,KEYFN,PRED>::Erase (Iterator a_itFirst, Iterator a_itLast)
 	// Clean up the previous instances of the moved items by assigning
 	// default instances to them.  (This is probably overkill in practice,
 	// but it keeps our C++ semantics clean.)
-	Node oDefaultInstance;
+	// Never mind...if VALUE's default constructor doesn't initialize
+	// anything, this generates a compiler warning about that.
+	/* Node oDefaultInstance;
 	for (uint32_t i = nEnd; i < m_nItems; ++i)
-		m_pItems[i] = oDefaultInstance;
+		m_pItems[i] = oDefaultInstance; */
 
 	// Now we contain less items.
 	m_nItems -= nOffset;
@@ -880,12 +927,41 @@ Vector<KEY,VALUE,KEYFN,PRED>::Clear (void)
 	// Clean up the previous instances of the items by assigning default
 	// instances to them.  (This is probably overkill in practice, but it
 	// keeps our C++ semantics clean.)
-	Node oDefaultInstance;
+	// Never mind...if VALUE's default constructor doesn't initialize
+	// anything, this generates a compiler warning about that.
+	/* Node oDefaultInstance;
 	for (uint32_t i = 0u; i < m_nItems; ++i)
-		m_pItems[i] = oDefaultInstance;
+		m_pItems[i] = oDefaultInstance; */
 
 	// Now there are no items.
 	m_nItems = 0u;
+}
+
+
+
+// Purge all internally-allocated memory.
+template <class KEY, class VALUE, class KEYFN, class PRED>
+void
+Vector<KEY,VALUE,KEYFN,PRED>::Purge (void)
+{
+	// Make sure there are no contained items.
+	assert (m_nItems == 0u);
+
+	// If we have anything to delete, delete it.
+	if (m_pItems != NULL)
+	{
+		// Destroy the contained items.
+		for (uint32_t i = 0; i < m_nSpace; ++i)
+			m_pItems[i].~Node();
+
+		// Deallocate the contained memory.
+		m_rNodeAllocator.Deallocate (0, m_nSpace * sizeof (Node),
+			(void *) m_pItems);
+
+		// Now there is no contained memory.
+		m_pItems = NULL;
+		m_nSpace = 0u;
+	}
 }
 
 
@@ -899,7 +975,7 @@ Vector<KEY,VALUE,KEYFN,PRED>::Move (Vector<KEY,VALUE,KEYFN,PRED> &a_rOther)
 	uint32_t nSpace;
 		// Used to swap structures.
 
-	// Make sure the skip-lists can move items between themselves.
+	// Make sure the vectors can move items between themselves.
 	assert (CanMove (a_rOther));
 
 	// Make sure we're all intact.
@@ -1165,7 +1241,8 @@ Vector<KEY,VALUE,KEYFN,PRED>::MakeSpace (Status_t &a_reStatus,
 		assert (nSpace > m_nSpace);
 
 		// Allocate this much space.
-		pSpace = new Node[nSpace];
+		pSpace = (Node *) m_rNodeAllocator.Allocate (0,
+			nSpace * sizeof (Node));
 		if (pSpace == NULL)
 		{
 			a_reStatus = g_kOutOfMemory;
@@ -1174,11 +1251,19 @@ Vector<KEY,VALUE,KEYFN,PRED>::MakeSpace (Status_t &a_reStatus,
 
 		// Copy the valid items to their new location.
 		for (uint32_t i = 0; i < m_nItems; ++i)
-			pSpace[i] = m_pItems[i];
+			new ((void *)(pSpace + i)) Node (m_pItems[i]);
+		// (Create all of the unused nodes.)
+		for (uint32_t i = m_nItems; i < nSpace; ++i)
+			new ((void *)(pSpace + i)) Node;
 
 		// Now we have more space for items.
 		if (m_pItems != NULL)
-			delete[] m_pItems;
+		{
+			for (uint32_t i = 0; i < m_nSpace; ++i)
+				m_pItems[i].~Node();
+			m_rNodeAllocator.Deallocate (0, m_nSpace * sizeof (Node),
+				(void *) m_pItems);
+		}
 		m_pItems = pSpace;
 		m_nSpace = nSpace;
 	}
