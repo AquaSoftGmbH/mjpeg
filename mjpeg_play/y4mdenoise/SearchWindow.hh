@@ -44,10 +44,6 @@
 // to iterate through a frame and look for pixel-groups within the
 // search radius that match a given pixel-group (within the error
 // tolerance).
-//
-// This class was originally an integral part of MotionSearcher, but
-// was split out to allow the search-window to be used in other
-// contexts, e.g. for the radius search in yuvmedianfilter.
 template <class PIXEL_NUM, int DIM, class PIXEL_TOL, class PIXELINDEX,
 	class FRAMESIZE, PIXELINDEX PGW, PIXELINDEX PGH,
 	class SORTERBITMASK,
@@ -89,8 +85,8 @@ public:
 
 	void PurgePixelSorter (void);
 		// Purge the pixel sorter.
-		// Should be called every once in a while (e.g. every 100
-		// frames).  Otherwise, it uses up way too much memory and
+		// Should be called every once in a while (e.g. every 10
+		// frames).  Otherwise, it may use way too much memory and
 		// starts hitting virtual memory & otherwise performs badly.
 
 	// A pixel group.
@@ -256,7 +252,7 @@ private:
 			m_tnSearchWindowPixelTop, m_tnSearchWindowPixelBottom;
 		// The extent of the search window that contains valid values
 		// in the pixel-groups.  Generally (m_tnX - m_tnSearchRadiusX)
-		// to (m_tnX + m_tnSearchRadiusX), & (m_tnY - m_tnSearchRadiusY)
+		// to (m_tnX + m_tnSearchRadiusX), and (m_tnY - m_tnSearchRadiusY)
 		// to (m_tnY + m_tnSearchRadiusY), but it gets clipped by the
 		// frame boundaries, and, if a run of current pixel-groups
 		// contain resolved pixels, will lag until the current
@@ -294,9 +290,14 @@ private:
 			// list of all reference-frame pixel groups (within the
 			// search radius) connected to this node.
 
+			PixelGroup m_oRangeMin, m_oRangeMax;
+				// The minimum/maximum values for pixels at this level of
+				// the pixel-sorter tree.
+				// Used to re-evaluate cells that
+
 		enum { m_knBranches = 1 << (PGH * PGW * DIM) };
 			// The number of branches from each node.  There's two for
-			// each combination of pixel & dimension.
+			// each possible combination of pixel & dimension.
 
 		PixelSorterBranchNode *m_apBranches[m_knBranches];
 			// This node's child branches.
@@ -310,8 +311,8 @@ private:
 			// added to a running total.  When done, that total is the
 			// index of the branch to descend down.  If the searched-for
 			// pixel is equal to its counterpart (within the tolerance),
-			// the search stops at this level.  It only takes one pixel
-			// dimension like this to stop the descent.
+			// the search stops at this level.  It only takes one dimension
+			// of one pixel to be like this to stop the descent.
 			//
 			// This way, a search for matches only has to follow one
 			// series of branches all the way to the bottom of the tree
@@ -334,8 +335,8 @@ private:
 		bool ShouldCellStayHere (const SearchWindowCell &a_rCell,
 				Tolerance_t a_tnTolerance,
 				SORTERBITMASK &a_rtnChildIndex,
-				SearchWindowCell &a_rMin,
-				SearchWindowCell &a_rMax) const;
+				PixelGroup &a_rMin,
+				PixelGroup &a_rMax) const;
 			// If the given cell should stay at this level of the tree
 			// (i.e. because one of its pixel values is within the
 			// tolerance value of its corresponding split point), then
@@ -370,8 +371,7 @@ private:
 		private:
 			static uint32_t sm_ulInstances;
 		public:
-			static uint32_t GetInstances (void)
-				{ return sm_ulInstances; }
+			static uint32_t GetInstances (void) { return sm_ulInstances; }
 		#endif // NDEBUG
 	};
 
@@ -384,10 +384,10 @@ private:
 	SearchWindowCell m_oPixelSorterMin, m_oPixelSorterMax;
 		// The minimum/maximum values for pixels.  Used to help
 		// PixelSorter_Add() generate pixel values for new branch nodes.
-	SearchWindowCell m_oRangeMin, m_oRangeMax;
-		// Cells that contain the minimum/maximum values for pixels
-		// at the current level of the pixel-sorter tree.  Used to
-		// generate values for new branch nodes.
+	PixelGroup m_oRangeMin, m_oRangeMax;
+		// The minimum/maximum values for pixels at the current level
+		// of the pixel-sorter tree.  Used to generate values for new
+		// branch nodes.
 		// (These were local variables in PixelSorter_Add(), but the
 		// construction & destruction cost actually showed up in the
 		// profile!  So they were moved here.)
@@ -402,8 +402,7 @@ private:
 		// avoids duplicated work.
 		// Returns the pixel-sorter node where this cell is now
 		// attached, and a_reDoneSorting is backpatched with whether the
-		// cell could have descended further down the tree, but wasn't
-		// for tree-balancing reasons.
+		// cell could have descended further down the tree, but didn't.
 
 	void PixelSorter_Remove (SearchWindowCell *a_pCell);
 		// Remove this search-window cell from the pixel-sorter.
@@ -434,6 +433,18 @@ public:
 			// The last cell examined.
 			// If equal to m_pBranch->m_oSplitValue, means that the
 			// branch hasn't been examined yet.
+
+		SORTERBITMASK m_tnChildIndex;
+			// The index of the branch node child that the search
+			// descends down next.
+
+		bool m_bPixelGroupStopsHere;
+			// true if we don't have to descend further down the tree.
+
+		bool m_bMatchesAtThisLevel;
+			// true if it's possible for the current pixel-group to
+			// match pixel-groups that had to stop at this level in the
+			// tree.
 	};
 };
 
@@ -486,7 +497,8 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	delete[] m_pSearchWindowStorage;
 
 	// Purge the pixel-sorter.  (The PixelSorterBranchNode destructor 
-	// doesn't have access to the allocator.)
+	// doesn't have access to the allocator, so the pixel-sorter tree must
+	// be explicitly destroyed here.)
 	PurgePixelSorter();
 }
 
@@ -1322,8 +1334,8 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	// If the rightmost edge of the search-window isn't at the edge of
 	// the active area, then there's nothing to invalidate on that side,
 	// and we can stop now.
-	if (m_tnX + m_tnSearchRadiusX
-			!= m_tnSearchWindowPixelRight - PIXELINDEX (1))
+	if (m_tnX + m_tnSearchRadiusX + PIXELINDEX (1)
+		!= m_tnSearchWindowPixelRight)
 	{
 		--m_tnX;
 		return;
@@ -1514,8 +1526,7 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 
 	// The attached search-window-cells form a circular list.  So
 	// start the circle.
-	m_oSplitValue.m_pForward = m_oSplitValue.m_pBackward
-		= &m_oSplitValue;
+	m_oSplitValue.m_pForward = m_oSplitValue.m_pBackward = &m_oSplitValue;
 
 	// No branches yet.
 	for (int i = 0; i < m_knBranches; ++i)
@@ -1591,8 +1602,8 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	PGW,PGH,SORTERBITMASK,PIXEL,REFERENCEPIXEL,REFERENCEFRAME>
 	::PixelSorterBranchNode::ShouldCellStayHere
 	(const SearchWindowCell &a_rCell, Tolerance_t a_tnTolerance,
-	SORTERBITMASK &a_rtnChildIndex, SearchWindowCell &a_rMin,
-	SearchWindowCell &a_rMax) const
+	SORTERBITMASK &a_rtnChildIndex, PixelGroup &a_rMin,
+	PixelGroup &a_rMax) const
 {
 	PIXELINDEX tnX, tnY;
 	int i;
@@ -1653,13 +1664,11 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 				if (rCellPixel[i] > rSplitPixel[i])
 				{
 					a_rtnChildIndex |= GetBitMask (tnY, tnX, i);
-					a_rMin.m_atPixels[tnY][tnX][i]
-						= m_oSplitValue.m_atPixels[tnY][tnX][i];
+					a_rMin.m_atPixels[tnY][tnX][i] = rSplitPixel[i];
 				}
 				else
 				{
-					a_rMax.m_atPixels[tnY][tnX][i]
-						= m_oSplitValue.m_atPixels[tnY][tnX][i];
+					a_rMax.m_atPixels[tnY][tnX][i] = rSplitPixel[i];
 				}
 			}
 		}
@@ -1719,9 +1728,9 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 			// Determine the effect each dimension has on the
 			// bitmask that we use to determine the index of the
 			// child branch that this cell should descend into.
-			// (If the pixel value is right on a branch, then all
-			// pixels that would match it have been found at this
-			// level.)
+			// (If the pixel value is right on a branch's split value,
+			// then all pixels that would match it have been found at
+			// this level.)
 			for (i = 0; i < DIM; i++)
 			{
 				if (rGroupPixel[i] == rSplitPixel[i])
@@ -1852,7 +1861,8 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		<= m_tnSearchRadiusY);
 
 	// If we know where the cell should go, just put it there and exit.
-	if (a_pLastSorter != NULL && a_reDoneSorting)
+	if (a_pLastSorter != NULL
+		&& a_reDoneSorting == SearchWindowCell::m_knDone)
 	{
 		a_pLastSorter->m_oSplitValue.InsertAfter
 			(&(a_pLastSorter->m_oSplitValue), a_pCell);
@@ -1861,29 +1871,26 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 
 	// Initialize our traversal's minimum/maximum to the full range.
 	// This will get modified as we move down the tree.
-	m_oRangeMin = m_oPixelSorterMin;
-	m_oRangeMax = m_oPixelSorterMax;
+	if (a_pLastSorter == NULL)
+	{
+		m_oRangeMin = m_oPixelSorterMin;
+		m_oRangeMax = m_oPixelSorterMax;
+		pCurrentBranch = &m_oPixelSorter;
+	}
+	else
+	{
+		m_oRangeMin = a_pLastSorter->m_oRangeMin;
+		m_oRangeMax = a_pLastSorter->m_oRangeMax;
+		pCurrentBranch = a_pLastSorter;
+	}
 
 	// Traverse the tree, figure out where the new search-window cell
 	// should be put.  Create new branch nodes as needed.
-	pCurrentBranch = ((a_pLastSorter == NULL)
-		? &m_oPixelSorter : a_pLastSorter);
 	for (;;)
 	{
 		SORTERBITMASK tnChildIndex;
 			// The index of the child branch node that should take the
 			// newly-added cell.
-
-		// If this branch node has no cells, just put the new cell here
-		// and exit.  (This is almost like balancing the search tree.)
-		if (pCurrentBranch->m_oSplitValue.m_pForward
-			== &(pCurrentBranch->m_oSplitValue))
-		{
-			pCurrentBranch->m_oSplitValue.InsertAfter
-				(&(pCurrentBranch->m_oSplitValue), a_pCell);
-			a_reDoneSorting = SearchWindowCell::m_knDoneEnough;
-			return pCurrentBranch;
-		}
 
 		// If the cell must stay at this level of the tree, then put
 		// the cell at this level & exit.
@@ -1932,10 +1939,10 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 			(&(pCurrentBranch->m_oSplitValue), a_pCell);
 
 		// If new branch nodes are created below us, we could go deeper
-		// into the tree, but in the interest of tree-balancing, we stop
-		// here.  (We don't want to potentially create a new branch node
-		// when this cell gets re-inserted; we'll just be happy where we
-		// are.)
+		// into the tree, but that won't happen until this cell gets
+		// re-inserted.
+		pCurrentBranch->m_oRangeMin = m_oRangeMin;
+		pCurrentBranch->m_oRangeMax = m_oRangeMax;
 		a_reDoneSorting = SearchWindowCell::m_knDoneEnough;
 		return pCurrentBranch;
 	}
@@ -1990,6 +1997,11 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 
 	// Remember to search this branch's cells.
 	a_rIterator.m_pCell = &(a_rIterator.m_pBranch->m_oSplitValue);
+
+	// Initialize these to safe values.
+	a_rIterator.m_tnChildIndex = 0;
+	a_rIterator.m_bPixelGroupStopsHere = false;
+	a_rIterator.m_bMatchesAtThisLevel = false;
 }
 
 
@@ -2012,34 +2024,26 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		#endif // CALCULATE_SAD
 		) const
 {
-	SORTERBITMASK tnChildIndex;
-		// The index of the branch node child that the search
-		// descends down next.
-
 	// Make sure they didn't try to search past the end.
 	assert (a_rIterator.m_pBranch != NULL);
 
 	// Loop until we find a match or reach the bottom of the tree.
 	for (;;)
 	{
-		bool bPixelGroupStopsHere;
-			// true if we don't have to descend further down the tree.
-		bool bMatchesAtThisLevel;
-			// true if it's possible for the current pixel-group to
-			// match pixel-groups that had to stop at this level in the
-			// tree.
+		// See if we should descend the tree, and whether this
+		// pixel-group could possibly match any search-window cells that
+		// had to stay at this level of the tree.
+		// This only has to be calculated once per branch-node.
+		if (a_rIterator.m_pCell == &(a_rIterator.m_pBranch->m_oSplitValue))
+			a_rIterator.m_bPixelGroupStopsHere = a_rIterator.m_pBranch
+				->DoesPixelGroupStopHere (a_rIterator.m_pSearch,
+				m_tnTwiceTolerance, a_rIterator.m_tnChildIndex,
+				a_rIterator.m_bMatchesAtThisLevel);
 
 		// Move past the last match we found.  (This also works if the
 		// branch was just entered, i.e. we're pointing at the branch
 		// node's split values.)
 		a_rIterator.m_pCell = a_rIterator.m_pCell->m_pForward;
-
-		// See if we should descend the tree, and whether this
-		// pixel-group could possibly match any search-window cells that
-		// had to stay at this level of the tree.
-		bPixelGroupStopsHere = a_rIterator.m_pBranch
-			->DoesPixelGroupStopHere (a_rIterator.m_pSearch,
-			m_tnTwiceTolerance, tnChildIndex, bMatchesAtThisLevel);
 
 		// Loop through the cells attached to this branch, look for
 		// matches, return if we find one.
@@ -2051,7 +2055,7 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 			// cell is stuck at this level, then make sure there's no
 			// match.
 			#ifndef NDEBUG
-			if (!bMatchesAtThisLevel
+			if (!a_rIterator.m_bMatchesAtThisLevel
 				&& a_rIterator.m_pCell->m_eDoneSorting
 					== SearchWindowCell::m_knDone)
 			{
@@ -2067,7 +2071,7 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 			#endif // NDEBUG
 
 			// If the two pixel groups match, return the match.
-			if ((bMatchesAtThisLevel
+			if ((a_rIterator.m_bMatchesAtThisLevel
 				|| a_rIterator.m_pCell->m_eDoneSorting
 					!= SearchWindowCell::m_knDone)
 			&& a_rIterator.m_pCell->IsWithinTolerance
@@ -2084,7 +2088,7 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 
 		// We're done examining the cells in this node.  See if we
 		// should descend the tree.
-		if (bPixelGroupStopsHere)
+		if (a_rIterator.m_bPixelGroupStopsHere)
 		{
 			// The search stops here.
 			a_rIterator.m_pBranch = NULL;
@@ -2092,8 +2096,8 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		}
 
 		// Descend the tree.
-		a_rIterator.m_pBranch
-			= a_rIterator.m_pBranch->m_apBranches[tnChildIndex];
+		a_rIterator.m_pBranch = a_rIterator.m_pBranch
+			->m_apBranches[a_rIterator.m_tnChildIndex];
 		if (a_rIterator.m_pBranch == NULL)
 			return NULL;
 		a_rIterator.m_pCell = &(a_rIterator.m_pBranch->m_oSplitValue);

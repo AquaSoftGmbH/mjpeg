@@ -225,12 +225,10 @@ private:
 		// Subtract the given horizontal extent from the region, with
 		// the given offset.
 
-#ifdef DEBUG_SETREGION2D
-
+	#ifdef DEBUG_SETREGION2D
 	bool m_bDebug;
+	#endif // DEBUG_SETREGION2D
 		// true if the invariant should be checked.
-
-#endif // DEBUG_SETREGION2D
 
 #ifndef NDEBUG
 
@@ -312,21 +310,19 @@ template <class INDEX, class SIZE, class SETIMP>
 SetRegion2D<INDEX,SIZE,SETIMP>::SetRegion2D (Allocator &a_rAlloc)
 	: m_setExtents (Less<Extent>(), a_rAlloc)
 {
-#ifndef NDEBUG
 	// One more instance.
+	#ifndef NDEBUG
 	++sm_ulInstances;
-#endif // NDEBUG
+	#endif // NDEBUG
 
 	// No points yet.
 	m_tnPoints = 0;
 
-#ifdef DEBUG_SETREGION2D
-
 	// Check the invariant by default; they'll have to specifically
 	// request not to.
+	#ifdef DEBUG_SETREGION2D
 	m_bDebug = true;
-
-#endif // DEBUG_SETREGION2D
+	#endif // DEBUG_SETREGION2D
 }
 
 
@@ -338,21 +334,19 @@ SetRegion2D<INDEX,SIZE,SETIMP>::SetRegion2D (Status_t &a_reStatus,
 	: m_setExtents (a_reStatus, false, a_rInitParams, Less<Extent>(),
 		a_rAlloc)
 {
-#ifndef NDEBUG
 	// One more instance.
+	#ifndef NDEBUG
 	++sm_ulInstances;
-#endif // NDEBUG
+	#endif // NDEBUG
 
 	// No points yet.
 	m_tnPoints = 0;
 
-#ifdef DEBUG_SETREGION2D
-
 	// Check the invariant by default; they'll have to specifically
 	// request not to.
+	#ifdef DEBUG_SETREGION2D
 	m_bDebug = true;
-
-#endif // DEBUG_SETREGION2D
+	#endif // DEBUG_SETREGION2D
 }
 
 
@@ -364,21 +358,19 @@ SetRegion2D<INDEX,SIZE,SETIMP>::SetRegion2D (Status_t &a_reStatus,
 	: m_setExtents (a_reStatus, false, Less<Extent>(),
 		a_rOther.m_setExtents.m_oImp.m_rNodeAllocator)
 {
-#ifndef NDEBUG
 	// One more instance.
+	#ifndef NDEBUG
 	++sm_ulInstances;
-#endif // NDEBUG
+	#endif // NDEBUG
 
 	// No points yet.
 	m_tnPoints = 0;
 
-#ifdef DEBUG_SETREGION2D
-
 	// Check the invariant by default; they'll have to specifically
 	// request not to.
+	#ifdef DEBUG_SETREGION2D
 	m_bDebug = true;
-
-#endif // DEBUG_SETREGION2D
+	#endif // DEBUG_SETREGION2D
 
 	// If the construction of m_setExtents failed, bail.
 	if (a_reStatus != g_kNoError)
@@ -393,10 +385,10 @@ SetRegion2D<INDEX,SIZE,SETIMP>::SetRegion2D (Status_t &a_reStatus,
 	// Now we have as many points as the copied region.
 	m_tnPoints = a_rOther.m_tnPoints;
 
-#ifdef DEBUG_SETREGION2D
 	// Make sure we're intact.
+	#ifdef DEBUG_SETREGION2D
 	Invariant();
-#endif // DEBUG_SETREGION2D
+	#endif // DEBUG_SETREGION2D
 }
 
 
@@ -427,11 +419,11 @@ SetRegion2D<INDEX,SIZE,SETIMP>::Assign (Status_t &a_reStatus,
 	// Make sure they didn't start us off with an error.
 	assert (a_reStatus == g_kNoError);
 
-#ifdef DEBUG_SETREGION2D
 	// Make sure both regions are intact.
+	#ifdef DEBUG_SETREGION2D
 	Invariant();
 	a_rOther.Invariant();
-#endif // DEBUG_SETREGION2D
+	#endif // DEBUG_SETREGION2D
 
 	// Assign the other region's extents to ourselves.
 	m_setExtents.Assign (a_reStatus, a_rOther.m_setExtents);
@@ -441,10 +433,10 @@ SetRegion2D<INDEX,SIZE,SETIMP>::Assign (Status_t &a_reStatus,
 	// Now we have as many points as they do.
 	m_tnPoints = a_rOther.m_tnPoints;
 
-#ifdef DEBUG_SETREGION2D
 	// Make sure we're intact.
+	#ifdef DEBUG_SETREGION2D
 	Invariant();
-#endif // DEBUG_SETREGION2D
+	#endif // DEBUG_SETREGION2D
 }
 
 
@@ -453,10 +445,10 @@ SetRegion2D<INDEX,SIZE,SETIMP>::Assign (Status_t &a_reStatus,
 template <class INDEX, class SIZE, class SETIMP>
 SetRegion2D<INDEX,SIZE,SETIMP>::~SetRegion2D()
 {
-#ifndef NDEBUG
 	// One less instance.
+	#ifndef NDEBUG
 	--sm_ulInstances;
-#endif // NDEBUG
+	#endif // NDEBUG
 }
 
 
@@ -472,13 +464,11 @@ SetRegion2D<INDEX,SIZE,SETIMP>::SetDebug (bool a_bDebug)
 	// Easy enough.
 	m_bDebug = a_bDebug;
 
-#ifdef DEBUG_SKIPLIST
-
 	// Have the set of extents check itself too, to make sure we didn't
 	// do anything to break it.
+	#ifdef DEBUG_SKIPLIST
 	m_setExtents.SetDebug (a_bDebug);
-
-#endif // DEBUG_SKIPLIST
+	#endif // DEBUG_SKIPLIST
 }
 
 
@@ -497,14 +487,12 @@ SetRegion2D<INDEX,SIZE,SETIMP>::Invariant (void) const
 	if (!m_bDebug)
 		return;
 
-#ifdef DEBUG_SKIPLIST
-
 	// Make sure the contained set is intact.  (That will verify that
 	// the extents are sorted properly, so we don't have to do that
 	// here.)
+	#ifdef DEBUG_SKIPLIST
 	m_setExtents.Invariant();
-
-#endif // DEBUG_SKIPLIST
+	#endif // DEBUG_SKIPLIST
 
 	// Run through the extents, make sure that they're not contiguous
 	// with each other, and count up the number of contained points.
@@ -596,12 +584,10 @@ SetRegion2D<INDEX,SIZE,SETIMP>::Union (Status_t &a_reStatus, INDEX a_tnY,
 	// Make sure they gave us a non-empty extent.
 	assert (a_tnXStart < a_tnXEnd);
 
-#ifdef DEBUG_SETREGION2D
-
 	// Make sure we're intact.
+	#ifdef DEBUG_SETREGION2D
 	Invariant();
-
-#endif // DEBUG_SETREGION2D
+	#endif // DEBUG_SETREGION2D
 
 	// The extent we'll be inserting starts as the extent they asked
 	// to add.  That may get modified based on the nature of the extents
@@ -659,10 +645,10 @@ SetRegion2D<INDEX,SIZE,SETIMP>::Union (Status_t &a_reStatus, INDEX a_tnY,
 			// Modify the extent.
 			*itStart = oInserted;
 
-#ifdef DEBUG_SETREGION2D
 			// Make sure we're intact.
+			#ifdef DEBUG_SETREGION2D
 			Invariant();
-#endif // DEBUG_SETREGION2D
+			#endif // DEBUG_SETREGION2D
 
 			// We're done.
 			return;
@@ -732,9 +718,9 @@ SetRegion2D<INDEX,SIZE,SETIMP>::Union (Status_t &a_reStatus, INDEX a_tnY,
 	// new extent.
 	else
 	{
-#ifndef NDEBUG
+		#ifndef NDEBUG
 		typename Extents::InsertResult oInsertResult =
-#endif // NDEBUG
+		#endif // NDEBUG
 			m_setExtents.Insert (a_reStatus, oInserted);
 		if (a_reStatus != g_kNoError)
 			return;
@@ -744,12 +730,10 @@ SetRegion2D<INDEX,SIZE,SETIMP>::Union (Status_t &a_reStatus, INDEX a_tnY,
 	// The region now contains this many more points.
 	m_tnPoints += oInserted.m_tnXEnd - oInserted.m_tnXStart;
 
-#ifdef DEBUG_SETREGION2D
-
 	// Make sure we're intact.
+	#ifdef DEBUG_SETREGION2D
 	Invariant();
-
-#endif // DEBUG_SETREGION2D
+	#endif // DEBUG_SETREGION2D
 }
 
 
@@ -776,17 +760,17 @@ SetRegion2D<INDEX,SIZE,SETIMP>::Merge (Status_t &a_reStatus, INDEX a_tnY,
 	m_tnPoints += a_tnXEnd - a_tnXStart;
 
 	// Add this extent to the current region.
-#ifndef NDEBUG
+	#ifndef NDEBUG
 	typename Extents::InsertResult oInsertResult =
-#endif // NDEBUG
+	#endif // NDEBUG
 		m_setExtents.Insert (a_reStatus, oExtent);
 	if (a_reStatus != g_kNoError)
 		return;
 	assert (oInsertResult.m_bInserted);
 
-#ifndef NDEBUG
 	// Make sure the new extent is not contiguous with the extent
 	// in front of & behind it.
+	#ifndef NDEBUG
 	{
 		typename Extents::Iterator itNew, itOther;
 
@@ -807,7 +791,7 @@ SetRegion2D<INDEX,SIZE,SETIMP>::Merge (Status_t &a_reStatus, INDEX a_tnY,
 			|| (*itNew).m_tnY != (*itOther).m_tnY
 			|| (*itNew).m_tnXEnd < (*itOther).m_tnXStart);
 	}
-#endif // NDEBUG
+	#endif // NDEBUG
 }
 
 
@@ -849,15 +833,15 @@ SetRegion2D<INDEX,SIZE,SETIMP>::Merge
 			m_tnPoints += (*itHere).m_tnXEnd - (*itHere).m_tnXStart;
 
 			// Move this extent to the current region.
-#ifndef NDEBUG
+			#ifndef NDEBUG
 			typename Extents::InsertResult oInsertResult =
-#endif // NDEBUG
+			#endif // NDEBUG
 				m_setExtents.Move (a_rOther.m_setExtents, itHere);
 			assert (oInsertResult.m_bInserted);
 
-#ifndef NDEBUG
 			// Make sure the new extent is not contiguous with the
 			// extent in front of & behind it.
+			#ifndef NDEBUG
 			{
 				typename Extents::Iterator itNew, itOther;
 
@@ -880,7 +864,7 @@ SetRegion2D<INDEX,SIZE,SETIMP>::Merge
 					|| (*itNew).m_tnY != (*itOther).m_tnY
 					|| (*itNew).m_tnXEnd < (*itOther).m_tnXStart);
 			}
-#endif // NDEBUG
+			#endif // NDEBUG
 		}
 	}
 
@@ -964,12 +948,10 @@ SetRegion2D<INDEX,SIZE,SETIMP>::Subtract
 	// Make sure they gave us a non-empty extent.
 	assert (a_tnXStart < a_tnXEnd);
 
-#ifdef DEBUG_SETREGION2D
-
 	// Make sure we're intact.
+	#ifdef DEBUG_SETREGION2D
 	Invariant();
-
-#endif // DEBUG_SETREGION2D
+	#endif // DEBUG_SETREGION2D
 
 	// Find the first extent that may get removed or modified by this
 	// subtraction.  (That's the first existing extent
@@ -1097,9 +1079,25 @@ SetRegion2D<INDEX,SIZE,SETIMP>::Subtract
 			if (nOldEnd == a_tnXEnd)
 				return;
 
-			// Move forward, and fall through to deal with the end of
-			// the range being subtracted.
+			// Move forward.
 			++itStart;
+
+			// If the next extent starts after the end of this subtraction,
+			// we're done.
+			// (This seemed like a good idea, but actualy seems to make it
+			// run slightly slower in practice!  Argh.)
+			#if 0
+			assert (itStart == m_setExtents.End()
+				|| (*itStart).m_tnY >= a_tnY);
+			if (itStart == m_setExtents.End()
+				|| (*itStart).m_tnY > a_tnY
+				|| ( /* (*itStart).m_tnY == a_tnY
+					&& */ (*itStart).m_tnXStart > a_tnXEnd))
+				return;
+			#endif
+
+			// Fall through to deal with the end of the range being
+			// subtracted.
 		}
 	}
 
@@ -1159,12 +1157,10 @@ SetRegion2D<INDEX,SIZE,SETIMP>::Subtract
 	// Remove any range of extents found.
 	m_setExtents.Erase (itStart, itEnd);
 
-#ifdef DEBUG_SETREGION2D
-
 	// Make sure we're intact.
+	#ifdef DEBUG_SETREGION2D
 	Invariant();
-
-#endif // DEBUG_SETREGION2D
+	#endif // DEBUG_SETREGION2D
 }
 
 
@@ -1191,12 +1187,10 @@ SetRegion2D<INDEX,SIZE,SETIMP>::SubtractWithOffset (Status_t &a_reStatus,
 	// Make sure they gave us a non-empty extent.
 	assert (a_tnXStart < a_tnXEnd);
 
-#ifdef DEBUG_SETREGION2D
-
 	// Make sure we're intact.
+	#ifdef DEBUG_SETREGION2D
 	Invariant();
-
-#endif // DEBUG_SETREGION2D
+	#endif // DEBUG_SETREGION2D
 
 	// Find the first extent that may get removed or modified by this
 	// subtraction.  (That's the first existing extent
@@ -1390,12 +1384,10 @@ SetRegion2D<INDEX,SIZE,SETIMP>::SubtractWithOffset (Status_t &a_reStatus,
 	// Remove any range of extents found.
 	m_setExtents.Erase (itStart, itEnd);
 
-#ifdef DEBUG_SETREGION2D
-
 	// Make sure we're intact.
+	#ifdef DEBUG_SETREGION2D
 	Invariant();
-
-#endif // DEBUG_SETREGION2D
+	#endif // DEBUG_SETREGION2D
 }
 
 

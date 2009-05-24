@@ -68,8 +68,8 @@ int main(int argc, char *argv[])
   denoiser.zThresholdCbCr     = -1;
   denoiser.thresholdY         = 4; /* assume medium noise material */
   denoiser.thresholdCbCr      = -1;
-  denoiser.matchCountThrottle = 48;
-  denoiser.matchSizeThrottle  = 128;
+  denoiser.matchCountThrottle = 16;
+  denoiser.matchSizeThrottle  = 256;
   denoiser.threads            = 1;
   
   /* process commandline */

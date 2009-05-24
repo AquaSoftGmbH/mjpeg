@@ -180,10 +180,10 @@ public:
 				= BaseClass::m_pNode->m_pBackward; return *this; }
 			Iterator operator--(int) { Iterator oTmp = *this; --*this;
 				return oTmp; }
-			bool operator== (const Iterator &a_rOther) const
+			bool operator== (const ConstIterator &a_rOther) const
 				{ return (BaseClass::m_pNode == a_rOther.m_pNode)
 					? true : false; }
-			bool operator!= (const Iterator &a_rOther) const
+			bool operator!= (const ConstIterator &a_rOther) const
 				{ return (BaseClass::m_pNode != a_rOther.m_pNode)
 					? true : false; }
 	};
