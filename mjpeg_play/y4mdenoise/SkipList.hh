@@ -181,13 +181,9 @@ public:
 			Iterator operator--(int) { Iterator oTmp = *this; --*this;
 				return oTmp; }
 			bool operator== (const ConstIterator &a_rOther) const
-				{ return (BaseClass::m_pNode
-						== a_rOther.BaseClass::m_pNode)
-					? true : false; }
+				{ return (((BaseClass&)(*this)) == a_rOther); }
 			bool operator!= (const ConstIterator &a_rOther) const
-				{ return (BaseClass::m_pNode
-						!= a_rOther.BaseClass::m_pNode)
-					? true : false; }
+				{ return (((BaseClass&)(*this)) != a_rOther); }
 	};
 
 	//
