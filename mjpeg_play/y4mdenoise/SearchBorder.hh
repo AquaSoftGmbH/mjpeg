@@ -342,48 +342,17 @@ private:
 	class BorderExtentBoundary
 	{
 	public:
-		PIXELINDEX m_tnIndex;
-			// The index of the endpoint of an extent.
-			// (An endpoint can be a beginning or an ending.)
-
-		PIXELINDEX m_tnLine;
-			// The vertical line on which this endpoint resides.
-
-		bool m_bIsEnding;
-			// false if this is the beginning of an extent, true if
-			// it's the end of an extent.
-
-		#ifdef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
 		PIXELINDEX m_tnCounterpartIndex;
-		#else // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-		BorderExtentBoundary *m_pCounterpart;
-		#endif // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-			// The ending to go with this beginning, or the beginning to
-			// go with this ending.
-			//
-			// If our corresponding set class is implemented with skip
-			// lists, this can be a pointer, because the address of nodes
-			// doesn't change after they're created.  This allows the
-			// counterpart to be found without doing a search.
-			//
-			// If our corresponding set class is implemented with vectors,
-			// this has to be a pixel-index, and the counterpart has to be
-			// found with a search, because the address of nodes can change
-			// after they're created.
+			// The pixel-index of the ending to go with this beginning, or
+			// of the beginning to go with this ending.
 
 		MovedRegion *m_pRegion;
 			// The region with the given extent.
 
-		PIXELINDEX m_tnMotionX, m_tnMotionY;
-			// The region's motion vector.  Copied here so that our sort
-			// order doesn't depend on m_pRegion's contents, i.e. so
-			// that we thrash memory less.
-
 		BorderExtentBoundary();
 			// Default constructor.
 
-		BorderExtentBoundary (PIXELINDEX a_tnIndex, PIXELINDEX a_tnLine,
-				bool a_bIsEnding, MovedRegion *a_pRegion);
+		BorderExtentBoundary (MovedRegion *a_pRegion);
 			// Initializing constructor.
 
 		~BorderExtentBoundary();
@@ -394,74 +363,31 @@ private:
 		#endif // !NDEBUG
 			// Equality operator.
 
-		// Comparison class, suitable for Set<>.
-		class SortByLineThenIndexThenMotionVectorThenRegionAddress
-		{
-		public:
-			inline bool operator() (const BorderExtentBoundary &a_rLeft,
-				const BorderExtentBoundary &a_rRight) const;
-		};
-
-		// Comparison class, suitable for Set<>.
-		class SortByMotionVectorThenTypeThenRegionAddress
-		{
-		public:
-			inline bool operator() (const BorderExtentBoundary &a_rLeft,
-				const BorderExtentBoundary &a_rRight) const;
-		};
+		bool operator < (const BorderExtentBoundary &a_rOther) const
+				{ return m_pRegion < a_rOther.m_pRegion; }
+			// Less-than operator.
 	};
 
 	#ifdef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-	typedef Set<BorderExtentBoundary, typename BorderExtentBoundary
-		::SortByLineThenIndexThenMotionVectorThenRegionAddress,
+	typedef Set<BorderExtentBoundary, Less<BorderExtentBoundary>,
 		Vector<BorderExtentBoundary,BorderExtentBoundary,
 			Ident<BorderExtentBoundary,BorderExtentBoundary>,
-			typename BorderExtentBoundary
-			::SortByLineThenIndexThenMotionVectorThenRegionAddress> >
+			Less<BorderExtentBoundary> > >
 		BorderExtentBoundarySet;
 	#else // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-	typedef Set<BorderExtentBoundary, typename BorderExtentBoundary
-		::SortByLineThenIndexThenMotionVectorThenRegionAddress,
+	typedef Set<BorderExtentBoundary, Less<BorderExtentBoundary>,
 		SkipList<BorderExtentBoundary,BorderExtentBoundary,
 			Ident<BorderExtentBoundary,BorderExtentBoundary>,
-			typename BorderExtentBoundary
-			::SortByLineThenIndexThenMotionVectorThenRegionAddress> >
+			Less<BorderExtentBoundary> > >
 		BorderExtentBoundarySet;
 	#endif // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
 	typedef typename BorderExtentBoundarySet::Allocator BEBS_Allocator_t;
 	BEBS_Allocator_t m_oBorderExtentsAllocator;
-	BorderExtentBoundarySet m_setBorderStartpoints,
-			m_setBorderEndpoints;
+	BorderExtentBoundarySet *m_psetBorderStartpoints,
+			*m_psetBorderEndpoints;
 		// The borders, i.e. the startpoint/endpoints for every
 		// region under construction, for every line in the current
 		// pixel-group's vertical extent.
-
-	typename BorderExtentBoundarySet::ConstIterator
-			*m_paitBorderStartpoints,
-			*m_paitBorderEndpoints;
-		// The next last/current/first-border startpoints/endpoints whose
-		// regions will be added or removed, when we move left or right.
-		// (1 + m_tnPGH + 1 iterators allocated for each.)
-
-	#ifndef FIX_ITERATOR_ARRAYS_INLINE
-	void FixStartpointEndpointIterators (void);
-	#endif // !FIX_ITERATOR_ARRAYS_INLINE
-		// Fix the last/current/first-border startpoints/endpoint
-		// iterators.  Necessary after adding or removing a region.
-
-	#ifdef FIX_ITERATOR_ARRAYS_INLINE
-	#ifndef NDEBUG
-	void CheckStartpointEndpointIterators (void) const;
-	#endif // !NDEBUG
-	#endif // FIX_ITERATOR_ARRAYS_INLINE
-		// Check the last/current/first-border startpoints/endpoint
-		// iterators, after adding or removing a region.
-
-	#ifndef FIX_ITERATOR_ARRAYS_INLINE
-	bool m_bFixStartpointEndpointIterators;
-	#endif // !FIX_ITERATOR_ARRAYS_INLINE
-		// True if the startpoint/endpoint-iterators need to be fixed.
-		// Used to avoid needless recalculation during match-throttling.
 
 	typedef Set<MovedRegion *, typename MovedRegion
 			::SortBySizeThenMotionVectorLengthThenRegionAddress>
@@ -493,12 +419,6 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::SearchBorder
 		(typename Region_t::Allocator &a_rAlloc)
 	: m_rSetRegionExtentAllocator (a_rAlloc),
 	m_oBorderExtentsAllocator (1048576),
-	m_setBorderStartpoints (typename BorderExtentBoundary
-		::SortByLineThenIndexThenMotionVectorThenRegionAddress(),
-		m_oBorderExtentsAllocator),
-	m_setBorderEndpoints (typename BorderExtentBoundary
-		::SortByLineThenIndexThenMotionVectorThenRegionAddress(),
-		m_oBorderExtentsAllocator),
 	m_oMovedRegionSetAllocator (262144),
 	m_setRegions (typename MovedRegion
 		::SortBySizeThenMotionVectorLengthThenRegionAddress(),
@@ -520,13 +440,8 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::SearchBorder
 	// No motion-vector matches yet.
 	m_pMotionVectorMatches = NULL;
 
-	// No startpoint/endpoint iterators yet.
-	m_paitBorderStartpoints = m_paitBorderEndpoints = NULL;
-
-	// No need to recalculate startpoint/endpoint-iterators yet.
-	#ifndef FIX_ITERATOR_ARRAYS_INLINE
-	m_bFixStartpointEndpointIterators = false;
-	#endif // !FIX_ITERATOR_ARRAYS_INLINE
+	// No border-startpoint/endpoint sets yet.
+	m_psetBorderStartpoints = m_psetBorderEndpoints = NULL;
 }
 
 
@@ -536,16 +451,37 @@ template <class PIXELINDEX, class FRAMESIZE>
 SearchBorder<PIXELINDEX,FRAMESIZE>::~SearchBorder()
 {
 	// Make sure our client didn't stop in the middle of a frame.
-	assert (m_setBorderStartpoints.Size() == 0);
-	assert (m_setBorderEndpoints.Size() == 0);
+	FRAMESIZE tnPixels = FRAMESIZE (m_tnWidth) * FRAMESIZE (m_tnHeight);
+	#ifndef NDEBUG
+	if (m_psetBorderStartpoints != NULL)
+	{
+		for (FRAMESIZE tnI = 0; tnI < tnPixels; ++tnI)
+			assert (m_psetBorderStartpoints[tnI].Size() == 0);
+	}
+	if (m_psetBorderEndpoints != NULL)
+	{
+		for (FRAMESIZE tnI = 0; tnI < tnPixels; ++tnI)
+			assert (m_psetBorderEndpoints[tnI].Size() == 0);
+	}
+	#endif // !NDEBUG
 	assert (m_setRegions.Size() == 0);
 
 	// Free up our motion-vector matches.
 	delete[] m_pMotionVectorMatches;
 
-	// Free up our arrays of iterators.
-	delete[] m_paitBorderStartpoints;
-	delete[] m_paitBorderEndpoints;
+	// Free up our arrays of border-startpoint/endpoint sets.
+	if (m_psetBorderStartpoints != NULL)
+	{
+		for (FRAMESIZE tnI = 0; tnI < tnPixels; ++tnI)
+			m_psetBorderStartpoints[tnI].~BorderExtentBoundarySet();
+		free (m_psetBorderStartpoints);
+	}
+	if (m_psetBorderEndpoints != NULL)
+	{
+		for (FRAMESIZE tnI = 0; tnI < tnPixels; ++tnI)
+			m_psetBorderEndpoints[tnI].~BorderExtentBoundarySet();
+		free (m_psetBorderEndpoints);
+	}
 }
 
 
@@ -569,29 +505,60 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::Init (Status_t &a_reStatus,
 	assert (a_tnWidth > PIXELINDEX (0));
 	assert (a_tnHeight > PIXELINDEX (0));
 
+	// Calculate the total number of pixels.
+	FRAMESIZE tnPixels = FRAMESIZE (a_tnWidth) * FRAMESIZE (a_tnHeight);
+
+	// Initialize the border-extent-boundary allocator.
+	#ifdef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
+	m_oBorderExtentsAllocator.Init (a_reStatus);
+	if (a_reStatus != g_kNoError)
+		goto cleanup0;
+	#endif // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
+
+	// Allocate space for the sets that implement our border-regions.
+	// Since the initializing constructor needs to be called for each
+	// contained item, we can't use array-new.
+	m_psetBorderStartpoints = (BorderExtentBoundarySet *) malloc
+		(sizeof (BorderExtentBoundarySet) * tnPixels);
+	if (m_psetBorderStartpoints == NULL)
+		goto cleanup0;
+	for (FRAMESIZE tnI = 0; tnI < tnPixels; ++tnI)
+		new ((void *)(m_psetBorderStartpoints + tnI))
+			BorderExtentBoundarySet (Less<BorderExtentBoundary>(),
+				m_oBorderExtentsAllocator);
+	m_psetBorderEndpoints = (BorderExtentBoundarySet *) malloc
+		(sizeof (BorderExtentBoundarySet) * tnPixels);
+	if (m_psetBorderEndpoints == NULL)
+		goto cleanup1;
+	for (FRAMESIZE tnI = 0; tnI < tnPixels; ++tnI)
+		new ((void *)(m_psetBorderEndpoints + tnI))
+			BorderExtentBoundarySet (Less<BorderExtentBoundary>(),
+				m_oBorderExtentsAllocator);
+
 	// Initialize the sets that implement our border-regions.
-	m_setBorderStartpoints.Init (a_reStatus, false);
-	if (a_reStatus != g_kNoError)
-		goto cleanup0;
-	m_setBorderEndpoints.Init (a_reStatus, false);
-	if (a_reStatus != g_kNoError)
-		goto cleanup0;
+	{
+		#ifdef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
+		typename BorderExtentBoundarySet::InitParams
+			oBorderSetInitParams (16, 16);
+		#else // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
+		typename BorderExtentBoundarySet::InitParams
+			oBorderSetInitParams /* defaults are fine */;
+		#endif // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
+		for (FRAMESIZE tnI = 0; tnI < tnPixels; ++tnI)
+		{
+			m_psetBorderStartpoints[tnI].Init (a_reStatus, false,
+				oBorderSetInitParams);
+			if (a_reStatus != g_kNoError)
+				goto cleanup2;
+			m_psetBorderEndpoints[tnI].Init (a_reStatus, false,
+				oBorderSetInitParams);
+			if (a_reStatus != g_kNoError)
+				goto cleanup2;
+		}
+	}
 	m_setRegions.Init (a_reStatus, false);
 	if (a_reStatus != g_kNoError)
-		goto cleanup0;
-
-	// Allocate space for our iterators into the startpoint/endpoint
-	// sets.  (These move left/right/down with the current pixel-group,
-	// and run over regions that get added/removed from the border
-	// regions set.)
-	m_paitBorderStartpoints = new typename
-		BorderExtentBoundarySet::ConstIterator[a_tnPGH + 2];
-	if (m_paitBorderStartpoints == NULL)
-		goto cleanup0;
-	m_paitBorderEndpoints = new typename
-		BorderExtentBoundarySet::ConstIterator[a_tnPGH + 2];
-	if (m_paitBorderEndpoints == NULL)
-		goto cleanup1;
+		goto cleanup2;
 
 	// Allocate space for motion-vector matches.
 	tnMotionVectorMatches
@@ -617,11 +584,15 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::Init (Status_t &a_reStatus,
 //cleanup3:
 //	delete[] m_pMotionVectorMatches;
 cleanup2:
-	delete[] m_paitBorderEndpoints;
-	m_paitBorderEndpoints = NULL;
+	for (FRAMESIZE tnI = 0; tnI < tnPixels; ++tnI)
+		m_psetBorderEndpoints[tnI].~BorderExtentBoundarySet();
+	free (m_psetBorderEndpoints);
+	m_psetBorderEndpoints = NULL;
 cleanup1:
-	delete[] m_paitBorderStartpoints;
-	m_paitBorderStartpoints = NULL;
+	for (FRAMESIZE tnI = 0; tnI < tnPixels; ++tnI)
+		m_psetBorderStartpoints[tnI].~BorderExtentBoundarySet();
+	free (m_psetBorderStartpoints);
+	m_psetBorderStartpoints = NULL;
 cleanup0:
 	;
 }
@@ -966,15 +937,8 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::BorderExtentBoundary
 	::BorderExtentBoundary()
 {
 	// Fill in the blanks.
-	m_tnIndex = m_tnLine = PIXELINDEX (0);
-	m_bIsEnding = false;
-	#ifdef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
 	m_tnCounterpartIndex = PIXELINDEX (0);
-	#else // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-	m_pCounterpart = NULL;
-	#endif // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
 	m_pRegion = NULL;
-	m_tnMotionX = m_tnMotionY = PIXELINDEX (0);
 }
 
 
@@ -982,23 +946,14 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::BorderExtentBoundary
 // Initializing constructor.
 template <class PIXELINDEX, class FRAMESIZE>
 SearchBorder<PIXELINDEX,FRAMESIZE>::BorderExtentBoundary
-	::BorderExtentBoundary (PIXELINDEX a_tnIndex, PIXELINDEX a_tnLine,
-	bool a_bIsEnding, MovedRegion *a_pRegion)
+	::BorderExtentBoundary (MovedRegion *a_pRegion)
 {
 	// Make sure they gave us a region.
 	assert (a_pRegion != NULL);
 
 	// Fill in the blanks.
-	m_tnIndex = a_tnIndex;
-	m_tnLine = a_tnLine;
-	m_bIsEnding = a_bIsEnding;
-	#ifdef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
 	m_tnCounterpartIndex = PIXELINDEX (0);
-	#else // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-	m_pCounterpart = NULL;
-	#endif // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
 	m_pRegion = a_pRegion;
-	a_pRegion->GetMotionVector (m_tnMotionX, m_tnMotionY);
 }
 
 
@@ -1022,112 +977,11 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::BorderExtentBoundary
 	::operator == (const BorderExtentBoundary &a_rOther) const
 {
 	// Compare ourselves, field by field.
-	return (m_tnIndex == a_rOther.m_tnIndex
-		&& m_tnLine == a_rOther.m_tnLine
-		&& m_bIsEnding == a_rOther.m_bIsEnding
-		#ifdef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-		&& m_tnCounterpartIndex == a_rOther.m_tnCounterpartIndex
-		#else // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-		&& m_pCounterpart == a_rOther.m_pCounterpart
-		#endif // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-		&& m_pRegion == a_rOther.m_pRegion
-		&& m_tnMotionX == a_rOther.m_tnMotionX
-		&& m_tnMotionY == a_rOther.m_tnMotionY);
+	return (m_tnCounterpartIndex == a_rOther.m_tnCounterpartIndex
+		&& m_pRegion == a_rOther.m_pRegion);
 }
 
 #endif // !NDEBUG
-
-
-
-// Comparison operator.
-template <class PIXELINDEX, class FRAMESIZE>
-inline bool
-SearchBorder<PIXELINDEX,FRAMESIZE> ::BorderExtentBoundary
-	::SortByLineThenIndexThenMotionVectorThenRegionAddress
-	::operator() (const BorderExtentBoundary &a_rLeft,
-	const BorderExtentBoundary &a_rRight) const
-{
-	// First, sort by the boundary's pixel line.
-	if (a_rLeft.m_tnLine < a_rRight.m_tnLine)
-		return true;
-	if (a_rLeft.m_tnLine > a_rRight.m_tnLine)
-		return false;
-
-	// Then sort by the boundary's pixel index.
-	if (a_rLeft.m_tnIndex < a_rRight.m_tnIndex)
-		return true;
-	if (a_rLeft.m_tnIndex > a_rRight.m_tnIndex)
-		return false;
-
-	// Sort next by motion vector.  (It doesn't matter how the sort
-	// order is defined from the motion vectors, just that one is
-	// defined.)
-	if (a_rLeft.m_tnMotionX < a_rRight.m_tnMotionX)
-		return true;
-	if (a_rLeft.m_tnMotionX > a_rRight.m_tnMotionX)
-		return false;
-	if (a_rLeft.m_tnMotionY < a_rRight.m_tnMotionY)
-		return true;
-	if (a_rLeft.m_tnMotionY > a_rRight.m_tnMotionY)
-		return false;
-
-	// Finally, disambiguate by region address.
-	if (a_rLeft.m_pRegion < a_rRight.m_pRegion)
-		return true;
-	// if (a_rLeft.m_pRegion >= a_rRight.m_pRegion)
-		return false;
-}
-
-
-
-// Comparison operator.
-template <class PIXELINDEX, class FRAMESIZE>
-inline bool
-SearchBorder<PIXELINDEX,FRAMESIZE>::BorderExtentBoundary
-	::SortByMotionVectorThenTypeThenRegionAddress::operator()
-	(const BorderExtentBoundary &a_rLeft,
-	const BorderExtentBoundary &a_rRight) const
-{
-	// Sort by motion vector.  (It doesn't matter how the sort
-	// order is defined from the motion vectors, just that one is
-	// defined.)
-	if (a_rLeft.m_tnMotionX < a_rRight.m_tnMotionX)
-		return true;
-	if (a_rLeft.m_tnMotionX > a_rRight.m_tnMotionX)
-		return false;
-	if (a_rLeft.m_tnMotionY < a_rRight.m_tnMotionY)
-		return true;
-	if (a_rLeft.m_tnMotionY > a_rRight.m_tnMotionY)
-		return false;
-
-	// Next, sort beginnings before endings.
-	if (!a_rLeft.m_bIsEnding && a_rRight.m_bIsEnding)
-		return true;
-	if (a_rLeft.m_bIsEnding && !a_rRight.m_bIsEnding)
-		return false;
-
-	// Next, sort by index.  (Regions may have more than one extent
-	// on a border.)
-	if (a_rLeft.m_tnIndex < a_rRight.m_tnIndex)
-		return true;
-	if (a_rLeft.m_tnIndex > a_rRight.m_tnIndex)
-		return false;
-
-	// Next, sort by lines.  (The same region may have extents on
-	// multiple lines, and this also matches the order in the
-	// startpoints/endpoints sets, so that searches take maximum
-	// advantage of the search finger.)
-	if (a_rLeft.m_tnLine < a_rRight.m_tnLine)
-		return true;
-	if (a_rLeft.m_tnLine > a_rRight.m_tnLine)
-		return false;
-
-	// Finally, disambiguate by region address.
-	if (a_rLeft.m_pRegion < a_rRight.m_pRegion)
-		return true;
-	//if (a_rLeft.m_pRegion >= a_rRight.m_pRegion)
-		return false;
-}
 
 
 
@@ -1140,8 +994,15 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::StartFrame (Status_t &a_reStatus)
 	assert (a_reStatus == g_kNoError);
 
 	// Make sure the borders are empty.
-	assert (m_setBorderStartpoints.Size() == 0);
-	assert (m_setBorderEndpoints.Size() == 0);
+	#ifndef NDEBUG
+	FRAMESIZE tnPixels = FRAMESIZE (m_tnWidth) * FRAMESIZE (m_tnHeight);
+	assert (m_psetBorderStartpoints != NULL);
+	for (FRAMESIZE tnI = 0; tnI < tnPixels; ++tnI)
+		assert (m_psetBorderStartpoints[tnI].Size() == 0);
+	assert (m_psetBorderEndpoints != NULL);
+	for (FRAMESIZE tnI = 0; tnI < tnPixels; ++tnI)
+		assert (m_psetBorderEndpoints[tnI].Size() == 0);
+	#endif // !NDEBUG
 	assert (m_setRegions.Size() == 0);
 
 	// Make sure there are no leftover moved-regions from last time.
@@ -1160,18 +1021,6 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::StartFrame (Status_t &a_reStatus)
 			assert (m_pMotionVectorMatches[i].m_tnActiveExtents == 0);
 	}
 	#endif // !NDEBUG
-
-	// Set up our iterators into the borders.
-	for (int i = 0; i <= m_tnPGH + 1; ++i)
-	{
-		m_paitBorderStartpoints[i] = m_setBorderStartpoints.End();
-		m_paitBorderEndpoints[i] = m_setBorderEndpoints.End();
-	}
-
-	// No need to recalculate startpoint/endpoint-iterators yet.
-	#ifndef FIX_ITERATOR_ARRAYS_INLINE
-	m_bFixStartpointEndpointIterators = false;
-	#endif // !FIX_ITERATOR_ARRAYS_INLINE
 
 	// Start in the upper-left corner, and prepare to move to the right.
 	m_tnX = m_tnY = PIXELINDEX (0);
@@ -1274,6 +1123,7 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::MoveRight (Status_t &a_reStatus)
 
 	// Make sure our client didn't leave behind any regions whose size
 	// exceeds the match-size-throttle.
+	#ifndef NDEBUG
 	{
 		typename MovedRegionSet::ConstIterator itMatchThrottle
 			= m_setRegions.Begin();
@@ -1281,15 +1131,7 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::MoveRight (Status_t &a_reStatus)
 			|| (*itMatchThrottle)->NumberOfPoints()
 				< m_tnMatchSizeThrottle);
 	}
-
-	// If we need to recalculate startpoint/endpoint-iterators, do so.
-	#ifndef FIX_ITERATOR_ARRAYS_INLINE
-	if (m_bFixStartpointEndpointIterators)
-	{
-		FixStartpointEndpointIterators();
-		m_bFixStartpointEndpointIterators = false;
-	}
-	#endif // !FIX_ITERATOR_ARRAYS_INLINE
+	#endif // !NDEBUG
 
 	// All active regions with a current-border endpoint at old X, and
 	// all active regions with a first/last-border endpoint at old X + 1,
@@ -1301,61 +1143,27 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::MoveRight (Status_t &a_reStatus)
 		PIXELINDEX tnIfFirstLast
 			= (tnI == 0 || tnI == m_tnPGH + PIXELINDEX (1)) ? 1 : 0;
 
-		// Get the endpoint to search along.
-		typename BorderExtentBoundarySet::ConstIterator
-			&ritEndpoint = m_paitBorderEndpoints[tnI];
-
-		// Make sure it's right where we expect it to be.
-		assert (ritEndpoint == m_setBorderEndpoints.End()
-			|| (*ritEndpoint).m_tnLine > m_tnY + tnI - PIXELINDEX (1)
-			|| ((*ritEndpoint).m_tnLine == m_tnY + tnI - PIXELINDEX (1)
-				&& (*ritEndpoint).m_tnIndex >= (m_tnX + tnIfFirstLast)));
-
-		// Remove all active regions that have endpoints at this index.
-		while (ritEndpoint != m_setBorderEndpoints.End()
-			&& (*ritEndpoint).m_tnLine == m_tnY + tnI - PIXELINDEX (1)
-			&& (*ritEndpoint).m_tnIndex == (m_tnX + tnIfFirstLast))
+		// Make sure there could be endpoints here.
+		// (The endpoint-X is adjusted downward by 1, because the valid
+		// range of endpoint-X values is from 1 to m_tnWidth.)
+		PIXELINDEX tnY = m_tnY + tnI - PIXELINDEX (1);
+		PIXELINDEX tnX = m_tnX + tnIfFirstLast - PIXELINDEX (1);
+		assert (tnY >= 0);
+		if (/* tnY >= 0 && */ tnY < m_tnHeight
+			&& tnX >= 0 && tnX < m_tnWidth)
 		{
-			// Find the endpoint's corresponding startpoint.
-			//
-			// If our corresponding set class is implemented with skip
-			// lists, this is merely a pointer dereference, because the
-			// address of nodes doesn't change after they're created.
-			//
-			// If our corresponding set class is implemented with vectors,
-			// the counterpart has to be found with a search, because the
-			// address of nodes can change after they're created.
-			#ifdef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-			BorderExtentBoundary oStartpoint (*ritEndpoint);
-			oStartpoint.m_tnIndex = oStartpoint.m_tnCounterpartIndex;
-			typename BorderExtentBoundarySet::ConstIterator itStartpoint
-				= m_setBorderStartpoints.Find (oStartpoint);
-			// (Make sure the corresponding startpoint was found.)
-			assert (itStartpoint != m_setBorderStartpoints.End());
-			const BorderExtentBoundary &rStartpoint = *itStartpoint;
-			// (Make sure the startpoint thinks it's matched with this
-			// endpoint.)
-			assert (rStartpoint.m_tnCounterpartIndex
-				== (*ritEndpoint).m_tnIndex);
-			#else // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-			const BorderExtentBoundary &rStartpoint
-				= *((*ritEndpoint).m_pCounterpart);
-			#endif // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
+			// Get the set of endpoints of interest.
+			const BorderExtentBoundarySet &rEndpointSet
+				= m_psetBorderEndpoints[tnY * m_tnWidth + tnX];
 
-			#ifdef PRINT_SEARCHBORDER
-			if (frame == 61)
-			fprintf (stderr, "Found current-border endpoint, remove "
-				"active-border region (%d,%d), "
-					"motion vector (%d,%d)\n",
-				rStartpoint.m_tnIndex, rStartpoint.m_tnLine,
-				rStartpoint.m_tnMotionX, rStartpoint.m_tnMotionY);
-			#endif // PRINT_SEARCHBORDER
-
-			// Now remove the corresponding motion-vector match.
-			RemoveMotionVectorMatch (rStartpoint.m_pRegion);
-
-			// Move to the next endpoint.
-			++ritEndpoint;
+			// Remove all active regions that have endpoints at this index.
+			typename BorderExtentBoundarySet::ConstIterator itEndpoint;
+			for (itEndpoint = rEndpointSet.Begin();
+				 itEndpoint != rEndpointSet.End();
+				 ++itEndpoint)
+			{
+				RemoveMotionVectorMatch ((*itEndpoint).m_pRegion);
+			}
 		}
 	}
 
@@ -1369,40 +1177,25 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::MoveRight (Status_t &a_reStatus)
 		PIXELINDEX tnIfNotFirstLast
 			= (tnI == 0 || tnI == m_tnPGH + PIXELINDEX (1)) ? 0 : 1;
 
-		// Get the startpoint to search along.
-		typename BorderExtentBoundarySet::ConstIterator
-			&ritStartpoint = m_paitBorderStartpoints[tnI];
-
-		// Make sure it's right where we expect it to be.
-		assert (ritStartpoint
-			== m_setBorderStartpoints.End()
-		|| (*ritStartpoint).m_tnLine > m_tnY + tnI - PIXELINDEX (1)
-		|| ((*ritStartpoint).m_tnLine == m_tnY + tnI - PIXELINDEX (1)
-			&& (*ritStartpoint).m_tnIndex
-				>= (m_tnX + m_tnPGW + tnIfNotFirstLast)));
-
-		// Add all active regions that have startpoints at this index.
-		while (ritStartpoint != m_setBorderStartpoints.End()
-			&& (*ritStartpoint).m_tnLine == m_tnY + tnI - PIXELINDEX (1)
-			&& (*ritStartpoint).m_tnIndex
-				== (m_tnX + m_tnPGW + tnIfNotFirstLast))
+		// Make sure there could be startpoints here.
+		PIXELINDEX tnY = m_tnY + tnI - PIXELINDEX (1);
+		PIXELINDEX tnX = m_tnX + m_tnPGW + tnIfNotFirstLast;
+		assert (tnY >= 0 && tnX >= 0);
+		if (/* tnY >= 0 && */ tnY < m_tnHeight
+			/* && tnX >= 0 */ && tnX < m_tnWidth)
 		{
-			const BorderExtentBoundary &rStartpoint = *ritStartpoint;
+			// Get the set of startpoints of interest.
+			const BorderExtentBoundarySet &rStartpointSet
+				= m_psetBorderStartpoints[tnY * m_tnWidth + tnX];
 
-			#ifdef PRINT_SEARCHBORDER
-			if (frame == 61)
+			// Add all active regions that have startpoints at this index.
+			typename BorderExtentBoundarySet::ConstIterator itStartpoint;
+			for (itStartpoint = rStartpointSet.Begin();
+				 itStartpoint != rStartpointSet.End();
+				 ++itStartpoint)
 			{
-			fprintf (stderr, "Add active-border region (%d,%d), "
-					"motion vector (%d,%d)\n",
-				rStartpoint.m_tnIndex, rStartpoint.m_tnLine,
-				rStartpoint.m_tnMotionX, rStartpoint.m_tnMotionY);
+				AddMotionVectorMatch ((*itStartpoint).m_pRegion);
 			}
-			#endif // PRINT_SEARCHBORDER
-
-			AddMotionVectorMatch (rStartpoint.m_pRegion);
-
-			// Move to the next startpoint.
-			++ritStartpoint;
 		}
 	}
 
@@ -1429,6 +1222,7 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::MoveLeft (Status_t &a_reStatus)
 
 	// Make sure our client didn't leave behind any regions whose size
 	// exceeds the match-size-throttle.
+	#ifndef NDEBUG
 	{
 		typename MovedRegionSet::ConstIterator itMatchThrottle
 			= m_setRegions.Begin();
@@ -1436,15 +1230,7 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::MoveLeft (Status_t &a_reStatus)
 			|| (*itMatchThrottle)->NumberOfPoints()
 				< m_tnMatchSizeThrottle);
 	}
-
-	// If we need to recalculate startpoint/endpoint-iterators, do so.
-	#ifndef FIX_ITERATOR_ARRAYS_INLINE
-	if (m_bFixStartpointEndpointIterators)
-	{
-		FixStartpointEndpointIterators();
-		m_bFixStartpointEndpointIterators = false;
-	}
-	#endif // !FIX_ITERATOR_ARRAYS_INLINE
+	#endif // !NDEBUG
 
 	// All active regions with a current-border startpoint at
 	// old X + m_tnPGW, and all active regions with a last-border
@@ -1456,60 +1242,27 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::MoveLeft (Status_t &a_reStatus)
 		PIXELINDEX tnIfFirstLast
 			= (tnI == 0 || tnI == m_tnPGH + PIXELINDEX (1)) ? 1 : 0;
 
-		// Get the current startpoint.
-		typename BorderExtentBoundarySet::ConstIterator &ritStartpoint
-			= m_paitBorderStartpoints[tnI];
-
-		// Make sure it's right where we want to be.
-		#ifndef NDEBUG
+		// Make sure there could be startpoints here.
+		PIXELINDEX tnY = m_tnY + tnI - PIXELINDEX (1);
+		PIXELINDEX tnX = m_tnX + m_tnPGW - tnIfFirstLast;
+		assert (tnY >= 0 && tnX >= 0);
+		if (/* tnY >= 0 && */ tnY < m_tnHeight
+			/* && tnX >= 0 */ && tnX < m_tnWidth)
 		{
-			typename BorderExtentBoundarySet::ConstIterator itPrev
-				= ritStartpoint;
-			--itPrev;
-			assert (ritStartpoint == m_setBorderStartpoints.End()
-			|| (*ritStartpoint).m_tnLine > m_tnY + tnI - PIXELINDEX (1)
-			|| ((*ritStartpoint).m_tnLine == m_tnY + tnI - PIXELINDEX (1)
-				&& ((*ritStartpoint).m_tnIndex
-						> (m_tnX + m_tnPGW - tnIfFirstLast)
-					&& (itPrev == m_setBorderStartpoints.End()
-						|| (*itPrev).m_tnLine
-							< m_tnY + tnI - PIXELINDEX (1)
-						|| ((*itPrev).m_tnLine
-							== m_tnY + tnI - PIXELINDEX (1)
-							&& (*itPrev).m_tnIndex
-								<= (m_tnX + m_tnPGW - tnIfFirstLast))))));
-		}
-		#endif // !NDEBUG
+			// Get the set of startpoints of interest.
+			const BorderExtentBoundarySet &rStartpointSet
+				= m_psetBorderStartpoints[tnY * m_tnWidth + tnX];
 
-		// Remove all active regions that have startpoints at this
-		// index.
-		//
-		// Note that ritStartpoint could be pointing to End(), and so the
-		// predecremented iterator could wrap around the beginning and move
-		// to the end of the set.  But that's OK, because it'd immediately
-		// fail the line/index test, so an explicit test for End() is not
-		// needed.
-		while ((--ritStartpoint) != m_setBorderStartpoints.End()
-			&& (*ritStartpoint).m_tnLine == m_tnY + tnI - PIXELINDEX (1)
-			&& (*ritStartpoint).m_tnIndex
-				== (m_tnX + m_tnPGW - tnIfFirstLast))
-		{
-			const BorderExtentBoundary &rStartpoint = *ritStartpoint;
-
-			#ifdef PRINT_SEARCHBORDER
-			if (frame == 61)
+			// Remove all active regions that have startpoints at this
+			// index.
+			typename BorderExtentBoundarySet::ConstIterator itStartpoint;
+			for (itStartpoint = rStartpointSet.Begin();
+				 itStartpoint != rStartpointSet.End();
+				 ++itStartpoint)
 			{
-			fprintf (stderr, "Found current-border startpoint, remove "
-					"active-border region (%d,%d), "
-					"motion vector (%d,%d)\n",
-				rStartpoint.m_tnIndex, rStartpoint.m_tnLine,
-				rStartpoint.m_tnMotionX, rStartpoint.m_tnMotionY);
+				RemoveMotionVectorMatch ((*itStartpoint).m_pRegion);
 			}
-			#endif // PRINT_SEARCHBORDER
-
-			RemoveMotionVectorMatch (rStartpoint.m_pRegion);
 		}
-		++ritStartpoint;
 	}
 
 	// All active regions with a current-border endpoint at new X, and
@@ -1522,80 +1275,28 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::MoveLeft (Status_t &a_reStatus)
 		PIXELINDEX tnIfNotFirstLast
 			= (tnI == 0 || tnI == m_tnPGH + PIXELINDEX (1)) ? 0 : 1;
 
-		// Get the current startpoint.
-		typename BorderExtentBoundarySet::ConstIterator &ritEndpoint
-			= m_paitBorderEndpoints[tnI];
-
-		// Make sure it's right where we want to be.
-		#ifndef NDEBUG
+		// Make sure there could be endpoints here.
+		// (The endpoint-X is adjusted downward by 1, because the valid
+		// range of endpoint-X values is from 1 to m_tnWidth.)
+		PIXELINDEX tnY = m_tnY + tnI - PIXELINDEX (1);
+		PIXELINDEX tnX = m_tnX - tnIfNotFirstLast - PIXELINDEX (1);
+		assert (tnY >= 0);
+		if (/* tnY >= 0 && */ tnY < m_tnHeight
+			&& tnX >= 0 && tnX < m_tnWidth)
 		{
-			typename BorderExtentBoundarySet::ConstIterator itPrev
-				= ritEndpoint;
-			--itPrev;
-			assert (ritEndpoint == m_setBorderEndpoints.End()
-			|| (*ritEndpoint).m_tnLine > m_tnY + tnI - PIXELINDEX (1)
-			|| ((*ritEndpoint).m_tnLine == m_tnY + tnI - PIXELINDEX (1)
-				&& ((*ritEndpoint).m_tnIndex > (m_tnX - tnIfNotFirstLast)
-				&& (itPrev == m_setBorderEndpoints.End()
-					|| (*itPrev).m_tnLine
-						< m_tnY + tnI - PIXELINDEX (1)
-					|| ((*itPrev).m_tnLine
-						== m_tnY + tnI - PIXELINDEX (1)
-						&& (*itPrev).m_tnIndex
-							<= (m_tnX - tnIfNotFirstLast))))));
+			// Get the set of endpoints of interest.
+			const BorderExtentBoundarySet &rEndpointSet
+				= m_psetBorderEndpoints[tnY * m_tnWidth + tnX];
+
+			// Add all active regions that have endpoints at this index.
+			typename BorderExtentBoundarySet::ConstIterator itEndpoint;
+			for (itEndpoint = rEndpointSet.Begin();
+				 itEndpoint != rEndpointSet.End();
+				 ++itEndpoint)
+			{
+				AddMotionVectorMatch ((*itEndpoint).m_pRegion);
+			}
 		}
-		#endif // !NDEBUG
-
-		// Add all active regions that have endpoints at this index.
-		//
-		// Note that ritEndpoint could be pointing to End(), and so the
-		// predecremented iterator could wrap around the beginning and move
-		// to the end of the set.  But that's OK, because it'd immediately
-		// fail the line/index test, so an explicit test for End() is not
-		// needed.
-		while ((--ritEndpoint) != m_setBorderEndpoints.End()
-			&& (*ritEndpoint).m_tnLine == m_tnY + tnI - PIXELINDEX (1)
-			&& (*ritEndpoint).m_tnIndex == (m_tnX - tnIfNotFirstLast))
-		{
-			// Find the endpoint's corresponding startpoint.
-			//
-			// If our corresponding set class is implemented with skip
-			// lists, this is merely a pointer dereference, because the
-			// address of nodes doesn't change after they're created.
-			//
-			// If our corresponding set class is implemented with vectors,
-			// the counterpart has to be found with a search, because the
-			// address of nodes can change after they're created.
-			assert ((*ritEndpoint).m_bIsEnding);
-			#ifdef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-			BorderExtentBoundary oStartpoint (*ritEndpoint);
-			oStartpoint.m_tnIndex = oStartpoint.m_tnCounterpartIndex;
-			typename BorderExtentBoundarySet::ConstIterator itStartpoint
-				= m_setBorderStartpoints.Find (oStartpoint);
-			// (Make sure the corresponding startpoint was found.)
-			assert (itStartpoint != m_setBorderStartpoints.End());
-			const BorderExtentBoundary &rStartpoint = *itStartpoint;
-			// (Make sure the startpoint thinks it's matched with this
-			// endpoint.)
-			assert (rStartpoint.m_tnCounterpartIndex
-				== (*ritEndpoint).m_tnIndex);
-			#else // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-			const BorderExtentBoundary &rStartpoint
-				= *((*ritEndpoint).m_pCounterpart);
-			#endif // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-
-			#ifdef PRINT_SEARCHBORDER
-			if (frame == 61)
-			fprintf (stderr, "Add active-border region (%d,%d), "
-					"motion vector (%d,%d)\n",
-				rStartpoint.m_tnIndex, rStartpoint.m_tnLine,
-				rStartpoint.m_tnMotionX, rStartpoint.m_tnMotionY);
-			#endif // PRINT_SEARCHBORDER
-
-			// Now insert it.
-			AddMotionVectorMatch (rStartpoint.m_pRegion);
-		}
-		++ritEndpoint;
 	}
 
 	// Finally, move one step to the left.
@@ -1610,16 +1311,16 @@ template <class PIXELINDEX, class FRAMESIZE>
 void
 SearchBorder<PIXELINDEX,FRAMESIZE>::MoveDown (Status_t &a_reStatus)
 {
-	typename BorderExtentBoundarySet::Iterator itBorder, itNextBorder;
+	FRAMESIZE tnI;
+	typename BorderExtentBoundarySet::Iterator itBorder;
 		// Used to run through the last-border.
-	int i;
-		// Used to loop through things.
 
 	// Make sure they didn't start us off with an error.
 	assert (a_reStatus == g_kNoError);
 
 	// Make sure our client didn't leave behind any regions whose size
 	// exceeds the match-size-throttle.
+	#ifndef NDEBUG
 	{
 		typename MovedRegionSet::ConstIterator itMatchThrottle
 			= m_setRegions.Begin();
@@ -1627,163 +1328,100 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::MoveDown (Status_t &a_reStatus)
 			|| (*itMatchThrottle)->NumberOfPoints()
 				< m_tnMatchSizeThrottle);
 	}
-
-	// If we need to recalculate startpoint/endpoint-iterators, do so.
-	#ifndef FIX_ITERATOR_ARRAYS_INLINE
-	if (m_bFixStartpointEndpointIterators)
-	{
-		FixStartpointEndpointIterators();
-		m_bFixStartpointEndpointIterators = false;
-	}
-	#endif // !FIX_ITERATOR_ARRAYS_INLINE
+	#endif // !NDEBUG
 
 	// Run through the last border, disconnect the regions from all
 	// endpoints.  If that leaves a region with no references and no
 	// siblings, then the region is fully constructed, and it gets
 	// handed back to the client.
-	// Run through the startpoints and endpoints separately.  That leaves
-	// some dangling references temporarily, but this avoids having to do
-	// a set-find for the endpoints.
-	for (itBorder = m_setBorderStartpoints.Begin();
-		 itBorder != m_setBorderStartpoints.End()
-		 	&& (*itBorder).m_tnLine + PIXELINDEX (1) <= m_tnY;
-		 itBorder = itNextBorder)
+	if (m_tnY > 0)
 	{
-		// Make sure this extent is on the last-border.
-		assert ((*itBorder).m_tnLine + PIXELINDEX (1) == m_tnY);
-
-		// Find the next border to examine, since we'll be removing
-		// the current border.
-		itNextBorder = itBorder;
-		++itNextBorder;
-
-		// Get the startpoint/endpoint, and its under-construction region.
-		BorderExtentBoundary &rStartpoint = *itBorder;
-		BorderExtentBoundary &rEndpoint
-			= *(rStartpoint.m_pCounterpart);
-		MovedRegion *pRegion = rStartpoint.m_pRegion;
-
-		// If this extent intersects/borders the current pixel-group,
-		// then a reference to it must be removed from the
-		// motion-vector matches.
-		PIXELINDEX tnXStart = rStartpoint.m_tnIndex;
-		PIXELINDEX tnXEnd = rEndpoint.m_tnIndex;
-		PIXELINDEX tnIfFirstLast
-			= (m_tnY <= m_tnHeight - m_tnPGH) ? 1 : 0;
-		if (tnXEnd >= m_tnX + tnIfFirstLast
-			&& tnXStart < m_tnX + m_tnPGW + PIXELINDEX (1)
-				- tnIfFirstLast)
+		// Run through the startpoints and endpoints separately.  That
+		// leaves some dangling references temporarily, but this avoids
+		// having to do a set-find for the endpoints.
+		for (tnI = 0; tnI < m_tnWidth; ++tnI)
 		{
-			// Remove a reference to this region.
-			RemoveMotionVectorMatch (pRegion);
-		}
-
-		// Remove this startpoint.  (The endpoint is removed in a separate
-		// loop, so as to avoid doing a set-find for it.)
-		m_setBorderStartpoints.Erase (itBorder);
-		assert (pRegion->m_tnReferences > 0);
-		--pRegion->m_tnReferences;
-
-		// Make sure the endpoint can be found.  (The set-find, then, is
-		// done only for debugging purposes.)
-		assert (m_setBorderEndpoints.Find (rEndpoint)
-			!= m_setBorderEndpoints.End());
-
-		// Make sure there are references left (from the endpoint).
-		assert (pRegion->m_tnReferences > 0);
-	}
-
-	// (Now do the same for the endpoints, ignoring the dangling
-	// references.)
-	for (itBorder = m_setBorderEndpoints.Begin();
-		 itBorder != m_setBorderEndpoints.End()
-		 	&& (*itBorder).m_tnLine + PIXELINDEX (1) <= m_tnY;
-		 itBorder = itNextBorder)
-	{
-		// Make sure this extent is on the last-border.
-		assert ((*itBorder).m_tnLine + PIXELINDEX (1) == m_tnY);
-
-		// Find the next border to examine, since we'll be removing
-		// the current border.
-		itNextBorder = itBorder;
-		++itNextBorder;
-
-		// Get the under-construction region.
-		MovedRegion *pRegion = (*itBorder).m_pRegion;
-
-		// Remove this endpoint.
-		m_setBorderEndpoints.Erase (itBorder);
-		assert (pRegion->m_tnReferences > 0);
-		--pRegion->m_tnReferences;
-
-		// Are there any references left to this region?
-		if (pRegion->m_tnReferences == 0)
-		{
-			// No.  The region is fully constructed.
-			// Make sure there are no border-extent references left.
-			assert (pRegion->m_tnBorderExtents == 0);
-
-			// Remove it from our active-regions set.
-			typename MovedRegionSet::Iterator itRegion
-				= m_setRegions.Find (pRegion);
-			assert (itRegion != m_setRegions.End());
-			assert ((*itRegion) == pRegion);
-			m_setRegions.Erase (itRegion);
-
-			// Move it to the list of regions that'll get applied to
-			// the new frame's reference-image representation.
-			OnCompletedRegion (a_reStatus, pRegion);
-			if (a_reStatus != g_kNoError)
+			BorderExtentBoundarySet &rStartpointSet
+				= m_psetBorderStartpoints[(m_tnY - PIXELINDEX (1))
+					* m_tnWidth + tnI];
+			for (itBorder = rStartpointSet.Begin();
+				 itBorder != rStartpointSet.End();
+				 ++itBorder)
 			{
-				DeleteRegion (pRegion);
-				return;
+				// Get the startpoint, and its under-construction region.
+				const BorderExtentBoundary &rStartpoint = *itBorder;
+				MovedRegion *pRegion = rStartpoint.m_pRegion;
+
+				// If this extent intersects/borders the current
+				// pixel-group, then a reference to it must be removed
+				// from the motion-vector matches.
+				PIXELINDEX tnXStart = tnI;
+				PIXELINDEX tnXEnd = rStartpoint.m_tnCounterpartIndex;
+				PIXELINDEX tnIfFirstLast
+					= (m_tnY <= m_tnHeight - m_tnPGH) ? 1 : 0;
+				if (tnXEnd >= m_tnX + tnIfFirstLast
+					&& tnXStart < m_tnX + m_tnPGW + PIXELINDEX (1)
+						- tnIfFirstLast)
+				{
+					// Remove a reference to this region.
+					RemoveMotionVectorMatch (pRegion);
+				}
+
+				// That's one less reference to this region.
+				assert (pRegion->m_tnReferences > 0);
+				--pRegion->m_tnReferences;
+
+				// Make sure there are references left (from the endpoint).
+				assert (pRegion->m_tnReferences > 0);
 			}
+			rStartpointSet.Clear();
 		}
-	}
 
-	// The old last-border is gone, and we have a new current-border.
-	// So move all our startpoint/endpoint iterators back one.
-	for (i = 1; i <= m_tnPGH + 1; ++i)
-	{
-		m_paitBorderStartpoints[i-1] = m_paitBorderStartpoints[i];
-		m_paitBorderEndpoints[i-1] = m_paitBorderEndpoints[i];
-	}
+		// (Now do the same for the endpoints, ignoring the dangling
+		// references.)
+		for (tnI = 0; tnI < m_tnWidth; ++tnI)
+		{
+			BorderExtentBoundarySet &rEndpointSet
+				= m_psetBorderEndpoints[(m_tnY - PIXELINDEX (1))
+					* m_tnWidth + tnI];
 
-	// Create iterators for the new first-border.
-	//
-	// But not if we're past the bottom line.  This happens when we're
-	// called by FinishFrame().  Then, the new first-border iterators are
-	// both End().
-	if (m_tnY < m_tnHeight - m_tnPGH)
-	{
-		BorderExtentBoundary oStartpoint, oEndpoint;
-			// New startpoints/endpoints as we create them.
+			for (itBorder = rEndpointSet.Begin();
+				 itBorder != rEndpointSet.End();
+				 ++itBorder)
+			{
+				// Get the under-construction region.
+				MovedRegion *pRegion = (*itBorder).m_pRegion;
 
-		// Figure out where the startpoint/endpoint iterators need to
-		// point to now.
-		oStartpoint.m_tnIndex = m_tnX + m_tnPGW;
-		oEndpoint.m_tnIndex = m_tnX + PIXELINDEX (1);
-		oStartpoint.m_tnLine = oEndpoint.m_tnLine = m_tnY + m_tnPGH
-			+ PIXELINDEX (1);
-		oStartpoint.m_bIsEnding = false;
-		oEndpoint.m_bIsEnding = true;
-		oStartpoint.m_pRegion = oEndpoint.m_pRegion = NULL;
-		oStartpoint.m_tnMotionX = oStartpoint.m_tnMotionY
-			= oEndpoint.m_tnMotionX = oEndpoint.m_tnMotionY
-			= Limits<PIXELINDEX>::Min;
+				// That's one less reference to this region.
+				assert (pRegion->m_tnReferences > 0);
+				--pRegion->m_tnReferences;
 
-		// Now create the new first-border iterators.
-		m_paitBorderStartpoints[m_tnPGH + 1]
-			= m_setBorderStartpoints.LowerBound (oStartpoint);
-		m_paitBorderEndpoints[m_tnPGH + 1]
-			= m_setBorderEndpoints.LowerBound (oEndpoint);
-	}
-	else
-	{
-		m_paitBorderStartpoints[m_tnPGH + 1]
-			= m_setBorderStartpoints.End();
-		m_paitBorderEndpoints[m_tnPGH + 1]
-			= m_setBorderEndpoints.End();
+				// Are there any references left to this region?
+				if (pRegion->m_tnReferences == 0)
+				{
+					// No.  The region is fully constructed.  Make sure
+					// there are no border-extent references left.
+					assert (pRegion->m_tnBorderExtents == 0);
+
+					// Remove it from our active-regions set.
+					typename MovedRegionSet::Iterator itRegion
+						= m_setRegions.Find (pRegion);
+					assert (itRegion != m_setRegions.End());
+					assert ((*itRegion) == pRegion);
+					m_setRegions.Erase (itRegion);
+
+					// Move it to the list of regions that'll get applied
+					// to the new frame's reference-image representation.
+					OnCompletedRegion (a_reStatus, pRegion);
+					if (a_reStatus != g_kNoError)
+					{
+						DeleteRegion (pRegion);
+						return;
+					}
+				}
+			}
+			rEndpointSet.Clear();
+		}
 	}
 
 	// Any region with (if m_tnX == 0) a last-border startpoint at
@@ -1805,123 +1443,77 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::MoveDown (Status_t &a_reStatus)
 		{
 			// Fix the new last-border.
 			{
-				// Get the iterator we'll be using.
-				typename BorderExtentBoundarySet::ConstIterator
-					&ritStartpoint = m_paitBorderStartpoints[0];
-
-				// Make sure it's right where we want to be.
-				#ifndef NDEBUG
-				{
-					typename BorderExtentBoundarySet::ConstIterator itPrev
-						= ritStartpoint;
-					--itPrev;
-					assert (ritStartpoint == m_setBorderStartpoints.End()
-					|| (*ritStartpoint).m_tnLine > m_tnY
-					|| ((*ritStartpoint).m_tnLine == m_tnY
-						&& ((*ritStartpoint).m_tnIndex > m_tnPGW
-							&& (itPrev == m_setBorderStartpoints.End()
-								|| (*itPrev).m_tnLine < m_tnY
-								|| ((*itPrev).m_tnLine == m_tnY
-									&& (*itPrev).m_tnIndex <= m_tnPGW)))));
-				}
-				#endif // !NDEBUG
+				// Get the set of startpoints of interest.
+				const BorderExtentBoundarySet &rStartpointSet
+					= m_psetBorderStartpoints[m_tnY * m_tnWidth + m_tnPGW];
 
 				// Remove all active regions that have startpoints at this
 				// index.
-				//
-				// Note that ritStartpoint could be pointing to End(), and
-				// so the predecremented iterator could wrap around the
-				// beginning and move to the end of the set.  But that's
-				// OK, because it'd immediately fail the line/index test,
-				// so an explicit test for End() is not needed.
-				while ((--ritStartpoint) != m_setBorderStartpoints.End()
-					&& (*ritStartpoint).m_tnLine == m_tnY
-					&& (*ritStartpoint).m_tnIndex == m_tnPGW)
+				typename BorderExtentBoundarySet::ConstIterator
+					itStartpoint;
+				for (itStartpoint = rStartpointSet.Begin();
+					 itStartpoint != rStartpointSet.End();
+					 ++itStartpoint)
 				{
-					#ifdef PRINT_SEARCHBORDER
-					if (frame == 61)
-					fprintf (stderr, "Moving down a line, remove "
-							"active-border region (%d,%d), "
-							"motion vector (%d,%d)\n",
-						(*ritStartpoint).m_tnIndex,
-						(*ritStartpoint).m_tnLine,
-						(*ritStartpoint).m_tnMotionX,
-						(*ritStartpoint).m_tnMotionY);
-					#endif // PRINT_SEARCHBORDER
-
-					RemoveMotionVectorMatch ((*ritStartpoint).m_pRegion);
+					RemoveMotionVectorMatch ((*itStartpoint).m_pRegion);
 				}
-				++ritStartpoint;
 			}
 
 			// Fix the new bottommost-current-border.
 			{
-				// Get the iterator we'll be using.
-				typename BorderExtentBoundarySet::ConstIterator
-					&ritStartpoint = m_paitBorderStartpoints[m_tnPGH];
-
-				// Make sure it's right where we want to be.
-				assert (ritStartpoint == m_setBorderStartpoints.End()
-					|| (*ritStartpoint).m_tnLine > m_tnY + m_tnPGH
-					|| ((*ritStartpoint).m_tnLine == m_tnY + m_tnPGH
-						&& ((*ritStartpoint).m_tnIndex >= m_tnPGW)));
-
-				// Add all active regions that have startpoints at this
-				// index.
-				while (ritStartpoint != m_setBorderStartpoints.End()
-					&& (*ritStartpoint).m_tnLine == m_tnY + m_tnPGH
-					&& (*ritStartpoint).m_tnIndex == m_tnPGW)
+				PIXELINDEX tnY = m_tnY + m_tnPGH;
+				PIXELINDEX tnX = m_tnPGW;
+				assert (tnY >= 0 && tnX >= 0 && tnX < m_tnWidth);
+				if (/* tnY >= 0 && */ tnY < m_tnHeight
+					/* && tnX >= 0 && tnX < m_tnWidth */)
 				{
-					#ifdef PRINT_SEARCHBORDER
-					if (frame == 61)
-					fprintf (stderr, "Moving down a line, add "
-							"active-border region (%d,%d), "
-							"motion vector (%d,%d)\n",
-						(*ritStartpoint).m_tnIndex,
-						(*ritStartpoint).m_tnLine,
-						(*ritStartpoint).m_tnMotionX,
-						(*ritStartpoint).m_tnMotionY);
-					#endif // PRINT_SEARCHBORDER
+					// Get the set of startpoints of interest.
+					const BorderExtentBoundarySet &rStartpointSet
+						= m_psetBorderStartpoints[tnY * m_tnWidth + tnX];
 
-					// This region is now part of the border.
-					AddMotionVectorMatch ((*ritStartpoint).m_pRegion);
-
-					++ritStartpoint;
+					// Add all active regions that have startpoints at this
+					// index.
+					typename BorderExtentBoundarySet::ConstIterator
+						itStartpoint;
+					for (itStartpoint = rStartpointSet.Begin();
+						 itStartpoint != rStartpointSet.End();
+						 ++itStartpoint)
+					{
+						AddMotionVectorMatch ((*itStartpoint).m_pRegion);
+					}
 				}
 			}
 
 			// Find all the extents of regions on the first-border
 			// that will intersect/border the new current-pixel-group,
 			// and put them into the border-regions set.
+			//
+			// All extents on the same line as the first-border,
+			// whose startpoint X is less than the pixel-group width,
+			// are extents that intersect/border the new
+			// current-pixel-group.
+			for (tnI = 0; tnI < m_tnPGW; ++tnI)
 			{
-				BorderExtentBoundary oStartpoint;
-					// Used to search for startpoints.
-				typename BorderExtentBoundarySet::ConstIterator itHere;
-					// Used to iterate through startpoints.
-
-				// All extents on the same line as the first-border,
-				// whose startpoint X is less than the pixel-group width,
-				// are extents that intersect/border the new
-				// current-pixel-group.  So find the first startpoint on
-				// the line.
-				oStartpoint.m_tnIndex = 0;
-				oStartpoint.m_tnLine = m_tnY + m_tnPGH + PIXELINDEX (1);
-				oStartpoint.m_bIsEnding = false;
-				oStartpoint.m_tnMotionX = oStartpoint.m_tnMotionY
-					= Limits<PIXELINDEX>::Min;
-				itHere = m_setBorderStartpoints.LowerBound (oStartpoint);
-
-				// Loop through all the relevant startpoints, add them to
-				// the border-regions set.
-				while (itHere != m_setBorderStartpoints.End()
-					&& (*itHere).m_tnLine == oStartpoint.m_tnLine
-					&& (*itHere).m_tnIndex < m_tnPGW)
+				PIXELINDEX tnY = m_tnY + m_tnPGH + PIXELINDEX (1);
+				PIXELINDEX tnX = tnI;
+				assert (tnY >= 0 && tnX >= 0 && tnX < m_tnWidth);
+				if (/* tnY >= 0 && */ tnY < m_tnHeight
+					/* && tnX >= 0 && tnX < m_tnWidth */)
 				{
-					// This region is now part of the border.
-					AddMotionVectorMatch ((*itHere).m_pRegion);
+					// Get the set of startpoints of interest.
+					const BorderExtentBoundarySet &rStartpointSet
+						= m_psetBorderStartpoints[tnY * m_tnWidth + tnX];
 
-					// Move to the next startpoint.
-					++itHere;
+					// Loop through all the relevant startpoints, add them
+					// to the motion-vector matches.
+					typename BorderExtentBoundarySet::ConstIterator
+						itStartpoint;
+					for (itStartpoint = rStartpointSet.Begin();
+						 itStartpoint != rStartpointSet.End();
+						 ++itStartpoint)
+					{
+						AddMotionVectorMatch ((*itStartpoint).m_pRegion);
+					}
 				}
 			}
 		}
@@ -1931,221 +1523,86 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::MoveDown (Status_t &a_reStatus)
 
 			// Fix the new last-border.
 			{
-				// Get the iterator we'll be using.
-				typename BorderExtentBoundarySet::ConstIterator
-					&ritEndpoint = m_paitBorderEndpoints[0];
-
-				// Make sure it's right where we expect it to be.
-				#ifndef NDEBUG
-				{
-					typename BorderExtentBoundarySet::ConstIterator itPrev
-						= ritEndpoint;
-					--itPrev;
-					assert (ritEndpoint == m_setBorderEndpoints.End()
-						|| (*ritEndpoint).m_tnLine > m_tnY
-						|| ((*ritEndpoint).m_tnLine == m_tnY
-							&& (*ritEndpoint).m_tnIndex >= m_tnX
-							&& (itPrev == m_setBorderEndpoints.End()
-								|| (*itPrev).m_tnLine < m_tnY
-								|| ((*itPrev).m_tnLine == m_tnY
-									&& (*itPrev).m_tnIndex < m_tnX))));
-				}
-				#endif // !NDEBUG
+				// Get the set of endpoints of interest.
+				// (The endpoint-X is adjusted downward by 1, because the
+				// valid range of endpoint-X values is from 1 to
+				// m_tnWidth.)
+				const BorderExtentBoundarySet &rEndpointSet
+					= m_psetBorderEndpoints[m_tnY * m_tnWidth
+						+ (m_tnX - PIXELINDEX (1))];
 
 				// Remove all active regions that have endpoints at this
 				// index.
-				while (ritEndpoint != m_setBorderEndpoints.End()
-					&& (*ritEndpoint).m_tnLine == m_tnY
-					&& (*ritEndpoint).m_tnIndex == m_tnX)
+				typename BorderExtentBoundarySet::ConstIterator
+					itEndpoint;
+				for (itEndpoint = rEndpointSet.Begin();
+					 itEndpoint != rEndpointSet.End();
+					 ++itEndpoint)
 				{
-					// Find the endpoint's corresponding startpoint.
-					//
-					// If our corresponding set class is implemented with
-					// skip lists, this is merely a pointer dereference,
-					// because the address of nodes doesn't change after
-					// they're created.
-					//
-					// If our corresponding set class is implemented with
-					// vectors, the counterpart has to be found with a
-					// search, because the address of nodes can change
-					// after they're created.
-					#ifdef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-					BorderExtentBoundary oStartpoint (*ritEndpoint);
-					oStartpoint.m_tnIndex
-						= oStartpoint.m_tnCounterpartIndex;
-					typename BorderExtentBoundarySet::ConstIterator
-						itStartpoint
-							= m_setBorderStartpoints.Find (oStartpoint);
-					// (Make sure the corresponding startpoint was found.)
-					assert (itStartpoint != m_setBorderStartpoints.End());
-					const BorderExtentBoundary &rStartpoint
-						= *itStartpoint;
-					// (Make sure the startpoint thinks it's matched with
-					// this endpoint.)
-					assert (rStartpoint.m_tnCounterpartIndex
-						== (*ritEndpoint).m_tnIndex);
-					#else // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-					const BorderExtentBoundary &rStartpoint
-						= *((*ritEndpoint).m_pCounterpart);
-					#endif // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-
-					#ifdef PRINT_SEARCHBORDER
-					if (frame == 61)
-					fprintf (stderr, "Moving down a line, remove "
-							"active-border region (%d,%d), "
-							"motion vector (%d,%d)\n",
-						rStartpoint.m_tnIndex, rStartpoint.m_tnLine,
-						rStartpoint.m_tnMotionX, rStartpoint.m_tnMotionY);
-					#endif // PRINT_SEARCHBORDER
-
-					RemoveMotionVectorMatch (rStartpoint.m_pRegion);
-
-					++ritEndpoint;
+					RemoveMotionVectorMatch ((*itEndpoint).m_pRegion);
 				}
 			}
 
 			// Fix the new bottommost-current-border.
 			{
-				// Get the iterator we'll be using.
-				typename BorderExtentBoundarySet::ConstIterator
-					&ritEndpoint = m_paitBorderEndpoints[m_tnPGH];
-
-				// Make sure it's right where we expect it to be.
-				#ifndef NDEBUG
-				typename BorderExtentBoundarySet::ConstIterator itPrev
-					= ritEndpoint;
-				--itPrev;
-				assert (ritEndpoint == m_setBorderEndpoints.End()
-					|| (*ritEndpoint).m_tnLine > m_tnY + m_tnPGH
-					|| ((*ritEndpoint).m_tnLine == m_tnY + m_tnPGH
-						&& (*ritEndpoint).m_tnIndex > m_tnX
-						&& (itPrev == m_setBorderEndpoints.End()
-							|| (*itPrev).m_tnLine < m_tnY + m_tnPGH
-							|| ((*itPrev).m_tnLine == m_tnY + m_tnPGH
-								&& (*itPrev).m_tnIndex <= m_tnX))));
-				#endif // !NDEBUG
-
-				// Remove all active regions that have endpoints at this
-				// index.
-				//
-				// Note that ritEndpoint could be pointing to End(), and
-				// so the predecremented iterator could wrap around the
-				// beginning and move to the end of the set.  But that's
-				// OK, because it'd immediately fail the line/index test,
-				// so an explicit test for End() is not needed.
-				while ((--ritEndpoint) != m_setBorderEndpoints.End()
-					&& (*ritEndpoint).m_tnLine == m_tnY + m_tnPGH
-					&& (*ritEndpoint).m_tnIndex == m_tnX)
+				// (The endpoint-X is adjusted downward by 1, because the
+				// valid range of endpoint-X values is from 1 to
+				// m_tnWidth.)
+				PIXELINDEX tnY = m_tnY + m_tnPGH;
+				PIXELINDEX tnX = m_tnX - PIXELINDEX (1);
+				assert (tnY >= 0 && tnX < m_tnWidth);
+				if (/* tnY >= 0 && */ tnY < m_tnHeight
+					&& tnX >= 0 /* && tnX < m_tnWidth */)
 				{
-					// Find the endpoint's corresponding startpoint.
-					//
-					// If our corresponding set class is implemented with
-					// skip lists, this is merely a pointer dereference,
-					// because the address of nodes doesn't change after
-					// they're created.
-					//
-					// If our corresponding set class is implemented with
-					// vectors, the counterpart has to be found with a
-					// search, because the address of nodes can change
-					// after they're created.
-					#ifdef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-					BorderExtentBoundary oStartpoint (*ritEndpoint);
-					oStartpoint.m_tnIndex
-						= oStartpoint.m_tnCounterpartIndex;
+					// Get the set of endpoints of interest.
+					const BorderExtentBoundarySet &rEndpointSet
+						= m_psetBorderEndpoints[tnY * m_tnWidth + tnX];
+
+					// Remove all active regions that have endpoints at
+					// this index.
 					typename BorderExtentBoundarySet::ConstIterator
-						itStartpoint
-							= m_setBorderStartpoints.Find (oStartpoint);
-					// (Make sure the corresponding startpoint was found.)
-					assert (itStartpoint != m_setBorderStartpoints.End());
-					const BorderExtentBoundary &rStartpoint
-						= *itStartpoint;
-					// (Make sure the startpoint thinks it's matched with
-					// this endpoint.)
-					assert (rStartpoint.m_tnCounterpartIndex
-						== (*ritEndpoint).m_tnIndex);
-					#else // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-					const BorderExtentBoundary &rStartpoint
-						= *((*ritEndpoint).m_pCounterpart);
-					#endif // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-
-					#ifdef PRINT_SEARCHBORDER
-					if (frame == 61)
-					fprintf (stderr, "Moving down a line, remove "
-							"active-border region (%d,%d), "
-							"motion vector (%d,%d)\n",
-						rStartpoint.m_tnIndex, rStartpoint.m_tnLine,
-						rStartpoint.m_tnMotionX, rStartpoint.m_tnMotionY);
-					#endif // PRINT_SEARCHBORDER
-
-					// This region is now part of the border.
-					AddMotionVectorMatch (rStartpoint.m_pRegion);
+						itEndpoint;
+					for (itEndpoint = rEndpointSet.Begin();
+						 itEndpoint != rEndpointSet.End();
+						 ++itEndpoint)
+					{
+						AddMotionVectorMatch ((*itEndpoint).m_pRegion);
+					}
 				}
-
-				++ritEndpoint;
 			}
 
 			// Find all the extents of regions on the first-border
 			// that will intersect/border the new current-pixel-group,
 			// and put them into the border-regions set.
+			if (m_tnY + m_tnPGH + PIXELINDEX (1) < m_tnHeight)
 			{
-				BorderExtentBoundary oEndpoint;
-					// Used to search for endpoints.
-				typename BorderExtentBoundarySet::ConstIterator itHere;
-					// Used to iterate through endpoints.
-
 				// All extents on the same line as the first-border,
 				// whose endpoint X is greater than (framewidth - PGW),
 				// are extents that intersect/border the new
-				// current-pixel-group.  So find the first endpoint at
-				// that location on the line.
-				oEndpoint.m_tnIndex = m_tnX + PIXELINDEX (1);
-				oEndpoint.m_tnLine = m_tnY + m_tnPGH + PIXELINDEX (1);
-				oEndpoint.m_bIsEnding = true;
-				oEndpoint.m_tnMotionX = oEndpoint.m_tnMotionY
-					= Limits<PIXELINDEX>::Min;
-				itHere = m_setBorderEndpoints.LowerBound (oEndpoint);
-
-				// Loop through all the relevant endpoints, add their
-				// corresponding startpoints to the border-regions set.
-				while (itHere != m_setBorderEndpoints.End()
-					&& (*itHere).m_tnLine == oEndpoint.m_tnLine)
+				// current-pixel-group.
+				// (The endpoint-X is adjusted downward by 1, because the
+				// valid range of endpoint-X values is from 1 to
+				// m_tnWidth.  That cancels out the upward adjustment.)
+				for (tnI = m_tnX /* + PIXELINDEX (1) - PIXELINDEX (1) */;
+					 tnI < m_tnWidth;
+					 ++tnI)
 				{
-					// Find the endpoint's corresponding startpoint.
-					//
-					// If our corresponding set class is implemented with
-					// skip lists, this is merely a pointer dereference,
-					// because the address of nodes doesn't change after
-					// they're created.
-					//
-					// If our corresponding set class is implemented with
-					// vectors, the counterpart has to be found with a
-					// search, because the address of nodes can change
-					// after they're created.
-					#ifdef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-					BorderExtentBoundary oStartpoint (*itHere);
-					oStartpoint.m_tnIndex
-						= oStartpoint.m_tnCounterpartIndex;
+					// Get the set of endpoints of interest.
+					assert (tnI >= 0 && tnI < m_tnWidth);
+					const BorderExtentBoundarySet &rEndpointSet
+						= m_psetBorderEndpoints[(m_tnY + m_tnPGH
+							+ PIXELINDEX (1)) * m_tnWidth + tnI];
+
+					// Loop through all the relevant endpoints, add their
+					// corresponding startpoints to the border-regions set.
 					typename BorderExtentBoundarySet::ConstIterator
-						itStartpoint
-							= m_setBorderStartpoints.Find (oStartpoint);
-					// (Make sure the corresponding startpoint was found.)
-					assert (itStartpoint != m_setBorderStartpoints.End());
-					const BorderExtentBoundary &rStartpoint
-						= *itStartpoint;
-					// (Make sure the startpoint thinks it's matched with
-					// this endpoint.)
-					assert (rStartpoint.m_tnCounterpartIndex
-						== (*itHere).m_tnIndex);
-					#else // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-					const BorderExtentBoundary &rStartpoint
-						= *((*itHere).m_pCounterpart);
-					#endif // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-
-					// This region is now part of the border.
-					AddMotionVectorMatch (rStartpoint.m_pRegion);
-
-					// Move to the next endpoint.
-					++itHere;
+						itEndpoint;
+					for (itEndpoint = rEndpointSet.Begin();
+						 itEndpoint != rEndpointSet.End();
+						 ++itEndpoint)
+					{
+						AddMotionVectorMatch ((*itEndpoint).m_pRegion);
+					}
 				}
 			}
 		}
@@ -2250,13 +1707,7 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::AddNewRegion (Status_t &a_reStatus,
 			// New startpoints/endpoints as we create them.
 
 		// Set up the unchanging parts of the startpoint and endpoint.
-		oStartpoint.m_bIsEnding = false;
-		oEndpoint.m_bIsEnding = true;
 		oStartpoint.m_pRegion = oEndpoint.m_pRegion = pRegion;
-		pRegion->GetMotionVector (oStartpoint.m_tnMotionX,
-			oStartpoint.m_tnMotionY);
-		pRegion->GetMotionVector (oEndpoint.m_tnMotionX,
-			oEndpoint.m_tnMotionY);
 
 		// Loop through every extent of the new region, create a startpoint
 		// and endpoint for each one.  If the extent intersects or borders
@@ -2276,22 +1727,25 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::AddNewRegion (Status_t &a_reStatus,
 			PIXELINDEX tnXStart = rExtent.m_tnXStart;
 			PIXELINDEX tnXEnd = rExtent.m_tnXEnd;
 
+			// Make sure this extent is inside our frame.  (Sanity check.)
+			assert (tnY >= 0 && tnY < m_tnHeight);
+			assert (tnXStart >= 0);
+			assert (tnXStart < tnXEnd);
+			assert (tnXEnd <= m_tnWidth);
+
 			// Make sure it's not before the first-border.  (Sanity check.)
 			assert (tnY + PIXELINDEX (1) >= m_tnY);
 
 			// Create the startpoint and endpoint that represent this
 			// extent.
-			oStartpoint.m_tnIndex = tnXStart;
-			oEndpoint.m_tnIndex = tnXEnd;
-			oStartpoint.m_tnLine = oEndpoint.m_tnLine = tnY;
-			#ifdef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
 			oStartpoint.m_tnCounterpartIndex = tnXEnd;
 			oEndpoint.m_tnCounterpartIndex = tnXStart;
-			#endif // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
 
 			// Make a record of this startpoint.
+			BorderExtentBoundarySet &rStartpointSet
+				= m_psetBorderStartpoints[tnY * m_tnWidth + tnXStart];
 			typename BorderExtentBoundarySet::InsertResult
-				oStartInsertResult = m_setBorderStartpoints.Insert
+				oStartInsertResult = rStartpointSet.Insert
 					(a_reStatus, oStartpoint);
 			if (a_reStatus != g_kNoError)
 				goto cleanup2;
@@ -2304,10 +1758,18 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::AddNewRegion (Status_t &a_reStatus,
 			++pRegion->m_tnReferences;
 
 			// Make a record of this endpoint.
+			// (The endpoint-X is adjusted downward by 1, because the
+			// valid range of endpoint-X values is from 1 to m_tnWidth.)
+			BorderExtentBoundarySet &rEndpointSet
+				= m_psetBorderEndpoints[tnY * m_tnWidth
+					+ (tnXEnd - PIXELINDEX (1))];
 			typename BorderExtentBoundarySet::InsertResult oEndInsertResult
-				= m_setBorderEndpoints.Insert (a_reStatus, oEndpoint);
+				= rEndpointSet.Insert (a_reStatus, oEndpoint);
 			if (a_reStatus != g_kNoError)
+			{
+				rStartpointSet.Erase (itStart);
 				goto cleanup3;
+			}
 			assert (oEndInsertResult.m_bInserted);
 
 			// Remember where this endpoint was inserted.
@@ -2315,13 +1777,6 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::AddNewRegion (Status_t &a_reStatus,
 
 			// The new endpoint contains another reference to the region.
 			++pRegion->m_tnReferences;
-
-			// Now that startpoint & endpoint are inserted, we can set up
-			// their counterpart links.
-			#ifndef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-			(*itStart).m_pCounterpart = &(*itEnd);
-			(*itEnd).m_pCounterpart = &(*itStart);
-			#endif // !BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
 
 			// If this extent intersects/borders the current pixel-group,
 			// then a reference to it must be added to the border-regions
@@ -2338,132 +1793,6 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::AddNewRegion (Status_t &a_reStatus,
 				// Add a reference to this region.
 				AddMotionVectorMatch (pRegion);
 			}
-
-		#ifdef FIX_ITERATOR_ARRAYS_INLINE
-
-			// Adjust the startpoint-iterator for the last-border in
-			// order to incorporate the newly-inserted startpoint.
-			if (m_tnY == 0)
-				m_paitBorderStartpoints[0]
-					= m_setBorderStartpoints.Begin();
-			else
-			{
-				typename BorderExtentBoundarySet::ConstIterator
-					itOldStartpoint = m_paitBorderStartpoints[0];
-				--itOldStartpoint;
-				if (itStart == itOldStartpoint
-					&& (tnY + PIXELINDEX (1) > m_tnY
-					|| (tnY + PIXELINDEX (1) == m_tnY
-						&& tnXStart >= m_tnX + m_tnPGW)))
-				{
-					// The newly-inserted item is where the
-					// startpoint-iterator needs to be.  Adjust
-					// the startpoint-iterator that points to the
-					// old item.
-					m_paitBorderStartpoints[0] = itStart;
-				}
-			}
-
-			// Adjust the startpoint-iterator for this line of the
-			// current-border (and maybe preceding lines) in order
-			// to incorporate the newly-inserted startpoint.
-			for (PIXELINDEX tnI = 1; tnI <= m_tnPGH; ++tnI)
-			{
-				typename BorderExtentBoundarySet::ConstIterator
-					itOldStartpoint = m_paitBorderStartpoints[tnI];
-				--itOldStartpoint;
-				if (itStart == itOldStartpoint
-					&& (tnY + PIXELINDEX (1) > m_tnY + tnI
-					|| (tnY + PIXELINDEX (1) == m_tnY + tnI
-						&& tnXStart >= m_tnX + m_tnPGW + PIXELINDEX (1))))
-				{
-					// The newly-inserted item is where the
-					// startpoint-iterator needs to be.
-					m_paitBorderStartpoints[tnI] = itStart;
-				}
-			}
-
-			// Adjust the startpoint-iterator for the first-border in
-			// order to incorporate the newly-inserted startpoint.
-			{
-				typename BorderExtentBoundarySet::ConstIterator
-					itOldStartpoint = m_paitBorderStartpoints[m_tnPGH + 1];
-				--itOldStartpoint;
-				if (itStart == itOldStartpoint
-					&& (tnY > m_tnY + m_tnPGH
-					|| (tnY == m_tnY + m_tnPGH
-						&& tnXStart >= m_tnX + m_tnPGW)))
-				{
-					// The newly-inserted item is where the
-					// startpoint-iterator needs to be.  Adjust
-					// the startpoint-iterator that points to the
-					// old item.
-					m_paitBorderStartpoints[m_tnPGH + 1] = itStart;
-				}
-			}
-
-			// Adjust the endpoint-iterator for the last-border in
-			// order to incorporate the newly-inserted endpoint.
-			if (m_tnY == 0)
-				m_paitBorderEndpoints[0]
-					= m_setBorderEndpoints.Begin();
-			else
-			{
-				typename BorderExtentBoundarySet::ConstIterator
-					itOldEndpoint = m_paitBorderEndpoints[0];
-				--itOldEndpoint;
-				if (itEnd == itOldEndpoint
-					&& (tnY + PIXELINDEX (1) > m_tnY
-					|| (tnY + PIXELINDEX (1) == m_tnY
-						&& tnXEnd >= m_tnX + PIXELINDEX (1))))
-				{
-					// The newly-inserted item is where the
-					// endpoint-iterator needs to be.  Adjust
-					// the endpoint-iterator that points to the
-					// old item.
-					m_paitBorderEndpoints[0] = itEnd;
-				}
-			}
-
-			// Adjust the endpoint-iterator for this line of the
-			// current-border (and maybe succeeding lines) in order
-			// to incorporate the newly-inserted endpoint.
-			for (PIXELINDEX tnI = 1; tnI <= m_tnPGH; ++tnI)
-			{
-				typename BorderExtentBoundarySet::ConstIterator
-					itOldEndpoint = m_paitBorderEndpoints[tnI];
-				--itOldEndpoint;
-				if (itEnd == itOldEndpoint
-					&& (tnY + PIXELINDEX (1) > m_tnY + tnI
-					|| (tnY + PIXELINDEX (1) == m_tnY + tnI
-						&& tnXEnd >= m_tnX)))
-				{
-					// The newly-inserted item is where the
-					// endpoint-iterator needs to be.
-					m_paitBorderEndpoints[tnI] = itEnd;
-				}
-			}
-
-			// Adjust the endpoint-iterator for the first-border in
-			// order to incorporate the newly-inserted endpoint.
-			{
-				typename BorderExtentBoundarySet::ConstIterator
-					itOldEndpoint = m_paitBorderEndpoints[m_tnPGH + 1];
-				--itOldEndpoint;
-				if (itEnd == itOldEndpoint
-					&& (tnY > m_tnY + m_tnPGH
-					|| (tnY == m_tnY + m_tnPGH
-						&& tnXEnd >= m_tnX + PIXELINDEX (1))))
-				{
-					// The newly-inserted item is where the
-					// endpoint-iterator needs to be.  Adjust
-					// the endpoint-iterators that points to the
-					// old item.
-					m_paitBorderEndpoints[m_tnPGH + 1] = itEnd;
-				}
-			}
-
-		#endif // !FIX_ITERATOR_ARRAYS_INLINE
 		}
 	}
 
@@ -2471,18 +1800,7 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::AddNewRegion (Status_t &a_reStatus,
 	if (pRegion->m_tnReferences != 0
 		|| pRegion->NumberOfPoints() >= m_tnMatchSizeThrottle)
 	{
-		// Yes.  Any number of new startpoints/endpoints could have been
-		// inserted, so remember to fix the iterators that keep track of
-		// which startpoints/endpoints intersect the current pixel-group.
-		#ifdef FIX_ITERATOR_ARRAYS_INLINE
-		#ifndef NDEBUG
-		CheckStartpointEndpointIterators();
-		#endif // !NDEBUG
-		#else // !FIX_ITERATOR_ARRAYS_INLINE
-		m_bFixStartpointEndpointIterators = true;
-		#endif // !FIX_ITERATOR_ARRAYS_INLINE
-
-		// Add this region to our set of known regions.
+		// Yes.  Add this region to our set of known regions.
 		#ifndef NDEBUG
 		typename MovedRegionSet::InsertResult oInsertResult =
 		#endif // !NDEBUG
@@ -2511,10 +1829,8 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::AddNewRegion (Status_t &a_reStatus,
 	// Clean up after errors.
 //cleanup4:
 //	--pRegion->m_tnReferences;
-//	m_setBorderEndpoints.Erase (itEnd);
 cleanup3:
 	--pRegion->m_tnReferences;
-	m_setBorderStartpoints.Erase (itStart);
 cleanup2:
 	RemoveRegion (pRegion);
 cleanup1:
@@ -2560,10 +1876,8 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::RemoveRegion (MovedRegion *a_pRegion)
 		BorderExtentBoundary oExtent;
 			// Used to search for startpoints/endpoints.
 
-		// The extents will all have the same region and motion-vector.
+		// The extents will all have the same region.
 		oExtent.m_pRegion = a_pRegion;
-		a_pRegion->GetMotionVector (oExtent.m_tnMotionX,
-			oExtent.m_tnMotionY);
 
 		// Loop through the region's extents, find the corresponding
 		// startpoint and endpoint, and remove them.
@@ -2592,69 +1906,50 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::RemoveRegion (MovedRegion *a_pRegion)
 			PIXELINDEX tnXStart = rExtent.m_tnXStart;
 			PIXELINDEX tnXEnd = rExtent.m_tnXEnd;
 
+			// Make sure this extent is inside our frame.  (Sanity check.)
+			assert (tnY >= 0 && tnY < m_tnHeight);
+			assert (tnXStart >= 0);
+			assert (tnXStart < tnXEnd);
+			assert (tnXEnd <= m_tnWidth);
+
 			// Look for the corresponding startpoint.
-			// There might not be one if the extent is before the
-			// last-border.  (A region added during the current line
-			// but flood-filled to earlier than the last-border would
-			// leave behind a startpoint that must be cleaned up here.)
-			oExtent.m_tnIndex = tnXStart;
-			oExtent.m_tnLine = tnY;
-			oExtent.m_bIsEnding = false;
-			itExtent = m_setBorderStartpoints.Find (oExtent);
+			oExtent.m_pRegion = a_pRegion;
+			BorderExtentBoundarySet &rStartpointSet
+				= m_psetBorderStartpoints[tnY * m_tnWidth + tnXStart];
+			itExtent = rStartpointSet.Find (oExtent);
 
 			// Make sure it was found.
-			assert (itExtent != m_setBorderStartpoints.End());
+			assert (itExtent != rStartpointSet.End());
 
 			// Remember its endpoint.
 			#ifndef NDEBUG
-			#ifdef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
 			tnEndpoint = (*itExtent).m_tnCounterpartIndex;
-			#else // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-			pEndpoint = (*itExtent).m_pCounterpart;
-			#endif // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
 			#endif // !NDEBUG
 
-			// Fix any startpoint-iterators that refer to this item, by
-			// moving them forward.
-			#ifdef FIX_ITERATOR_ARRAYS_INLINE
-			for (PIXELINDEX tnI = 0; tnI <= m_tnPGH + 1; ++tnI)
-				if (m_paitBorderStartpoints[tnI] == itExtent)
-					++(m_paitBorderStartpoints[tnI]);
-			#endif // !FIX_ITERATOR_ARRAYS_INLINE
-
 			// Remove the startpoint that corresponds to this extent.
-			m_setBorderStartpoints.Erase (itExtent);
+			rStartpointSet.Erase (itExtent);
 
 			// That's one less reference to this region.
 			assert (a_pRegion->m_tnReferences > 0);
 			--a_pRegion->m_tnReferences;
 
 			// Look for the corresponding endpoint.
-			oExtent.m_tnIndex = tnXEnd;
-			oExtent.m_bIsEnding = true;
-			itExtent = m_setBorderEndpoints.Find (oExtent);
+			// (The endpoint-X is adjusted downward by 1, because the
+			// valid range of endpoint-X values is from 1 to m_tnWidth.)
+			BorderExtentBoundarySet &rEndpointSet
+				= m_psetBorderEndpoints[tnY * m_tnWidth
+					+ (tnXEnd - PIXELINDEX (1))];
+			itExtent = rEndpointSet.Find (oExtent);
 
 			// Make sure it was found.
-			assert (itExtent != m_setBorderEndpoints.End());
+			assert (itExtent != rEndpointSet.End());
 
 			// Make sure it's the endpoint that corresponded to this
 			// startpoint.
-			#ifdef BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-			assert ((*itExtent).m_tnIndex == tnEndpoint);
-			#else // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-			assert (&(*itExtent) == pEndpoint);
-			#endif // BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
-
-			// Fix any endpoint-iterators that refer to this item, by
-			// moving them forward.
-			#ifdef FIX_ITERATOR_ARRAYS_INLINE
-			for (PIXELINDEX tnI = 0; tnI <= m_tnPGH + 1; ++tnI)
-				if (m_paitBorderEndpoints[tnI] == itExtent)
-					++(m_paitBorderEndpoints[tnI]);
-			#endif // !FIX_ITERATOR_ARRAYS_INLINE
+			assert (tnXEnd == tnEndpoint);
 
 			// Remove the endpoint that corresponds to this extent.
-			m_setBorderEndpoints.Erase (itExtent);
+			rEndpointSet.Erase (itExtent);
 
 			// That's one less reference to this region.
 			assert (a_pRegion->m_tnReferences > 0);
@@ -2676,190 +1971,11 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::RemoveRegion (MovedRegion *a_pRegion)
 				RemoveMotionVectorMatch (a_pRegion);
 			}
 		}
-
-		// Any number of startpoints/endpoints could have been removed,
-		// so remember to fix the iterators that keep track of which
-		// startpoints/endpoints intersect the current pixel-group.
-		#ifdef FIX_ITERATOR_ARRAYS_INLINE
-		#ifndef NDEBUG
-		CheckStartpointEndpointIterators();
-		#endif // !NDEBUG
-		#else // !FIX_ITERATOR_ARRAYS_INLINE
-		m_bFixStartpointEndpointIterators = true;
-		#endif // !FIX_ITERATOR_ARRAYS_INLINE
 	}
 
 	// Make sure this region has no references left.
 	assert (a_pRegion->m_tnReferences == 0);
 }
-
-
-
-#ifndef FIX_ITERATOR_ARRAYS_INLINE
-
-// Fix the last/current/first-border startpoints/endpoint
-// iterators.  Necessary after adding or removing a region.
-template <class PIXELINDEX, class FRAMESIZE>
-void
-SearchBorder<PIXELINDEX,FRAMESIZE>::FixStartpointEndpointIterators (void)
-{
-	BorderExtentBoundary oStartpoint, oEndpoint;
-		// New startpoints/endpoints as we create them.
-	PIXELINDEX tnI;
-		// Used to loop through the last/current/first-border iterators.
-
-	// Set up the startpoint and endpoint so that it can be used to
-	// search for the new values for the startpoint/endpoint set iterators.
-	oStartpoint.m_bIsEnding = false;
-	oEndpoint.m_bIsEnding = true;
-	oStartpoint.m_pRegion = oEndpoint.m_pRegion = NULL;
-	oStartpoint.m_tnMotionX = oStartpoint.m_tnMotionY
-		= oEndpoint.m_tnMotionX = oEndpoint.m_tnMotionY
-		= Limits<PIXELINDEX>::Min;
-
-	// Loop through all the last/current/first-border lines, and find
-	// the new value for each iterator.
-	for (tnI = (m_tnY > 0) ? 0 : 1; tnI <= m_tnPGH + PIXELINDEX (1); ++tnI)
-	{
-		// Figure out where the startpoint/endpoint iterators need to
-		// point to now.
-		PIXELINDEX tnIfFirstLast
-			= (tnI == 0 || tnI == m_tnPGH + PIXELINDEX (1)) ? 1 : 0;
-		oStartpoint.m_tnIndex = m_tnX + m_tnPGW + PIXELINDEX (1)
-			- tnIfFirstLast;
-		oEndpoint.m_tnIndex = m_tnX + tnIfFirstLast;
-		oStartpoint.m_tnLine = oEndpoint.m_tnLine
-			= m_tnY + tnI - PIXELINDEX (1);
-
-		// Find the new startpoint.
-		m_paitBorderStartpoints[tnI]
-			= m_setBorderStartpoints.LowerBound (oStartpoint);
-
-		// Make sure it's right where we expect it to be.
-		#ifndef NDEBUG
-		const typename BorderExtentBoundarySet::ConstIterator
-			&ritStartpoint = m_paitBorderStartpoints[tnI];
-		#endif // !NDEBUG
-		assert (ritStartpoint == m_setBorderStartpoints.End()
-		|| (*ritStartpoint).m_tnLine > m_tnY + tnI - PIXELINDEX (1)
-		|| ((*ritStartpoint).m_tnLine == m_tnY + tnI - PIXELINDEX (1)
-			&& (*ritStartpoint).m_tnIndex
-				>= (m_tnX + m_tnPGW + PIXELINDEX (1) - tnIfFirstLast)));
-
-		// Find the new endpoint.
-		m_paitBorderEndpoints[tnI]
-			= m_setBorderEndpoints.LowerBound (oEndpoint);
-
-		// Make sure it's right where we expect it to be.
-		#ifndef NDEBUG
-		const typename BorderExtentBoundarySet::ConstIterator &ritEndpoint
-			= m_paitBorderEndpoints[tnI];
-		#endif // !NDEBUG
-		assert (ritEndpoint == m_setBorderEndpoints.End()
-			|| (*ritEndpoint).m_tnLine > m_tnY + tnI - PIXELINDEX (1)
-			|| ((*ritEndpoint).m_tnLine == m_tnY + tnI - PIXELINDEX (1)
-				&& (*ritEndpoint).m_tnIndex
-					>= (m_tnX + tnIfFirstLast)));
-
-	}
-
-	// If the search-border is still on the first line, fix the
-	// last-border startpoint/endpoint iterators, since otherwise
-	// they won't get set up.
-	if (m_tnY == 0)
-	{
-		m_paitBorderStartpoints[0] = m_setBorderStartpoints.Begin();
-		m_paitBorderEndpoints[0] = m_setBorderEndpoints.Begin();
-	}
-}
-
-#endif // !FIX_ITERATOR_ARRAYS_INLINE
-
-
-
-#ifdef FIX_ITERATOR_ARRAYS_INLINE
-#ifndef NDEBUG
-
-// Check the last/current/first-border startpoints/endpoint
-// iterators, after adding or removing a region.
-template <class PIXELINDEX, class FRAMESIZE>
-void
-SearchBorder<PIXELINDEX,FRAMESIZE>::CheckStartpointEndpointIterators (void)
-	const
-{
-	BorderExtentBoundary oStartpoint, oEndpoint;
-		// New startpoints/endpoints as we create them.
-	PIXELINDEX tnI;
-		// Used to loop through the last/current/first-border iterators.
-
-	// Set up the startpoint and endpoint so that it can be used to
-	// search for the new values for the startpoint/endpoint set iterators.
-	oStartpoint.m_bIsEnding = false;
-	oEndpoint.m_bIsEnding = true;
-	oStartpoint.m_pRegion = oEndpoint.m_pRegion = NULL;
-	oStartpoint.m_tnMotionX = oStartpoint.m_tnMotionY
-		= oEndpoint.m_tnMotionX = oEndpoint.m_tnMotionY
-		= Limits<PIXELINDEX>::Min;
-
-	// Loop through all the last/current/first-border lines, and find
-	// the new value for each iterator.
-	for (tnI = (m_tnY > 0) ? 0 : 1; tnI <= m_tnPGH + PIXELINDEX (1); ++tnI)
-	{
-		// Figure out where the startpoint/endpoint iterators need to
-		// point to now.
-		PIXELINDEX tnIfFirstLast
-			= (tnI == 0 || tnI == m_tnPGH + PIXELINDEX (1)) ? 1 : 0;
-		oStartpoint.m_tnIndex = m_tnX + m_tnPGW + PIXELINDEX (1)
-			- tnIfFirstLast;
-		oEndpoint.m_tnIndex = m_tnX + tnIfFirstLast;
-		oStartpoint.m_tnLine = oEndpoint.m_tnLine
-			= m_tnY + tnI - PIXELINDEX (1);
-
-		// Check the new startpoint.
-		assert (m_paitBorderStartpoints[tnI]
-			== m_setBorderStartpoints.LowerBound (oStartpoint));
-
-		// Make sure it's right where we expect it to be.
-		#ifndef NDEBUG
-		const typename BorderExtentBoundarySet::ConstIterator
-			&ritStartpoint = m_paitBorderStartpoints[tnI];
-		#endif // !NDEBUG
-		assert (ritStartpoint == m_setBorderStartpoints.End()
-		|| (*ritStartpoint).m_tnLine > m_tnY + tnI - PIXELINDEX (1)
-		|| ((*ritStartpoint).m_tnLine == m_tnY + tnI - PIXELINDEX (1)
-			&& (*ritStartpoint).m_tnIndex
-				>= (m_tnX + m_tnPGW + PIXELINDEX (1) - tnIfFirstLast)));
-
-		// Check the new endpoint.
-		assert (m_paitBorderEndpoints[tnI]
-			== m_setBorderEndpoints.LowerBound (oEndpoint));
-
-		// Make sure it's right where we expect it to be.
-		#ifndef NDEBUG
-		const typename BorderExtentBoundarySet::ConstIterator &ritEndpoint
-			= m_paitBorderEndpoints[tnI];
-		#endif // !NDEBUG
-		assert (ritEndpoint == m_setBorderEndpoints.End()
-			|| (*ritEndpoint).m_tnLine > m_tnY + tnI - PIXELINDEX (1)
-			|| ((*ritEndpoint).m_tnLine == m_tnY + tnI - PIXELINDEX (1)
-				&& (*ritEndpoint).m_tnIndex
-					>= (m_tnX + tnIfFirstLast)));
-
-	}
-
-	// If the search-border is still on the first line, fix the
-	// last-border startpoint/endpoint iterators, since otherwise
-	// they won't get set up.
-	if (m_tnY == 0)
-	{
-		assert (m_paitBorderStartpoints[0]
-			== m_setBorderStartpoints.Begin());
-		assert (m_paitBorderEndpoints[0] == m_setBorderEndpoints.Begin());
-	}
-}
-
-#endif // !NDEBUG
-#endif // !FIX_ITERATOR_ARRAYS_INLINE
 
 
 
@@ -2919,8 +2035,15 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::FinishFrame (Status_t &a_reStatus)
 	}
 
 	// Make sure that emptied the border.
-	assert (m_setBorderStartpoints.Size() == 0);
-	assert (m_setBorderEndpoints.Size() == 0);
+	FRAMESIZE tnPixels = FRAMESIZE (m_tnWidth) * FRAMESIZE (m_tnHeight);
+	#ifndef NDEBUG
+	assert (m_psetBorderStartpoints != NULL);
+	for (FRAMESIZE tnI = 0; tnI < tnPixels; ++tnI)
+		assert (m_psetBorderStartpoints[tnI].Size() == 0);
+	assert (m_psetBorderEndpoints != NULL);
+	for (FRAMESIZE tnI = 0; tnI < tnPixels; ++tnI)
+		assert (m_psetBorderEndpoints[tnI].Size() == 0);
+	#endif // !NDEBUG
 	assert (m_setRegions.Size() == 0);
 
 	// Make sure there are no active-extents for any motion-vectors.
@@ -2935,6 +2058,12 @@ SearchBorder<PIXELINDEX,FRAMESIZE>::FinishFrame (Status_t &a_reStatus)
 			assert (m_pMotionVectorMatches[i].m_tnActiveExtents == 0);
 	}
 	#endif // !NDEBUG
+
+	// Purge all border-startpoint/endpoint memory.
+	for (FRAMESIZE tnI = 0; tnI < tnPixels; ++tnI)
+		m_psetBorderStartpoints[tnI].Purge();
+	for (FRAMESIZE tnI = 0; tnI < tnPixels; ++tnI)
+		m_psetBorderEndpoints[tnI].Purge();
 
 	// Make sure our temporary memory allocations have been purged.
 	assert (m_oBorderExtentsAllocator.GetNumAllocated() == 0);

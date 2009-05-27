@@ -61,12 +61,7 @@
 // (Even though this option is specific to the internals of SearchBorder,
 // it's defined here, since all of our other configuration switches are
 // here.)
-//
-// It turns out that this can't be done; the border-startpoint/endpoint
-// iterator arrays assume that node addresses won't change after they're
-// created, and there's no easy way to redo that for a vector-based set.
-// Oh well...at least the counterpart links were implemented.
-//#define BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
+#define BORDEREXTENTBOUNDARYSET_IMPLEMENTED_WITH_VECTOR
 
 
 

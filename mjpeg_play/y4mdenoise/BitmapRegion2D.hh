@@ -10,6 +10,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <strings.h>
 #include "Region2D.hh"
 
 
@@ -56,7 +57,7 @@ public:
 	BitmapRegion2D (Status_t &a_reStatus,
 			const BitmapRegion2D<INDEX,SIZE> &a_rOther);
 		// Copy constructor.
-	
+
 	void Init (Status_t &a_reStatus, INDEX a_tnWidth, INDEX a_tnHeight);
 		// Initializer.  Must be called on default-constructed regions.
 
@@ -139,7 +140,7 @@ public:
 		// Subtract the other region from the current region, i.e.
 		// remove from the current region any areas that exist in the
 		// other region.
-	
+
 	bool DoesContainPoint (INDEX a_tnY, INDEX a_tnX) const;
 		// Returns true if the region contains the given point.
 
@@ -150,10 +151,11 @@ public:
 
 	template <class CONTROL>
 	void FloodFill (Status_t &a_reStatus, CONTROL &a_rControl,
-			bool a_bVerify);
-		// Flood-fill the current region.  All points bordering the
-		// current region are tested for inclusion; if a_bVerify is
-		// true, all existing region points are tested.
+			bool a_bVerify, bool a_bExpand);
+		// Flood-fill the current region.
+		// If a_bVerify is true, all existing region points are re-tested.
+		// If a_bExpand is true, all points bordering the current region
+		// are tested for inclusion.
 
 	template <class OTHER>
 	void MakeBorder (Status_t &a_reStatus, const OTHER &a_rOther);
@@ -200,13 +202,13 @@ public:
 			INDEX a_tnY, INDEX a_tnXStart, INDEX a_tnXEnd);
 		// Add all extents surrounding the given extent.
 		// Used by FloodFill() and MakeBorder().
-	
+
 	void IteratorForward (ConstIterator &a_ritHere) const;
 		// Move one of our iterators forward.
-	
+
 	void IteratorBackward (ConstIterator &a_ritHere) const;
 		// Move one of our iterators backward.
-	
+
 	static int FindFirstSetBit (unsigned int a_nWord, int a_nSkip);
 	static int FindFirstClearBit (unsigned int a_nWord, int a_nSkip);
 	static int FindLastSetBit (unsigned int a_nWord, int a_nSkip);
@@ -218,16 +220,20 @@ public:
 private:
 	INDEX m_tnWidth, m_tnHeight;
 		// The extent of the bitmap.
-	
+
 	unsigned int *m_pnPoints;
 		// The bitmap representing the region.
-	
+
 	SIZE m_tnBitmapInts;
 		// The number of integers in our bitmap.
-	
+
+	INDEX m_tnXMin, m_tnXMax, m_tnYMin, m_tnYMax;
+		// The portion of the bitmap that may contain extents.
+		// Used to speed up IteratorForward().
+
 	static int8_t m_anSetBitsPerByte[256];
 		// The number of set bits in every possible byte value.
-	
+
 	static bool m_bSetBitsPerByte;
 		// Whether the set-bits-per-byte table has been set up.
 
@@ -238,7 +244,7 @@ private:
 	static uint32_t sm_ulInstances;
 public:
 	static uint32_t GetInstances (void) { return sm_ulInstances; }
-	
+
 #endif // NDEBUG
 };
 
@@ -283,11 +289,11 @@ public:
 
 	FloodFillControl();
 		// Default constructor.  Must be followed by a call to Init().
-	
+
 	FloodFillControl (Status_t &a_reStatus, INDEX a_tnWidth,
 			INDEX a_tnHeight);
 		// Initializing constructor.
-	
+
 	void Init (Status_t &a_reStatus, INDEX a_tnWidth, INDEX a_tnHeight);
 		// Initializer.  Must be called on default-constructed objects.
 };
@@ -298,13 +304,14 @@ public:
 template <class INDEX, class SIZE>
 BitmapRegion2D<INDEX,SIZE>::BitmapRegion2D()
 {
-#ifndef NDEBUG
 	// One more instance.
+	#ifndef NDEBUG
 	++sm_ulInstances;
-#endif // NDEBUG
+	#endif // NDEBUG
 
 	// No bitmap yet.
 	m_tnWidth = m_tnHeight = INDEX (0);
+	m_tnXMin = m_tnXMax = m_tnYMin = m_tnYMax = INDEX (0);
 	m_pnPoints = NULL;
 	m_tnBitmapInts = SIZE (0);
 }
@@ -316,19 +323,24 @@ template <class INDEX, class SIZE>
 BitmapRegion2D<INDEX,SIZE>::BitmapRegion2D (Status_t &a_reStatus,
 	INDEX a_tnWidth, INDEX a_tnHeight)
 {
-#ifndef NDEBUG
 	// One more instance.
+	#ifndef NDEBUG
 	++sm_ulInstances;
-#endif // NDEBUG
+	#endif // NDEBUG
 
 	// No bitmap yet.
 	m_tnWidth = m_tnHeight = INDEX (0);
+	m_tnXMin = m_tnXMax = m_tnYMin = m_tnYMax = INDEX (0);
 	m_pnPoints = NULL;
 	m_tnBitmapInts = SIZE (0);
 
 	// Save the width & height.
 	m_tnWidth = a_tnWidth;
 	m_tnHeight = a_tnHeight;
+	m_tnXMin = a_tnWidth;
+	m_tnXMax = INDEX (0);
+	m_tnYMin = a_tnHeight;
+	m_tnYMax = INDEX (0);
 
 	// Allocate the bitmap.
 	m_tnBitmapInts = (SIZE (m_tnWidth) * SIZE (m_tnHeight))
@@ -352,19 +364,23 @@ template <class INDEX, class SIZE>
 BitmapRegion2D<INDEX,SIZE>::BitmapRegion2D (Status_t &a_reStatus,
 	const BitmapRegion2D<INDEX,SIZE> &a_rOther)
 {
-#ifndef NDEBUG
 	// One more instance.
+	#ifndef NDEBUG
 	++sm_ulInstances;
-#endif // NDEBUG
+	#endif // NDEBUG
 
 	// No bitmap yet.
 	m_tnWidth = m_tnHeight = INDEX (0);
 	m_pnPoints = NULL;
 	m_tnBitmapInts = SIZE (0);
 
-	// Copy the width & height.
+	// Copy the width, height, and active area.
 	m_tnWidth = a_rOther.m_tnWidth;
 	m_tnHeight = a_rOther.m_tnHeight;
+	m_tnXMin = a_rOther.m_tnXMin;
+	m_tnXMax = a_rOther.m_tnXMax;
+	m_tnYMin = a_rOther.m_tnYMin;
+	m_tnYMax = a_rOther.m_tnYMax;
 
 	// Allocate the bitmap.
 	m_tnBitmapInts = (SIZE (m_tnWidth) * SIZE (m_tnHeight))
@@ -395,6 +411,10 @@ BitmapRegion2D<INDEX,SIZE>::Init (Status_t &a_reStatus, INDEX a_tnWidth,
 	// Save the width & height.
 	m_tnWidth = a_tnWidth;
 	m_tnHeight = a_tnHeight;
+	m_tnXMin = a_tnWidth;
+	m_tnXMax = INDEX (0);
+	m_tnYMin = a_tnHeight;
+	m_tnYMax = INDEX (0);
 
 	// Allocate the bitmap.
 	m_tnBitmapInts = (SIZE (m_tnWidth) * SIZE (m_tnHeight))
@@ -439,11 +459,7 @@ BitmapRegion2D<INDEX,SIZE>::Assign (Status_t &a_reStatus,
 		typename OTHER::Extent oExtent = *itExtent;
 
 		// Add it to the current region.
-		Union (a_reStatus, oExtent.m_tnY, oExtent.m_tnXStart,
-			oExtent.m_tnXEnd);
-		assert (a_reStatus == g_kNoError);	// (should always succeed.)
-		if (a_reStatus != g_kNoError)
-			return;
+		Union (oExtent.m_tnY, oExtent.m_tnXStart, oExtent.m_tnXEnd);
 	}
 }
 
@@ -474,6 +490,12 @@ BitmapRegion2D<INDEX,SIZE>::Assign (Status_t &a_reStatus,
 	// Copy the other region's bitmap.
 	memcpy (m_pnPoints, a_rOther.m_pnPoints,
 		m_tnBitmapInts * sizeof (unsigned int));
+
+	// Copy its active area.
+	m_tnXMin = a_rOther.m_tnXMin;
+	m_tnXMax = a_rOther.m_tnXMax;
+	m_tnYMin = a_rOther.m_tnYMin;
+	m_tnYMax = a_rOther.m_tnYMax;
 }
 
 
@@ -485,10 +507,10 @@ BitmapRegion2D<INDEX,SIZE>::~BitmapRegion2D()
 	// Free up the bitmap.
 	delete[] m_pnPoints;
 
-#ifndef NDEBUG
 	// One less instance.
+	#ifndef NDEBUG
 	--sm_ulInstances;
-#endif // NDEBUG
+	#endif // NDEBUG
 }
 
 
@@ -544,8 +566,14 @@ template <class INDEX, class SIZE>
 void
 BitmapRegion2D<INDEX,SIZE>::Clear (void)
 {
-	// Easy enough.
+	// Clear all the bits.
 	memset (m_pnPoints, 0, ARRAYSIZE (unsigned int, m_tnBitmapInts));
+
+	// Reset the active area.
+	m_tnXMin = m_tnWidth;
+	m_tnXMax = INDEX (0);
+	m_tnYMin = m_tnHeight;
+	m_tnYMax = INDEX (0);
 }
 
 
@@ -578,6 +606,12 @@ BitmapRegion2D<INDEX,SIZE>::Union (INDEX a_tnY, INDEX a_tnXStart,
 		a_tnXStart = 0;
 	if (a_tnXEnd > m_tnWidth)
 		a_tnXEnd = m_tnWidth;
+
+	// Factor this extent into the active area.
+	m_tnXMin = Min (m_tnXMin, a_tnXStart);
+	m_tnXMax = Max (m_tnXMax, a_tnXEnd);
+	m_tnYMin = Min (m_tnYMin, a_tnY);
+	m_tnYMax = Max (m_tnYMax, a_tnY);
 
 	// Loop through all the points, set them.
 	for (tnX = a_tnXStart; tnX < a_tnXEnd; ++tnX)
@@ -624,6 +658,12 @@ BitmapRegion2D<INDEX,SIZE>::Union (Status_t &a_reStatus,
 	// Unify with the other region's bitmap.
 	for (SIZE i = 0; i < m_tnBitmapInts; ++i)
 		m_pnPoints[i] |= a_rOther.m_pnPoints[i];
+
+	// Factor the other region's active area into our own.
+	m_tnXMin = Min (m_tnXMin, a_rOther.m_tnXMin);
+	m_tnXMax = Max (m_tnXMax, a_rOther.m_tnXMax);
+	m_tnYMin = Min (m_tnYMin, a_rOther.m_tnYMin);
+	m_tnYMax = Max (m_tnYMax, a_rOther.m_tnYMax);
 }
 
 
@@ -669,11 +709,25 @@ BitmapRegion2D<INDEX,SIZE>::Move (BitmapRegion2D<INDEX,SIZE> &a_rOther)
 
 	// Empty the current region.
 	Clear();
-	
+
 	// Swap the contained bitmaps.
 	unsigned int *pnPoints = m_pnPoints;
 	m_pnPoints = a_rOther.m_pnPoints;
 	a_rOther.m_pnPoints = pnPoints;
+
+	// Swap the active area.
+	INDEX tnActive = a_rOther.m_tnXMin;
+	a_rOther.m_tnXMin = m_tnXMin;
+	m_tnXMin = tnActive;
+	tnActive = a_rOther.m_tnXMax;
+	a_rOther.m_tnXMax = m_tnXMax;
+	m_tnXMax = tnActive;
+	tnActive = a_rOther.m_tnYMin;
+	a_rOther.m_tnYMin = m_tnYMin;
+	m_tnYMin = tnActive;
+	tnActive = a_rOther.m_tnYMax;
+	a_rOther.m_tnYMax = m_tnYMax;
+	m_tnYMax = tnActive;
 }
 
 
@@ -709,6 +763,9 @@ BitmapRegion2D<INDEX,SIZE>::Intersection (Status_t &a_reStatus,
 	// Intersect with the other region's bitmap.
 	for (SIZE i = 0; i < m_tnBitmapInts; ++i)
 		m_pnPoints[i] &= a_rOther.m_pnPoints[i];
+
+	// The active area may have shrunk, but we don't recalculate it;
+	// that would take too long.
 }
 
 
@@ -754,6 +811,9 @@ BitmapRegion2D<INDEX,SIZE>::Subtract (Status_t &a_reStatus, INDEX a_tnY,
 			&= (~(1U << (tnI % (g_knBitsPerByte
 				* sizeof (unsigned int)))));
 	}
+
+	// The active area may have shrunk, but we don't recalculate it;
+	// that would take too long.
 }
 
 
@@ -784,6 +844,9 @@ BitmapRegion2D<INDEX,SIZE>::Subtract (Status_t &a_reStatus,
 		if (a_reStatus != g_kNoError)
 			return;
 	}
+
+	// The active area may have shrunk, but we don't recalculate it;
+	// that would take too long.
 }
 
 
@@ -806,6 +869,9 @@ BitmapRegion2D<INDEX,SIZE>::Subtract (Status_t &a_reStatus,
 	// Subtract the other region's bitmap.
 	for (SIZE i = 0; i < m_tnBitmapInts; ++i)
 		m_pnPoints[i] &= (~(a_rOther.m_pnPoints[i]));
+
+	// The active area may have shrunk, but we don't recalculate it;
+	// that would take too long.
 }
 
 
@@ -833,7 +899,7 @@ template <class INDEX, class SIZE>
 template <class CONTROL>
 void
 BitmapRegion2D<INDEX,SIZE>::FloodFill (Status_t &a_reStatus,
-	CONTROL &a_rControl, bool a_bVerify)
+	CONTROL &a_rControl, bool a_bVerify, bool a_bExpand)
 {
 	typename CONTROL::ConstIterator itExtent;
 		// An extent we're examining.
@@ -876,7 +942,7 @@ BitmapRegion2D<INDEX,SIZE>::FloodFill (Status_t &a_reStatus,
 		a_rControl.m_oAlreadyDone.Assign (a_reStatus, *this);
 		if (a_reStatus != g_kNoError)
 			return;
-	
+
 		// Start the to-do list with a border around all the extents in
 		// the region.
 		a_rControl.m_oToDo.MakeBorder (a_reStatus, *this);
@@ -908,14 +974,14 @@ BitmapRegion2D<INDEX,SIZE>::FloodFill (Status_t &a_reStatus,
 			oExtent.m_tnXStart, oExtent.m_tnXEnd);
 		if (a_reStatus != g_kNoError)
 			return;
-	
+
 		// If this extent shouldn't be considered, skip it.
 		if (!a_rControl.ShouldUseExtent (oExtent))
 			goto nextExtent;
 
 		// Make sure our client left us with a valid extent.
 		assert (oExtent.m_tnXStart < oExtent.m_tnXEnd);
-		
+
 		// Run through the pixels described by this extent, see if
 		// they can be added to the region, and remember where to
 		// search next.
@@ -948,13 +1014,15 @@ BitmapRegion2D<INDEX,SIZE>::FloodFill (Status_t &a_reStatus,
 				if (a_reStatus != g_kNoError)
 					return;
 
-				// Now add all surrounding extents to the to-do-next
-				// list.
-				a_rControl.m_oNextToDo.UnionSurroundingExtents
-					(a_reStatus, oFoundExtent.m_tnY,
+				// Now add all surrounding extents to the to-do-next list.
+				if (a_bExpand)
+				{
+					a_rControl.m_oNextToDo.UnionSurroundingExtents
+						(a_reStatus, oFoundExtent.m_tnY,
 						oFoundExtent.m_tnXStart, oFoundExtent.m_tnXEnd);
-				if (a_reStatus != g_kNoError)
-					return;
+					if (a_reStatus != g_kNoError)
+						return;
+				}
 
 				// Look for another extent.
 				bStartedExtent = false;
@@ -975,7 +1043,7 @@ nextExtent:
 				return;
 			a_rControl.m_oToDo.Clear();
 			a_rControl.m_oToDo.Move (a_rControl.m_oNextToDo);
-			
+
 			// Start over at the beginning.
 			itExtent = a_rControl.m_oToDo.Begin();
 		}
@@ -1037,35 +1105,19 @@ BitmapRegion2D<INDEX,SIZE>::UnionSurroundingExtents
 
 	// Add the extent above this one.
 	if (a_tnY > 0)
-	{
-		Union (a_reStatus, a_tnY - 1, a_tnXStart, a_tnXEnd);
-		if (a_reStatus != g_kNoError)
-			return;
-	}
+		Union (a_tnY - 1, a_tnXStart, a_tnXEnd);
 
 	// Add the extent to the left.
 	if (a_tnXStart > 0)
-	{
-		Union (a_reStatus, a_tnY, a_tnXStart - 1, a_tnXStart);
-		if (a_reStatus != g_kNoError)
-			return;
-	}
+		Union (a_tnY, a_tnXStart - 1, a_tnXStart);
 
 	// Add the extent to the right.
 	if (a_tnXEnd < m_tnWidth)
-	{
-		Union (a_reStatus, a_tnY, a_tnXEnd, a_tnXEnd + 1);
-		if (a_reStatus != g_kNoError)
-			return;
-	}
+		Union (a_tnY, a_tnXEnd, a_tnXEnd + 1);
 
 	// Add the extent below this one.
 	if (a_tnY < m_tnWidth - 1)
-	{
-		Union (a_reStatus, a_tnY + 1, a_tnXStart, a_tnXEnd);
-		if (a_reStatus != g_kNoError)
-			return;
-	}
+		Union (a_tnY + 1, a_tnXStart, a_tnXEnd);
 }
 
 
@@ -1079,11 +1131,40 @@ BitmapRegion2D<INDEX,SIZE>::IteratorForward
 	SIZE tnWordIndex, tnBitIndex;
 		// The word/bit index that corresponds to the x/y pixel index.
 	SIZE tnLastWordIndex, tnLastBitIndex;
-		// The word/bit index for the last pixel in the current line.
+		// The word/bit index for the last pixel in the active area or
+		// in the current line.
 	unsigned int nWord;
 		// A bitmap word being examined.
 	unsigned int nMask;
 		// A bitmask we generate.
+
+	// If the old extent ended outside of the active area, move
+	// into the active area.
+	// This naturally detects an empty active-area, too.
+	if (a_ritHere.m_oExtent.m_tnY < m_tnYMin)
+	{
+		a_ritHere.m_oExtent.m_tnXStart
+			= a_ritHere.m_oExtent.m_tnXEnd = m_tnXMin;
+		a_ritHere.m_oExtent.m_tnY = m_tnYMin;
+	}
+	else if (a_ritHere.m_oExtent.m_tnXEnd >= m_tnXMax)
+	{
+		a_ritHere.m_oExtent.m_tnXStart
+			= a_ritHere.m_oExtent.m_tnXEnd = m_tnXMin;
+		++a_ritHere.m_oExtent.m_tnY;
+	}
+	else if (a_ritHere.m_oExtent.m_tnXEnd < m_tnXMin)
+	{
+		a_ritHere.m_oExtent.m_tnXStart
+			= a_ritHere.m_oExtent.m_tnXEnd = m_tnXMin;
+	}
+
+	// If we're past the active area, we're done.
+	if (a_ritHere.m_oExtent.m_tnY > m_tnYMax)
+	{
+		a_ritHere = End();
+		return;
+	}
 
 	// We'll start looking for a new extent after the end of the old
 	// extent.  Find the word/bit index for that, and the word itself.
@@ -1093,21 +1174,29 @@ BitmapRegion2D<INDEX,SIZE>::IteratorForward
 	tnBitIndex -= tnWordIndex << Limits<unsigned int>::Log2Bits;
 	nWord = m_pnPoints[tnWordIndex];
 
+	// Find the index of the last word, given the active area.
+	tnLastBitIndex = SIZE (m_tnYMax) * SIZE (m_tnWidth) + SIZE (m_tnXMax);
+	tnLastWordIndex = tnLastBitIndex >> Limits<unsigned int>::Log2Bits;
+	//tnLastBitIndex -= tnLastWordIndex << Limits<unsigned int>::Log2Bits;
+
+	// Get rid of any set bits that have been iterated over already.
+	nWord &= ((~0U) << tnBitIndex);
+
 	// Skip all clear bits.  First check the current word to see if the
 	// rest of its bits are clear, then skip over all all-clear words.
-	if ((nWord & ((~0U) << tnBitIndex)) == 0U)
+	if (nWord == 0U)
 	{
 		// The rest of the current word's bits are clear.
 		++tnWordIndex;
 		tnBitIndex = 0;
 
 		// Skip over all all-clear words.
-		while (tnWordIndex < m_tnBitmapInts
+		while (tnWordIndex <= tnLastWordIndex
 				&& m_pnPoints[tnWordIndex] == 0U)
 			++tnWordIndex;
 
 		// If we reached the end of the bitmap, let our caller know.
-		if (tnWordIndex == m_tnBitmapInts)
+		if (tnWordIndex > tnLastWordIndex)
 		{
 			a_ritHere = End();
 			return;
@@ -1118,7 +1207,12 @@ BitmapRegion2D<INDEX,SIZE>::IteratorForward
 	}
 
 	// Look for the next set bit in the current word.
+	assert (nWord != 0U);
+	#if 0
 	tnBitIndex = FindFirstSetBit (nWord, tnBitIndex);
+	#else
+	tnBitIndex = ffs (nWord) - 1;
+	#endif
 
 	// Calculate the x/y index of this first set bit, and the word/bit
 	// index of the end of the line.
@@ -1127,8 +1221,8 @@ BitmapRegion2D<INDEX,SIZE>::IteratorForward
 	a_ritHere.m_oExtent.m_tnY = INDEX (tnLastBitIndex / m_tnWidth);
 	a_ritHere.m_oExtent.m_tnXStart = tnLastBitIndex
 		- SIZE (a_ritHere.m_oExtent.m_tnY) * SIZE (m_tnWidth);
-	tnLastBitIndex = SIZE (a_ritHere.m_oExtent.m_tnY + 1)
-		* SIZE (m_tnWidth);
+	tnLastBitIndex = SIZE (a_ritHere.m_oExtent.m_tnY)
+		* SIZE (m_tnWidth) + SIZE (m_tnXMax);
 	tnLastWordIndex = tnLastBitIndex >> Limits<unsigned int>::Log2Bits;
 	tnLastBitIndex -= tnLastWordIndex << Limits<unsigned int>::Log2Bits;
 
@@ -1150,7 +1244,7 @@ BitmapRegion2D<INDEX,SIZE>::IteratorForward
 		// If we reached the end of the line, let our caller know.
 		if (tnWordIndex > tnLastWordIndex)
 		{
-			a_ritHere.m_oExtent.m_tnXEnd = m_tnWidth;
+			a_ritHere.m_oExtent.m_tnXEnd = m_tnXMax;
 			return;
 		}
 
@@ -1159,7 +1253,13 @@ BitmapRegion2D<INDEX,SIZE>::IteratorForward
 	}
 
 	// Look for the next clear bit in the current word.
+	assert (nWord != (~0U));
+	#if 0
 	tnBitIndex = FindFirstClearBit (nWord, tnBitIndex);
+	#else
+	nWord |= ~((~0U) << tnBitIndex);
+	tnBitIndex = ffs (~nWord) - 1;
+	#endif
 
 	// Clip it to the end of the line.
 	if (tnWordIndex == tnLastWordIndex
@@ -1197,10 +1297,10 @@ BitmapRegion2D<INDEX,SIZE>::FindFirstSetBit (unsigned int a_nWord,
 {
 	int nLow, nHigh;
 		// The search range.
-	
+
 	// Skip the first a_nSkip bits by clearing them.
 	a_nWord &= ((~0U) << a_nSkip);
-	
+
 	// Make sure at least one bit is set.
 	assert (a_nWord != 0U);
 
@@ -1240,10 +1340,10 @@ BitmapRegion2D<INDEX,SIZE>::FindFirstClearBit (unsigned int a_nWord,
 {
 	int nLow, nHigh;
 		// The search range.
-	
+
 	// Skip the first a_nSkip bits by setting them.
 	a_nWord |= ~((~0U) << a_nSkip);
-	
+
 	// Make sure at least one bit is clear.
 	assert (a_nWord != (~0U));
 
@@ -1307,13 +1407,13 @@ BitmapRegion2D<INDEX,SIZE>::Begin (void) const
 {
 	ConstIterator itBegin;
 		// The iterator we construct.
-	
+
 	// Start before the beginning of this region.
 	itBegin.m_pThis = this;
 	itBegin.m_oExtent.m_tnY = 0;
 	itBegin.m_oExtent.m_tnXStart = 0;
 	itBegin.m_oExtent.m_tnXEnd = 0;
-	
+
 	// Move to the first valid extent & return it.
 	return ++itBegin;
 }
@@ -1327,7 +1427,7 @@ BitmapRegion2D<INDEX,SIZE>::End (void) const
 {
 	ConstIterator itEnd;
 		// The iterator we construct.
-	
+
 	// Since extents can't be zero-length, a zero-length extent
 	// indicates the end.
 	itEnd.m_pThis = this;
@@ -1368,7 +1468,7 @@ BitmapRegion2D<INDEX,SIZE>::ConstIterator::operator--()
 }
 
 
-	
+
 // The set-bits-per-byte table.
 // Used to implement NumberOfPoints().
 template <class INDEX, class SIZE>
