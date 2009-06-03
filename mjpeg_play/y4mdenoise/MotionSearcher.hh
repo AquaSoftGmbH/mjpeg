@@ -67,13 +67,18 @@
 
 // Define this to use bitmap regions to implement zero-motion
 // flood-fill.
-//#define ZERO_MOTION_FLOOD_FILL_WITH_BITMAP_REGIONS
+#define ZERO_MOTION_FLOOD_FILL_WITH_BITMAP_REGIONS
 
 
 
 // Define this to use bitmap regions to implement match-throttle
 // flood-fill.
-//#define MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+#define MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+
+
+
+// Define this to use bitmap regions to implement pruning flood-fill.
+//#define PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 
 
 
@@ -593,28 +598,28 @@ private:
 	// A class that helps implement the pruning flood-fill, i.e. the one
 	// that removes resolved pixels from a candidate moved-region.
 	class PruningFloodFillControl
-		#ifdef MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+		#ifdef PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 		: public BitmapRegion_t::FloodFillControl
-		#else // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+		#else // PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 		: public Region_t::FloodFillControl
-		#endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+		#endif // PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 	{
 	private:
-		#ifdef MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+		#ifdef PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 		typedef typename BitmapRegion_t::FloodFillControl BaseClass;
 			// Keep track of who our base class is.
-		#else // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+		#else // PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 		typedef typename Region_t::FloodFillControl BaseClass;
 			// Keep track of who our base class is.
-		#endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+		#endif // PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 	public:
-		#ifdef MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+		#ifdef PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 		PruningFloodFillControl();
 		#else // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
 		PruningFloodFillControl
 				(typename BaseClass::Allocator &a_rAllocator
 					= Region_t::Extents::Imp::sm_oNodeAllocator);
-		#endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+		#endif // PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 			// Default constructor.  Must be followed by Init().
 
 		void Init (Status_t &a_reStatus,
@@ -680,9 +685,9 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	#ifndef MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
 	, m_oMatchThrottleFloodFillControl (m_oRegionAllocator)
 	#endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
-	#ifndef MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+	#ifndef PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 	, m_oPruningFloodFillControl (m_oRegionAllocator)
-	#endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+	#endif // PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 {
 	// No frames yet.
 	m_nFrames = 0;
@@ -1838,9 +1843,9 @@ nextGroup:
 	#ifndef MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
 	m_oMatchThrottleFloodFillControl.Purge();
 	#endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
-	#ifndef MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+	#ifndef PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 	m_oPruningFloodFillControl.Purge();
-	#endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+	#endif // PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 
 	// Make sure our temporary memory allocations have been purged.
 	assert (m_oRegionAllocator.GetNumAllocated() == 0);
@@ -2690,13 +2695,13 @@ template <class PIXEL_NUM, int DIM, class PIXEL_TOL, class PIXELINDEX,
 MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	PGW,PGH,SORTERBITMASK,PIXEL,REFERENCEPIXEL,
 	REFERENCEFRAME>::PruningFloodFillControl
-	#ifdef MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+	#ifdef PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 	::PruningFloodFillControl()
-	#else // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+	#else // PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 	::PruningFloodFillControl
 		(typename BaseClass::Allocator &a_rAllocator)
 	: BaseClass (a_rAllocator)
-	#endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+	#endif // PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 {
 	// We don't know who we're working for yet.
 	m_pMotionSearcher = NULL;
@@ -2723,10 +2728,10 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 
 	// Initialize our base class.
 	BaseClass::Init (a_reStatus
-		#ifdef MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+		#ifdef PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 		, a_pMotionSearcher->m_tnWidth,
 		a_pMotionSearcher->m_tnHeight
-		#endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+		#endif // PRUNING_FLOOD_FILL_WITH_BITMAP_REGIONS
 		);
 	if (a_reStatus != g_kNoError)
 		return;

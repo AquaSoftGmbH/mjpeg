@@ -20,6 +20,12 @@
 //	#define DEBUG_BITMAPREGION2D
 #endif // NDEBUG
 
+// Define this to enable the more specific method to subtract one
+// bitmap-region from another.
+// Disabled because, given how the code currently uses it, it's slightly
+// slower (adding maybe 1% to the runtime).
+//#define DIRECT_BITMAPREGION_SUBTRACT
+
 
 
 // Part of BitmapRegion2D<> breaks gcc 2.95.  An earlier arrangement of
@@ -135,14 +141,20 @@ public:
 		// remove from the current region any areas that exist in the
 		// other region.
 
+	#ifdef DIRECT_BITMAPREGION_SUBTRACT
 	void Subtract (Status_t &a_reStatus,
 			const BitmapRegion2D<INDEX,SIZE> &a_rOther);
+	#endif // DIRECT_BITMAPREGION_SUBTRACT
 		// Subtract the other region from the current region, i.e.
 		// remove from the current region any areas that exist in the
 		// other region.
 
 	bool DoesContainPoint (INDEX a_tnY, INDEX a_tnX) const;
 		// Returns true if the region contains the given point.
+
+	void SetPoint (INDEX a_tnY, INDEX a_tnX);
+		// Add the given point to the region.
+		// (Basically a one-point Union().)
 
 	// A structure that implements flood-fills using BitmapRegion2D<> to
 	// do the work.  (The definition of this class follows the
@@ -578,6 +590,29 @@ BitmapRegion2D<INDEX,SIZE>::Clear (void)
 
 
 
+// Add the given point to the region.
+template <class INDEX, class SIZE>
+void
+BitmapRegion2D<INDEX,SIZE>::SetPoint (INDEX a_tnY, INDEX a_tnX)
+{
+	// Make sure this point is in range.
+	assert (a_tnY >= 0 && a_tnY < m_tnHeight);
+	assert (a_tnX >= 0 && a_tnX < m_tnWidth);
+
+	// Factor this extent into the active area.
+	m_tnXMin = Min (m_tnXMin, a_tnX);
+	m_tnXMax = Max (m_tnXMax, INDEX (a_tnX + 1));
+	m_tnYMin = Min (m_tnYMin, a_tnY);
+	m_tnYMax = Max (m_tnYMax, a_tnY);
+
+	// Set the point.
+	SIZE tnI = a_tnY * m_tnWidth + a_tnX;
+	m_pnPoints[tnI / (g_knBitsPerByte * sizeof (unsigned int))]
+		|= (1U << (tnI % (g_knBitsPerByte * sizeof (unsigned int))));
+}
+
+
+
 // Add the given horizontal extent to the region.
 template <class INDEX, class SIZE>
 void
@@ -818,6 +853,8 @@ BitmapRegion2D<INDEX,SIZE>::Subtract (Status_t &a_reStatus, INDEX a_tnY,
 
 
 
+#ifdef DIRECT_BITMAPREGION_SUBTRACT
+
 // Subtract the other region from the current region, i.e.
 // remove from the current region any areas that exist in the
 // other region.
@@ -866,13 +903,62 @@ BitmapRegion2D<INDEX,SIZE>::Subtract (Status_t &a_reStatus,
 	assert (m_tnWidth == a_rOther.m_tnWidth
 		&& m_tnHeight == a_rOther.m_tnHeight);
 
-	// Subtract the other region's bitmap.
-	for (SIZE i = 0; i < m_tnBitmapInts; ++i)
-		m_pnPoints[i] &= (~(a_rOther.m_pnPoints[i]));
+	// If either region is empty, we're done.
+	if (m_tnXMin >= m_tnXMax || m_tnYMin > m_tnYMax
+			|| a_rOther.m_tnXMin >= a_rOther.m_tnXMax
+			|| a_rOther.m_tnYMin > a_rOther.m_tnYMax)
+		return;
+
+	// Calculate the active area common to the two regions.
+	INDEX tnXMin = Max (m_tnXMin, a_rOther.m_tnXMin);
+	INDEX tnXMax = Min (m_tnXMax, a_rOther.m_tnXMax);
+	INDEX tnYMin = Max (m_tnYMin, a_rOther.m_tnYMin);
+	INDEX tnYMax = Min (m_tnYMax, a_rOther.m_tnYMax);
+
+	// If the two active areas don't overlap, we're done.
+	if (tnXMin >= tnXMax || tnYMin > tnYMax)
+		return;
+
+	// Loop through the common active area, subtract extents.
+	// If the active area encompasses most of the X range, do this faster.
+	INDEX tnBitsPerWord = g_knBitsPerByte * sizeof (unsigned int);
+	if (tnXMin <= tnBitsPerWord && tnXMax >= m_tnWidth - tnBitsPerWord)
+	{
+		// Find the range of words that correspond to the active area.
+		SIZE tnWordIndex = (SIZE (tnYMin) * SIZE (m_tnWidth)
+			+ SIZE (tnXMin)) >> Limits<unsigned int>::Log2Bits;
+		SIZE tnLastWordIndex = (SIZE (tnYMax) * SIZE (m_tnWidth)
+			+ SIZE (tnXMax - INDEX (1)))
+				>> Limits<unsigned int>::Log2Bits;
+
+		// Loop through these words, subtract extents.
+		for (SIZE tnI = tnWordIndex; tnI <= tnLastWordIndex; ++tnI)
+			m_pnPoints[tnI] &= (~(a_rOther.m_pnPoints[tnI]));
+	}
+	else
+	{
+		// Loop through the common active area of each line.
+		for (INDEX tnY = tnYMin; tnY <= tnYMax; ++tnY)
+		{
+			// Find the range of words that correspond to the active area
+			// on this line.
+			SIZE tnWordIndex = (SIZE (tnY) * SIZE (m_tnWidth)
+				+ SIZE (tnXMin)) >> Limits<unsigned int>::Log2Bits;
+			SIZE tnLastWordIndex = (SIZE (tnY) * SIZE (m_tnWidth)
+				+ SIZE (tnXMax - INDEX (1)))
+					>> Limits<unsigned int>::Log2Bits;
+
+			// Loop through these words, subtract extents.
+			for (SIZE tnI = tnWordIndex; tnI <= tnLastWordIndex; ++tnI)
+				m_pnPoints[tnI] &= (~(a_rOther.m_pnPoints[tnI]));
+		}
+	}
 
 	// The active area may have shrunk, but we don't recalculate it;
 	// that would take too long.
 }
+
+#endif // DIRECT_BITMAPREGION_SUBTRACT
 
 
 
@@ -903,14 +989,9 @@ BitmapRegion2D<INDEX,SIZE>::FloodFill (Status_t &a_reStatus,
 {
 	typename CONTROL::ConstIterator itExtent;
 		// An extent we're examining.
-	Extent oFoundExtent;
-		// An extent we found to be part of the region.
 
 	// Make sure they didn't start us off with an error.
 	assert (a_reStatus == g_kNoError);
-
-	// Make the compiler shut up.
-	oFoundExtent.m_tnXStart = oFoundExtent.m_tnXEnd = 0;
 
 	// How we set up depends on whether we're to verify all existing
 	// region extents.
@@ -957,8 +1038,6 @@ BitmapRegion2D<INDEX,SIZE>::FloodFill (Status_t &a_reStatus,
 	itExtent = a_rControl.m_oToDo.Begin();
 	while (itExtent != a_rControl.m_oToDo.End())
 	{
-		bool bStartedExtent;
-			// true if we've started finding an extent.
 		INDEX tnX;
 			// Where we're looking for extents.
 
@@ -967,13 +1046,7 @@ BitmapRegion2D<INDEX,SIZE>::FloodFill (Status_t &a_reStatus,
 		oExtent.m_tnY = (*itExtent).m_tnY;
 		oExtent.m_tnXStart = (*itExtent).m_tnXStart;
 		oExtent.m_tnXEnd = (*itExtent).m_tnXEnd;
-
-		// We're about to check this extent.  Put it in the
-		// already-checked list now.
-		a_rControl.m_oAlreadyDone.Union (a_reStatus, oExtent.m_tnY,
-			oExtent.m_tnXStart, oExtent.m_tnXEnd);
-		if (a_reStatus != g_kNoError)
-			return;
+		INDEX tnY = oExtent.m_tnY;
 
 		// If this extent shouldn't be considered, skip it.
 		if (!a_rControl.ShouldUseExtent (oExtent))
@@ -981,51 +1054,54 @@ BitmapRegion2D<INDEX,SIZE>::FloodFill (Status_t &a_reStatus,
 
 		// Make sure our client left us with a valid extent.
 		assert (oExtent.m_tnXStart < oExtent.m_tnXEnd);
+		assert (tnY == oExtent.m_tnY);		// (Sanity check)
 
 		// Run through the pixels described by this extent, see if
 		// they can be added to the region, and remember where to
 		// search next.
-		oFoundExtent.m_tnY = oExtent.m_tnY;
-		bStartedExtent = false;
-		for (tnX = oExtent.m_tnXStart; tnX <= oExtent.m_tnXEnd; ++tnX)
+		for (tnX = oExtent.m_tnXStart; tnX < oExtent.m_tnXEnd; ++tnX)
 		{
+			// We're about to check this point.  Put it in the
+			// already-checked list now.
+			a_rControl.m_oAlreadyDone.SetPoint (tnY, tnX);
+
 			// Is this point in the region?
-			if (tnX < oExtent.m_tnXEnd
-			&& a_rControl.IsPointInRegion (tnX, oExtent.m_tnY))
+			if (a_rControl.IsPointInRegion (tnX, tnY))
 			{
-				// This point is in the region.  Start a new extent
-				// if we didn't have one already, and add the point
-				// to it.
-				if (!bStartedExtent)
-				{
-					oFoundExtent.m_tnXStart = tnX;
-					bStartedExtent = true;
-				}
-				oFoundExtent.m_tnXEnd = tnX + 1;
-			}
+				// This point is in the region.
+				SetPoint (tnY, tnX);
 
-			// This point is not in the region.  Any extent we're
-			// building is done.
-			else if (bStartedExtent)
-			{
-				// Add this extent to the region.
-				Union (a_reStatus, oFoundExtent.m_tnY,
-					oFoundExtent.m_tnXStart, oFoundExtent.m_tnXEnd);
-				if (a_reStatus != g_kNoError)
-					return;
-
-				// Now add all surrounding extents to the to-do-next list.
+				// Now add all surrounding points to the to-do-next list.
 				if (a_bExpand)
 				{
-					a_rControl.m_oNextToDo.UnionSurroundingExtents
-						(a_reStatus, oFoundExtent.m_tnY,
-						oFoundExtent.m_tnXStart, oFoundExtent.m_tnXEnd);
-					if (a_reStatus != g_kNoError)
-						return;
-				}
+					// Add the extent above this one.
+					if (tnY > 0
+					&& !a_rControl.m_oToDo.DoesContainPoint (tnY - 1, tnX)
+					&& !a_rControl.m_oAlreadyDone.DoesContainPoint
+							(tnY - 1, tnX))
+						a_rControl.m_oNextToDo.SetPoint (tnY - 1, tnX);
 
-				// Look for another extent.
-				bStartedExtent = false;
+					// Add the extent to the left.
+					if (tnX > 0
+					&& !a_rControl.m_oToDo.DoesContainPoint (tnY, tnX - 1)
+					&& !a_rControl.m_oAlreadyDone.DoesContainPoint
+							(tnY, tnX - 1))
+						a_rControl.m_oNextToDo.SetPoint (tnY, tnX - 1);
+
+					// Add the extent to the right.
+					if (tnX < m_tnWidth - 1
+					&& !a_rControl.m_oToDo.DoesContainPoint (tnY, tnX + 1)
+					&& !a_rControl.m_oAlreadyDone.DoesContainPoint
+							(tnY, tnX + 1))
+						a_rControl.m_oNextToDo.SetPoint (tnY, tnX + 1);
+
+					// Add the extent below this one.
+					if (tnY < m_tnHeight - 1
+					&& !a_rControl.m_oToDo.DoesContainPoint (tnY + 1, tnX)
+					&& !a_rControl.m_oAlreadyDone.DoesContainPoint
+							(tnY + 1, tnX))
+						a_rControl.m_oNextToDo.SetPoint (tnY + 1, tnX);
+				}
 			}
 		}
 
@@ -1037,12 +1113,22 @@ nextExtent:
 		if (itExtent == a_rControl.m_oToDo.End())
 		{
 			// Replenish the to-do list.
-			a_rControl.m_oNextToDo.Subtract (a_reStatus,
-				a_rControl.m_oAlreadyDone);
-			if (a_reStatus != g_kNoError)
-				return;
 			a_rControl.m_oToDo.Clear();
 			a_rControl.m_oToDo.Move (a_rControl.m_oNextToDo);
+
+			// Make sure no points will be checked repeatedly.
+			// (This is an expensive check, so only do it if we've
+			// turned on the other expensive checks.)
+			#ifdef DEBUG_BITMAPREGION2D
+			{
+				SIZE nPointsBefore = a_rControl.m_oToDo.NumberOfPoints();
+				a_rControl.m_oToDo.Subtract (a_reStatus,
+					a_rControl.m_oAlreadyDone);
+				assert (a_reStatus == g_kNoError);
+				SIZE nPointsAfter = a_rControl.m_oToDo.NumberOfPoints();
+				assert (nPointsBefore == nPointsAfter);
+			}
+			#endif // DEBUG_BITMAPREGION2D
 
 			// Start over at the beginning.
 			itExtent = a_rControl.m_oToDo.Begin();
@@ -1116,7 +1202,7 @@ BitmapRegion2D<INDEX,SIZE>::UnionSurroundingExtents
 		Union (a_tnY, a_tnXEnd, a_tnXEnd + 1);
 
 	// Add the extent below this one.
-	if (a_tnY < m_tnWidth - 1)
+	if (a_tnY < m_tnHeight - 1)
 		Union (a_tnY + 1, a_tnXStart, a_tnXEnd);
 }
 
