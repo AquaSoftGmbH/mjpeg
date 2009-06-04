@@ -853,8 +853,6 @@ BitmapRegion2D<INDEX,SIZE>::Subtract (Status_t &a_reStatus, INDEX a_tnY,
 
 
 
-#ifdef DIRECT_BITMAPREGION_SUBTRACT
-
 // Subtract the other region from the current region, i.e.
 // remove from the current region any areas that exist in the
 // other region.
@@ -887,6 +885,8 @@ BitmapRegion2D<INDEX,SIZE>::Subtract (Status_t &a_reStatus,
 }
 
 
+
+#ifdef DIRECT_BITMAPREGION_SUBTRACT
 
 // Subtract the other region from the current region, i.e.
 // remove from the current region any areas that exist in the
