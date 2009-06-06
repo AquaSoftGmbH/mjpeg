@@ -350,7 +350,7 @@ exit(1);
 static void
 alloc_yuv (u_char **yuv, int h, int w)
 {
-int len = h * w;
+int len = h * w * 2;	/* Double the amount - overkill but it's easier than figuring out how much (off by one?) is really needed */
 int uvlen = Stab.nosuper ? (len / (SS_H * SS_V)) : len;
 yuv[0] = malloc(len);
 if (yuv[0] == NULL)
