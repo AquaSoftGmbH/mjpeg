@@ -53,7 +53,7 @@ LPCMStream::LPCMStream(IBitStream &ibs, LpcmParams *parms, Multiplexor &into) :
 
 bool LPCMStream::Probe(IBitStream &bs )
 {
-    char *last_dot = strrchr( bs.StreamName(), '.' );
+    const char *last_dot = strrchr( bs.StreamName(), '.' );
     return 
         last_dot != NULL 
         && strcmp( last_dot+1, "lpcm") == 0;
