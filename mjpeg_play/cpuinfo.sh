@@ -228,6 +228,11 @@ if test "$proc" = "k6"; then
     fi
 fi
 
+# Seems some variants of gcc accept 'core2' instead of 'nocona'.
+if test "$proc" = "core2"; then
+        do_cc  -march=$proc $_opt_mcpu=$proc || proc=nocona
+fi
+
 if test "$proc" = "pentium4" || test "$proc" = "pentium3" || test "$proc" = "pentium2" || test "$proc" = "athlon"; then
 	do_cc -march=$proc $_opt_mcpu=$proc || proc=i686
 fi
