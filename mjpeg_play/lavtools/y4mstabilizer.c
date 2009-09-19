@@ -58,8 +58,6 @@
 #include "yuv4mpeg.h"
 #include "subsample.h"
 
-extern  char    *__progname;
-
 struct
     {
     int		verbose;	/* Talkative flag */

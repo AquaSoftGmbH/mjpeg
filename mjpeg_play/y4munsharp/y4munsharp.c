@@ -46,9 +46,7 @@
 #define MAX(a,b) ((a) >= (b) ? (a) : (b))
 #define ROUND(x) ((int) ((x) + 0.5))
 
-extern char *__progname;
-
-void usage(void);
+void usage(char *);
 void y4munsharp(void);
 static void get_column(u_char *, u_char *, int, int);
 static void put_column(u_char *, u_char *, int, int);
@@ -96,7 +94,7 @@ main(int argc, char **argv)
 				if	(i != 3)
 					{
 					mjpeg_error("-L r,a,t");
-					usage();
+					usage(argv[0]);
 					}
 				break;
 			case	'C':
@@ -105,7 +103,7 @@ main(int argc, char **argv)
 				if	(i != 3)
 					{
 					mjpeg_error("-C r,a,t");
-					usage();
+					usage(argv[0]);
 					}
 				break;
 			case	'v':
@@ -115,7 +113,7 @@ main(int argc, char **argv)
 				break;
 			case	'h':
 			default:
-				usage();
+				usage(argv[0]);
 				break;
 			}
 		}
@@ -630,18 +628,18 @@ gen_lookup_table(double *cmatrix, int cmatrix_length)
 	return(lookup_table);
 	}
 
-void usage(void)
+void usage(char *pgm)
 	{
-	fprintf(stderr, "%s: usage: [-v 0|1|2] [-N] [-L radius,amount,threshold] [-C radius,amount,threshold]\n", __progname);
+	fprintf(stderr, "%s: usage: [-v 0|1|2] [-N] [-L radius,amount,threshold] [-C radius,amount,threshold]\n", pgm);
 	fprintf(stderr, "%s:\tradius and amount are floating point numbers\n",
-		__progname);
-	fprintf(stderr, "%s:\tthreshold is integer.\n", __progname);
-	fprintf(stderr, "%s:\tdefault for -L is 2.0,0.3,4\n", __progname);
+		pgm);
+	fprintf(stderr, "%s:\tthreshold is integer.\n", pgm);
+	fprintf(stderr, "%s:\tdefault for -L is 2.0,0.3,4\n", pgm);
 	fprintf(stderr, "%s:\tchroma not filtered UNLESS -C used, no default\n",
-		__progname);
-	fprintf(stderr, "%s:-v verbose 0=quiet 1=normal 2=debug (default: 1)\n", __progname);
-	fprintf(stderr, "%s:-N disables the Y' 16-235 clip/core\n", __progname);
-	fprintf(stderr, "%s:   disables the CbCr 16-240 clip/core\n", __progname);
-	fprintf(stderr, "%s:   (allow the entire 0 to 255 range).\n", __progname);
+		pgm);
+	fprintf(stderr, "%s:-v verbose 0=quiet 1=normal 2=debug (default: 1)\n", pgm);
+	fprintf(stderr, "%s:-N disables the Y' 16-235 clip/core\n", pgm);
+	fprintf(stderr, "%s:   disables the CbCr 16-240 clip/core\n", pgm);
+	fprintf(stderr, "%s:   (allow the entire 0 to 255 range).\n", pgm);
 	exit(1);
 	}
