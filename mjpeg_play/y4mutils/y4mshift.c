@@ -22,13 +22,11 @@
 
 #include "yuv4mpeg.h"
 
-extern  char    *__progname;
-
 #define HALFSHIFT (shiftnum / SS_H)
 
 	void	black_border(u_char **, char *, int, int, int, int);
 	void	vertical_shift(u_char **, int, int, int, int, int, int);
-static  void    usage(void);
+static  void    usage(char *);
 
 int main(int argc, char **argv)
         {
@@ -75,7 +73,7 @@ int main(int argc, char **argv)
                         case    '?':
                         case    'h':
                         default:
-                                usage();
+                                usage(argv[0]);
                         }
                 }
 
@@ -113,10 +111,10 @@ int main(int argc, char **argv)
 		ilace_factor = 2;
 
         if      ((shiftnum % SS_H) != 0)
-                usage();
+                usage(argv[0]);
 
         if      ((vshift % (ilace_factor * SS_V)) != 0)
-                usage();
+                usage(argv[0]);
 
         width = y4m_si_get_width(&istream);
         height = y4m_si_get_height(&istream);
@@ -356,24 +354,24 @@ void vertical_shift(u_char **yuv, int vshift, int vshiftY, int width, int height
 		}
 	}
 
-static void usage(void)
+static void usage(char *pgm)
         {
 
-        fprintf(stderr, "%s: usage: [-v] [-h] [-M] [-b xoff,yoff,xsize,ysize] [-y num] [-Y num] [-N num] -n N\n", __progname);
-	fprintf(stderr, "%s:\t-M = monochrome output\n", __progname);
-        fprintf(stderr, "%s:\t-n N = horizontal shift count - must be multiple of 2 for 4:2:0, multiple of 4 for 4:1:1!\n", __progname);
-        fprintf(stderr, "%s:\t-y num = Y-only horizontal shift count - need not be even\n", __progname);
-        fprintf(stderr, "%s:\t\tpositive count shifts right\n",__progname);
-        fprintf(stderr, "%s:\t\t0 passes the data thru unchanged\n",__progname);
-        fprintf(stderr, "%s:\t\tnegative count shifts left\n", __progname);
-	fprintf(stderr, "%s:\t-N num = vertical shift count - must be multiple of 4 for 4:2:0, multiple of 2 for 4:1:1!\n", __progname);
-	fprintf(stderr, "%s:\t-Y num = Y-only vertical shift count - multiple of 2 for interlaced material\n", __progname);
-	fprintf(stderr, "%s:\t\tnegative count shifts up\n", __progname);
-	fprintf(stderr, "%s:\t\t0 does no vertical shift (is ignored)\n", __progname);
-	fprintf(stderr, "%s:\t\tpositive count shifts down\n", __progname);
-	fprintf(stderr, "%s:\t-b creates black border\n", __progname);
-	fprintf(stderr, "%s:\tShifting is done before border creation\n", __progname);
-        fprintf(stderr, "%s:\t-v print input stream info\n", __progname);
-        fprintf(stderr, "%s:\t-h print this usage summary\n", __progname);
+        fprintf(stderr, "%s: usage: [-v] [-h] [-M] [-b xoff,yoff,xsize,ysize] [-y num] [-Y num] [-N num] -n N\n", pgm);
+	fprintf(stderr, "%s:\t-M = monochrome output\n", pgm);
+        fprintf(stderr, "%s:\t-n N = horizontal shift count - must be multiple of 2 for 4:2:0, multiple of 4 for 4:1:1!\n", pgm);
+        fprintf(stderr, "%s:\t-y num = Y-only horizontal shift count - need not be even\n", pgm);
+        fprintf(stderr, "%s:\t\tpositive count shifts right\n",pgm);
+        fprintf(stderr, "%s:\t\t0 passes the data thru unchanged\n",pgm);
+        fprintf(stderr, "%s:\t\tnegative count shifts left\n", pgm);
+	fprintf(stderr, "%s:\t-N num = vertical shift count - must be multiple of 4 for 4:2:0, multiple of 2 for 4:1:1!\n", pgm);
+	fprintf(stderr, "%s:\t-Y num = Y-only vertical shift count - multiple of 2 for interlaced material\n", pgm);
+	fprintf(stderr, "%s:\t\tnegative count shifts up\n", pgm);
+	fprintf(stderr, "%s:\t\t0 does no vertical shift (is ignored)\n", pgm);
+	fprintf(stderr, "%s:\t\tpositive count shifts down\n", pgm);
+	fprintf(stderr, "%s:\t-b creates black border\n", pgm);
+	fprintf(stderr, "%s:\tShifting is done before border creation\n", pgm);
+        fprintf(stderr, "%s:\t-v print input stream info\n", pgm);
+        fprintf(stderr, "%s:\t-h print this usage summary\n", pgm);
         exit(1);
         }

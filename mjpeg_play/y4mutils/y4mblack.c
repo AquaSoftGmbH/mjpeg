@@ -15,10 +15,8 @@
 
 #include "yuv4mpeg.h"
 
-extern	char	*__progname;
-
-static	void	usage(void);
-static	void	chroma_usage(void);
+static	void	usage(char *);
+static	void	chroma_usage(char *);
 
 int
 main(int argc, char **argv)
@@ -83,7 +81,7 @@ main(int argc, char **argv)
 						interlace = Y4M_ILACE_BOTTOM_FIRST;
 						break;
 					default:
-						usage();
+						usage(argv[0]);
 					}
 				break;
 			case	'x':
@@ -92,7 +90,7 @@ main(int argc, char **argv)
 					{
 					if	(strcmp(optarg, "help") != 0)
 						mjpeg_error("Invalid -x arg '%s'", optarg);
-					chroma_usage();
+					chroma_usage(argv[0]);
 					}
 
 				break;
@@ -104,7 +102,7 @@ main(int argc, char **argv)
 				break;
 			case	'?':
 			default:
-				usage();
+				usage(argv[0]);
 			}
 		}
 
@@ -163,10 +161,10 @@ main(int argc, char **argv)
 	exit(0);
 	}
 
-void usage(void)
+void usage(char *pgm)
 	{
 
-	fprintf(stderr, "%s usage: [-H] [-f] [-n numframes] [-w width] [-h height] [-Y val] [-U val] [-V val] [-a pixel aspect] [-i p|t|b] [-x chroma] [-r rate]\n", __progname);
+	fprintf(stderr, "%s usage: [-H] [-f] [-n numframes] [-w width] [-h height] [-Y val] [-U val] [-V val] [-a pixel aspect] [-i p|t|b] [-x chroma] [-r rate]\n", pgm);
 	fprintf(stderr, "\n  Omit the YUV4MPEG2 header [-H]");
 	fprintf(stderr, "\n  Specify chroma sampling [-x string] (420mpeg2)");
 	fprintf(stderr, "\n      -x help for list");
@@ -185,13 +183,13 @@ void usage(void)
 	exit(1);
 	}
 
-void chroma_usage(void)
+void chroma_usage(char *pgm)
 	{
 	int mode = 0;
 	const char *keyword;
 
 	fprintf(stderr, "%s -x usage: Only the 3 plane formats are actually supported\n",
-		__progname);
+		pgm);
 	for	(mode = 0; (keyword = y4m_chroma_keyword(mode)) != NULL; mode++)
 		fprintf(stderr, "\t%s - %s\n", keyword, y4m_chroma_description(mode));
 	exit(1);

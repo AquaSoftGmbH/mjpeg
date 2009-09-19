@@ -38,9 +38,7 @@
 
 #include "yuv4mpeg.h"
 
-extern	char	*__progname;
-
-static	void	usage(void);
+static	void	usage(char *);
 
 int
 main(int argc, char **argv)
@@ -55,7 +53,7 @@ main(int argc, char **argv)
 
 	opterr = 0;
 	if	(argc == 1)
-		usage();
+		usage(argv[0]);
 
 	while	((c = getopt(argc, argv, "w:h:r:i:a:k")) != EOF)
 		{
@@ -94,12 +92,12 @@ main(int argc, char **argv)
 						interlace = Y4M_ILACE_BOTTOM_FIRST;
 						break;
 					default:
-						usage();
+						usage(argv[0]);
 					}
 				break;
 			case	'?':
 			default:
-				usage();
+				usage(argv[0]);
 			}
 		}
 
@@ -168,10 +166,10 @@ main(int argc, char **argv)
 	exit(0);
 	}
 
-static void usage()
+static void usage(char *pgm)
 	{
 
-	fprintf(stderr, "%s repacks YUYV (YUY2) and UYVY 4:2:2 streams into 4:2:2 planar YUV4MPEG2 streams\n", __progname);
+	fprintf(stderr, "%s repacks YUYV (YUY2) and UYVY 4:2:2 streams into 4:2:2 planar YUV4MPEG2 streams\n", pgm);
 	fprintf(stderr, "usage: -w width -h height [-k] [-a pixel aspect] [-i p|t|b] -r rate\n");
 	fprintf(stderr, "  Interlace codes [-i X]: p (none) t (top first) b (bottom first) (p)\n");
 	fprintf(stderr, "  Rate (as ratio) [-r N:M] (24:1)\n");

@@ -21,8 +21,6 @@
 #include "mmx.h"
 #endif
 
-extern  char    *__progname;
-
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
@@ -30,7 +28,7 @@ static void *my_malloc(size_t);
 static struct filter *get_coeff(int, float);
 static void convolveFrame(u_char *src,int w,int h,int interlace,struct filter *xtap,struct filter *ytap,float *yuvtmp1,float *yuvtmp2);
 static void set_accel(int w,int h);
-static void usage(void);
+static void usage(char *);
 
 static void (*pframe_i2f)(u_char *,float *,int);
 static void (*pframe_f2i)(float *,u_char *,int);
@@ -89,7 +87,7 @@ int main(int argc, char **argv)
 		case    '?':
 		case    'h':
 		default:
-		    usage();
+		    usage(argv[0]);
 		}
 	}
     
@@ -470,9 +468,9 @@ static void set_accel(int w,int h)
 #endif
 }
 
-static void usage(void)
+static void usage(char *pgm)
 {
-    fprintf(stderr, "usage: %s [-h] [-v] [-L lumaXtaps,lumaXBW,lumaYtaps,lumaYBW] ", __progname);
+    fprintf(stderr, "usage: %s [-h] [-v] [-L lumaXtaps,lumaXBW,lumaYtaps,lumaYBW] ", pgm);
     fprintf(stderr, "[-C chromaXtaps,chromaXBW,chromaYtaps,chromaYBW] ");
     fprintf(stderr, "[-x chromaXtaps,chromaXBW] [-X lumaXtaps,lumaXBW] ");
     fprintf(stderr, "[-y chromaYtaps,chromaYBW] [-Y lumaYtaps,lumaYBW]\n");
