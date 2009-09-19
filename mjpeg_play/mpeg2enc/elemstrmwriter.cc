@@ -77,7 +77,7 @@ ElemStrmFragBuf::~ElemStrmFragBuf()
 void ElemStrmFragBuf::AdjustBuffer()
 {
 	buffer_size *= 2;
-	buffer = static_cast<uint8_t *>(realloc( buffer, sizeof(uint8_t[buffer_size])));
+	buffer = static_cast<uint8_t *>(realloc( buffer, sizeof(uint8_t) * buffer_size));
 	if( !buffer )
 		mjpeg_error_exit1( "output buffer memory allocation: out of memory" );
 }

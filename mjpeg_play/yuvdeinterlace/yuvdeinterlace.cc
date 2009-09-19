@@ -166,8 +166,8 @@ public:
 // the ELA-algorithm overshots by one line above and below the
 // frame-size, so fill the ELA-overshot-area in the inframe to
 // ensure that no green or purple lines are generated...
-    memcpy (in0 - w, in + w, w);
-    memcpy (in0 + (w * h), in + (w * h) - 2 * w, w);
+    std::memcpy (in0 - w, in + w, w);
+    std::memcpy (in0 + (w * h), in + (w * h) - 2 * w, w);
 
 // create deinterlaced frame of the reference-field in scratch
     for (y = (1 - field); y < h; y += 2)
@@ -279,7 +279,7 @@ public:
 	}
 
     if(y == h)
-      memcpy (scratch + w * (h - 1), in0 + w * (h - 1), w);
+      std::memcpy (scratch + w * (h - 1), in0 + w * (h - 1), w);
 
 // As we now have a rather good interpolation of how the reference frame
 // might have been looking for when it had been scanned progressively,
@@ -291,26 +291,26 @@ public:
 // be noisy...
 
 // we need some overshot areas, again
-    memcpy (out - w, out, w);
-    memcpy (out - w * 2, out, w);
-    memcpy (out - w * 3, out, w);
+    std::memcpy (out - w, out, w);
+    std::memcpy (out - w * 2, out, w);
+    std::memcpy (out - w * 3, out, w);
 
-    memcpy (out + (w * h), out + (w * h) - w, w);
-    memcpy (out + (w * h) + w, out + (w * h) - w, w);
-    memcpy (out + (w * h) + w * 2, out + (w * h) - w, w);
-    memcpy (out + (w * h) + w * 3, out + (w * h) - w, w);
+    std::memcpy (out + (w * h), out + (w * h) - w, w);
+    std::memcpy (out + (w * h) + w, out + (w * h) - w, w);
+    std::memcpy (out + (w * h) + w * 2, out + (w * h) - w, w);
+    std::memcpy (out + (w * h) + w * 3, out + (w * h) - w, w);
 
-    memcpy (scratch - w, scratch, w);
-    memcpy (scratch - w * 2, scratch, w);
-    memcpy (scratch - w * 3, scratch, w);
-    memcpy (scratch - w * 4, scratch, w);
-    memset (scratch - w * 4 - 4, scratch[0], 4);
+    std::memcpy (scratch - w, scratch, w);
+    std::memcpy (scratch - w * 2, scratch, w);
+    std::memcpy (scratch - w * 3, scratch, w);
+    std::memcpy (scratch - w * 4, scratch, w);
+    std::memset (scratch - w * 4 - 4, scratch[0], 4);
 
-    memcpy (scratch + (w * h), scratch + (w * h) - w, w);
-    memcpy (scratch + (w * h) + w, scratch + (w * h) - w, w);
-    memcpy (scratch + (w * h) + w * 2, scratch + (w * h) - w, w);
-    memcpy (scratch + (w * h) + w * 3, scratch + (w * h) - w, w);
-    memset (scratch + (w * h) + w * 4, scratch[w * h - 1], 11);
+    std::memcpy (scratch + (w * h), scratch + (w * h) - w, w);
+    std::memcpy (scratch + (w * h) + w, scratch + (w * h) - w, w);
+    std::memcpy (scratch + (w * h) + w * 2, scratch + (w * h) - w, w);
+    std::memcpy (scratch + (w * h) + w * 3, scratch + (w * h) - w, w);
+    std::memset (scratch + (w * h) + w * 4, scratch[w * h - 1], 11);
 
     for (y = 0; y < h; y += 8)
       for (x = 0; x < w; x += 8)
@@ -674,7 +674,7 @@ public:
 	}
 
 #if 1
-    memcpy (out, scratch, w * h);
+    std::memcpy (out, scratch, w * h);
 #else
 // copy a gauss-filtered variant of the reconstructed image to the out-buffer
 // the reason why this must be filtered is not so easy to understand, so I leave

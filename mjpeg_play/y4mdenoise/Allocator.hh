@@ -43,7 +43,7 @@ private:
 	public:
 		Chunk *m_pNext;
 			// The next allocated chunk.
-		char m_aSpace[];
+		char *m_aSpace;
 			// The memory to divide up.
 	};
 
