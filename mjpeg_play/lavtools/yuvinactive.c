@@ -36,7 +36,6 @@
 #define CHROMA 128
 
 /* some defintions */
-/* extern char *__progname; */
 struct area_s {
       int width;    /**< width of the area */
       int height;   /**< height of the area */
