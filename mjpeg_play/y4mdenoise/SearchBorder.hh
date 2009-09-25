@@ -14,6 +14,9 @@
 #include "DoublyLinkedList.hh"
 #include "Allocator.hh"
 #include "SetRegion2D.hh"
+#ifdef	sun
+#include <alloca.h>
+#endif
 
 // HACK: for development error messages.
 #include <stdio.h>
