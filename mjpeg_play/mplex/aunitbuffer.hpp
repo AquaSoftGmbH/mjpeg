@@ -11,7 +11,7 @@ public:
 	AUStream()  {}
 	~AUStream() 
 	{
-		for( std::deque<AUnit *>::iterator i = buf.begin(); i < buf.end(); ++i )
+		for( std::deque<AUnit *>::iterator i = buf.begin(); i != buf.end(); ++i )
 			delete *i;
 	}
 	
