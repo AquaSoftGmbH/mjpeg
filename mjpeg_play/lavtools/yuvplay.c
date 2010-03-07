@@ -31,7 +31,7 @@
 #include "mjpeg_logging.h"
 #include <mpegconsts.h>
 #include <mpegtimecode.h>
-#include <SDL/SDL.h>
+#include <SDL.h>
 #include <sys/time.h>
 
 

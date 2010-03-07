@@ -80,7 +80,7 @@
 #include <pthread.h>
 
 #ifdef HAVE_SDL
-#include <SDL/SDL.h>
+#include <SDL.h>
 #endif
 
 #include "mjpeg_logging.h"

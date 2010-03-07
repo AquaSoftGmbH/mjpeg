@@ -148,7 +148,7 @@
 #include <sys/stat.h>
 #endif
 #ifdef HAVE_SDL      /* Seems that this is needed so MAC OS X is also happy */
-#include <SDL/SDL.h>
+#include <SDL.h>
 #endif
 
 #define LAVPLAY_VSTR "lavplay" VERSION  /* Expected version info */

@@ -55,7 +55,7 @@ liblavrec_la_LIBADD = liblavfile.la liblavjpeg.la $(LIBMJPEGUTILS)
 liblavrec_la_DEPENDENCIES = liblavfile.la liblavjpeg.la
 
 liblavplay_la_SOURCES = liblavplay.c audiolib.c
-liblavplay_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS) $(X_CFLAGS)
+liblavplay_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS) $(X_CFLAGS) $(SDL_CFLAGS)
 liblavplay_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
 liblavplay_la_LIBADD = liblavfile.la $(SDL_LIBS) liblavjpeg.la $(LIBDV_LIBS) $(LIBMJPEGUTILS)
 if HAVE_V4L
@@ -131,6 +131,7 @@ multiblend_flt_SOURCES = multiblend.flt.c
 multiblend_flt_LDADD = $(LIBMJPEGUTILS)
 
 lavplay_SOURCES = lavplay.c
+lavplay_CPPFLAGS = $(AM_CPPFLAGS) $(SDL_CFLAGS)
 lavplay_LDADD = $(LIBMJPEGUTILS) \
 	liblavplay.la liblavjpeg.la liblavfile.la \
 	@LIBGETOPT_LIB@ @PTHREAD_LIBS@ $(SDL_LIBS)
@@ -175,6 +176,7 @@ glav_LDADD = $(LIBMJPEGUTILS) ${GTK_LIBS}
 lavvideo_SOURCES = lavvideo.c frequencies.c
 
 yuvplay_SOURCES = yuvplay.c
+yuvplay_CPPFLAGS = $(AM_CPPFLAGS) $(SDL_CFLAGS)
 yuvplay_LDADD = $(SDL_LIBS) $(LIBMJPEGUTILS)
 
 ppmtoy4m_SOURCES = ppmtoy4m.c colorspace.c subsample.c
