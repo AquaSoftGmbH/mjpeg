@@ -41,6 +41,7 @@ libmplex2_la_SOURCES = \
 	systems.cpp \
 	videostrm_in.cpp \
 	videostrm_out.cpp \
+	subpstream.cpp \
 	$(ZALPHA_FILES)
 
 libmplex_includedir = $(pkgincludedir)/mplex

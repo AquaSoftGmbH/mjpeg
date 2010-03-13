@@ -182,9 +182,10 @@ private:
 class SUBPStream : public AudioStream
 {
 public:   
-    SUBPStream(IBitStream &ibs,Multiplexor &into );
+    SUBPStream(IBitStream &ibs,SubtitleStreamParams* params,Multiplexor &into );
     virtual void Init(const int stream_num);
     virtual void Close();
+    static bool Probe(IBitStream &bs );
     // TODO: rough and ready measure...
     virtual unsigned int NominalBitRate() {return 50*1024;}
     virtual unsigned int ReadPacketPayload(uint8_t *dst, unsigned int to_read);
@@ -192,9 +193,8 @@ public:
     
 
 private:
-	void OutputHdrInfo();
 	virtual void FillAUbuffer(unsigned int frames_to_buffer);
-    
+    bool ParseAUBitwise();
     static const unsigned int default_buffer_size;
 
 	/* State variables for scanning source bit-stream */
@@ -202,8 +202,10 @@ private:
     unsigned int samples_per_second;
     unsigned int bit_rate;
     unsigned int stream_num;
-    unsigned int frequency	;
     unsigned int num_frames;
+    int64_t     initial_offset;  // DTS of first Subp.
+    SubtitleStreamParams* parms;
+    int8_t sub_stream_id; // substream_id
 }; 	
 
 

@@ -23,7 +23,8 @@
 #ifndef __STREAM_PARAMS_HH__
 #define __STREAM_PARAMS_HH__
 
-
+#include <config.h>
+#include <mjpeg_types.h>
 class LpcmParams
 {
 public:
@@ -57,6 +58,22 @@ private:
   unsigned int decode_buffer_size;
 };
 
+class SubtitleStreamParams
+{
+public:
+  static SubtitleStreamParams *Checked(const int64_t stream_offset,int8_t stream_id){ return new SubtitleStreamParams (stream_offset,stream_id);} ;
+  static SubtitleStreamParams *Default(unsigned int mux_format)	{ return Checked(0,-1);};
+  bool Force(unsigned int mux_format);
+  inline int64_t Offset() { return _stream_offset; }
+  inline int8_t  StreamId() { return _stream_id; }
+private:
+  SubtitleStreamParams(const int64_t stream_offset, int8_t stream_id)
+   {_stream_offset = stream_offset;
+   	_stream_id = stream_id;};
+  
+  int64_t _stream_offset;
+  int8_t _stream_id;
+};
 
 
 //

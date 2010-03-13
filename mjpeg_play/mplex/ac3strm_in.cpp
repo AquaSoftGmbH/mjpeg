@@ -236,9 +236,9 @@ void AC3Stream::Init ( const int _stream_num)
             
         header_skip = 5;        // Initially skipped past  5 bytes of header 
 
-	num_frames++;
+		num_frames++;
         access_unit.start = AU_start;
-	access_unit.length = framesize;
+		access_unit.length = framesize;
         mjpeg_info( "AC3 frame size = %d", framesize );
         bit_rate = ac3_bitrate_index[framesize_code>>1];
 		samples_per_second = ac3_frequency[frequency];
@@ -288,6 +288,9 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
         bs.SeekFwdBits(skip);
 		prev_offset = AU_start;
 		AU_start = bs.bitcount();
+        
+				 
+
         if( AU_start - prev_offset != access_unit.length*8 )
         {
             mjpeg_warn( "Discarding incomplete final frame AC3 stream %d!",
@@ -382,6 +385,7 @@ unsigned int
 AC3Stream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 {
     bitcount_t read_start = bs.GetBytePos();
+
     // Remember to change StreamHeaderLen if you write a different
     // length re-using this code...
     unsigned int bytes_read = bs.GetBytes( dst+4, to_read-4 );

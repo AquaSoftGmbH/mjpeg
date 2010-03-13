@@ -393,10 +393,10 @@ void Multiplexor::InitInputStreamsForVideo(MultiplexJob & job )
 
     unsigned int audio_track = 0;
     unsigned int video_track = 0;
+    unsigned int subp_track = 0;
 	std::vector<VideoParams *>::iterator vidparm = job.video_param.begin();
 	std::vector<LpcmParams *>::iterator lpcmparm = job.lpcm_param.begin();
-
-
+	std::vector<SubtitleStreamParams *>::iterator subpparm = job.subtitle_params.begin();
     std::vector<JobStream *>::iterator i;
     for( i = job.streams.begin() ; i < job.streams.end() ; ++i )
     {
@@ -459,6 +459,17 @@ void Multiplexor::InitInputStreamsForVideo(MultiplexJob & job )
             astreams.push_back(audioStrm);
             ++lpcmparm;
             ++audio_track;
+        }
+        break;
+        case SUBP_STREAM :
+        {
+            // we use audios stream as base class
+            SUBPStream *subpStrm =  new SUBPStream( *(*i)->bs, *subpparm,*this);
+            subpStrm ->Init ( subp_track );
+            estreams.push_back(subpStrm );
+            astreams.push_back(subpStrm );
+            ++subpparm;
+            ++subp_track;
         }
         break;
 #ifdef ZALPHA
@@ -1074,7 +1085,7 @@ void Multiplexor::Multiplex()
 	std::vector<bool> completed;
 	std::vector<bool>::iterator pcomp;
 	std::vector<ElementaryStream *>::iterator str;
-
+	
 	unsigned int packets_left_in_pack = 0; /* Suppress warning */
 	bool padding_packet;
 	bool video_first = true;

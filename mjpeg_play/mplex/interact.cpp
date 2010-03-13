@@ -45,6 +45,7 @@ static const char *KindNames[] =
     "LPCM audio",
     "DTS audio",
     "MPEG video",
+    "MPEG Subtitle",
     "Z Alpha channel"
 };
 
@@ -79,6 +80,7 @@ MultiplexJob::MultiplexJob()
     run_in_frames = 0;      // Select default run-in...
     audio_tracks = 0;
     video_tracks = 0;
+    subtitle_tracks = 0;
     lpcm_tracks = 0;
 #ifdef ZALPHA
     z_alpha_tracks = 0;
@@ -186,6 +188,18 @@ void MultiplexJob::SetupInputStreams( std::vector< IBitStream *> &inputs )
         }
 
         bs->UndoChanges( undo );
+
+        if( SUBPStream::Probe( *bs ) )
+        {
+            mjpeg_info ("File %s looks like an Subpicture stream.",
+                        bs->StreamName());
+            bs->UndoChanges( undo );
+            streams.push_back( new JobStream( bs, SUBP_STREAM) );
+			++subtitle_tracks;
+            continue;
+        }
+
+
 #ifdef ZALPHA
         if( ZAlphaStream::Probe( *bs ) )
         {
@@ -222,6 +236,11 @@ void MultiplexJob::SetupInputStreams( std::vector< IBitStream *> &inputs )
 	{
 		lpcm_param.push_back(LpcmParams::Default(mux_format));
 	}
+	for( i = subtitle_params.size(); i < subtitle_tracks; ++i )
+	{
+		subtitle_params.push_back(SubtitleStreamParams::Default(mux_format));
+	}
+
 
 	//
 	// Set standard values if the selected profile implies this...
@@ -234,9 +253,10 @@ void MultiplexJob::SetupInputStreams( std::vector< IBitStream *> &inputs )
 		}
 	}
 
-	mjpeg_info( "Found %d audio streams and %d video streams",
+	mjpeg_info( "Found %d audio streams, %d video streams and %d subtitle streams",
                 audio_tracks,
-				video_tracks
+				video_tracks,
+				subtitle_tracks
         );
         
 }

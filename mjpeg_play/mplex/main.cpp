@@ -252,7 +252,7 @@ private:
 	bool ParseLpcmOpt( const char *optarg );
 	bool ParseWorkaroundOpt( const char *optarg );
 	bool ParseTimeOffset( const char *optarg );
-	
+	bool ParseSubtitleOptions( const char *optarg  );
 
 	static const char short_options[];
 
@@ -263,7 +263,7 @@ private:
 };
 
 const char CmdLineMultiplexJob::short_options[] =
-        "o:i:b:r:O:v:f:l:s:S:p:W:L:R:VCMh";
+        "o:i:b:r:O:v:f:l:s:S:p:W:L:R:VCMhd:";
 #if defined(HAVE_GETOPT_LONG)
 struct option CmdLineMultiplexJob::long_options[] = 
 {
@@ -286,6 +286,7 @@ struct option CmdLineMultiplexJob::long_options[] =
     { "sector-size",       1, 0, 's' },
     { "workarounds", 1, 0, 'W' },
     { "help",              0, 0, '?' },
+    { "subpicture-delay",  1, 0, 'd' },
     { 0,                   0, 0, 0   }
 };
 #endif
@@ -408,6 +409,14 @@ CmdLineMultiplexJob::CmdLineMultiplexJob(unsigned int argc, char *argv[]) :
                 Usage(argv[0]);
             }
             break;
+                  
+        case 'd' :
+            if( ! ParseSubtitleOptions( optarg ) )
+            {
+                mjpeg_error( "Illegal Subtitle option(s): %s", optarg );
+                Usage(argv[0]);
+            }
+            break;
         case '?' :
         default :
             Usage(argv[0]);
@@ -450,8 +459,10 @@ void CmdLineMultiplexJob::Usage(char *str)
     "--lpcm-params | -L samppersec:chan:bits [, samppersec:chan:bits]\n"
 	"--mux-limit|-l num\n"
     "  Multiplex only num seconds of material (default 0=multiplex all)\n"
-	"--sync-offset|-O num ms|s|mpt\n"
+	"--sync-offset|-O num ms|s|mpt|c\n"
     "  Specify offset of timestamps (video-audio) in mSec\n"
+	"--subpicture-delay|-d delay [ms|s|mpt|c] [:stream-id] [, delay[:stream-id]]\n"
+    "  Specify offset of timestamps (video-subpicture) in msec (default) sec, mpt or clock-ticks\n"
 	"--sector-size|-s num\n"
     "  Specify sector size in bytes for generic formats [256..16384]\n"
     "--vbr|-V\n"
@@ -468,7 +479,7 @@ void CmdLineMultiplexJob::Usage(char *str)
     "  Maximum size of output file(s) in Mbyte (default: 0) (no limit)\n"
 	"--ignore-seqend-markers|-M\n"
     "  Don't switch to a new output file if a  sequence end marker\n"
-	"  is encountered ithe input video.\n"
+	"  is encountered in the input video.\n"
     "--vdr-index|-i <vdr-index-filename>\n"
     "  Generate a VDR index file with the output stream\n"
     "--workaround|-W workaround [, workaround ]\n"
@@ -477,6 +488,45 @@ void CmdLineMultiplexJob::Usage(char *str)
 	exit (1);
 }
 
+bool CmdLineMultiplexJob::ParseSubtitleOptions( const char *optarg  )
+{
+    double f;
+    double persecond=1000.0;
+    const char *e;
+	uint64_t subtitle_offset;
+	uint8_t stream_id;
+    e=optarg-1;
+    do 
+    {
+		e++;
+		subtitle_offset =0;
+		persecond=1000.0;
+		stream_id=0x20; // default
+		f=strtod(e,const_cast<char**>(&e));
+		if( *e  ) {
+			while(isspace(*e)) e++;
+			if(!strcmp(e,"ms")) { persecond=1000.0; e+=2;}
+			else if(!strcmp(e,"s")) {persecond=1.0; e++;}
+			else if(!strcmp(e,"mpt")){ persecond=90000.0;e+=3;}
+			else if(!strcmp(e,"c")){ persecond=CLOCKS;e++;}
+		}
+		subtitle_offset = static_cast<int>(f*CLOCKS/(persecond));
+		if( subtitle_offset < 0 )
+			subtitle_offset = 0; // always positive
+		if (*e ==':'){
+		 ++e;
+		 int nr;
+		 sscanf(e,"%hhd%n",&stream_id,&nr);
+		 e+=nr;
+		 mjpeg_info("Stream will be mapped to 0x%02hhX",stream_id);
+		}
+
+		subtitle_params.push_back(SubtitleStreamParams::Checked(subtitle_offset,stream_id));
+	} while (*e == ',');
+	
+	return true;
+
+}
 
 bool CmdLineMultiplexJob::ParseLpcmOpt( const char *optarg )
 {
@@ -608,6 +658,7 @@ bool CmdLineMultiplexJob::ParseTimeOffset(const char *optarg)
         if(!strcmp(e,"ms")) persecond=1000.0;
         else if(!strcmp(e,"s")) persecond=1.0;
         else if(!strcmp(e,"mpt")) persecond=90000.0;
+        else if(!strcmp(e,"c")) persecond=CLOCKS;
 		else
 			return false;
     }

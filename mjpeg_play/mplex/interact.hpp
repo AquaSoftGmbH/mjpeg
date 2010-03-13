@@ -54,6 +54,7 @@ public:
   int video_offset;             // A/V sync offset. Always one 0 and the
                                 // other positive. Specified in 
   int audio_offset;             // MPEG-2 CLOCKS: 1/(90000*300)-th sec
+
   unsigned int sector_size;
   bool VBR;                     // Force VBR even if profile suggests CBR
   bool CBR;                     // Force CBR even if profile suggests VBR
@@ -92,7 +93,8 @@ enum StreamKind
     AC3_AUDIO,
     LPCM_AUDIO,
     DTS_AUDIO,
-    MPEG_VIDEO
+    MPEG_VIDEO,
+    SUBP_STREAM,
 #ifdef ZALPHA
     ,
     Z_ALPHA
@@ -129,8 +131,10 @@ public:
   vector<JobStream *> streams;
   vector<LpcmParams *> lpcm_param;
   vector<VideoParams *> video_param;
+  vector<SubtitleStreamParams*> subtitle_params;
   unsigned int audio_tracks;
   unsigned int video_tracks;
+  unsigned int subtitle_tracks;
   unsigned int lpcm_tracks;
 #ifdef ZALPHA
   unsigned int z_alpha_tracks;
