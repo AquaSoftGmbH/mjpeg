@@ -25,6 +25,8 @@ mplex \- MPEG 1/2 program/system stream multiplexer
 .IR num ]
 .RB [ -O|--sync-offset
 .IR num[\fBms\fP|\fBs\fP|\fBpts\fP] ]
+.RB [ -d|--subpicture-delay
+.IR [\fBms\fP|\fBs\fP|\fBpts\fP] [:stream-id] [, delay[:stream-id] ]
 .RB [ -R|--run-in
 .IR num ]
 .RB [ -V|--vbr]
@@ -153,7 +155,7 @@ significant bits.
 Multiplex limit.  Multiplex only the specified number of seconds.
 Useful for tuning and debugging.
 .TP
-.BI -O|--sync-offset \ num[\fBms\fP|\fBs\fP|\Bmpt\fP]
+.BI -O|--sync-offset \ num[\fBms\fP|\fBs\fP|\fBmpt\fP|\fBc\fP]
 Set the presentation timestamp offset of video stream w.r.t. audio stream (video-audio) in mSec.   This flag is used to produce a stream with synchronised
 audio/video when one stream started before/after the other.  This is common
 when transcoding as the synchronisation information is typically lost during
@@ -162,6 +164,19 @@ the (seperate) decoding/encoding of audio and video.
 By appending 's', 'ms' or 'mpt' the offset can given in seconds,
 milliseconds or MPEG clock ticks (1/90000th of a second) respectively.
 If no suffix is given milliseconds are assumed.
+.TP
+.BI -d|--subpicture-delay \ num [\fBms\fP|\fBs|\fBmpt\fP|\fBc\fP] [:stream-id] [, delay[:stream-id]]
+Specify offset of timestamps (video-subpicture) in msec sec, mpt or clock-ticks. If no suffix is given milliseconds are assumed.
+.IP
+The intention of the adding subtitle support was to enable mplex to mux all streams necessary for a DVD so that the mpeg2 stream created can be used directly for further dvd creation. Please be aware that i do not use the term "authoring"
+.IP 
+Valid subtitle stream are in a range of 32-63 (including).
+You may want to specify each stream you mplex, use "," to delimit each stream.
+.IP
+\fBExample given:\fP
+If you want to mux one video, one audio and two subtitle streams having delays of 500 and 1000 ms, the first shall have id 32, the second is 33 (Subtitle stream 0 and 1):
+.IP
+$ mplex -f 8 -o my_mpeg.mpeg -d 500:32,100:33 video_in.mpv audio_in.m2a subtitle_0.ps1 subtitle_1.ps1
 .TP
 .BI -R|--run-in \ num
 Set a non-default run-in (the time data is preloaded into buffers before decoding is scheduled) at the start of each sequence in video frame intervals.
