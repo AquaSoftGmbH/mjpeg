@@ -916,9 +916,16 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	#endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
 
 	// Initialize the search-border.
+	// Note that the search-border is not given the value of
+	// the externally-set match-size-throttle.  That was done
+	// back when throttling happened at the end of a pixel-group
+	// search if any of the resulting regions exceeded the
+	// match-size-throttle.  Now, those large regions are kept
+	// in the search-border until all the new conditions for
+	// throttling are met.
 	m_oSearchBorder.Init (a_reStatus, a_tnWidth, a_tnHeight,
 		a_tnSearchRadiusX, a_tnSearchRadiusY, PGW, PGH,
-		a_nMatchSizeThrottle);
+		/* a_nMatchSizeThrottle */ a_tnWidth * a_tnHeight);
 	if (a_reStatus != g_kNoError)
 		return;
 
@@ -1533,9 +1540,25 @@ noMatch:
 			#endif // THROTTLE_PIXELSORTER_WITH_SAD
 
 				// If it's time to throttle matches, do so.
+				//
+				// The idea is that matches are only throttled when the
+				// match-count-throttle is exceeded, and the largest
+				// matches are applied until the match-size-throttle is
+				// satisfied.  Previously, matches could be throttled if
+				// only the match-size-throttle was exceeded.  But this
+				// led to bad matches getting applied before a better match
+				// could be found, which led to an "earthquaking" sort of
+				// artifact in dark, cloudy areas of the picture.  This
+				// ended up being the simple fix for that problem!
+				//
+				// Now, the challenge is to pick a match-size-throttle that
+				// keeps the denoiser running quickly without missing many
+				// good matches, and a match-count-throttle that keeps the
+				// number of candidates high enough to avoid the shaking
+				// artifact described above.
 				if (tnMatches >= m_nMatchCountThrottle
-					|| m_oSearchBorder.GetSizeOfLargestActiveRegion()
-						>= m_nMatchSizeThrottle)
+					/* || m_oSearchBorder.GetSizeOfLargestActiveRegion()
+						>= m_nMatchSizeThrottle */)
 				{
 					// Get the largest active-region from the search-border
 					// and apply it now.  Then, keep doing that as long
@@ -1622,6 +1645,59 @@ nextGroup:
 					// the last line, we're done with the frame.
 					if (m_tnY == tnLastY)
 						break;
+
+					// We should have found enough matches during this line
+					// to safely apply all regions that exceed the
+					// match-size-throttle.
+					if (m_oSearchBorder.GetSizeOfLargestActiveRegion()
+						>= m_nMatchSizeThrottle)
+					{
+						// Get the largest active-region from the
+						// search-border and apply it now.  Then, keep
+						// doing that as long as the largets active-region
+						// exceeds the match-size-throttle.
+						// This allows at least one region to be applied if
+						// the match-count-throttle is exceeded, and allows
+						// the search-border to avoid doing expensive work
+						// for regions that exceed the match-size-throttle.
+						tnMatches = 0;
+						do
+						{
+							FRAMESIZE tnThrottledPixels;
+							PIXELINDEX tnMotionX, tnMotionY;
+	
+							// Take the largest region that the current
+							// pixel-group matched, flood-fill it, and
+							// apply it to the new frame now, eliminating
+							// any competing moved-regions encountered
+							// along the way.
+							tnThrottledPixels = SearchBorder_MatchThrottle
+								(a_reStatus, tnMatches,
+									tnMotionX, tnMotionY);
+							if (a_reStatus != g_kNoError)
+								return;
+	
+							// HACK
+							#if 0
+							fprintf (stderr, "Match throttle: frame %d, "
+								"x %03d, y %03d, %03d matches, "
+								"%04d flood     \r", frame,
+								int (m_tnX), int (m_tnY), int (tnMatches),
+								int (tnThrottledPixels));
+							#endif
+	
+							// That's more pixels found by
+							// match-throttling.
+							if (tnMotionX == 0 && tnMotionY == 0)
+								tnNotMovedThrottledPixels
+									+= tnThrottledPixels;
+							else
+								tnMovedThrottledPixels
+									+= tnThrottledPixels;
+						} while
+							(m_oSearchBorder.GetSizeOfLargestActiveRegion()
+								>= m_nMatchSizeThrottle);
+					}
 
 					// Move down a line.
 					m_oSearchWindow.MoveDown();

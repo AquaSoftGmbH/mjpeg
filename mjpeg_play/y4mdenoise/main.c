@@ -64,9 +64,9 @@ int main(int argc, char *argv[])
   denoiser.bwonly             = 0;
   denoiser.radiusY            = 16;
   denoiser.radiusCbCr         = -1;
-  denoiser.zThresholdY        = 2; /* assume medium noise material */
+  denoiser.zThresholdY        = 0; /* assume medium noise material */
   denoiser.zThresholdCbCr     = -1;
-  denoiser.thresholdY         = 4; /* assume medium noise material */
+  denoiser.thresholdY         = 3; /* assume medium noise material */
   denoiser.thresholdCbCr      = -1;
   denoiser.matchCountThrottle = 16;
   denoiser.matchSizeThrottle  = 256;
