@@ -584,9 +584,9 @@ void Picture::QuantiseAndCode(RateCtl &ratectl)
                 int mb_type = cur_mb->best_me->mb_type;
 
                 /* Code mquant and update prediction if it changed in this macroblock */
-                if( cur_mb->cbp && suggested_mquant != mquant_pred )
+                if( cur_mb->cbp && cur_mb->mquant != mquant_pred )
                 {
-                    mquant_pred = suggested_mquant;
+                    mquant_pred = cur_mb->mquant;
                     mb_type |= MB_QUANT;
                 }
 

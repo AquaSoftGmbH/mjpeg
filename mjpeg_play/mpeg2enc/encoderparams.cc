@@ -435,6 +435,7 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
         = (options.mpeg == 1 || options.fieldenc == 0) ? 1 : 0;
 
     mjpeg_info( "Progressive format frames = %d", 	frame_pred_dct_tab[0] );
+    // TODO BUG BUG Always setting the linear quantizer table???
 	qscale_tab[0] 
 		= qscale_tab[1] 
 		= qscale_tab[2] 

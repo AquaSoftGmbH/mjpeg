@@ -143,9 +143,9 @@ void OnTheFlyPass1::Init()
 
 
   /*
-     We assume that having less than 3 frame intervals
+     We assume that having less than 4 frame intervals
      worth buffered is cutting it fine for avoiding under-runs.
-    This is the buffer_safe margin.
+     This is the buffer_safe margin.
 
      The gain values represent the fraction of the under/over shoot
      to be recovered during one second.  Gain is lower if the
@@ -170,12 +170,20 @@ void OnTheFlyPass1::Init()
                                  : encparams.bit_rate / encparams.decode_frame_rate
                 );
        
-        int buffer_danger = 3 * per_pict_bits ;
-        int buffer_variation_danger =  (encparams.video_buffer_size - buffer_danger)/6;
-        undershoot_carry = buffer_variation_danger/6;
-        if( undershoot_carry < 0 )
+        int buffer_danger = 4 * per_pict_bits ;
+        int safe_buffer_variation =  (encparams.video_buffer_size - buffer_danger);
+        if( safe_buffer_variation < 0 )
             mjpeg_error_exit1("Rate control can't cope with a video buffer smaller 4 frame intervals");
-        overshoot_gain =  encparams.bit_rate / buffer_variation_danger;
+
+        undershoot_carry = safe_buffer_variation/6;
+
+        /*
+         * Heuristic: We set the gain so that we aim to recover our bit overshoot in
+         * the time it takes to fill the buffers (safe) capacity at the target bit-rate.
+         * I.e. if our buffers safe capacity is 1/2 second... then recover in 1/2 second.
+         */
+        overshoot_gain =  encparams.bit_rate / safe_buffer_variation;
+        //fprintf( stderr, "VBS=%d BD=%d Overshoot gain = %.2f", encparams.video_buffer_size, buffer_danger, overshoot_gain );
     }
 
 
@@ -252,11 +260,8 @@ void OnTheFlyPass1::InitGOP(  )
 	else
 	{
 		mjpeg_debug( "REST GOP INIT" );
-		double recovery_fraction = field_rate/(overshoot_gain * fields_in_gop);
-		double recovery_gain = 
-			recovery_fraction > 1.0 ? 1.0 : overshoot_gain * recovery_fraction;
 		int available_bits = 
-			static_cast<int>( (encparams.bit_rate+buffer_variation*recovery_gain)
+			static_cast<int>( (encparams.bit_rate+buffer_variation*overshoot_gain)
 							  * fields_in_gop/field_rate);
         double Xsum = 0.0;
         for( i = FIRST_PICT_TYPE; i <= LAST_PICT_TYPE; ++i )
@@ -334,11 +339,16 @@ void OnTheFlyPass1::InitPict(Picture &picture)
 							  : (buffer_variation+gop_buffer_correction) 
 							    * overshoot_gain
 				);
-		available_bits = 
-			static_cast<int>( (encparams.bit_rate+feedback_correction)
-							  * fields_in_gop/field_rate
-							  );
+
+		// Sanity limit - don't want negative available bits or
+		// ludicrously small available bits.  "Bad guesses" will be fixed by
+		// 2nd pass anyway...
+		available_bits = std::max( encparams.bit_rate * 0.2,
+					               encparams.bit_rate+feedback_correction
+					             ) * fields_in_gop/field_rate;
 	}
+
+
 
     Xsum = 0.0;
     int i;
@@ -394,8 +404,11 @@ void OnTheFlyPass1::InitPict(Picture &picture)
 	gop_buffer_correction += (pict_base_bits[picture.pict_type]-per_pict_bits);
 
 
-	/* Undershot bits have been "returned" via R */
+	/* Undershot bits have been "returned"  */
     vbuf_fullness = max( vbuf_fullness, 0 );
+
+    //fprintf( stderr, "T=%05d A=%06d GBC = %d VBF=%d", (int)target_bits/8, (int)available_bits/8, (int)gop_buffer_correction/8,
+    //										 (int)vbuf_fullness/8);
 
 	/* We don't let the target volume get absurdly low as it makes some
 	   of the prediction maths ill-condtioned.  At these levels quantisation
@@ -420,6 +433,7 @@ void OnTheFlyPass1::InitPict(Picture &picture)
 	cur_mquant = ScaleQuant( picture.q_scale_type,  cur_base_Q );
 
     mquant_change_ctr = encparams.mb_width/2-1;
+    //fprintf( stderr, " CBQ = %.1f CMQ=%03d\n", cur_base_Q, cur_mquant);
 }
 
 
@@ -490,8 +504,8 @@ void OnTheFlyPass1::PictUpdate( Picture &picture, int &padding_needed)
 	  (rather more vigorously).
 	  
 	  Note that since we cannot hold more than a buffer-full if we have
-	  a positive buffer_variation in CBR we assume it was padded away
-	  and in VBR we assume we only sent until the buffer was full.
+	  a positive buffer_variation in VBR we assume we only sent until the buffer was full
+	  in CBR we assume it was padded away.
 	*/
 
 	
@@ -503,17 +517,11 @@ void OnTheFlyPass1::PictUpdate( Picture &picture, int &padding_needed)
 
 	if( buffer_variation > 0 )
 	{
-		if( encparams.quant_floor > 0 )
-		{
 			bits_transported = bits_used;
 			buffer_variation = 0;	
-		}
-		else if( buffer_variation > undershoot_carry )
-		{
-			bits_used = bits_transported + undershoot_carry;
-			buffer_variation = undershoot_carry;
-		}
 	}
+
+	//fprintf( stderr, "BV=%d A=%d T=%d\n", (int)buffer_variation/8, actual_bits/8, target_bits/8 );
 
   /* Rate-control
     ABQ is the average 'base' quantisation (before adjustments for relative
@@ -877,6 +885,8 @@ void OnTheFlyPass2::InitPict(Picture &picture)
 
 
   // Work out target bit allocation of frame based complexity statistics
+  // TODO BUG BUG BUG surely we should use the *actual* complexity
+  // we measured in pass-1 allowing for clipping adjustments to mquant etc etc...
   double Xhi = picture.ABQ * picture.EncodedSize(); 
   target_bits = static_cast<int32_t>(available_bits*Xhi/gop_Xhi);
   target_bits = min( target_bits, encparams.video_buffer_size*3/4 );
@@ -891,18 +901,22 @@ void OnTheFlyPass2::InitPict(Picture &picture)
 
   int actual_bits = picture.EncodedSize();
   double rel_error = (actual_bits-target_bits) / static_cast<double>(target_bits);
-  double scale_quant_floor = encparams.quant_floor;
+  double scale_quant_floor = std::max(2.0, encparams.quant_floor);
   //
-  // Tolerance of undershoot drops to zero from encparams.coding_tolerance as
-  // buffer_variation goes to danger level...
-  double undershoot_tolerance = encparams.coding_tolerance 
-                                * (1.0 - std::max( 1.0, -buffer_variation/buffer_variation_danger ));
+  // Tolerance of overshooting target bit allocation
+  // drops to zero from encparams.coding_tolerance b
+  // as buffer_variation gets closer to danger level...
+  double rel_overshoot = std::max( 0.0, -buffer_variation/buffer_variation_danger );
+  double overshoot_tolerance =  encparams.coding_tolerance * (1.0-rel_overshoot);
+  double undershoot_tolerance = -encparams.coding_tolerance;
+
+  // Re-encode if we overshot too much or undershot and weren't yet at the specified
+  // quantization floor.
   reencode =
-        rel_error  > undershoot_tolerance
-    || (rel_error < -encparams.coding_tolerance && picture.ABQ > scale_quant_floor  );
+        rel_error  > overshoot_tolerance
+    || (rel_error < undershoot_tolerance && picture.ABQ > scale_quant_floor  );
 
-
-
+  //fprintf( stderr, "RE = %.2f OT=%.2f UT=%.02f RENC=%d\n", rel_error, overshoot_tolerance, undershoot_tolerance, reencode );
   // If re-encoding to hit a target we adjust *relative* to previous (off-target) base quantisation
   // Since there is often a tendency for systematically under or over correct we maintain a moving
   // average of the ratio target_bits/actual_bits after re-encoding ansd use this to correct our
@@ -918,7 +932,7 @@ void OnTheFlyPass2::InitPict(Picture &picture)
   }
 
   double raw_base_Q;
-  if( encparams.quant_floor < target_ABQ )
+  if( scale_quant_floor < target_ABQ )
   {
       sample_T_A = reencode;
       raw_base_Q = target_ABQ;
@@ -930,11 +944,11 @@ void OnTheFlyPass2::InitPict(Picture &picture)
     // useful to use the T/A ratio to update our estimate
     // of bias in our T/A ratio when we're trying to actually
     // hit the target bits.
-    raw_base_Q = encparams.quant_floor;
+    raw_base_Q = scale_quant_floor;
     sample_T_A = false;
   }
   base_Q = ClipQuant( picture.q_scale_type,
-                      fmax( encparams.quant_floor, target_ABQ ) );
+                      fmax( encparams.quant_floor, raw_base_Q ) );
 
   cur_int_base_Q = floor( base_Q + 0.5 );
   rnd_error = 0.0;

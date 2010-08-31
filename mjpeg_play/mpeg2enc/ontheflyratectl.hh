@@ -51,6 +51,12 @@ public:
 
 	int frame_overshoot_margin;
 	int undershoot_carry;
+
+	/*!
+	 * If our buffer is running down we need to reduce available bits
+	 * for encoding to fill it up again.   This is the gain expressed
+	 * as the fraction of the undershoot to recover over the next second.
+	 */
 	double overshoot_gain;
 
     /*

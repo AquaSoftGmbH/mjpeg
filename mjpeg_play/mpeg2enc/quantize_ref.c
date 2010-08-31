@@ -172,11 +172,13 @@ void quant_intra( struct QuantizerWorkSpace *wsp,
 #endif
             if ( y > clipvalue )
             {
-             clipping = 1;
+              clipping = 1;
+              int mquant_org = mquant;
               mquant = next_larger_quant(q_scale_type, mquant );
-             quant_mat = wsp->intra_q_tbl[mquant];
+              quant_mat = wsp->intra_q_tbl[mquant];
               break;
-            }		  
+            }
+
 		  	pbuf[i] = intsamesign(x,y);
 		  }
 		pbuf += 64;
