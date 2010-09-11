@@ -51,28 +51,39 @@ public:
                              double allocation_exp );
   void AddComplexitySample( double xhi );
 
-  double FindRateCoefficient( double target_bitrate,
-                              double init_rate_coefficient,
+  double FindControlBitrate( double target_bitrate,
+                              double init_control_bitrate,
                               double tolerance = 0.01 );
 
-  double Quantisation( double xhi );
+
+  unsigned int GetNumSamples() const
+  {
+	  return m_num_samples;
+  }
+
+  double GetMeanComplexity() const
+  {
+	  return m_mean_xhi;
+  }
+
+  double FrameBitRate( double xhi, double control_bitrate );
 
 protected: // Methods
 
-  double BitAllocation( double xhi, double rate_coefficient );
-  double PredictedBitrate( double rate_coefficient);
+  double PredictedBitrate( double control_bitrate);
 
 protected:  // Variables
 
   static const unsigned int SAMPLING_POINTS = 128;
 
   BucketSetSampling *m_model;
-  double m_total_xhi;
-  int    m_num_samples;
-  double m_mean_xhi;
+  double 			m_total_xhi;
+  unsigned int      m_num_samples;
+  double 			m_mean_xhi;
 
-  double m_max_bitrate;
+  double m_target_bitrate;
   double m_allocation_exp;
+  double m_max_bitrate;
 };
 
 #endif /* RATE_COMPLEXITY_MODEL_HH */

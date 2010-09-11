@@ -1,5 +1,5 @@
-#ifndef _ONTHEFLYRATECTL_HH
-#define _ONTHELFYRATECTL_HH
+#ifndef _ONTHEFLYRATECTLPASS1_HH
+#define _ONTHELFYRATECTLPASS1_HH
 
 /*  (C) 2003 Andrew Stevens */
 
@@ -144,7 +144,14 @@ protected:
     virtual void InitGOP( ) ;
     virtual void InitPict( Picture &picture );
 
+protected:
+    /*!
+     * Mean bitrate to aim for...
+     */
+    double  ctrl_bitrate;
 private:
+
+
 
     double  cur_base_Q;       // Current base quantisation (before adjustments
                               // for relative macroblock activity
@@ -170,115 +177,6 @@ private:
 
 };
 
-
-/*
-        The parts of of the rate-controller's state neededfor save/restore if backing off
-        a partial encoding
-*/
-
-class OnTheFlyPass2State :  public RateCtlState
-{
-public:
-    virtual ~OnTheFlyPass2State() {}
-    virtual RateCtlState *New() const { return new OnTheFlyPass2State; }
-    virtual void Set( const RateCtlState &state ) { *this = static_cast<const OnTheFlyPass2State &>(state); }
-    virtual const RateCtlState &Get() const { return *this; }
-
-
-    int32_t per_pict_bits;
-    int     fields_in_gop;
-    double  field_rate;
-    int     fields_per_pict;
-
-    double overshoot_gain;
-    int32_t buffer_variation;
-    int64_t bits_transported;
-    int64_t bits_used;
-    int32_t gop_buffer_correction;
-
-    int target_bits;    // target bits for current frame
-
-    double base_quant;
-    double gop_Xhi;
-
-    /*
-      Moving average of the final ration actual_bits/target_bits after
-      re-encoding of pictures.  Used to avoid a bias to under / over correction
-     */
-    double mean_reencode_A_T_ratio;
-
-    /*
-      actsum - Total activity (sum block variances) in frame
-      actcovered - Activity macroblocks so far quantised (used to
-      fine tune quantisation to avoid starving highly
-      active blocks appearing late in frame...) UNUSED
-      avg_act - Current average activity...
-    */
-    double actsum;
-    double actcovered;
-    double sum_avg_act;
-    double avg_act;
-    double sum_avg_quant;
-
-};
-
-
-class OnTheFlyPass2 :  public Pass2RateCtl,  public OnTheFlyPass2State
-{
-public:
-    OnTheFlyPass2( EncoderParams &encoder );
-    virtual void Init() ;
-
-    virtual void GopSetup( std::deque<Picture *>::iterator gop_begin,
-                           std::deque<Picture *>::iterator gop_end );
-    virtual void PictUpdate (Picture &picture, int &padding_needed );
-
-    virtual int  MacroBlockQuant( const MacroBlock &mb);
-    virtual int  InitialMacroBlockQuant();
-
-    double SumAvgActivity()  { return sum_avg_act; }
-
-    bool ReencodeRequired() const { return reencode; }
-protected:
-    virtual int  TargetPictureEncodingSize();
-
-    virtual void InitSeq( );
-    virtual void InitGOP( ) ;
-    virtual void InitPict( Picture &picture );
-
-private:
-
-#if 0   // TODO: Do we need VBV checking? currently left to muxer
-    virtual void CalcVbvDelay (Picture &picture);
-    virtual void VbvEndOfPict (Picture &picture);
-#endif
-
-    double  base_Q;           // Base quantisation (before adjustments
-                              // for relative macroblock activity
-    double  cur_int_base_Q;   // Current rounded base quantisation
-    double  rnd_error;        // Cumulative rounding error from base
-                              // quantisation rounding
-
-    int     cur_mquant;       // Current macroblock quantisation
-    int     mquant_change_ctr;
-
-                            // Window used for moving average of
-                            // post-correction actual / target bits ratio
-                            // for re-encoded frames.
-    static const int RENC_A_T_RATIO_WINDOW = 4;
-    bool   reencode;  // Current Picture flagged for re-encode to better hit
-                      // target bitrate.
-    bool   sample_T_A;      // Finaly (T)arget and (A)ctual bit ratio should be sampled
-                            // to maintain an estimate of current systematic mean T/A ratio after
-                            // pass 2 re-encoding.
-
-    double sum_base_Q;        // Accumulates base quantisations encoding
-    int sum_actual_Q;         // Accumulates actual quantisation
-    double buffer_variation_danger; // Buffer variation level below full
-                                    // at which serious risk of data under-run in muxed stream
-};
-
-
 
 /* 
  * Local variables:

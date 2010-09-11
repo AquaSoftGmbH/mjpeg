@@ -32,7 +32,10 @@ struct MPEG2EncParams
     int level;              // MPEG-2 main profile level to enforce.
     int format;
     int bitrate;
+    int target_bitrate;
     int nonvid_bitrate;
+    int rep_sample_frames;   // # Frames to representatively sample entire stream
+    double init_mean_Xhi;	 // debug feature: only initial mean frame complexity
     int quant;
     int searchrad;
     int mpeg;

@@ -260,6 +260,17 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 		bit_rate = MAX(10000, options.bitrate);
 		vbv_buffer_code = MIN(112,options.video_buffer_size / 2);
 	}
+
+	target_bitrate = options.target_bitrate;
+	if( target_bitrate > bit_rate )
+	{
+		target_bitrate = bit_rate;
+		mjpeg_warn( "Target bit rate may not exceed specified (max) bit-rate: reducing to %.0fKbps",
+					target_bitrate	);
+	}
+
+	init_mean_Xhi = options.init_mean_Xhi;
+	rep_sample_frames = options.rep_sample_frames;
 	vbv_buffer_size = vbv_buffer_code*16384;
 
 	if( options.quant )
@@ -785,7 +796,7 @@ void EncoderParams::InitQuantMatrices( const MPEG2EncOptions &options )
     }
 
     if  (msg)
-        mjpeg_info(msg);
+        mjpeg_info( "%s", msg);
     
     for (i = 0; i < 64; i++)
     {

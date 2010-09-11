@@ -33,7 +33,10 @@ MPEG2EncOptions::MPEG2EncOptions()
     display_hsize  = 0; // Use default
     display_vsize  = 0; // Use default
     bitrate    = 0;
+    target_bitrate = 0;
     nonvid_bitrate = 0;
+    rep_sample_frames = 27*60*5;   	// Roughly 5 minutes video
+    init_mean_Xhi = 0.0;		// off by default
     quant      = 0;
     searchrad  = 0;     // Use default
     mpeg       = 1;
@@ -280,6 +283,11 @@ int MPEG2EncOptions::CheckBasicConstraints()
 		++nerr;
 	}
 
+	if( rep_sample_frames < 4*max_GOP_size )
+	{
+		mjpeg_error( "-L must be at at least 4 GOP lengths (4 * -G)" );
+		++nerr;
+	}
     if( preserve_B && Bgrp_size == 0 )
     {
 		mjpeg_error_exit1("Preserving I/P frame spacing is impossible for still encoding" );
@@ -577,6 +585,8 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
          video_buffer_size = 488;
          if (bitrate == 0)
              bitrate = 19400000;
+ 		if (!force_cbr && quant == 0)
+ 			quant = 8;
          
 	}
 

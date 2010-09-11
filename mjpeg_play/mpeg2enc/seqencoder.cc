@@ -445,6 +445,10 @@ void SeqEncoder::EncodeStreamOneStep()
 	if( !pass1_ss.EndOfStream() )
 	{
 		Pass1Process();
+		//
+		// TODO Sequence splitting really needs to be done in pass-2
+		//  HOwever, the would entail changing GOP structure :-(
+		//  in <pass2-ratectl>::GopSetup....
 		pass1_ss.Next( BitsAfterMux() );
 	}
     

@@ -112,7 +112,10 @@ public:
 							   N.b. when 3:2 pullback is active
 							   this is higher than the frame
 							   decode rate.  */
-	double bit_rate;			/* bits per second */
+	double bit_rate;			/* bits per second, rate decode buffers filled (max rate) */
+	double target_bitrate;		/* Target bit rate to achieve overall for VBR 0  if no target set */
+	unsigned int rep_sample_frames;		/* # Frames to representatively sample stream */
+	double init_mean_Xhi;				/* Initial mean complexity */
 	bool seq_hdr_every_gop;
 	bool seq_end_every_gop;	/* Useful for Stills sequences... */
 	bool svcd_scan_data;

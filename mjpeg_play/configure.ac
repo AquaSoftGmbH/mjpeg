@@ -4,8 +4,8 @@ AC_PREREQ(2.57)
 AC_CONFIG_SRCDIR([lavtools/lav_io.c])
 
 MJPEG_MAJOR_VERSION=1
-MJPEG_MINOR_VERSION=9
-MJPEG_MICRO_VERSION=1
+MJPEG_MINOR_VERSION=10
+MJPEG_MICRO_VERSION=0
 MJPEG_VERSION=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION.$MJPEG_MICRO_VERSION
 
 AC_CONFIG_HEADERS([config.h])
@@ -449,8 +449,11 @@ fi
 
 dnl **********************************************************************
 dnl Handle forcing static linkage in key places
-if test "x$enable_force_static" = "xyes" ; then
+if test "x$enable_static_build" = "xyes" ; then
+  echo "Forcing static linkage..."
   LT_STATIC=-all-static
+else
+  echo enable_static_build="\'${enable_static_build}\'"
 fi
 
 

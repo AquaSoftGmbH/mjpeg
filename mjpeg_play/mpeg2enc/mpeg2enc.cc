@@ -65,9 +65,8 @@
 #include "imageplanes.hh"
 #include "elemstrmwriter.hh"
 #include "quantize.hh"
-#include "ontheflyratectl.hh"
-#include "pass1ratectl.hh"
-#include "pass2ratectl.hh"
+#include "ontheflyratectlpass1.hh"
+#include "ontheflyratectlpass2.hh"
 #include "seqencoder.hh"
 #include "mpeg2coder.hh"
 #include "format_codes.h"
@@ -110,7 +109,7 @@ public:
                                      outfile );
             if( written != static_cast<size_t>(flush_upto) )
             {
-                mjpeg_error_exit1( strerror(ferror(outfile)) );
+                mjpeg_error_exit1( "%s", strerror(ferror(outfile)) );
             }
 	       flushed += flush_upto;
         }
@@ -466,10 +465,11 @@ void MPEG2EncCmdLineOptions::Usage()
 "    (default: frame rate of input stream)\n"
 "    0 = Display frame rate code table\n"
 "--video-bitrate|-b num\n"
-"    Set Bitrate of compressed video in KBit/sec\n"
+"    Set Bitrate / peak bitrate of compressed video in KBit/sec\n"
+"    (Peak bitrate if a target bitrate and/or quantisation floor is set\n"
 "    (default: 1152.0 for VCD, 2500.0 for SVCD, 7500.0 for DVD)\n"
-"--ratecontroller|-A [0..1] (default:0)\n"
-"    Specify ratecontrol alorithm\n"
+"--target-video-bitrate|-t\n"
+"   Set target bitrate for entire video stream in KBit/sec\n"
 "--nonvideo-bitrate|-B num\n"
 "    Non-video data bitrate to assume for sequence splitting\n"
 "    calculations (see also --sequence-length).\n"
@@ -477,6 +477,8 @@ void MPEG2EncCmdLineOptions::Usage()
 "    Image data quantisation factor [1..31] (1 is best quality, no default)\n"
 "    When quantisation is set variable bit-rate encoding is activated and\n"
 "    the --bitrate value sets an *upper-bound* video data-rate\n"
+"--ratecontroller|-A [0..1] (default:0)\n"
+"    Specify ratecontrol alorithm\n"
 "--output|-o pathname\n"
 "    Pathname of output file or fifo (REQUIRED!!!)\n"
 "--target-still-size|-T size\n"
@@ -618,14 +620,13 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 int n;
 int nerr = 0;
 static const char   short_options[]=
-        "l:a:f:x:y:n:b:z:T:B:q:o:S:I:r:M:4:2:A:Q:X:D:g:G:v:V:F:N:pdsHcCPK:E:R:";
+        "l:a:f:x:y:n:b:z:T:B:q:o:S:I:r:M:4:2:A:Q:X:D:g:G:v:V:F:N:pdsHcCPK:E:R:t:L:Z:";
 
 #ifdef HAVE_GETOPT_LONG
 
 static struct option long_options[]=
     {
-        { "verbose",           1, 0, 'v'
-        },
+        { "verbose",           1, 0, 'v' },
         { "format",            1, 0, 'f' },
         { "level",             1, 0, 'l' },
         { "aspect",            1, 0, 'a' },
@@ -633,6 +634,9 @@ static struct option long_options[]=
         { "display-vsize",     1, 0, 'y' },
         { "frame-rate",        1, 0, 'F' },
         { "video-bitrate",     1, 0, 'b' },
+        { "target-video-bitrate", 1, 0, 't' },
+        { "rep-sample-frames", 1, 0, 'L' },
+        { "mean-complexity",	1, 0, 'Z' },
         { "nonvideo-bitrate",  1, 0, 'B' },
         { "intra_dc_prec",     1, 0, 'D' },
         { "quantisation",      1, 0, 'q' },
@@ -701,6 +705,20 @@ while( (n=getopt(argc,argv,short_options)) != -1)
         }
         break;
 
+    case 't':
+        target_bitrate = static_cast<int>(atof(optarg)*1000);
+        break;
+    case 'L' :
+    	rep_sample_frames = atoi(optarg);
+    	break;
+    case 'Z' :
+    	init_mean_Xhi = atof(optarg);
+    	if( init_mean_Xhi < 1000.0 )
+    	{
+    		mjpeg_error( "-Z|mean_complexity fails sanity check (< 1000.0)");
+    		++nerr;
+    	}
+    	break;
     case 'T' :
         still_size = atoi(optarg)*1024;
         if( still_size < 20*1024 || still_size > 500*1024 )
