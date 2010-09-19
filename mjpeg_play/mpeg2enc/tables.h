@@ -61,6 +61,10 @@ EXTERNTBL const uint16_t kvcd_intra_quantizer_matrix[64];
 
 EXTERNTBL const uint16_t kvcd_nonintra_quantizer_matrix[64];
 
+EXTERNTBL const uint16_t flat_intra_quantizer_matrix[64];
+
+EXTERNTBL const uint16_t flat_nonintra_quantizer_matrix[64];
+
 EXTERNTBL const uint16_t tmpgenc_intra_quantizer_matrix[64];
 
 EXTERNTBL const uint16_t tmpgenc_nonintra_quantizer_matrix[64];

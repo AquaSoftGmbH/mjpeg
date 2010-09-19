@@ -54,7 +54,7 @@
 #include "mjpeg_types.h"
 
 static double aanscales[64];
-
+static float  aanscalesf[64];
 #define FDCTTEST
 
 #define NC_COS6      0.382683432365089771728459984030399//cos(6*pi/16)
@@ -72,14 +72,10 @@ static double aanscales[64];
 
 void init_fdct_daan( void );
 void fdct_daan(int16_t *block);
-
+void fdct_daanf(int16_t *block);
 void init_fdct (void);
 void fdct (int16_t *block);
 
-void init_fdct_sse( void );
-void fdct_sse(int16_t *block);
-
-void fdct_mmx( int16_t * blk );
 
 #ifdef FDCTTEST
 
@@ -99,7 +95,8 @@ void init_fdct_daan( void )
 
 	for (i = 0; i < 8; i++)
 		for (j = 0; j < 8; j++)
-			aanscales[(i << 3) + j] = 1.0 / (aansf[i] * aansf[j] * 8.0);
+			aanscalesf[ i*8 + j] =
+			aanscales[i*8 + j] = 1.0 / (aansf[i] * aansf[j] * 8.0);
 }
 
 /*
@@ -225,6 +222,130 @@ void fdct_daan(int16_t *block)
 		block[i] = (int16_t) floor(data[i] * aanscales[i] + 0.5);
 }
 
+
+/*
+ * Perform a floating point forward DCT on one block of samples.
+ */
+
+void fdct_daanf(int16_t *block)
+{
+	float tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
+	float tmp10, tmp11, tmp12, tmp13;
+	float z1, z2, z3, z4, z5, z11, z13;
+	float *dataptr;
+	float data[64];
+	int16_t *blkptr;
+	int i;
+
+	/* Pass 1: process rows. */
+
+	blkptr = block;
+	dataptr = data;
+	for (i = 0; i < 8; i++)
+	{
+		tmp0 = blkptr[0] + blkptr[7];
+		tmp7 = blkptr[0] - blkptr[7];
+		tmp1 = blkptr[1] + blkptr[6];
+		tmp6 = blkptr[1] - blkptr[6];
+		tmp2 = blkptr[2] + blkptr[5];
+		tmp5 = blkptr[2] - blkptr[5];
+		tmp3 = blkptr[3] + blkptr[4];
+		tmp4 = blkptr[3] - blkptr[4];
+
+		/* Even part */
+
+		tmp10 = tmp0 + tmp3;	/* phase 2 */
+		tmp13 = tmp0 - tmp3;
+		tmp11 = tmp1 + tmp2;
+		tmp12 = tmp1 - tmp2;
+
+		dataptr[0] = tmp10 + tmp11; /* phase 3 */
+		dataptr[4] = tmp10 - tmp11;
+
+		z1 = (tmp12 + tmp13) * ((double) NC_R_SQRT2); /* c4 */
+		dataptr[2] = tmp13 + z1;	/* phase 5 */
+		dataptr[6] = tmp13 - z1;
+
+		/* Odd part */
+
+		tmp10 = tmp4 + tmp5;	/* phase 2 */
+		tmp11 = tmp5 + tmp6;
+		tmp12 = tmp6 + tmp7;
+
+		/* The rotator is modified from fig 4-8 to avoid extra negations. */
+		z5 = (tmp10 - tmp12) * ((float) NC_COS6); /* c6 */
+		z2 = ((float) NC_COS6SQRT2) * tmp10 + z5; /* c2-c6 */
+		z4 = ((float) NC_COS2SQRT2) * tmp12 + z5; /* c2+c6 */
+		z3 = tmp11 * ((float) NC_R_SQRT2); /* c4 */
+
+		z11 = tmp7 + z3;		/* phase 5 */
+		z13 = tmp7 - z3;
+
+		dataptr[5] = z13 + z2;	/* phase 6 */
+		dataptr[3] = z13 - z2;
+		dataptr[1] = z11 + z4;
+		dataptr[7] = z11 - z4;
+
+		dataptr += 8;		/* advance pointer to next row */
+		blkptr += 8;
+	}
+
+	/* Pass 2: process columns. */
+
+	dataptr = data;
+	for (i = 0; i < 8; i++)
+	{
+		tmp0 = dataptr[0] + dataptr[56];
+		tmp7 = dataptr[0] - dataptr[56];
+		tmp1 = dataptr[8] + dataptr[48];
+		tmp6 = dataptr[8] - dataptr[48];
+		tmp2 = dataptr[16] + dataptr[40];
+		tmp5 = dataptr[16] - dataptr[40];
+		tmp3 = dataptr[24] + dataptr[32];
+		tmp4 = dataptr[24] - dataptr[32];
+
+		/* Even part */
+
+		tmp10 = tmp0 + tmp3;	/* phase 2 */
+		tmp13 = tmp0 - tmp3;
+		tmp11 = tmp1 + tmp2;
+		tmp12 = tmp1 - tmp2;
+
+		dataptr[0] = tmp10 + tmp11; /* phase 3 */
+		dataptr[32] = tmp10 - tmp11;
+
+		z1 = (tmp12 + tmp13) * ((float) NC_R_SQRT2); /* c4 */
+		dataptr[16] = tmp13 + z1; /* phase 5 */
+		dataptr[48] = tmp13 - z1;
+
+		/* Odd part */
+
+		tmp10 = tmp4 + tmp5;	/* phase 2 */
+		tmp11 = tmp5 + tmp6;
+		tmp12 = tmp6 + tmp7;
+
+		/* The rotator is modified from fig 4-8 to avoid extra negations. */
+		z5 = (tmp10 - tmp12) * ((float) NC_COS6); /* c6 */
+		z2 = ((float) NC_COS6SQRT2) * tmp10 + z5; /* c2-c6 */
+		z4 = ((float) NC_COS2SQRT2) * tmp12 + z5; /* c2+c6 */
+		z3 = tmp11 * ((float) NC_R_SQRT2); /* c4 */
+
+		z11 = tmp7 + z3;		/* phase 5 */
+		z13 = tmp7 - z3;
+
+		dataptr[40] = z13 + z2; /* phase 6 */
+		dataptr[24] = z13 - z2;
+		dataptr[8] = z11 + z4;
+		dataptr[56] = z11 - z4;
+
+		dataptr++;			/* advance pointer to next column */
+	}
+	/* descale */
+	for (i = 0; i < 64; i++)
+		//block[i] = (int16_t) floor(data[i] * aanscales[i] + 0.499999);
+		block[i] = (int16_t) floor(data[i] * aanscalesf[i] + 0.5f);
+}
+
 struct dct_test {
     int bounds,maxerr,iter;
     int me[64],mse[64];
@@ -323,6 +444,16 @@ void fdct_test(int16_t *block)
 /* private data */
 static int c[8][8]; /* transform coefficients */
 
+
+/*!
+ * Warning this DCT is actually too imprecise... it really
+ * needs 11-bit precise coefficiencts (FDCT_COS_BITS=11)
+ * to avoid nasty mismatch errors at low q.  Unfortunately
+ * it would then need > 32 bits.   It is also suspect
+ * that rounding is towards +infinity rather than away from 0.
+ */
+
+
 #define FDCT_COS_BITS 9
 #define FDCT_COS_MUL (1<<FDCT_COS_BITS)
 #define FDCT_RES_SHIFT (2*FDCT_COS_BITS)
@@ -351,12 +482,12 @@ void fdct(int16_t *block)
 {
 
 	int i, j;
-	int s;
 	int tmp[64];
 	for (i=0; i<8; i++)
 		for (j=0; j<8; j++)
 		{
-			s = c[j][0] * block[8*i+0]
+			int s =
+				  c[j][0] * block[8*i+0]
 				+ c[j][1] * block[8*i+1]
 				+ c[j][2] * block[8*i+2]
 				+ c[j][3] * block[8*i+3]
@@ -371,7 +502,8 @@ void fdct(int16_t *block)
 	for (j=0; j<8; j++)
 		for (i=0; i<8; i++)
 		{
-			s = c[i][0] * tmp[8*0+j]
+			int s =
+				  c[i][0] * tmp[8*0+j]
 				+ c[i][1] * tmp[8*1+j]
 				+ c[i][2] * tmp[8*2+j]
 				+ c[i][3] * tmp[8*3+j]

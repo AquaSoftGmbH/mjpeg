@@ -419,10 +419,12 @@ void MPEG2EncCmdLineOptions::ParseCustomOption(const char *arg)
     }
     else if (strcmp(arg, "tmpgenc") == 0)
     	hf_quant = 4;
+    else if (strcmp(arg, "flat") == 0)
+    	hf_quant = 5;
     else if (strncasecmp(arg, "file=", 5) == 0)
     {
     	if  (ParseCustomMatrixFile(arg + 5, arg[0] == 'F' ? 1 : 0) == 0)
-    	    hf_quant = 5;
+    	    hf_quant = 6;
     }
     else if (strcmp(arg, "help") == 0)
     {
@@ -432,6 +434,7 @@ void MPEG2EncCmdLineOptions::ParseCustomOption(const char *arg)
     	fprintf(stderr, "\thi-res - high resolution tables (same as -H)\n");
     	fprintf(stderr, "\tdefault - turn off -N or -H (use standard tables)\n");
     	fprintf(stderr, "\ttmpgenc - TMPGEnc tables (http://www.tmpgenc.com)\n");
+    	fprintf(stderr, "\tflat - flat tables for high bitrate encoding\n");
     	fprintf(stderr, "\tfile=filename - filename contains custom matrices\n");
     	fprintf(stderr, "\t\t8 comma separated values per line.  8 lines per matrix, INTRA matrix first, then NONINTRA\n");
     	exit(0);

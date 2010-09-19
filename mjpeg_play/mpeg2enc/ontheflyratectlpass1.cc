@@ -702,7 +702,10 @@ int OnTheFlyPass1::MacroBlockQuant( const MacroBlock &mb )
     }
     --mquant_change_ctr;
     if( mquant_change_ctr < 0)
+    {
+
         mquant_change_ctr =  encparams.mb_width/2-1;
+    }
 
     sum_base_Q += cur_base_Q;
     sum_actual_Q += cur_mquant;

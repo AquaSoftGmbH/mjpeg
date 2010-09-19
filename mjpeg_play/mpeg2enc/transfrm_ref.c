@@ -67,7 +67,11 @@ extern void init_x86_transform();
 
 
 void fdct( int16_t *blk );
+void fdct_ref( int16_t *blk );
+void fdct_daan( int16_t *blk );
+void fdct_daanf( int16_t *blk );
 void idct( int16_t *blk );
+void idct_ref( int16_t *blk );
 void init_fdct (void);
 void init_idct (void);
 
@@ -187,8 +191,8 @@ void init_transform(void)
 {
 	int flags;
 	flags = cpu_accel();
-	pfdct = fdct;
-	pidct = idct;
+	pfdct = fdct_ref;
+	pidct = idct_ref;
 	padd_pred = add_pred;
 	psub_pred = sub_pred;
 	pfield_dct_best = field_dct_best;

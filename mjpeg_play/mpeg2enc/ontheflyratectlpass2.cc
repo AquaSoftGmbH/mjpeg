@@ -311,7 +311,7 @@ void OnTheFlyPass2::InitPict(Picture &picture)
 
   int actual_bits = picture.EncodedSize();
   double rel_error = (actual_bits-target_bits) / static_cast<double>(target_bits);
-  double scale_quant_floor = std::max(2.0, encparams.quant_floor);
+  double scale_quant_floor = std::max(1.0, encparams.quant_floor);
   //
   // Tolerance of overshooting target bit allocation
   // drops to zero from encparams.coding_tolerance b

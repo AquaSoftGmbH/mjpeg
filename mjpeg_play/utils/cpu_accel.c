@@ -70,6 +70,8 @@ extern int altivec_copy_v0();
 		"quant_weight_nonintra",
 		"iquant_intra",
 		"iquant_nonintra",
+		"fdct",
+		"idct",
 		NULL
 		};
 

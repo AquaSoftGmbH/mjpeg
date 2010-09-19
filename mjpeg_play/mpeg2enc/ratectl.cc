@@ -179,7 +179,7 @@ double RateCtl::InvScaleQuant( int q_scale_type, int raw_code )
 	if( q_scale_type )
 	{
 		i = 112;
-		while( 1 < i && map_non_linear_mquant[i] != raw_code )
+		while( 0 < i && map_non_linear_mquant[i] != raw_code )
 			--i;
 		return ((double)i);
 	}

@@ -266,17 +266,32 @@ void init_x86_transform()
 {
         char *opt_type1="";
         int flags = cpu_accel();
+    	int d_quant_fdct = disable_simd("fdct");
+    	int d_quant_idct = disable_simd("idct");
 
-	pfdct = fdct_mmx;
-	pidct = idct_mmx;
-	padd_pred = add_pred_mmx;
-	psub_pred = sub_pred_mmx;
-	pfield_dct_best = field_dct_best_mmx;
+		if( !d_quant_fdct )
+			pfdct = fdct_mmx;
+		else
+			mjpeg_info(" Disabling fdct");
+
+		if( !d_quant_idct )
+			pidct = idct_mmx;
+		else
+            mjpeg_info(" Disabling idct");
+
+		padd_pred = add_pred_mmx;
+		psub_pred = sub_pred_mmx;
+		pfield_dct_best = field_dct_best_mmx;
+
         if( flags & ACCEL_X86_SSE ) {
             init_fdct_sse();
-            pfdct = fdct_sse;
-            pidct = idct_sse;
+    		if( !d_quant_fdct )
+    			pfdct = fdct_sse;
+    		if( !d_quant_idct )
+    			pidct = idct_sse;
             opt_type1 = "SSE and ";
+
         }
+
 	mjpeg_info( "SETTING %sMMX for TRANSFORM!",opt_type1);
 }

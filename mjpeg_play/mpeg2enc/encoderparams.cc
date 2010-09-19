@@ -275,8 +275,10 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 
 	if( options.quant )
 	{
+
 		quant_floor = RateCtl::InvScaleQuant( options.mpeg == 1 ? 0 : 1, 
                                               options.quant );
+		mjpeg_info( "Quant  code = %.0f quantizer-scale = %d", quant_floor, options.quant );
 	}
 	else
 	{
@@ -446,12 +448,11 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
         = (options.mpeg == 1 || options.fieldenc == 0) ? 1 : 0;
 
     mjpeg_info( "Progressive format frames = %d", 	frame_pred_dct_tab[0] );
-    // TODO BUG BUG Always setting the linear quantizer table???
 	qscale_tab[0] 
 		= qscale_tab[1] 
 		= qscale_tab[2] 
-		= options.mpeg == 1 ? 0 : 0;
-
+		= options.mpeg == 1 ? 0 : 1;
+    mjpeg_info( "q_scale_type  = %d",	qscale_tab[0] );
 	intravlc_tab[0] 
 		= intravlc_tab[1] 
 		= intravlc_tab[2] 
@@ -782,7 +783,14 @@ void EncoderParams::InitQuantMatrices( const MPEG2EncOptions &options )
         load_iquant = 1;
         load_niquant = 1;
         break;
-    case  5:            /* -K file=qmatrixfilename */
+    case  5:
+        msg = "Flat quantization matrix for ultra high quality encoding";
+        load_iquant = 1;
+        load_niquant = 1;
+        qmat = flat_intra_quantizer_matrix;
+        niqmat = flat_nonintra_quantizer_matrix;
+        break;
+    case  6:            /* -K file=qmatrixfilename */
         msg = "Loading custom matrices from user specified file";
         load_iquant = 1;
         load_niquant = 1;

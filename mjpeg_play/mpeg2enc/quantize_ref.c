@@ -137,8 +137,7 @@ void quant_intra( struct QuantizerWorkSpace *wsp,
   int x, y, d;
   int clipping;
   int mquant = *nonsat_mquant;
-  uint16_t *quant_mat = wsp->intra_q_tbl[mquant] /* intra_q */;
-
+  uint16_t *quant_mat = wsp->intra_q_tbl[mquant] /* intra_q_mat * mquant */;
   /* 
    * Complicate by handlin clipping by increasing quantisation.  This
    * seems to avoid nasty artifacts in some situations...
@@ -159,21 +158,19 @@ void quant_intra( struct QuantizerWorkSpace *wsp,
 		for (i=1; i<64 ; i++)
 		  {
 			x = psrc[i];
-			d = quant_mat[i];
 #ifdef ORIGINAL_CODE
-			y = (32*(x >= 0 ? x : -x) + (d>>1))/d; /* round(32*x/quant_mat) */
+			d = wsp->intra_q_mat[i];
+			y = (16*(x >= 0 ? x : -x) + (d>>1))/d; /* round(32*x/quant_mat) */
 			d = (3*mquant+2)>>2;
-			y = (y+d)/(2*mquant); /* (y+0.75*mquant) / (2*mquant) */
+			y = (y+d)/mquant; /* (y+0.75*mquant) / mquant) */
 #else
-			/* RJ: save one divide operation */
-			y = ((abs(x)<<5)+ ((3*quant_mat[i])>>2))/(quant_mat[i]<<1)
-				/*(32*abs(x) + (d>>1) + d*((3*mquant+2)>>2))/(quant_mat[i]*2*mquant) */
-				;
+
+			d = quant_mat[i];
+			y = ((abs(x)<<5)  + d ) /(d<<1);
 #endif
             if ( y > clipvalue )
             {
               clipping = 1;
-              int mquant_org = mquant;
               mquant = next_larger_quant(q_scale_type, mquant );
               quant_mat = wsp->intra_q_tbl[mquant];
               break;
@@ -415,7 +412,7 @@ void iquant_non_intra_m2(struct QuantizerWorkSpace *wsp,
   {
       val = src[i];
       if (val!=0)
-          
+
 			  val = (int)((2*val+(val>0 ? 1 : -1))*inter_q[i]*mquant)/32;
       sum+= dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
   }
