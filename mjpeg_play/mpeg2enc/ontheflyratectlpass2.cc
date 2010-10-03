@@ -96,7 +96,7 @@ void OnTheFlyPass2::Init()
   int buffer_danger = 3 * per_frame_bits ;
   buffer_variation_danger = (encparams.video_buffer_size-buffer_danger);
   overshoot_gain =
-	  (1.0 * (230.0*8.0/11000.0)) * encparams.bit_rate / encparams.video_buffer_size;
+	  (2.0 * (230.0*8.0/11000.0)) * encparams.bit_rate / encparams.video_buffer_size;
 }
 /*********************
  *
@@ -179,7 +179,7 @@ void OnTheFlyPass2::InitGOP(  )
   // Sanity check complexity based allocation to ensure it doesn't cause
   // buffer underflow
 
-  unsigned int abr = m_encoded_frames == 0 ?
+  double abr = m_encoded_frames == 0 ?
 		  	   0.0 : total_bits_used * encparams.decode_frame_rate / m_encoded_frames;
   if( encparams.target_bitrate > 0 )
   {
@@ -199,9 +199,7 @@ void OnTheFlyPass2::InitGOP(  )
 	  // Pre-supplied mean complexity.. act as if it had come from
 	  //an initial representative same of frames...
 	  m_seq_ctrl_weight = 1.0;
-	  m_mean_strm_Xhi =
-		  (strm_Xhi + encparams.init_mean_Xhi * encparams.rep_sample_frames) /
-		  (m_encoded_frames + encparams.rep_sample_frames);
+	  m_mean_strm_Xhi = encparams.init_mean_Xhi;
   }
   else
   {
@@ -214,10 +212,10 @@ void OnTheFlyPass2::InitGOP(  )
 						? strm_Xhi / m_encoded_frames
 						: m_mean_gop_Xhi;
   }
-  mjpeg_info( "Mean strm Xhi = %.0f mean gop Xhi = %.0f init %.0f rep %d cbr/abr=%d/%d",
+  mjpeg_info( "Mean strm Xhi = %.0f mean gop Xhi = %.0f init %.0f rep %d cbr/abr=%d/%.0f",
 			  m_mean_strm_Xhi, m_mean_gop_Xhi,
 			  encparams.init_mean_Xhi, encparams.rep_sample_frames,
-			  m_seq_ctrl_weight, m_seq_ctrl_bitrate, abr );
+			  m_seq_ctrl_bitrate, abr );
 }
 
 
@@ -271,11 +269,10 @@ void OnTheFlyPass2::InitPict(Picture &picture)
 		         );
 
 	  // Heuristic
-	  // We don't set control bit-rate more below half target bit rate or
+	  // We don't set control bit-rate more below 1/3rd target bit rate or
 	  // more below target bit-rate than peak rate target rate
 	  double ctrl_bitrate_floor =
-		  std::max( encparams.target_bitrate/2.0,
-			        2.0*encparams.target_bitrate - encparams.bit_rate );
+		  std::min( encparams.target_bitrate/3.0, encparams.bit_rate/5.0 );
 	  ctrl_bitrate = std::max( ctrl_bitrate, ctrl_bitrate_floor);
 
 	  // N.b. no multiplication by fields_per_pict as Xhi is actually
