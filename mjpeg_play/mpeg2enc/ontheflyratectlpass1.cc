@@ -183,11 +183,18 @@ void OnTheFlyPass1::Init()
         undershoot_carry = safe_buffer_variation/6;
 
         /*
-         * Heuristic: We set the gain so that we aim to recover our bit overshoot in
-         * the time it takes to fill the buffers (safe) capacity at the target bit-rate.
-         * I.e. if our buffers safe capacity is 1/2 second... then recover in 1/2 second.
+           Gain is set so that feedback is set to recover buffer variation in 4
+           seconds for a typical DVD stream.  Gain is reduced in proportion to
+           buffer size and increased in proportion to bit-rate.
+
+           Note this a  very low gain and may well produce buffer variations above
+           the actual buffer size.  However, we don't care as the second pass will clean
+           things up taking advantage of look-ahead.
          */
-        overshoot_gain =  ctrl_bitrate / safe_buffer_variation;
+
+        overshoot_gain =
+      	  (0.25 * (230.0*8.0/11000.0)) * encparams.bit_rate / encparams.video_buffer_size;
+
         //fprintf( stderr, "VBS=%d BD=%d Overshoot gain = %.2f", encparams.video_buffer_size, buffer_danger, overshoot_gain );
     }
 

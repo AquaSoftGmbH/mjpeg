@@ -87,31 +87,17 @@ void OnTheFlyPass2::Init()
 {
 
   /*
-     We assume that having less than 3 frame intervals
-     worth buffered is cutting it fine for avoiding under-runs.
-    This is the buffer_safe margin.
-
-     The gain values represent the fraction of the under/over shoot
-     to be recovered during one second.  Gain is lower if the
-     buffer space above the buffer safe margin is large.
-
-    Gain is currently set to so that if the buffer is down to the buffer_safe
-    margin the deficit should be recovered in two seconds.  This is lower than
-    the pass-1 gain because in pass-2 we allocate bits based on the known complexity of
-    pictures in a GOP and choose quantisations that should roughly hit those bit allocations.
-    Feedback must thus cope only with the differences caused by inaccuracy
-    in the bit-allocaiton model rather than recover after-the-fact from incorrect guesses
-    about frame complexity..
-  */
+     Gain is set so that feedback is set to recover buffer variation in 1
+     seconds for a typical DVD stream.  Gain is reduce in proportion to
+     buffer size and increased in proportion to bit-rate.
+   */
 
   double per_frame_bits = encparams.bit_rate / encparams.decode_frame_rate;
   int buffer_danger = 3 * per_frame_bits ;
   buffer_variation_danger = (encparams.video_buffer_size-buffer_danger);
-  overshoot_gain =  (1.0/2.0) *
-					std::max(encparams.bit_rate,encparams.target_bitrate) /
-					buffer_variation_danger;
+  overshoot_gain =
+	  (1.0 * (230.0*8.0/11000.0)) * encparams.bit_rate / encparams.video_buffer_size;
 }
-
 /*********************
  *
  * Initialise rate control parameters for start of new sequence
@@ -193,6 +179,8 @@ void OnTheFlyPass2::InitGOP(  )
   // Sanity check complexity based allocation to ensure it doesn't cause
   // buffer underflow
 
+  unsigned int abr = m_encoded_frames == 0 ?
+		  	   0.0 : total_bits_used * encparams.decode_frame_rate / m_encoded_frames;
   if( encparams.target_bitrate > 0 )
   {
 	  // Rate feedback... aim to recover under/overshoot over the
@@ -226,10 +214,10 @@ void OnTheFlyPass2::InitGOP(  )
 						? strm_Xhi / m_encoded_frames
 						: m_mean_gop_Xhi;
   }
-  mjpeg_info( "Mean strm Xhi = %.0f mean gop Xhi = %.0f init %.0f rep %d sc=%.2f/%d",
+  mjpeg_info( "Mean strm Xhi = %.0f mean gop Xhi = %.0f init %.0f rep %d cbr/abr=%d/%d",
 			  m_mean_strm_Xhi, m_mean_gop_Xhi,
 			  encparams.init_mean_Xhi, encparams.rep_sample_frames,
-			  m_seq_ctrl_weight, m_seq_ctrl_bitrate );
+			  m_seq_ctrl_weight, m_seq_ctrl_bitrate, abr );
 }
 
 
@@ -263,7 +251,8 @@ void OnTheFlyPass2::InitPict(Picture &picture)
   // correct looking-ahead ...
 
   double buffer_state_feedback =  overshoot_gain * buffer_variation;
-  double Xhi = picture.ABQ * picture.EncodedSize();
+  int actual_bits = picture.EncodedSize();
+  double Xhi = picture.ABQ * actual_bits;
   double ctrl_bitrate;
   if( encparams.still_size > 0 )
   {
@@ -280,6 +269,15 @@ void OnTheFlyPass2::InitPict(Picture &picture)
 		  Xhi * (  m_seq_ctrl_weight * seq_ctrl_bitrate / m_mean_strm_Xhi +
 		          (1.0-m_seq_ctrl_weight) * gop_ctrl_bitrate  / m_mean_gop_Xhi
 		         );
+
+	  // Heuristic
+	  // We don't set control bit-rate more below half target bit rate or
+	  // more below target bit-rate than peak rate target rate
+	  double ctrl_bitrate_floor =
+		  std::max( encparams.target_bitrate/2.0,
+			        2.0*encparams.target_bitrate - encparams.bit_rate );
+	  ctrl_bitrate = std::max( ctrl_bitrate, ctrl_bitrate_floor);
+
 	  // N.b. no multiplication by fields_per_pict as Xhi is actually
 	  // sum of field complexities == fields_in_pict * mean_field_Xhi...
 	  target_bits = fields_per_pict * ctrl_bitrate  / field_rate;
@@ -287,34 +285,26 @@ void OnTheFlyPass2::InitPict(Picture &picture)
   else
   {
 	  ctrl_bitrate = (encparams.bit_rate+buffer_state_feedback);
+	  // Heuristic
+	  // We don't set control bit-rate more below half target bit rate or
+	  // more below target bit-rate than peak rate target rate
+	  double ctrl_bitrate_floor = encparams.bit_rate/5.0;
+	  ctrl_bitrate = std::max( ctrl_bitrate, ctrl_bitrate_floor);
+
 	  double available_bits = ctrl_bitrate * fields_in_gop/field_rate;
 	  target_bits = static_cast<int32_t>(available_bits*Xhi/gop_Xhi);
+
   }
   target_bits = min( target_bits, encparams.video_buffer_size*3/4 );
-
-  // TODO: naive constant-quality = constant-quantisation
-  // model allocate bits proportionate to complexity.
-  // Soon something smarter...
-
-
-  // Work out target bit allocation of frame based complexity statistics
-  // TODO BUG BUG BUG surely we should use the *actual* complexity
-  // we measured in pass-1 allowing for clipping adjustments to mquant etc etc...
-
-
-  //mjpeg_info( "P2RC: %d bv=%d av=%.0f xhi=%.0f/%.0f", picture.decode,
-  //buffer_variation,available_bits,picture.ABQ * picture.EncodedSize(), gop_Xhi );
-
 
   picture.avg_act = avg_act;
   picture.sum_avg_act = sum_avg_act;
 
-  int actual_bits = picture.EncodedSize();
   double rel_error = (actual_bits-target_bits) / static_cast<double>(target_bits);
   double scale_quant_floor = std::max(1.0, encparams.quant_floor);
   //
   // Tolerance of overshooting target bit allocation
-  // drops to zero from encparams.coding_tolerance b
+  // drops to zero from encparams.coding_tolerance
   // as buffer_variation gets closer to danger level...
   double rel_overshoot = std::max( 0.0, -buffer_variation/buffer_variation_danger );
   double overshoot_tolerance =  encparams.coding_tolerance * (1.0-rel_overshoot);
@@ -367,7 +357,8 @@ void OnTheFlyPass2::InitPict(Picture &picture)
 
   mjpeg_info( "%s: %d - reencode actual %d (%.1f) target %d Q=%.1f BV  = %.2f cbr=%.0f",
                 reencode ? "RENC" : "SKIP",
-                picture.decode, actual_bits, picture.ABQ, target_bits, base_Q, buffer_variation/((double)encparams.video_buffer_size), ctrl_bitrate );
+                picture.decode, actual_bits, picture.ABQ, target_bits, base_Q,
+                buffer_variation/((double)encparams.video_buffer_size), ctrl_bitrate );
 }
 
 
