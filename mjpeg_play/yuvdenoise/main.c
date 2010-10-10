@@ -12,6 +12,11 @@
  *                                                         *
  ***********************************************************/
 
+/* 2010-09-22, Franz Brauße <dev@karlchenofhell.org>
+ *  - added SSE2-accelerated versions of filter_plane_median()
+ *    and temporal_filter_planes()
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +27,12 @@
 #include "mjpeg_logging.h"
 #include "cpu_accel.h"
 #include "motionsearch.h"
+
+#if defined(__SSE3__)
+# include <pmmintrin.h>
+#elif defined(__SSE2__)
+# include <emmintrin.h>
+#endif
 
 int verbose = 1;
 int width = 0;
@@ -76,6 +87,9 @@ uint8_t transform_G8[65536];
  * helper-functions                                        *
  ***********************************************************/
 
+static void (*filter_plane_median)(uint8_t *, int, int, int);
+static void (*temporal_filter_planes)(int, int, int, int);
+
 
 void
 gauss_filter_plane (uint8_t * frame, int w, int h, int t)
@@ -129,154 +143,6 @@ memcpy ( frame,scratchplane1,w*h );
 }
 
 void
-temporal_filter_planes (int idx, int w, int h, int t)
-{
-  uint32_t r, c, m;
-  int32_t d;
-  int x;
-
-  uint8_t *f1 = frame1[idx];
-  uint8_t *f2 = frame2[idx];
-  uint8_t *f3 = frame3[idx];
-  uint8_t *f4 = frame4[idx];
-  uint8_t *f5 = frame5[idx];
-  uint8_t *f6 = frame6[idx];
-  uint8_t *f7 = frame7[idx];
-  uint8_t *of = outframe[idx];
-
-  if (t == 0)			// shortcircuit filter if t = 0...
-    {
-      memcpy (of, f4, w * h);
-      return;
-    }
-
-      for (x = 0; x < (w * h); x++)
-	{
-
-	  r  = *(f4-1-w);
-	  r += *(f4  -w)*2;
-	  r += *(f4+1-w);
-          r += *(f4-1  )*2;
-	  r += *(f4    )*4;
-          r += *(f4+1  )*2;
-	  r += *(f4-1+w);
-          r += *(f4  +w)*2;
-          r += *(f4+1+w);
-	  r /= 16;
-
-	  m = *(f4)*(t+1)*2;
-	  c = t+1;
-
-	  d  = *(f3-1-w);
-	  d += *(f3  -w)*2;
-	  d += *(f3+1-w);
-          d += *(f3-1  )*2;
-	  d += *(f3    )*4;
-          d += *(f3+1  )*2;
-	  d += *(f3-1+w);
-          d += *(f3  +w)*2;
-          d += *(f3+1+w);
-	  d /= 16;
-
-	  d = t - abs (r-d);
-	  d = d<0? 0:d;
-	  c += d;
-          m += *(f3)*d*2;
-
-	  d  = *(f2-1-w);
-	  d += *(f2  -w)*2;
-	  d += *(f2+1-w);
-          d += *(f2-1  )*2;
-	  d += *(f2    )*4;
-          d += *(f2+1  )*2;
-	  d += *(f2-1+w);
-          d += *(f2  +w)*2;
-          d += *(f2+1+w);
-	  d /= 16;
-
-	  d = t - abs (r-d);
-	  d = d<0? 0:d;
-	  c += d;
-          m += *(f2)*d*2;
-
-	  d  = *(f1-1-w);
-	  d += *(f1  -w)*2;
-	  d += *(f1+1-w);
-          d += *(f1-1  )*2;
-	  d += *(f1    )*4;
-          d += *(f1+1  )*2;
-	  d += *(f1-1+w);
-          d += *(f1  +w)*2;
-          d += *(f1+1+w);
-	  d /= 16;
-
-	  d = t - abs (r-d);
-	  d = d<0? 0:d;
-	  c += d;
-          m += *(f1)*d*2;
-
-	  d  = *(f5-1-w);
-	  d += *(f5  -w)*2;
-	  d += *(f5+1-w);
-          d += *(f5-1  )*2;
-	  d += *(f5    )*4;
-          d += *(f5+1  )*2;
-	  d += *(f5-1+w);
-          d += *(f5  +w)*2;
-          d += *(f5+1+w);
-	  d /= 16;
-
-	  d = t - abs (r-d);
-	  d = d<0? 0:d;
-	  c += d;
-          m += *(f5)*d*2;
-
-	  d  = *(f6-1-w);
-	  d += *(f6  -w)*2;
-	  d += *(f6+1-w);
-          d += *(f6-1  )*2;
-	  d += *(f6    )*4;
-          d += *(f6+1  )*2;
-	  d += *(f6-1+w);
-          d += *(f6  +w)*2;
-          d += *(f6+1+w);
-	  d /= 16;
-
-	  d = t - abs (r-d);
-	  d = d<0? 0:d;
-	  c += d;
-          m += *(f6)*d*2;
-
-	  d  = *(f7-1-w);
-	  d += *(f7  -w)*2;
-	  d += *(f7+1-w);
-          d += *(f7-1  )*2;
-	  d += *(f7    )*4;
-          d += *(f7+1  )*2;
-	  d += *(f7-1+w);
-          d += *(f7  +w)*2;
-          d += *(f7+1+w);
-	  d /= 16;
-
-	  d = t - abs (r-d);
-	  d = d<0? 0:d;
-	  c += d;
-          m += *(f7)*d*2;
-
-	  *(of) = ((m/c)+1)/2;
-
-	  f1++;
-	  f2++;
-	  f3++;
-	  f4++;
-	  f5++;
-	  f6++;
-	  f7++;
-	  of++;
-	}
-}
-
-void
 temporal_filter_planes_MC (int idx, int w, int h, int t)
 {
   uint32_t sad,min;
@@ -301,7 +167,7 @@ temporal_filter_planes_MC (int idx, int w, int h, int t)
   uint8_t *f7 = frame7[idx];
   uint8_t *of = outframe[idx];
 
-#if 0
+#if 1
 
   if (t == 0)			// shortcircuit filter if t = 0...
     {
@@ -581,8 +447,640 @@ for(i=0;i<(w*h);i++)
 	*(frame+i)=(*(frame+i)*(255-level)+random[i&8191]*level)/255;
 }
 
+#if defined(__SSE2__)
 
-void filter_plane_median ( uint8_t * plane, int w, int h, int level)
+static inline __m128i tf0(const __m128i mask, const __m128i l0, const __m128i vt, const __m128i vc, const __m128i vb) {
+	__m128i k0, k1, k2, k3, d0; /* temp storage, pixel surroundings, 16-bit words */
+	
+	/* even pixels */
+	/* extract and add the pixels above and below the current one */
+	k0 = _mm_and_si128(_mm_srli_si128(vt, 1), mask);
+	k1 = _mm_and_si128(_mm_srli_si128(vb, 1), mask);
+	k0 = _mm_add_epi16(k0, k1);
+	
+	/* add together the 4 corner pixels diagonal of the current one */
+	k2 = _mm_add_epi16(_mm_and_si128(vt, mask), _mm_and_si128(vb, mask));
+	k2 = _mm_add_epi16(k2, _mm_srli_si128(k2, 2));
+	
+	/* add pixels left and right of the current */
+	k3 = _mm_and_si128(vc, mask);
+	k3 = _mm_add_epi16(k3, _mm_srli_si128(k3, 2));
+	
+	/* add weighted current pixel and the above results */
+	k1 = _mm_and_si128(_mm_srli_si128(vc, 1), mask);
+	d0 = _mm_slli_epi16(k1, 1); /* center * 4 */
+	d0 = _mm_add_epi16(d0, k0);
+	d0 = _mm_add_epi16(d0, k3);
+	d0 = _mm_slli_epi16(d0, 1); /* + above,below,left,right * 2 */
+	d0 = _mm_add_epi16(d0, k2); /* + diagonal * 1 */
+	d0 = _mm_srli_epi16(d0, 4); /* all / 16 */
+	return d0;
+}
+
+static inline __m128i tf1(const __m128i mask, const __m128i l0, const __m128i vt, const __m128i vc, const __m128i vb) {
+	__m128i k0, k1, k2, k3, d1;
+	
+	k0 = _mm_srli_si128(_mm_add_epi16(_mm_and_si128(vt, mask), _mm_and_si128(vb, mask)), 2);
+	
+	k1 = _mm_and_si128(_mm_srli_si128(vt, 1), mask);
+	k2 = _mm_and_si128(_mm_srli_si128(vb, 1), mask);
+	k2 = _mm_add_epi16(k1, k2);
+	k2 = _mm_add_epi16(k2, _mm_srli_si128(k2, 2));
+	
+	k3 = _mm_and_si128(_mm_srli_si128(vc, 1), mask);
+	k3 = _mm_add_epi16(k3, _mm_srli_si128(k3, 2));
+	
+	k1 = _mm_and_si128(_mm_srli_si128(vc, 2), mask);
+	d1 = _mm_slli_epi16(k1, 1);
+	d1 = _mm_add_epi16(d1, k0);
+	d1 = _mm_add_epi16(d1, k3);
+	d1 = _mm_slli_epi16(d1, 1);
+	d1 = _mm_add_epi16(d1, k2);
+	d1 = _mm_srli_epi16(d1, 4);
+	return d1;
+}
+
+/* 8 times as fast on x86_64, 2.2 times as fast on i686 */
+void temporal_filter_planes_sse2(int idx, int w, int h, int t)
+{
+	int x, k;
+	
+	uint8_t *f4 = frame4[idx];
+	uint8_t *of = outframe[idx];
+	
+	uint8_t *f[6] = {
+		frame3[idx], frame2[idx], frame1[idx], frame5[idx], frame6[idx], frame7[idx]
+	};
+	
+	if (t == 0)			// shortcircuit filter if t = 0...
+	{
+		memcpy (of, f4, w * h);
+		return;
+	}
+	
+	/* vt: x x x x x x x x x x x x x x x x
+	 * vc: x 0 1 2 3 4 5 6 7 8 9 a b c d x
+	 * vb: x x x x x x x x x x x x x x x x
+	 *
+	 * c0, d0, m0 and m1 store the respective values for even pixels,
+	 * m0 for 0, 2, 4 and 6, m1 for 8, a and c in its lower dwords;
+	 * c1, d1, m2 and m3 store the values for the odd pixels,
+	 * m2 for 1, 3, 5 and 7, m3 for 9, b and d in its lower dwords;
+	 * whereas computation for each pixel is as follows (equivalent to the
+	 * non-SSE-accelerated variant of this function):
+	 *
+	 * for each pixel k1 of the 14 pixels per block:
+	 * vt:  k2  k0  k2
+	 * vc:  k3  k1  k3
+	 * vb:  k2  k0  k2
+	 *
+	 * r = *f4++;
+	 * c = t + 1;
+	 * m = r * (t+1);
+	 * for (i=0; i<6; i++) {
+	 *   d = sum(k2) + 2 * (sum(k0) + sum(k3) + 2 * k1)
+	 *   d = saturate(t - abs(r-d));
+	 *   c += d;
+	 *   m += *f[i]++ * d;
+	 * }
+	 * m *= 2;
+	 * *of++ = (m / c + 1) / 2;
+	 *
+	 * For each frame, first the 7 even pixels are being processed, then the 7
+	 * odd ones.
+	 */
+	
+	__m128i vt, vc, vb;      /* top-, center- and bottom-line of 3x16 block */
+	__m128i c0, c1, m0, m1, m2, m3; /* c: 16-bit words, m: 32-bit dwords */
+	__m128i d0, d1, r0, r1;  /* 16-bit words, 0: even, 1: odd */
+	const __m128i mask = _mm_set1_epi16(0x00ff);
+	const __m128i l0 = _mm_set1_epi16(t);
+	
+#ifndef OLD_ROUNDING
+	_MM_SET_ROUNDING_MODE(_MM_ROUND_NEAREST);
+#endif
+	
+	for (x = 0; x < (w * h); x+=14)
+	{
+		vt = _mm_loadu_si128((__m128i *)(f4 - 1 - w));
+		vc = _mm_loadu_si128((__m128i *)(f4 - 1    ));
+		vb = _mm_loadu_si128((__m128i *)(f4 - 1 + w));
+		f4 += 14;
+		
+		r0 = tf0(mask, l0, vt, vc, vb);  /* even pixels */
+		r1 = tf1(mask, l0, vt, vc, vb);  /* odd pixels */
+		
+		c0 = c1 = _mm_set1_epi16(t + 1);
+		
+		/* m = *f4 * (t+1) */
+		/* The low 16-bit of the multiplication suffice, because both operands are
+		 * only 8-bit-values */
+		d0 = _mm_mullo_epi16(_mm_and_si128(_mm_srli_si128(vc, 1), mask), c0);
+		m0 = _mm_unpacklo_epi16(d0, _mm_setzero_si128());
+		m1 = _mm_unpackhi_epi16(d0, _mm_setzero_si128());
+		d1 = _mm_mullo_epi16(_mm_and_si128(_mm_srli_si128(vc, 2), mask), c0);
+		m2 = _mm_unpacklo_epi16(d1, _mm_setzero_si128());
+		m3 = _mm_unpackhi_epi16(d1, _mm_setzero_si128());
+		
+		for (k=0; k<sizeof(f)/sizeof(*f); k++) {
+			vt = _mm_loadu_si128((__m128i *)(f[k] - 1 - w));
+			vc = _mm_loadu_si128((__m128i *)(f[k] - 1    ));
+			vb = _mm_loadu_si128((__m128i *)(f[k] - 1 + w));
+			f[k] += 14;
+			
+			/* even pixels */
+			d0 = tf0(mask, l0, vt, vc, vb);
+			/* d = l - abs(r-d) */
+			d0 = _mm_subs_epu16(l0, _mm_sub_epi16(_mm_max_epi16(r0, d0), _mm_min_epi16(r0, d0)));
+			c0 = _mm_add_epi16(c0, d0);
+			/* d *= *f[k] */
+			d0 = _mm_mullo_epi16(_mm_and_si128(_mm_srli_si128(vc, 1), mask), d0);
+			m0 = _mm_add_epi32(m0, _mm_unpacklo_epi16(d0, _mm_setzero_si128()));
+			m1 = _mm_add_epi32(m1, _mm_unpackhi_epi16(d0, _mm_setzero_si128()));
+			
+			/* odd pixels */
+			d1 = tf1(mask, l0, vt, vc, vb);
+			d1 = _mm_subs_epu16(l0, _mm_sub_epi16(_mm_max_epi16(r1, d1), _mm_min_epi16(r1, d1)));
+			c1 = _mm_add_epi16(c1, d1);
+			d1 = _mm_mullo_epi16(_mm_and_si128(_mm_srli_si128(vc, 2), mask), d1);
+			m2 = _mm_add_epi32(m2, _mm_unpacklo_epi16(d1, _mm_setzero_si128()));
+			m3 = _mm_add_epi32(m3, _mm_unpackhi_epi16(d1, _mm_setzero_si128()));
+		}
+		
+		/* extract results from c0, c1 and m0 to m3:
+		 * 14 byte result = interleave_bytes((m0,m1) / c0, (m2,m3) / c1) */
+#ifdef OLD_ROUNDING
+		/* r = m*2/c */
+		/* multiply each m with 2 */
+		m0 = _mm_slli_epi32(m0, 1);
+		m1 = _mm_slli_epi32(m1, 1);
+		m2 = _mm_slli_epi32(m2, 1);
+		m3 = _mm_slli_epi32(m3, 1);
+#endif
+		
+		/* m0-m3 each contain 4 19-bit values ((8-bit)^2 * 8), so a single precision
+		 * float with 23-bit mantissa can hold these without precision loss */
+		/* r = m/c */
+		__m128i k0 = _mm_setzero_si128();
+		__m128 f0, f1, f2, f3;
+		f0 = _mm_div_ps(_mm_cvtepi32_ps(m0), _mm_cvtepi32_ps(_mm_unpacklo_epi16(c0, k0)));
+		f1 = _mm_div_ps(_mm_cvtepi32_ps(m1), _mm_cvtepi32_ps(_mm_unpackhi_epi16(c0, k0)));
+		f2 = _mm_div_ps(_mm_cvtepi32_ps(m2), _mm_cvtepi32_ps(_mm_unpacklo_epi16(c1, k0)));
+		f3 = _mm_div_ps(_mm_cvtepi32_ps(m3), _mm_cvtepi32_ps(_mm_unpackhi_epi16(c1, k0)));
+		
+#ifdef OLD_ROUNDING
+		m0 = _mm_cvttps_epi32(f0);
+		m1 = _mm_cvttps_epi32(f1);
+		m2 = _mm_cvttps_epi32(f2);
+		m3 = _mm_cvttps_epi32(f3);
+#else
+		m0 = _mm_cvtps_epi32(f0);
+		m1 = _mm_cvtps_epi32(f1);
+		m2 = _mm_cvtps_epi32(f2);
+		m3 = _mm_cvtps_epi32(f3);
+#endif
+		
+		r0 = _mm_packs_epi32(m0, m1); /* 7 words f0,f1 */
+		r1 = _mm_packs_epi32(m2, m3); /* 7 words f2,f3 */
+		
+#ifdef OLD_ROUNDING
+		/* (r+1)/2 */
+		k0 = _mm_set1_epi16(1);
+		r0 = _mm_srli_epi16(_mm_add_epi16(r0, k0), 1);
+		r1 = _mm_srli_epi16(_mm_add_epi16(r1, k0), 1);
+#endif
+		
+		/* 7 words r0 interleaved with 7 words r1, all converted to bytes */
+		r0 = _mm_packus_epi16(_mm_unpacklo_epi16(r0, r1), _mm_unpackhi_epi16(r0, r1));
+		/* write 16, but the 2 bytes overlap will be overwritten by the next pass */
+		_mm_storeu_si128((__m128i *)of, r0);
+		of += 14;
+	}
+	_mm_empty();
+}
+#endif
+
+void temporal_filter_planes_p (int idx, int w, int h, int t)
+{
+	uint32_t r, c, m;
+	int32_t d;
+	int x;
+
+	uint8_t *f1 = frame1[idx];
+	uint8_t *f2 = frame2[idx];
+	uint8_t *f3 = frame3[idx];
+	uint8_t *f4 = frame4[idx];
+	uint8_t *f5 = frame5[idx];
+	uint8_t *f6 = frame6[idx];
+	uint8_t *f7 = frame7[idx];
+	uint8_t *of = outframe[idx];
+
+	if (t == 0)			// shortcircuit filter if t = 0...
+	{
+		memcpy (of, f4, w * h);
+		return;
+	}
+
+	for (x = 0; x < (w * h); x++)
+	{
+		r  = *(f4-1-w);
+		r += *(f4  -w)*2;
+		r += *(f4+1-w);
+		r += *(f4-1  )*2;
+		r += *(f4    )*4;
+		r += *(f4+1  )*2;
+		r += *(f4-1+w);
+		r += *(f4  +w)*2;
+		r += *(f4+1+w);
+		r /= 16;
+
+		m = *(f4)*(t+1)*2;
+		c = t+1;
+
+		d  = *(f3-1-w);
+		d += *(f3  -w)*2;
+		d += *(f3+1-w);
+		d += *(f3-1  )*2;
+		d += *(f3    )*4;
+		d += *(f3+1  )*2;
+		d += *(f3-1+w);
+		d += *(f3  +w)*2;
+		d += *(f3+1+w);
+		d /= 16;
+
+		d = t - abs (r-d);
+		d = d<0? 0:d;
+		c += d;
+		m += *(f3)*d*2;
+
+		d  = *(f2-1-w);
+		d += *(f2  -w)*2;
+		d += *(f2+1-w);
+		d += *(f2-1  )*2;
+		d += *(f2    )*4;
+		d += *(f2+1  )*2;
+		d += *(f2-1+w);
+		d += *(f2  +w)*2;
+		d += *(f2+1+w);
+		d /= 16;
+
+		d = t - abs (r-d);
+		d = d<0? 0:d;
+		c += d;
+		m += *(f2)*d*2;
+
+		d  = *(f1-1-w);
+		d += *(f1  -w)*2;
+		d += *(f1+1-w);
+		d += *(f1-1  )*2;
+		d += *(f1    )*4;
+		d += *(f1+1  )*2;
+		d += *(f1-1+w);
+		d += *(f1  +w)*2;
+		d += *(f1+1+w);
+		d /= 16;
+
+		d = t - abs (r-d);
+		d = d<0? 0:d;
+		c += d;
+		m += *(f1)*d*2;
+
+		d  = *(f5-1-w);
+		d += *(f5  -w)*2;
+		d += *(f5+1-w);
+		d += *(f5-1  )*2;
+		d += *(f5    )*4;
+		d += *(f5+1  )*2;
+		d += *(f5-1+w);
+		d += *(f5  +w)*2;
+		d += *(f5+1+w);
+		d /= 16;
+
+		d = t - abs (r-d);
+		d = d<0? 0:d;
+		c += d;
+		m += *(f5)*d*2;
+
+		d  = *(f6-1-w);
+		d += *(f6  -w)*2;
+		d += *(f6+1-w);
+		d += *(f6-1  )*2;
+		d += *(f6    )*4;
+		d += *(f6+1  )*2;
+		d += *(f6-1+w);
+		d += *(f6  +w)*2;
+		d += *(f6+1+w);
+		d /= 16;
+
+		d = t - abs (r-d);
+		d = d<0? 0:d;
+		c += d;
+		m += *(f6)*d*2;
+
+		d  = *(f7-1-w);
+		d += *(f7  -w)*2;
+		d += *(f7+1-w);
+		d += *(f7-1  )*2;
+		d += *(f7    )*4;
+		d += *(f7+1  )*2;
+		d += *(f7-1+w);
+		d += *(f7  +w)*2;
+		d += *(f7+1+w);
+		d /= 16;
+
+		d = t - abs (r-d);
+		d = d<0? 0:d;
+		c += d;
+		m += *(f7)*d*2;
+
+		*(of) = ((m/c)+1)/2;
+
+		f1++;
+		f2++;
+		f3++;
+		f4++;
+		f5++;
+		f6++;
+		f7++;
+		of++;
+	}
+}
+
+#if defined(__SSE2__)
+/* 4 to 5 times faster */
+void filter_plane_median_sse2(uint8_t *plane, int w, int h, int level) {
+	int i;
+	int avg;
+	int cnt;
+	uint8_t * p;
+	uint8_t * d;
+	
+	if(level==0) return;
+	
+	p = plane;
+	d = scratchplane1;
+
+	// remove strong outliers from the image. An outlier is a pixel which lies outside
+	// of max-thres and min+thres of the surrounding pixels. This should not cause blurring
+	// and it should leave an evenly spread noise-floor to the image.
+	for (i=0; i<=(w*h); i+=14) {
+		__m128i t, c, b, min, max, minmin, maxmax;
+		
+		t = _mm_loadu_si128((__m128i *)&p[i-1-w]);
+		c = _mm_loadu_si128((__m128i *)&p[i-1  ]);
+		b = _mm_loadu_si128((__m128i *)&p[i-1+w]);
+		min = _mm_min_epu8(t, b);      /* k: (0,k), (2,k) */
+		max = _mm_max_epu8(t, b);
+		minmin = _mm_min_epu8(min, c); /* k: (0,k), (1,k), (2,k) */
+		maxmax = _mm_max_epu8(max, c);
+		
+		/* k: (0,k), (1,k), (2,k). (0,k+2), (1,k+2), (2,k+2) */
+		minmin = _mm_min_epu8(minmin, _mm_srli_si128(minmin, 2));
+		maxmax = _mm_max_epu8(maxmax, _mm_srli_si128(maxmax, 2));
+		/* k: (0,k), (1,k), (2,k). (0,k+2), (1,k+2), (2,k+2), (0,k+1), (2,k+1) */
+		min = _mm_min_epu8(minmin, _mm_srli_si128(min, 1));
+		max = _mm_max_epu8(maxmax, _mm_srli_si128(max, 1));
+		
+		/* limit c to range [min,max] */
+		c = _mm_max_epu8(min, _mm_min_epu8(max, _mm_srli_si128(c, 1)));
+		/* write 14 valid pixels, the 2 remaining bytes are overwritten subsequently
+		 * or lie outside the frame area */
+		_mm_storeu_si128((__m128i *)&d[i], c);
+	}
+	
+	// in the second stage we try to average similar spatial pixels, only. This, like
+	// a median, should also not reduce sharpness but flatten the noisefloor. This
+	// part is quite similar to what 2dclean/yuvmedianfilter do. But because of the
+	// different weights given to the pixels it is less aggressive...
+
+	p = scratchplane1;
+	d = scratchplane2;
+	
+	// this filter needs values outside of the imageplane, so we just copy the first line 
+	// and the last line into the out-of-range area...
+	
+	memcpy ( p-w  , p, w );
+	memcpy ( p-w*2, p, w );
+	
+	memcpy ( p+(w*h)  , p+(w*h)-w, w );
+	memcpy ( p+(w*h)+w, p+(w*h)-w, w );
+	
+	__m128i lvl = _mm_set1_epi16(level);
+	
+#ifndef OLD_ROUNDING
+	_MM_SET_ROUNDING_MODE(_MM_ROUND_NEAREST);
+#endif
+	
+	for (i=0; i<=(w*h); i+=4)
+	{
+		uint64_t k0, k1, k2, k3, k6;
+		__m128i c0, c1, v[4], t[4], e[4], a[4];
+		
+		/* p points to pixel a. There are 3 stages, each processing 8 surrounding
+		 * pixels, resulting in the complete neighbourhood of 24 pixels.
+		 *
+		 *     0 1 2 3 4 5 6 7
+		 * k0: x x x x x x x x
+		 * k1: x x x x x x x x
+		 * k6: x x a b c d x x
+		 * k2: x x x x x x x x
+		 * k3: x x x x x x x x
+		 *
+		 * a,b and c,d each share two 2x4-blocks in their surrounding area, which
+		 * are processed by stages 1 and 2. These blocks are referred to as c0 and
+		 * c1 by the code below. The remaining surrounding pixels are processed for
+		 * each pixel out of a,b,c,d individually in stage 3.
+		 * Stage 4 assembles the results, adds the weighted averages and weights
+		 * together for each pixel, computes the median and stores it in the
+		 * scratch plane.
+		 * Coordinates (y,x) originate from the top left of the above diagram. */
+		
+		k0 = *(uint64_t *)(p-w*2-2);
+		k1 = *(uint64_t *)(p-w*1-2);
+		k6 = *(uint64_t *)(p    -2);
+		k2 = *(uint64_t *)(p+w*1-2);
+		k3 = *(uint64_t *)(p+w*2-2);
+		
+		v[0] = _mm_set1_epi16((k6 >> 16) & 0xff); /* pixel a */
+		v[1] = _mm_set1_epi16((k6 >> 24) & 0xff); /* pixel b */
+		v[2] = _mm_set1_epi16((k6 >> 32) & 0xff); /* pixel c */
+		v[3] = _mm_set1_epi16((k6 >> 40) & 0xff); /* pixel d */
+		
+		// stage 1: c0 for a,b: (0,1) -> (1,4), c1 for c,d: (0,3) -> (1,6)
+		c0  = _mm_set_epi32((k0 >>  8) & 0xff00ff, (k0 >> 16) & 0xff00ff,
+												(k1 >>  8) & 0xff00ff, (k1 >> 16) & 0xff00ff);
+		c1  = _mm_set_epi32((k0 >> 24) & 0xff00ff, (k0 >> 32) & 0xff00ff,
+												(k1 >> 24) & 0xff00ff, (k1 >> 32) & 0xff00ff);
+		t[0] = _mm_sub_epi16(_mm_max_epu8(c0, v[0]), _mm_min_epu8(c0, v[0]));
+		t[1] = _mm_sub_epi16(_mm_max_epu8(c0, v[1]), _mm_min_epu8(c0, v[1]));
+		t[2] = _mm_sub_epi16(_mm_max_epu8(c1, v[2]), _mm_min_epu8(c1, v[2]));
+		t[3] = _mm_sub_epi16(_mm_max_epu8(c1, v[3]), _mm_min_epu8(c1, v[3]));
+		e[0] = _mm_subs_epu16(lvl, t[0]);
+		e[1] = _mm_subs_epu16(lvl, t[1]);
+		e[2] = _mm_subs_epu16(lvl, t[2]);
+		e[3] = _mm_subs_epu16(lvl, t[3]);
+		a[0] = _mm_madd_epi16(e[0], c0);
+		a[1] = _mm_madd_epi16(e[1], c0);
+		a[2] = _mm_madd_epi16(e[2], c1);
+		a[3] = _mm_madd_epi16(e[3], c1);
+		
+		// stage 2: c0 for a,b: (3,1) -> (4,4), c1 for c,d: (3,3) -> (4,6)
+		c0  = _mm_set_epi32((k2 >>  8) & 0xff00ff, (k2 >> 16) & 0xff00ff,
+												(k3 >>  8) & 0xff00ff, (k3 >> 16) & 0xff00ff);
+		c1  = _mm_set_epi32((k2 >> 24) & 0xff00ff, (k2 >> 32) & 0xff00ff,
+												(k3 >> 24) & 0xff00ff, (k3 >> 32) & 0xff00ff);
+		t[0] = _mm_sub_epi16(_mm_max_epu8(c0, v[0]), _mm_min_epu8(c0, v[0]));
+		t[1] = _mm_sub_epi16(_mm_max_epu8(c0, v[1]), _mm_min_epu8(c0, v[1]));
+		t[2] = _mm_sub_epi16(_mm_max_epu8(c1, v[2]), _mm_min_epu8(c1, v[2]));
+		t[3] = _mm_sub_epi16(_mm_max_epu8(c1, v[3]), _mm_min_epu8(c1, v[3]));
+		t[0] = _mm_subs_epu16(lvl, t[0]);
+		t[1] = _mm_subs_epu16(lvl, t[1]);
+		t[2] = _mm_subs_epu16(lvl, t[2]);
+		t[3] = _mm_subs_epu16(lvl, t[3]);
+		e[0] = _mm_add_epi16(t[0], e[0]);
+		e[1] = _mm_add_epi16(t[1], e[1]);
+		e[2] = _mm_add_epi16(t[2], e[2]);
+		e[3] = _mm_add_epi16(t[3], e[3]);
+		a[0] = _mm_add_epi32(_mm_madd_epi16(t[0], c0), a[0]);
+		a[1] = _mm_add_epi32(_mm_madd_epi16(t[1], c0), a[1]);
+		a[2] = _mm_add_epi32(_mm_madd_epi16(t[2], c1), a[2]);
+		a[3] = _mm_add_epi32(_mm_madd_epi16(t[3], c1), a[3]);
+		
+		// stage 3:
+		// pixel a: (0,0) -> (4,0), (2,1), (2,3), (2,4)
+		c0 = _mm_set_epi32(((k0 & 0xff) << 16) | (k1 & 0xff),
+		                   ((k2 & 0xff) << 16) | (k3 & 0xff),
+		                   (k6 >> 8) & 0xff00ff,
+		                   (k6 & 0xff) | ((k6 >> 16) & 0xff0000));
+		t[0] = _mm_sub_epi16(_mm_max_epu8(c0, v[0]), _mm_min_epu8(c0, v[0]));
+		t[0] = _mm_subs_epu16(lvl, t[0]);
+		e[0] = _mm_add_epi16(t[0], e[0]);
+		a[0] = _mm_add_epi32(_mm_madd_epi16(t[0], c0), a[0]);
+		
+		// pixel c: (0,2) -> (4,2), (2,3), (2,5), (2,6)
+		c1 = _mm_set_epi32((k0 & 0xff0000) | ((k1 >> 16) & 0xff),
+		                   (k2 & 0xff0000) | ((k3 >> 16) & 0xff),
+		                   (k6 >> 24) & 0xff00ff,
+		                   ((k6 >> 16) & 0xff) | ((k6 >> 32) & 0xff0000));
+		t[2] = _mm_sub_epi16(_mm_max_epu8(c1, v[2]), _mm_min_epu8(c1, v[2]));
+		t[2] = _mm_subs_epu16(lvl, t[2]);
+		e[2] = _mm_add_epi16(t[2], e[2]);
+		a[2] = _mm_add_epi32(_mm_madd_epi16(t[2], c1), a[2]);
+		
+		// pixel b: (0,5) -> (4,5), (2,1), (2,2), (2,4), (2,5)
+		c0 = _mm_set_epi32(((k0 >> 24) & 0xff0000) | ((k1 >> 40) & 0xff),
+		                   ((k2 >> 24) & 0xff0000) | ((k3 >> 40) & 0xff),
+		                   (k6 >> 16) & 0xff00ff,
+		                   ((k6 >> 8) & 0xff) | ((k6 >> 24) & 0xff0000));
+		t[1] = _mm_sub_epi16(_mm_max_epu8(c0, v[1]), _mm_min_epu8(c0, v[1]));
+		t[1] = _mm_subs_epu16(lvl, t[1]);
+		e[1] = _mm_add_epi16(t[1], e[1]);
+		a[1] = _mm_add_epi32(_mm_madd_epi16(t[1], c0), a[1]);
+		
+		// pixel d: (0,7) -> (4,7), (2,3), (2,4), (2,6), (2,7)
+		c1 = _mm_set_epi32(((k0 >> 40) & 0xff0000) | (k1 >> 56),
+		                   ((k2 >> 40) & 0xff0000) | (k3 >> 56),
+		                   (k6 >> 32) & 0xff00ff,
+		                   ((k6 >> 24) & 0xff) | ((k6 >> 40) & 0xff0000));
+		t[3] = _mm_sub_epi16(_mm_max_epu8(c1, v[3]), _mm_min_epu8(c1, v[3]));
+		t[3] = _mm_subs_epu16(lvl, t[3]);
+		e[3] = _mm_add_epi16(t[3], e[3]);
+		a[3] = _mm_add_epi32(_mm_madd_epi16(t[3], c1), a[3]);
+		
+		/* add them all together (a loop j=0 to 4 slows things down with gcc 4.4.4) */
+		uint32_t tmp;
+		
+#if defined(__SSE3__)
+		int j;
+		__m128 f0, f1, f2, flvl;
+		__m128i zero, vv;
+		flvl = _mm_set1_ps((float)level);
+		zero = _mm_setzero_si128();
+		vv = _mm_set_epi32((k6 >> 40) & 0xff, (k6 >> 32) & 0xff, (k6 >> 24) & 0xff, (k6 >> 16) & 0xff);
+		
+		f0 = _mm_hadd_ps(_mm_cvtepi32_ps(a[0]), _mm_cvtepi32_ps(a[1]));
+		f1 = _mm_hadd_ps(_mm_cvtepi32_ps(a[2]), _mm_cvtepi32_ps(a[3]));
+		f0 = _mm_hadd_ps(f0, f1);
+		f0 = _mm_add_ps(f0, _mm_mul_ps(flvl, _mm_cvtepi32_ps(vv)));
+		
+# ifdef OLD_ROUNDING
+		/* avg *= 2 */
+		f0 = _mm_mul_ps(f0, _mm_set1_ps(2.0f));
+# endif
+		
+		for (j=0; j<4; j++)
+			e[j] = _mm_unpacklo_epi16(_mm_add_epi16(e[j], _mm_srli_si128(e[j], 8)), zero);
+		f1 = _mm_hadd_ps(_mm_cvtepi32_ps(e[0]), _mm_cvtepi32_ps(e[1]));
+		f2 = _mm_hadd_ps(_mm_cvtepi32_ps(e[2]), _mm_cvtepi32_ps(e[3]));
+		f1 = _mm_hadd_ps(f1, f2);
+		f1 = _mm_add_ps(f1, flvl);
+		
+		f0 = _mm_div_ps(f0, f1);
+# ifdef OLD_ROUNDING
+		/* r = (r+1) / 2 */
+		vv = _mm_cvttps_epi32(f0);
+		vv = _mm_srli_epi32(_mm_add_epi32(vv, _mm_set1_epi32(1)), 1);
+# else
+		vv = _mm_cvtps_epi32(f0);
+# endif
+		vv = _mm_packus_epi16(_mm_packs_epi32(vv, zero), zero);
+		tmp = _mm_cvtsi128_si32(vv);
+		
+#else
+		
+		// p[0]
+		e[0] = _mm_add_epi16(e[0], _mm_srli_si128(e[0], 8)); /* 8 words */
+		e[0] = _mm_add_epi16(e[0], _mm_srli_si128(e[0], 4));
+		e[0] = _mm_add_epi16(e[0], _mm_srli_si128(e[0], 2));
+		cnt = level + (_mm_cvtsi128_si32(e[0]) & 0xffff);
+		a[0] = _mm_add_epi32(a[0], _mm_srli_si128(a[0], 8)); /* 4 dwords */
+		a[0] = _mm_add_epi32(a[0], _mm_srli_si128(a[0], 4));
+		avg = p[0] * level * 2 + (_mm_cvtsi128_si32(a[0]) << 1);
+		tmp = ((avg/cnt) + 1) / 2;
+		
+		// p[1]
+		e[1] = _mm_add_epi16(e[1], _mm_srli_si128(e[1], 8)); /* 8 words */
+		e[1] = _mm_add_epi16(e[1], _mm_srli_si128(e[1], 4));
+		e[1] = _mm_add_epi16(e[1], _mm_srli_si128(e[1], 2));
+		cnt = level + (_mm_cvtsi128_si32(e[1]) & 0xffff);
+		a[1] = _mm_add_epi32(a[1], _mm_srli_si128(a[1], 8)); /* 4 dwords */
+		a[1] = _mm_add_epi32(a[1], _mm_srli_si128(a[1], 4));
+		avg = p[1] * level * 2 + (_mm_cvtsi128_si32(a[1]) << 1);
+		tmp |= (((avg/cnt) + 1) / 2) << 8;
+		
+		// p[2]
+		e[2] = _mm_add_epi16(e[2], _mm_srli_si128(e[2], 8)); /* 8 words */
+		e[2] = _mm_add_epi16(e[2], _mm_srli_si128(e[2], 4));
+		e[2] = _mm_add_epi16(e[2], _mm_srli_si128(e[2], 2));
+		cnt = level + (_mm_cvtsi128_si32(e[2]) & 0xffff);
+		a[2] = _mm_add_epi32(a[2], _mm_srli_si128(a[2], 8)); /* 4 dwords */
+		a[2] = _mm_add_epi32(a[2], _mm_srli_si128(a[2], 4));
+		avg = p[2] * level * 2 + (_mm_cvtsi128_si32(a[2]) << 1);
+		tmp |= (((avg/cnt) + 1) / 2) << 16;
+		
+		// p[3]
+		e[3] = _mm_add_epi16(e[3], _mm_srli_si128(e[3], 8)); /* 8 words */
+		e[3] = _mm_add_epi16(e[3], _mm_srli_si128(e[3], 4));
+		e[3] = _mm_add_epi16(e[3], _mm_srli_si128(e[3], 2));
+		cnt = level + (_mm_cvtsi128_si32(e[3]) & 0xffff);
+		a[3] = _mm_add_epi32(a[3], _mm_srli_si128(a[3], 8)); /* 4 dwords */
+		a[3] = _mm_add_epi32(a[3], _mm_srli_si128(a[3], 4));
+		avg = p[3] * level * 2 + (_mm_cvtsi128_si32(a[3]) << 1);
+		tmp |= (((avg/cnt) + 1) / 2) << 24;
+#endif
+		
+		*(uint32_t *)d = tmp;
+		
+		d += 4;
+		p += 4;
+	}
+	_mm_empty();
+	
+	memcpy(plane,scratchplane2,w*h);
+}
+#endif
+
+void filter_plane_median_p ( uint8_t * plane, int w, int h, int level)
 {
 	int i;
 	int min;
@@ -825,6 +1323,27 @@ void filter_plane_median ( uint8_t * plane, int w, int h, int level)
  * Main Loop                                               *
  ***********************************************************/
 
+static void init_accel() {
+	filter_plane_median = filter_plane_median_p;
+	temporal_filter_planes = temporal_filter_planes_p;
+	
+#if defined(__SSE2__)
+	int d = 0;
+	__asm__ volatile("cpuid" : "=d"(d) : "a"(1) : "ebx", "ecx");
+	if ((d & (1 << 26))) {
+		mjpeg_info("SETTING SSE2 for standard Temporal-Noise-Filter");
+		temporal_filter_planes = temporal_filter_planes_sse2;
+		
+		__asm__ volatile("cpuid" : "=d"(d) : "a"(0x80000001) : "ebx", "ecx");
+		if ((d & (1 << 29))) {
+			/* x86_64 processor */
+			mjpeg_info("SETTING SSE2 for Median-Filter");
+			filter_plane_median = filter_plane_median_sse2;
+		}
+	}
+#endif
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -1061,6 +1580,8 @@ main (int argc, char *argv[])
 
   /* initialize motion_library */
   init_motion_search ();
+
+	init_accel();
 
   /* read every frame until the end of the input stream and process it */
   while (Y4M_OK == (err = y4m_read_frame (fd_in,
