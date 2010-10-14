@@ -810,8 +810,8 @@ void temporal_filter_planes_p (int idx, int w, int h, int t)
 /* 4 to 5 times faster */
 void filter_plane_median_sse2(uint8_t *plane, int w, int h, int level) {
 	int i;
-	int avg;
-	int cnt;
+	/* int avg; should not be needed any more */
+	/* int cnt; should not be needed any more */
 	uint8_t * p;
 	uint8_t * d;
 	
@@ -1326,10 +1326,12 @@ void filter_plane_median_p ( uint8_t * plane, int w, int h, int level)
 static void init_accel() {
 	filter_plane_median = filter_plane_median_p;
 	temporal_filter_planes = temporal_filter_planes_p;
-	
+	uint32_t tmp;
+
 #if defined(__SSE2__)
 	int d = 0;
-	__asm__ volatile("cpuid" : "=d"(d) : "a"(1) : "ebx", "ecx");
+/*	__asm__ volatile("cpuid" : "=d"(d) : "a"(1) : "ebx", "ecx"); */
+	__asm__ volatile("movl %%ebx, %1; cpuid; movl %1, %%ebx" : "=d"(d), "=&g"(tmp) : "a"(1) : "ecx");
 	if ((d & (1 << 26))) {
 		mjpeg_info("SETTING SSE2 for standard Temporal-Noise-Filter");
 		temporal_filter_planes = temporal_filter_planes_sse2;
