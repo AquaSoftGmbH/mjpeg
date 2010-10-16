@@ -1336,7 +1336,8 @@ static void init_accel() {
 		mjpeg_info("SETTING SSE2 for standard Temporal-Noise-Filter");
 		temporal_filter_planes = temporal_filter_planes_sse2;
 		
-		__asm__ volatile("cpuid" : "=d"(d) : "a"(0x80000001) : "ebx", "ecx");
+		/*__asm__ volatile("cpuid" : "=d"(d) : "a"(0x80000001) : "ebx", "ecx");*/
+		__asm__ volatile("movl %%ebx, %1; cpuid; movl %1, %%ebx" : "=d"(d), "=&g"(tmp) : "a"(0x80000001) : "ecx");
 		if ((d & (1 << 29))) {
 			/* x86_64 processor */
 			mjpeg_info("SETTING SSE2 for Median-Filter");
