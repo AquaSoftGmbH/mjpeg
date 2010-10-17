@@ -164,6 +164,11 @@ public:
     *********************/
  
     virtual bool ReencodeRequired() const = 0;
+
+
+    virtual unsigned int getEncodedFrames() const = 0;
+
+    virtual double getStreamComplexity() const = 0;
 };
 
 /* 

@@ -75,7 +75,7 @@ public:
     
     
     Picture( EncoderParams &_encparams, 
-             ElemStrmWriter &writer, 
+             ElemStrmWriter &writer,
              Quantizer &_quantizer );
     ~Picture();
 

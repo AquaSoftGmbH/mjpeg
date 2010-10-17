@@ -31,10 +31,12 @@
 class Picture;
 
 
-class MPEG2CodingBuf : public ElemStrmFragBuf
+class MPEG2CodingBuf
 {
 public:
     MPEG2CodingBuf( EncoderParams &encoder, ElemStrmWriter &writer );
+
+    virtual ~MPEG2CodingBuf();
 
 	void PutUserData( const uint8_t *userdata, int len);
 	void PutGopHdr(int frame, int closed_gop );
@@ -49,10 +51,44 @@ public:
     void PutMotionCode(int motion_code);
     void PutCPB(int cbp);
 
+
+
+    inline void PutBits( uint32_t val, int n)
+    {
+    	frag_buf->PutBits( val, n );
+    }
+
+
+    inline int ByteCount() const
+    {
+    	return frag_buf->ByteCount();
+    }
+
+    inline void AlignBits()
+    {
+    	frag_buf->AlignBits();
+    }
+
+    inline bool Aligned() const
+    {
+    	return frag_buf->Aligned();
+    }
+
+    inline void FlushBuffer()
+    {
+    	frag_buf->FlushBuffer();
+    }
+
+    inline void ResetBuffer()
+    {
+    	frag_buf->ResetBuffer();
+    }
+
 private:
 	void PutSeqExt();
 	void PutSeqDispExt();
 	int FrameToTimeCode( int gop_timecode0_frame );
+
 
 
     inline void PutDClum(int val)
@@ -105,6 +141,7 @@ private:
 
 private:
 	EncoderParams &encparams;
+	ElemStrmFragBuf	*frag_buf;
 
     const static VLCtable addrinctab[33];
     const static VLCtable mbtypetab[3][32];

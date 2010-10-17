@@ -114,8 +114,8 @@ public:
 							   decode rate.  */
 	double bit_rate;			/* bits per second, rate decode buffers filled (max rate) */
 	double target_bitrate;		/* Target bit rate to achieve overall for VBR 0  if no target set */
-	unsigned int rep_sample_frames;		/* # Frames to representatively sample stream */
-	double init_mean_Xhi;				/* Initial mean complexity */
+	unsigned int stream_frames;		/* # Frames to representatively sample stream */
+	double stream_Xhi;					/* Total stream complexity */
 	bool seq_hdr_every_gop;
 	bool seq_end_every_gop;	/* Useful for Stills sequences... */
 	bool svcd_scan_data;
@@ -222,8 +222,8 @@ public:
 								*/
     int video_buffer_size;    /* Video buffer requirement target */
 
-    int N_max;				/* number of frames in Group of Pictures (max) */
-    int N_min;				/* number of frames in Group of Pictures (min) */
+    unsigned int N_max;				/* number of frames in Group of Pictures (max) */
+    unsigned int N_min;				/* number of frames in Group of Pictures (min) */
     int M;					/* distance between I/P frames */
 
     int M_min;			    /* Minimum distance between I/P frames */

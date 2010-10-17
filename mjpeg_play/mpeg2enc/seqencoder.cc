@@ -926,6 +926,8 @@ void SeqEncoder::Pass2Process()
 void SeqEncoder::StreamEnd()
 {
     uint64_t bits_after_mux = BitsAfterMux();
+    mjpeg_info( "Parameters for 2nd pass (stream frames, stream frames): -L %u -Z %.0f",
+    		     pass2ratectl.getEncodedFrames(), pass2ratectl.getStreamComplexity() );
     mjpeg_info( "Guesstimated final muxed size = %lld\n", bits_after_mux/8 );
     
     unsigned int i;

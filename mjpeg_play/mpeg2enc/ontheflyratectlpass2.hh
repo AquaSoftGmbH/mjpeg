@@ -35,11 +35,19 @@ public:
     virtual void Set( const RateCtlState &state ) { *this = static_cast<const OnTheFlyPass2State &>(state); }
     virtual const RateCtlState &Get() const { return *this; }
 
+
+protected:
     /*!
      * Number of frames encoded so far in entire stream
      */
     unsigned int m_encoded_frames;
 
+    /*!
+     * Sum of differences target_size - actual_size for frames encoded so far
+     * (used for 2-pass encoding rate control).
+     */
+
+    int64_t	m_control_undershoot;
     /*
      * Current feedback-control bitrate for whole-sequence rate control
      */
@@ -50,6 +58,12 @@ public:
      * (per-gop rate control gets 1.0-m_seq_ctrl_weight)
      */
     double m_seq_ctrl_weight;
+
+    /*
+     * Bit-rate for unit of picture complexity (Set to != 0.0 when two-pass encoding
+     * rate control)
+     */
+    double m_picture_xhi_bitrate;
 
     /*
      * Mean stream picture complexity so far in pass 2
@@ -109,7 +123,7 @@ public:
      * Sum of pictures complexities up to current point
      * in entire stream.
      */
-    double strm_Xhi;
+    double m_strm_Xhi;
 
     /*
       Moving average of the final ration actual_bits/target_bits after
@@ -149,6 +163,11 @@ public:
     double SumAvgActivity()  { return sum_avg_act; }
 
     bool ReencodeRequired() const { return reencode; }
+
+    unsigned int getEncodedFrames() const { return m_encoded_frames; }
+
+    double getStreamComplexity() const { return m_strm_Xhi; }
+
 protected:
     virtual int  TargetPictureEncodingSize();
 
@@ -197,7 +216,7 @@ private:
     double sum_base_Q;        // Accumulates base quantisations encoding
     int sum_actual_Q;         // Accumulates actual quantisation
     double buffer_variation_danger; // Buffer variation level below full
-                                    // at which serious risk of data under-run in muxed stream
+                                 // at which serious risk of data under-run in muxed stream
 };
 
 

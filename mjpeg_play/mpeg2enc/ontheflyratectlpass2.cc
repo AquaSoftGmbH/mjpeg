@@ -78,7 +78,9 @@ OnTheFlyPass2::OnTheFlyPass2(EncoderParams &encparams ) :
         sum_avg_act = 0.0;
         sum_avg_quant = 0.0;
         m_encoded_frames = 0;
-        strm_Xhi = 0.0;
+        m_control_undershoot = 0;
+        m_picture_xhi_bitrate = 0;
+        m_strm_Xhi = 0.0;
         m_seq_ctrl_bitrate = encparams.bit_rate;
 }
 
@@ -87,7 +89,7 @@ void OnTheFlyPass2::Init()
 {
 
   /*
-     Gain is set so that feedback is set to recover buffer variation in 1
+     Gain is set so that feedback is set to recover buffer variation in 0.5
      seconds for a typical DVD stream.  Gain is reduce in proportion to
      buffer size and increased in proportion to bit-rate.
    */
@@ -179,43 +181,68 @@ void OnTheFlyPass2::InitGOP(  )
   // Sanity check complexity based allocation to ensure it doesn't cause
   // buffer underflow
 
-  double abr = m_encoded_frames == 0 ?
-		  	   0.0 : total_bits_used * encparams.decode_frame_rate / m_encoded_frames;
-  if( encparams.target_bitrate > 0 )
-  {
-	  // Rate feedback... aim to recover under/overshoot over the
-	  // period of a representative sample of frames
-	  double undershoot =
-		  encparams.target_bitrate *  m_encoded_frames / encparams.decode_frame_rate -
-		  total_bits_used;
-	  double rate_feedback =
-		  undershoot * encparams.decode_frame_rate / encparams.rep_sample_frames;
-	  m_seq_ctrl_bitrate = encparams.target_bitrate + rate_feedback;
-  }
-  m_mean_gop_Xhi =  gop_Xhi / gop_stats.pictures;
 
-  if( encparams.init_mean_Xhi > 0.0 )
+  unsigned int rep_sample_frames;
+  if(  encparams.stream_frames == 0 )
   {
-	  // Pre-supplied mean complexity.. act as if it had come from
-	  //an initial representative same of frames...
-	  m_seq_ctrl_weight = 1.0;
-	  m_mean_strm_Xhi = encparams.init_mean_Xhi;
+	  // No stream length given ... 5 minutes of video ought to be representative
+	  rep_sample_frames = 25*5*60; // 5 min of video
   }
   else
   {
-	  // No pre-supplied mean?  Progressively shift from per-gop to complete
-	  // stream rate-control until rep_sample_frames seen...
-	  m_seq_ctrl_weight =
-		  std::min( 1.0,
-				    static_cast<double>(m_encoded_frames) / encparams.rep_sample_frames );
-	  m_mean_strm_Xhi = m_encoded_frames > 0
-						? strm_Xhi / m_encoded_frames
-						: m_mean_gop_Xhi;
+	  // 10% of stream or 10 GOPs...
+	  rep_sample_frames = std::max( encparams.N_max * 10, encparams.stream_frames / 10 );
   }
-  mjpeg_info( "Mean strm Xhi = %.0f mean gop Xhi = %.0f init %.0f rep %d cbr/abr=%d/%.0f",
+  double undershoot = 0.0;
+  if( encparams.target_bitrate > 0 )
+  {
+
+	  if( m_strm_Xhi < encparams.stream_Xhi && m_encoded_frames < encparams.stream_frames )
+	  {
+		  // Two pass encoding we - we know exact # bits under/overshoot from
+		  // target.
+		  undershoot = m_control_undershoot;
+		  m_seq_ctrl_weight = 1.0;
+		  double stream_bits =
+			  encparams.stream_frames * encparams.target_bitrate /  encparams.frame_rate ;
+		  m_picture_xhi_bitrate =
+			  (field_rate/fields_per_pict) * stream_bits / encparams.stream_frames;
+	  }
+	  else
+	  {
+		  // Rate feedback... aim to recover under/overshoot over the
+		  // period of a representative sample of frames
+		  undershoot =
+			  encparams.target_bitrate *  m_encoded_frames / encparams.decode_frame_rate -
+			  total_bits_used;
+		  m_seq_ctrl_weight =
+			  std::min( 1.0,
+						static_cast<double>(m_encoded_frames) / rep_sample_frames );
+		  m_picture_xhi_bitrate = 0.0;
+	  }
+	  double rate_feedback =
+		  undershoot * encparams.decode_frame_rate / rep_sample_frames;
+	  //
+	  // We never set control bitrate higher than peak bitrate as otherwise
+	  // we risk under-run...
+	  m_seq_ctrl_bitrate =
+		  std::max( encparams.bit_rate, encparams.target_bitrate + rate_feedback );
+  }
+  m_mean_gop_Xhi =  gop_Xhi / gop_stats.pictures;
+
+
+  // if we don't have 2-pass data we wrogressively shift from per-gop to complete
+  // stream rate-control until rep_sample_frames seen...
+
+  m_mean_strm_Xhi = m_encoded_frames > 0
+					? m_strm_Xhi / m_encoded_frames
+					: m_mean_gop_Xhi;
+  mjpeg_info( "Mean strm Xhi = %.0f mean gop Xhi = %.0f pXhibr=%.4f cbr/abr=%d/%.0f under=%.0f",
 			  m_mean_strm_Xhi, m_mean_gop_Xhi,
-			  encparams.init_mean_Xhi, encparams.rep_sample_frames,
-			  m_seq_ctrl_bitrate, abr );
+			  m_picture_xhi_bitrate,
+			  m_seq_ctrl_bitrate,
+			  encparams.target_bitrate *  m_encoded_frames / encparams.decode_frame_rate,
+			  undershoot );
 }
 
 
@@ -249,6 +276,7 @@ void OnTheFlyPass2::InitPict(Picture &picture)
   // correct looking-ahead ...
 
   double buffer_state_feedback =  overshoot_gain * buffer_variation;
+  double rel_overshoot = std::max( 0.0, -buffer_variation/buffer_variation_danger );
   int actual_bits = picture.EncodedSize();
   double Xhi = picture.ABQ * actual_bits;
   double ctrl_bitrate;
@@ -259,18 +287,48 @@ void OnTheFlyPass2::InitPict(Picture &picture)
   }
   else if( encparams.target_bitrate > 0  )
   {
-	  // Weighted combination of whole-stream rate-control
-	  // and simple rate-control maintaining target gop by gop
-	  double gop_ctrl_bitrate = encparams.target_bitrate+buffer_state_feedback;
-	  double seq_ctrl_bitrate = m_seq_ctrl_bitrate+buffer_state_feedback;
-	  ctrl_bitrate =
-		  Xhi * (  m_seq_ctrl_weight * seq_ctrl_bitrate / m_mean_strm_Xhi +
-		          (1.0-m_seq_ctrl_weight) * gop_ctrl_bitrate  / m_mean_gop_Xhi
-		         );
+	  double seq_ctrl_bitrate;
+	  if( m_picture_xhi_bitrate != 0.0 )
+	  {
+		  seq_ctrl_bitrate = Xhi*m_picture_xhi_bitrate;
+	  }
+	  else
+	  {
+		  seq_ctrl_bitrate =
+		      Xhi * (m_seq_ctrl_bitrate+buffer_state_feedback) / m_mean_strm_Xhi;
+	  }
+
+	  // As the video buffer empties from 1/4 empty bring the control bitrate progressively
+	  // dwn so that at 3/4's empty it never exceeds 3/4's peak rate. This ensures
+	  // we don't continue to empty the video buffer due to super-active
+	  // frames when its already near-empty...
+
+	  double buffer_danger = std::min(1.0,std::max(0.0,(4.0/3.0)*(rel_overshoot-0.25)));
+	  seq_ctrl_bitrate =  encparams.bit_rate * 3.0/4.0 * buffer_danger
+						+ seq_ctrl_bitrate * (1.0-buffer_danger);
+
+	  if( m_picture_xhi_bitrate != 0.0 )
+	  {
+
+		  ctrl_bitrate = seq_ctrl_bitrate+buffer_state_feedback;
+	  }
+	  else
+	  {
+
+		  // Weighted combination of whole-stream rate-control
+		  // and simple rate-control maintaining target gop by gop
+		  double gop_ctrl_bitrate =
+			  Xhi * (encparams.target_bitrate+buffer_state_feedback) / m_mean_gop_Xhi;
+		  ctrl_bitrate = m_seq_ctrl_weight * seq_ctrl_bitrate  +
+			             (1.0-m_seq_ctrl_weight) * gop_ctrl_bitrate;
+	  }
+
+
+
 
 	  // Heuristic
-	  // We don't set control bit-rate more below 1/3rd target bit rate or
-	  // more below target bit-rate than peak rate target rate
+	  // We don't set control bit-rate ludicrously low to avoid
+	  // quantisation artefacts even on super-low activity frames.
 	  double ctrl_bitrate_floor =
 		  std::min( encparams.target_bitrate/3.0, encparams.bit_rate/5.0 );
 	  ctrl_bitrate = std::max( ctrl_bitrate, ctrl_bitrate_floor);
@@ -303,7 +361,7 @@ void OnTheFlyPass2::InitPict(Picture &picture)
   // Tolerance of overshooting target bit allocation
   // drops to zero from encparams.coding_tolerance
   // as buffer_variation gets closer to danger level...
-  double rel_overshoot = std::max( 0.0, -buffer_variation/buffer_variation_danger );
+
   double overshoot_tolerance =  encparams.coding_tolerance * (1.0-rel_overshoot);
   double undershoot_tolerance = -encparams.coding_tolerance;
 
@@ -370,10 +428,8 @@ void OnTheFlyPass2::InitPict(Picture &picture)
 void OnTheFlyPass2::PictUpdate( Picture &picture, int &padding_needed)
 {
   ++m_encoded_frames;
-  int32_t actual_bits;            /* Actual (inc. padding) picture bit counts */
-  int frame_overshoot;
-  actual_bits = picture.EncodedSize();
-  frame_overshoot = (int)actual_bits-(int)target_bits;
+  int actual_bits = picture.EncodedSize();
+  m_control_undershoot += target_bits-actual_bits;
 
   if( sample_T_A )
   {
@@ -421,7 +477,7 @@ void OnTheFlyPass2::PictUpdate( Picture &picture, int &padding_needed)
   }
 
   double Xhi = picture.ABQ * actual_bits;
-  strm_Xhi += Xhi;
+  m_strm_Xhi += Xhi;
 
   /* Stats and logging.
      AQ is the average Quantisation of the block.

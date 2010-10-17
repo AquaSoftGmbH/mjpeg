@@ -60,13 +60,30 @@ ElemStrmWriter::~ElemStrmWriter()
 {
 }
 
+/* *********************************************************************** */
+
+
+OutputFragBuf::OutputFragBuf()
+{
+    pendingbits = 0;
+    unflushed = 0;
+    outcnt = 8;
+}
+
+OutputFragBuf::~OutputFragBuf()
+{
+}
+
+
+/* *********************************************************************** */
+
 
 ElemStrmFragBuf::ElemStrmFragBuf(ElemStrmWriter &_writer ) :
+	OutputFragBuf(),
     writer(_writer)
 {
     buffer = NULL;
     ResetBuffer();
-    pendingbits = 0;
 }
 
 ElemStrmFragBuf::~ElemStrmFragBuf()
@@ -98,11 +115,7 @@ void ElemStrmFragBuf::FlushBuffer( )
     ResetBuffer();
 }
 
-void ElemStrmFragBuf::AlignBits()
-{
-	if (outcnt!=8)
-		PutBits(0,outcnt);
-}
+
 
 /**************
  *
@@ -129,6 +142,47 @@ void ElemStrmFragBuf::PutBits(uint32_t val, int n)
 		outcnt -= n;
 	}
 }
+
+
+/* *********************************************************************** */
+
+
+CountOnlyFragBuf::CountOnlyFragBuf() :
+	OutputFragBuf()
+{
+}
+
+CountOnlyFragBuf::~CountOnlyFragBuf()
+{
+
+}
+
+void CountOnlyFragBuf::ResetBuffer()
+{
+    outcnt = 8;
+    unflushed = 0;
+}
+
+void CountOnlyFragBuf::FlushBuffer( )
+{
+    unflushed = 0;
+}
+
+/**************
+ *
+ * Write least significant n (0<=n<=32) bits of val to output buffer
+ *
+ *************/
+
+void CountOnlyFragBuf::PutBits(uint32_t val, int n)
+{
+	int bits = (8-outcnt)+n;
+	int bytes = bits / 8;
+	int remainder = bits % 8;
+	unflushed += bytes;
+	outcnt = 8-remainder;
+}
+
 
 
 

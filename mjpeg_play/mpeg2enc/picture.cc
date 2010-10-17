@@ -696,7 +696,8 @@ void Picture::PutHeaders()
  
 
 void Picture::PutTrailers( int padding_needed )
-{    coding->AlignBits();
+{
+	coding->AlignBits();
     if( padding_needed > 0 )
     {
         mjpeg_debug( "Padding coded picture to size: %d extra bytes",

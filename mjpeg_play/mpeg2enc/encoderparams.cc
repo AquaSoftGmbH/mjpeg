@@ -269,8 +269,8 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 					target_bitrate	);
 	}
 
-	init_mean_Xhi = options.init_mean_Xhi;
-	rep_sample_frames = options.rep_sample_frames;
+	stream_Xhi = options.stream_Xhi;
+	stream_frames = options.stream_frames;
 	vbv_buffer_size = vbv_buffer_code*16384;
 
 	if( options.quant )

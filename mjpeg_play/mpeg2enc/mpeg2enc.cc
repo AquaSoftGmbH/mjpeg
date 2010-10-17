@@ -620,8 +620,13 @@ void MPEG2EncCmdLineOptions::StartupBanner()
 
 int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 {
-int n;
-int nerr = 0;
+	int n;
+	int nerr = 0;
+
+	enum LongOnlyOptions
+	{
+		CHAPTERS = 256
+	};
 static const char   short_options[]=
         "l:a:f:x:y:n:b:z:T:B:q:o:S:I:r:M:4:2:A:Q:X:D:g:G:v:V:F:N:pdsHcCPK:E:R:t:L:Z:";
 
@@ -638,7 +643,7 @@ static struct option long_options[]=
         { "frame-rate",        1, 0, 'F' },
         { "video-bitrate",     1, 0, 'b' },
         { "target-video-bitrate", 1, 0, 't' },
-        { "rep-sample-frames", 1, 0, 'L' },
+        { "sequence_length",   1, 0, 'L' },
         { "mean-complexity",	1, 0, 'Z' },
         { "nonvideo-bitrate",  1, 0, 'B' },
         { "intra_dc_prec",     1, 0, 'D' },
@@ -675,7 +680,7 @@ static struct option long_options[]=
         { "b-per-refframe",    1, 0, 'R' },
         { "cbr",               0, 0, 'u'},
         { "help",              0, 0, '?' },
-        { "chapters",          1, 0, 256 },
+        { "chapters",          1, 0, CHAPTERS },
         { 0,                   0, 0, 0 }
     };
 
@@ -712,13 +717,13 @@ while( (n=getopt(argc,argv,short_options)) != -1)
         target_bitrate = static_cast<int>(atof(optarg)*1000);
         break;
     case 'L' :
-    	rep_sample_frames = atoi(optarg);
+    	stream_frames = atoi(optarg);
     	break;
     case 'Z' :
-    	init_mean_Xhi = atof(optarg);
-    	if( init_mean_Xhi < 1000.0 )
+    	stream_Xhi = atof(optarg);
+    	if( stream_Xhi < 1000000.0 )
     	{
-    		mjpeg_error( "-Z|mean_complexity fails sanity check (< 1000.0)");
+    		mjpeg_error( "-Z|mean_complexity fails sanity check (< 1000000.0)");
     		++nerr;
     	}
     	break;

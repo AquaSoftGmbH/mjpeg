@@ -34,8 +34,8 @@ struct MPEG2EncParams
     int bitrate;
     int target_bitrate;
     int nonvid_bitrate;
-    int rep_sample_frames;   // # Frames to representatively sample entire stream
-    double init_mean_Xhi;	 // debug feature: only initial mean frame complexity
+    unsigned int stream_frames;   	// # Frames of entire stream
+    double stream_Xhi;	 	 		// debug feature total stream complexity...
     int quant;
     int searchrad;
     int mpeg;

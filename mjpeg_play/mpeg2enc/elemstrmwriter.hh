@@ -46,7 +46,59 @@ protected:
  *
  *****************************/
 
-class ElemStrmFragBuf 
+class OutputFragBuf
+{
+public:
+	OutputFragBuf();
+    virtual ~OutputFragBuf();
+
+    /**************
+     *
+     * Flush out buffer
+     * N.b. attempts to flush in non byte-aligned states are illegal
+     * and will abort
+     *
+     *************/
+    virtual void FlushBuffer() = 0;
+
+    /**************
+     *
+     * Reset buffer - empty buffer discarding current contents.
+     *
+     * ***********/
+
+    virtual void ResetBuffer() = 0;
+
+    /**************
+     *
+     * Write rightmost (least significant) n (0<=n<=32) bits of val to current buffer
+     *
+     *************/
+    virtual void PutBits( uint32_t val, int n) = 0;
+
+    inline void AlignBits()
+    {
+    	if (outcnt!=8)
+    		PutBits(0,outcnt);
+    }
+    inline bool Aligned() const { return outcnt == 8; }
+    inline int ByteCount() const { return unflushed; }
+
+protected:
+    int unflushed;
+    int outcnt;                 // Bits unwritten in current output byte
+    uint32_t pendingbits;
+};
+
+
+/******************************
+ *
+ * Elementry stream buffer used to accumulate (byte-aligned) fragments ofencoded video.  Currently
+ * each frame has its own buffer.
+ *
+ *****************************/
+
+class ElemStrmFragBuf : public OutputFragBuf
 {
 public:
 	ElemStrmFragBuf( ElemStrmWriter &outstrm);
@@ -59,7 +111,7 @@ public:
      * and will abort
      *
      *************/
-    void FlushBuffer();
+    virtual void FlushBuffer();
 
     /**************
      * 
@@ -67,19 +119,14 @@ public:
      * 
      * ***********/
      
-     void ResetBuffer();
+    virtual void ResetBuffer();
     
     /**************
      *
      * Write rightmost (least significant) n (0<=n<=32) bits of val to current buffer 
      *
      *************/
-    void PutBits( uint32_t val, int n);
-
-    void AlignBits();
-    inline bool Aligned() const { return outcnt == 8; }
-    inline int ByteCount() const { return unflushed; }
-
+    virtual void PutBits( uint32_t val, int n);
     
 private:
     void AdjustBuffer();
@@ -90,11 +137,47 @@ protected:
                                 // aligned output before flushing or
                                 // backing up and re-encoding
     int buffer_size;
-    int unflushed;
-    int outcnt;                 // Bits unwritten in current output byte
-    uint32_t pendingbits;
 };
 
+
+/******************************
+ *
+ * Elementry stream buffer used to accumulate (byte-aligned) fragments ofencoded video.  Currently
+ * each frame has its own buffer.
+ *
+ *****************************/
+
+class CountOnlyFragBuf : public OutputFragBuf
+{
+public:
+	CountOnlyFragBuf();
+    ~CountOnlyFragBuf();
+
+    /**************
+     *
+     * Flush out buffer
+     * N.b. attempts to flush in non byte-aligned states are illegal
+     * and will abort
+     *
+     *************/
+    virtual void FlushBuffer();
+
+    /**************
+     *
+     * Reset buffer - empty buffer discarding current contents.
+     *
+     * ***********/
+
+    virtual void ResetBuffer();
+
+    /**************
+     *
+     * Write rightmost (least significant) n (0<=n<=32) bits of val to current buffer
+     *
+     *************/
+    virtual void PutBits( uint32_t val, int n);
+
+};
 
 /* 
  * Local variables:
