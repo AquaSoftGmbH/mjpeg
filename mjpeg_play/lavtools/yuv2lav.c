@@ -236,56 +236,56 @@ int main(int argc, char *argv[])
    }
 
    if (param_interlace < 0) {
-       param_interlace = y4m_si_get_interlace(&streaminfo);
-    }
+	   param_interlace = y4m_si_get_interlace(&streaminfo);
+   }
 
-/* If no desired format option was given, we try to detect the format with */
-/* the last 4 char of the filename */
+   /* If no desired format option was given, we try to detect the format with */
+   /* the last 4 char of the filename */
    dotptr = strrchr(param_output, '.');
    if (dotptr && (param_format == 'x'))
-      {
+   {
 #ifdef HAVE_LIBQUICKTIME 
-	if (!strcasecmp(dotptr+1, "mov"))
-	   param_format = 'q';
+	   if (!strcasecmp(dotptr+1, "mov"))
+		   param_format = 'q';
 #endif
-	if (!strcasecmp(dotptr+1, "avi"))
-	   param_format = 'a';
-      }
+	   if (!strcasecmp(dotptr+1, "avi"))
+		   param_format = 'a';
+   }
 
-/* Telling the people which format we really use */
-	if (param_format == 'a')
-		mjpeg_info("creating AVI output format");
-	else if (param_format == 'q')
-		mjpeg_info("creating Quicktime output format");
-	else 
-		mjpeg_error_exit1("No format specified add the -f option");
+   /* Telling the people which format we really use */
+   if (param_format == 'a')
+	   mjpeg_info("creating AVI output format");
+   else if (param_format == 'q')
+	   mjpeg_info("creating Quicktime output format");
+   else 
+	   mjpeg_error_exit1("No format specified add the -f option");
 
    if (param_interlace == Y4M_ILACE_TOP_FIRST  && param_format == 'A')
-      param_format = 'a';
+	   param_format = 'a';
    else if (param_interlace == Y4M_ILACE_BOTTOM_FIRST && param_format == 'a')
-      param_format = 'A';
+	   param_format = 'A';
    fps = Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo));
 
    /* Open WAV file */
 
    if (param_inputwav != NULL)
    {
-      wav_fd = open(param_inputwav,O_RDONLY);
-      if(wav_fd<0) { mjpeg_error_exit1("Open WAV file: %s", strerror(errno));}
-   
-      n = read(wav_fd,(char*)data,20);
-      if(n!=20) { mjpeg_error_exit1("Read WAV file: %s", strerror(errno)); }
-   
-      if(data[0] != FOURCC_RIFF || data[2] != FOURCC_WAVE ||
-         data[3] != FOURCC_FMT  || data[4] > sizeof(data) )
-      {
-         mjpeg_error_exit1("Error in WAV header");
-      }
-   
-      fmtlen = data[4];
-   
-      n = read(wav_fd,(char*)data,fmtlen);
-      if(n!=fmtlen) { perror("read WAV header"); exit(1); }
+	   wav_fd = open(param_inputwav,O_RDONLY);
+	   if(wav_fd<0) { mjpeg_error_exit1("Open WAV file: %s", strerror(errno));}
+
+	   n = read(wav_fd,(char*)data,20);
+	   if(n!=20) { mjpeg_error_exit1("Read WAV file: %s", strerror(errno)); }
+
+	   if(data[0] != FOURCC_RIFF || data[2] != FOURCC_WAVE ||
+			   data[3] != FOURCC_FMT  || data[4] > sizeof(data) )
+	   {
+		   mjpeg_error_exit1("Error in WAV header");
+	   }
+
+	   fmtlen = data[4];
+
+	   n = read(wav_fd,(char*)data,fmtlen);
+	   if(n!=fmtlen) { perror("read WAV header"); exit(1); }
    
       if( (data[0]&0xffff) != 1)
       {
@@ -369,6 +369,7 @@ int main(int argc, char *argv[])
    yuv[0] = malloc(y4m_si_get_width(&streaminfo) *
 		   y4m_si_get_height(&streaminfo) *
 		   sizeof(unsigned char));
+   mjpeg_info(" Plane 0 X: %i Y: %i, Chroma %i", y4m_si_get_width(&streaminfo), y4m_si_get_height(&streaminfo), y4m_si_get_chroma(&streaminfo)); 
    yuv[1] = malloc(y4m_si_get_width(&streaminfo) * 
 		   y4m_si_get_height(&streaminfo) *
 		   sizeof(unsigned char) /

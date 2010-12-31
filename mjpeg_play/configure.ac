@@ -1,10 +1,10 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT([mjpegtools],[1.9.2],[mjpeg-developer@lists.sourceforge.net])
+AC_INIT([mjpegtools],[2.0.0],[mjpeg-developer@lists.sourceforge.net])
 AC_PREREQ(2.57)
 AC_CONFIG_SRCDIR([lavtools/lav_io.c])
 
 MJPEG_MAJOR_VERSION=1
-MJPEG_MINOR_VERSION=10
+MJPEG_MINOR_VERSION=99
 MJPEG_MICRO_VERSION=0
 MJPEG_VERSION=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION.$MJPEG_MICRO_VERSION
 
