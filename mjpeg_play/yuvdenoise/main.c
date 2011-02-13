@@ -810,8 +810,8 @@ void temporal_filter_planes_p (int idx, int w, int h, int t)
 /* 4 to 5 times faster */
 void filter_plane_median_sse2(uint8_t *plane, int w, int h, int level) {
 	int i;
-	/* int avg; should not be needed any more */
-	/* int cnt; should not be needed any more */
+	int avg; /*should not be needed any more */
+	int cnt; /* should not be needed any more */
 	uint8_t * p;
 	uint8_t * d;
 	
