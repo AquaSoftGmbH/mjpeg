@@ -150,6 +150,8 @@ dnl *********************************************************************
 dnl Test whether we're linux or not. If so, define HAVE_V4L and build the
 dnl video4linux/hardware dependent tools. Else, undefine HAVE_V4L
 
+AC_ARG_WITH([v4l], AC_HELP_STRING([--without-v4l], [Disable v4l1 API]))
+AS_IF([test "x$with_v4l" != "xno"], [
 have_video4linux=false
 case $host in
   *-*-linux*)
@@ -157,9 +159,9 @@ case $host in
                   [have_video4linux=true
                    AC_DEFINE(HAVE_V4L, 1,
 		             [Building for Linux - using the video4linux API])],
-                  [AC_MSG_ERROR([videodev.h not found - please install the linux kernel headers])])
-   ;;
-esac
+			     []);; esac])
+  AS_IF([test "x$have_video4linux" != "xtrue" && test "x$with_v4l" != "xno"],
+	[AC_MSG_WARN([videodev.h not found - please install the linux kernel headers, programms needing v4l disabled])],[have_video4linux=false])
 AM_CONDITIONAL(HAVE_V4L, test x$have_video4linux = xtrue)
 
 dnl *********************************************************************
