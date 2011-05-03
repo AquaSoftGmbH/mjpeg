@@ -277,7 +277,7 @@ if test x$with_dga != xno ; then
 		     have_dga="true"
 		     AC_DEFINE(HAVE_LIBXXF86DGA,1, [libxf86dga is present]),
 		     have_dga="false",
-		     $X_LIBS $X_PRE_LIBS -lXext -lX11 $X_EXTRA_LIBS)
+		     $X_LIBS $X_PRE_LIBS -lXext $X_EXTRA_LIBS)
 fi
 AM_CONDITIONAL(HAVE_LIBXXF86DGA, test x$have_dga = xtrue)
 
