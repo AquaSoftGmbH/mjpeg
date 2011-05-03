@@ -59,7 +59,10 @@ liblavplay_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS) $(X_CFLAGS) $(SDL_CFLAGS
 liblavplay_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
 liblavplay_la_LIBADD = liblavfile.la $(SDL_LIBS) liblavjpeg.la $(LIBDV_LIBS) $(LIBMJPEGUTILS)
 if HAVE_V4L
-   liblavplay_la_LIBADD += ${X_LIBS} -lX11
+   liblavplay_la_LIBADD += ${X_LIBS} 
+endif
+if HAVE_SDL
+   liblavplay_la_LIBADD += -lX11
 endif
 liblavplay_la_DEPENDENCIES = liblavfile.la liblavjpeg.la
 
