@@ -77,6 +77,12 @@
 
 CVS log:
 $Log$
+Revision 1.15  2008/11/29 19:31:20  wackston2
+Trial fix: stop sampling frames at Q floor (where Actual bits *expected* to be
+           < Target bits) to compute mean Target/Actual ratio after pass2
+           reencoding.
+Tidying:  remove some redundant inclusion of config.h
+
 Revision 1.14  2001/07/08 21:21:15  wackston
 Added VBR audio support.
 Fixed wav headers so they indicate a long not a short stream
@@ -181,3 +187,25 @@ Changes to lavtools-1.0
 
 - steering of lavplay (forward, backward, pause etc.) with commands
   (for real command line hardliners)
+
+Changes to lavtools 1.9.0 (in no particular order)
+
+- added changes to support the compiling for new CPUs
+
+- some autoconf/configure fixes (x11 and other libs
+- patch to compile png2yuv with newer png lib
+- clean upf for vrious compiling problems
+- jpegutil fix for neser libjpeg
+
+- mpeg2enc some more two-pass encoding support
+- mpeg2enc fixes for bit rate problems
+
+- mplex added support for subtitle streams from tcextract 
+- mplex small fixes
+
+- y4mdenoise better, faster, fixed the problem in dark/cloudy areas
+
+- fixes for the __progname problem
+
+- yuvdenoise god speed up by a SSE2 ASM version of some code
+
