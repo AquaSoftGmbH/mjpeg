@@ -22,6 +22,8 @@ noinst_HEADERS = \
 	DoublyLinkedList.hh \
 	Limits.hh \
 	MotionSearcher.hh \
+	newdenoise.hh \
+	PlacementAllocator.hh\
 	ReferenceFrame.hh \
 	Region2D.hh \
 	SearchBorder.hh \
@@ -31,7 +33,8 @@ noinst_HEADERS = \
 	SkipList.hh \
 	Status_t.h \
 	TemplateLib.hh \
-	newdenoise.hh
+	VariableSizeAllocator.hh \
+	Vector.hh
 
 noinst_PROGRAMS = regiontest
 
