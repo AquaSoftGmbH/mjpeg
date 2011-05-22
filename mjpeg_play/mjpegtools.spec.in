@@ -122,6 +122,11 @@ of the mjpegtools package.
 %{_libdir}/*.so
 
 %changelog
+* Sat Mai 21 2011 Bernhard Praschinger <shadowlord@utanet.at>
+  This is it, after more than 10 years on Sourcefogre we named this 
+  release 2.0.0. For further changes and fixes please take a look at the
+  Changelog. 
+
 * Tue Dec 02 2008 Bernhard Praschinger <shadowlord@utanet.at>
   No we have everything together to release a new RC4
   That will be very close to the next relase.
