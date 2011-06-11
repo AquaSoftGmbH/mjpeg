@@ -64,6 +64,9 @@ AC_ARG_WITH(gtk,
 AC_ARG_WITH(libsdl,
 	    AC_HELP_STRING([--without-libsdl], [Do not use libsdl.]),
 	    [], [with_libsdl=yes])
+AC_ARG_WITH(sdlgfx,
+	    AC_HELP_STRING([--without-sdlgfx], [Do not use sdlgfx.]),
+	    [], [with_sdlgfx=yes])
 AC_GNU_SOURCE
 
 dnl Initialize libtool
@@ -306,20 +309,25 @@ if test x$with_libsdl != xno ; then
 fi
 AM_CONDITIONAL(HAVE_SDL, test x$have_sdl = xtrue)			  
 
-dnl ***
+dnl ********************************************************************
 dnl Check for SDL_gfx which is used by y4mhist to display a graphical 
 dnl histogram.
-dnl ***
-AC_SUBST(SDLgfx_LIBS)
-if test x$have_sdl = xtrue; then
-   OLD_LIBS="$LIBS"
-   LIBS="$LIBS -lSDL -lSDL_gfx"
-   AC_CHECK_LIB(SDL_gfx, vlineColor,
-		[SDLgfx_LIBS="-lSDL_gfx"
-		 AC_DEFINE(HAVE_SDLgfx, 1, [SDL_gfx library present])
-		 have_sdlgfx=true ],[have_sdlgfx=false])
-   LIBS="$OLD_LIBS"
+dnl ********************************************************************
+have_sdlgfx=false
+if test x$with_sdlgfx != xno ; then
+	AC_SUBST(SDLgfx_LIBS)
+	if test x$have_sdl = xtrue; then
+		OLD_LIBS="$LIBS"
+		LIBS="$LIBS -lSDL -lSDL_gfx"
+		AC_CHECK_LIB(SDL_gfx, vlineColor,
+			     [SDLgfx_LIBS="-lSDL_gfx"
+			      AC_DEFINE(HAVE_SDLgfx, 1, [SDL_gfx library present])
+			      have_sdlgfx=true ],[have_sdlgfx=false])
+		LIBS="$OLD_LIBS"
+	fi
+
 fi
+AM_CONDITIONAL(HAVE_SDLgfx, test x$have_sdlgfx = xtrue)
 
 dnl ********************************************************************
 dnl Test for MMX support if an IA32 platform.  If on a PPC then look for
