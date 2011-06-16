@@ -755,12 +755,13 @@ void do_audio(void)
 /*
  * Check that the device has capability to do mmap and trigger
  */
-
-   ret = ioctl(fd, SNDCTL_DSP_GETCAPS, &caps);
-   if(ret<0) system_error("getting audio device capabilities",fd,1);
-
-   if (!(caps & DSP_CAP_TRIGGER) || !(caps & DSP_CAP_MMAP))
-      system_error("Soundcard cant do mmap or trigger",fd,0);
+   
+   if(mmap_io) {
+	   ret = ioctl(fd, SNDCTL_DSP_GETCAPS, &caps);
+	   if(ret<0) system_error("getting audio device capabilities",fd,1);
+	   if (!(caps & DSP_CAP_TRIGGER) || !(caps & DSP_CAP_MMAP))
+		   system_error("Soundcard cant do mmap or trigger",fd,0);
+   }
 
 /*
  * Get the size of the input/output buffer and do the mmap
