@@ -254,6 +254,7 @@ static void Usage(char *progname)
 	fprintf(stderr, "  -F/--frequency KHz          When using a TV tuner, frequency in KHz\n");
 	fprintf(stderr, "  -U/--use-read               Use read instead of mmap for recording\n");
 	fprintf(stderr, "  --software-encoding         Use software JPEG-encoding (for BTTV-capture)\n");
+	fprintf(stderr, "  --software-encoding-yuvp    Use software JPEG-encoding (for EM28XX-capture)\n");
 	fprintf(stderr, "  --num-procs num             Number of encoding processes (default: 1)\n");
 	fprintf(stderr, "  --max-file-size num         Maximum size per file (in MB)\n");
 	fprintf(stderr, "  --max-file-frames num       Maximum number of frames per file\n");
@@ -858,6 +859,13 @@ static int set_option(const char *name, char *value)
 		if (info->num_encoders == 0)
 			info->num_encoders = sysconf(_SC_NPROCESSORS_ONLN);
 	}
+	else if( strcmp(name, "software-encoding-yuvp")==0)
+	{
+		info->software_encoding = 2;
+		/* set the number of enoding processes to the number of processors */
+		if (info->num_encoders == 0)
+			info->num_encoders = sysconf(_SC_NPROCESSORS_ONLN);
+	}
 	else if (strcmp(name, "num-procs")==0)
 	{
 		info->num_encoders = atoi(value);
@@ -914,6 +922,7 @@ static void check_command_line_options(int argc, char *argv[])
 		{"channel"          ,1,0,0},   /* -C/--channel           */
 		{"use-read"         ,0,0,0},   /* -U/--use-read          */
 		{"software-encoding",0,0,0},   /* --software-encoding    */
+		{"software-encoding-yuvp",0,0,0}, /* --software-encoding-yuvp */
 		{"num-procs"        ,1,0,0},   /* --num-procs            */
 		{"max-file-size"    ,1,0,0},   /* --max-file-size        */
 		{"max-file-frames"  ,1,0,0},   /* --max-file-frames      */

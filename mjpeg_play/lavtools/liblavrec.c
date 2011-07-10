@@ -109,6 +109,7 @@ typedef struct {
    struct video_mbuf softreq;                 /* Software capture (YUV) buffer requests */
    uint8_t *MJPG_buff;                         /* the MJPEG buffer */
    struct video_mmap mm;                      /* software (YUV) capture info */
+   unsigned char **YUV_packed_buff;           /* in case of software encoding and YUV422 packed */
    unsigned char *YUV_buff;                   /* in case of software encoding: the YUV buffer */
    lav_file_t *video_file;                    /* current lav_io.c file we're recording to */
    lav_file_t *video_file_old;                /* previous lav_io.c file we're recording to (finish audio/close) */
@@ -877,6 +878,60 @@ static int audio_captured(lavrec_t *info, uint8_t *buff, long samps)
    return 1;
 }
 
+static void frame_YUV422_to_planar_42x(uint8_t *output, uint8_t *input,
+                                       int width, int height, int chroma)
+{
+    int i, j, w2;
+    uint8_t *y, *cb, *cr;
+
+    w2 = width/2;
+    y=output;
+    cb=(output + width*height);
+    cr=(output + (3*width*height)/2);
+
+    for (i=0; i<height;) {
+        /* process two scanlines (one from each field, interleaved) */
+        /* ...top-field scanline */
+        for (j=0; j<w2; j++) {
+            /* packed YUV 422 is: Y[i] U[i] Y[i+1] V[i] */
+            *(y++) =  *(input++);
+            *(cb++) = *(input++);
+            *(y++) =  *(input++);
+            *(cr++) = *(input++);
+        }
+        i++;
+        /* ...bottom-field scanline */
+        for (j=0; j<w2; j++) {
+            /* packed YUV 422 is: Y[i] U[i] Y[i+1] V[i] */
+            *(y++) =  *(input++);
+            *(cb++) = *(input++);
+            *(y++) =  *(input++);
+            *(cr++) = *(input++);
+        }
+        i++;
+        if (chroma == Y4M_CHROMA_422)
+          continue;
+        /* process next two scanlines (one from each field, interleaved) */
+        /* ...top-field scanline */
+        for (j=0; j<w2; j++) {
+          /* skip every second line for U and V */
+          *(y++) = *(input++);
+          input++;
+          *(y++) = *(input++);
+          input++;
+        }
+        i++;
+        /* ...bottom-field scanline */
+        for (j=0; j<w2; j++) {
+          /* skip every second line for U and V */
+          *(y++) = *(input++);
+          input++;
+          *(y++) = *(input++);
+          input++;
+        }
+        i++;
+    }
+}
 
 /******************************************************
  * lavrec_encoding_thread()
@@ -892,9 +947,21 @@ static void *lavrec_encoding_thread(void* arg)
    int jpegsize;
    unsigned long current_frame = w_info->encoder_id;
    unsigned long predecessor_frame;
+   uint8_t * source;
+   uint8_t * buffer=NULL;
 
    lavrec_msg(LAVREC_MSG_DEBUG, info,
       "Starting software encoding thread");
+   if( settings->YUV_packed_buff != NULL )
+   {
+      buffer=(uint8_t *) malloc( info->geometry->h * info->geometry->w * 2 );
+      if( buffer == NULL )
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info, "Error allocating thread buffer\n");
+         lavrec_change_state( info, LAVREC_STATE_STOP );
+         pthread_exit(NULL);
+      }
+   }
 
    /* Allow easy shutting down by other processes... */
    /* PTHREAD_CANCEL_ASYNCHRONOUS is evil
@@ -926,15 +993,31 @@ static void *lavrec_encoding_thread(void* arg)
 	 pthread_cleanup_push((void (*)(void*))pthread_mutex_lock, &settings->encoding_mutex);
          pthread_mutex_unlock(&(settings->encoding_mutex));
 
-         jpegsize = encode_jpeg_raw((unsigned char*)(settings->MJPG_buff+current_frame*settings->breq.size),
+         if( settings->YUV_packed_buff )
+         {
+              memcpy( buffer, settings->YUV_packed_buff[current_frame], (info->geometry->h * info->geometry->w * 2) );
+              source=settings->YUV_buff + (info->geometry->h * info->geometry->w * 2)*current_frame;
+              frame_YUV422_to_planar_42x( source, buffer, info->geometry->w, info->geometry->h, Y4M_CHROMA_422 );
+         }
+         else
+         {
+              source=settings->YUV_buff+settings->softreq.offsets[current_frame];
+         }
+
+         jpegsize = encode_jpeg_raw(settings->MJPG_buff+current_frame*settings->breq.size,
             settings->breq.size, info->quality, settings->interlaced,
             Y4M_CHROMA_422, info->geometry->w, info->geometry->h,
-            settings->YUV_buff+settings->softreq.offsets[current_frame],
-            settings->YUV_buff+settings->softreq.offsets[current_frame]+(info->geometry->w*info->geometry->h),
-            settings->YUV_buff+settings->softreq.offsets[current_frame]+(info->geometry->w*info->geometry->h*3/2));
+            source,
+            source+(info->geometry->w*info->geometry->h),
+            source+(info->geometry->w*info->geometry->h*3/2));
 
          if (jpegsize<0)
          {
+            if( buffer != NULL )
+            {
+                 free( buffer );
+                 buffer=NULL;
+            }
             lavrec_msg(LAVREC_MSG_ERROR, info,
                "Error encoding frame to JPEG");
             lavrec_change_state(info, LAVREC_STATE_STOP);
@@ -973,6 +1056,11 @@ static void *lavrec_encoding_thread(void* arg)
 			    jpegsize,
 			    settings->buffer_valid[current_frame]) != 1)
          {
+            if( buffer != NULL )
+            {
+                 free( buffer );
+                 buffer=NULL;
+            }
             lavrec_msg(LAVREC_MSG_ERROR, info,
                "Error writing the frame");
             lavrec_change_state(info, LAVREC_STATE_STOP);
@@ -983,6 +1071,11 @@ static void *lavrec_encoding_thread(void* arg)
 #if 0
       if (!lavrec_queue_buffer(info, &current_frame))
       {
+         if( buffer != NULL )
+         {
+              free( buffer );
+              buffer=NULL;
+         }
          if (info->files)
             lavrec_close_files_on_error(info);
          lavrec_msg(LAVREC_MSG_ERROR, info,
@@ -1010,10 +1103,78 @@ static void *lavrec_encoding_thread(void* arg)
       pthread_cleanup_pop(1);
    }
 
+   if( buffer != NULL )
+   {
+      free( buffer );
+      buffer=NULL;
+   }
    pthread_exit(NULL);
    return(NULL);
 }
 
+int get_size_offset( int fd, size_t *length, off_t *offset, unsigned int frame )
+{
+	struct v4l2_buffer	buf;
+	int			retval;
+	
+	buf.index=frame;
+	buf.type=V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	retval=ioctl( fd, VIDIOC_QUERYBUF, &buf );
+	if( retval != 0 )
+		return retval;
+
+	*length=buf.length;
+	*offset=buf.m.offset;
+	return 0;
+}
+
+int set_format_part1( int fd, uint16_t width, uint16_t height )
+{
+	struct v4l2_format	format;
+	int			retval;
+
+	memset( &format, 0, sizeof( format ) );
+
+	format.type=V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	retval=ioctl( fd, VIDIOC_G_FMT, &format );
+	if( retval != 0 )
+		return retval;
+
+	format.fmt.pix.width=width;
+	format.fmt.pix.height=height;
+	format.fmt.pix.pixelformat=V4L2_PIX_FMT_YUYV;
+	format.fmt.pix.field=V4L2_FIELD_ANY;
+	format.fmt.pix.bytesperline=0;
+	retval=ioctl( fd, VIDIOC_S_FMT, &format );
+	if( retval != 0 )
+		return retval;
+
+	return 0;
+}
+
+int set_format_part2( int fd, unsigned int frame )
+{
+	struct v4l2_buffer	buf;
+	int			retval;
+	enum v4l2_buf_type	captype=V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	 
+	memset( &buf, 0, sizeof( buf ) );
+	buf.index=frame;
+	buf.type=V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	retval=ioctl( fd, VIDIOC_QUERYBUF, &buf );
+	if( retval != 0 )
+		return retval;
+
+        retval=ioctl(fd, VIDIOC_QBUF, &buf);
+        if( retval != 0 )
+            return retval;
+
+	retval=ioctl( fd, VIDIOC_STREAMON, &captype );
+	if( retval != 0 )
+		return retval;
+
+	return 0;
+}
 
 /******************************************************
  * lavrec_software_init()
@@ -1108,14 +1269,65 @@ static int lavrec_software_init(lavrec_t *info)
       "Got %d YUV-buffers of size %d KB", settings->softreq.frames,
       settings->softreq.size/(1024*settings->softreq.frames));
 
-   /* Map the buffers */
-   settings->YUV_buff = mmap(0, settings->softreq.size, 
-      PROT_READ|PROT_WRITE, MAP_SHARED, settings->video_fd, 0);
-   if (settings->YUV_buff == MAP_FAILED)
+   if( info->software_encoding == 2 )
    {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error mapping video buffers: %s", strerror(errno));
-      return 0;
+       int   loop;
+       size_t size;
+       off_t  offset;
+       settings->YUV_packed_buff=(uint8_t **) malloc( settings->softreq.frames * sizeof( uint8_t * ) );
+       if( settings->YUV_packed_buff == NULL )
+       {
+           lavrec_msg (LAVREC_MSG_ERROR, info,
+              "Malloc error, you\'re probably out of memory");
+           return 0;
+       }
+
+       if( set_format_part1( settings->video_fd, settings->mm.width, settings->mm.height ) )
+       {
+           free( settings->YUV_packed_buff );
+           lavrec_msg( LAVREC_MSG_ERROR, info, "ioctl error on set_format_part1.\n" );
+           return 0;
+       }
+
+       for( loop=0; loop < settings->softreq.frames; loop++ )
+       {
+          if( get_size_offset( settings->video_fd, &size, &offset, loop ) )
+          {
+              lavrec_msg( LAVREC_MSG_ERROR, info, "Can't get mmap settings" );
+              free( settings->YUV_packed_buff );
+              return 0;
+          }
+          settings->YUV_packed_buff[loop]=mmap( 0, size, PROT_READ|PROT_WRITE, MAP_SHARED, settings->video_fd,
+                                                offset );
+          if( settings->YUV_packed_buff[loop] == NULL )
+          {
+              lavrec_msg (LAVREC_MSG_ERROR, info,
+                 "Packed YUV mmap error");
+              free( settings->YUV_packed_buff );
+              return 0;
+          }
+       }
+
+       settings->YUV_buff=(uint8_t *) malloc( settings->softreq.size * info->num_encoders );
+       if( settings->YUV_buff == NULL )
+       {
+           free( settings->YUV_packed_buff );
+           lavrec_msg( LAVREC_MSG_ERROR, info, "malloc error on YUV_buff.\n" );
+           return 0;
+       }
+   }
+   else
+   {
+       settings->YUV_packed_buff=NULL;
+       /* Map the buffers */
+       settings->YUV_buff = mmap(0, settings->softreq.size, 
+          PROT_READ|PROT_WRITE, MAP_SHARED, settings->video_fd, 0);
+       if (settings->YUV_buff == MAP_FAILED)
+       {
+          lavrec_msg(LAVREC_MSG_ERROR, info,
+             "Error mapping video buffers: %s", strerror(errno));
+          return 0;
+       }
    }
 
    /* set up buffers for software encoding thread */
@@ -1143,6 +1355,8 @@ static int lavrec_software_init(lavrec_t *info)
    settings->MJPG_buff = (uint8_t *) malloc(sizeof(uint8_t)*settings->breq.size*settings->breq.count);
    if (!settings->MJPG_buff)
    {
+      if( settings->YUV_packed_buff )
+	free( settings->YUV_packed_buff );
       lavrec_msg (LAVREC_MSG_ERROR, info,
          "Malloc error, you\'re probably out of memory");
       return 0;
@@ -1618,8 +1832,16 @@ static int lavrec_queue_buffer(lavrec_t *info, unsigned long *num)
       }
       pthread_mutex_unlock(&(settings->queue_mutex));
 
-      if (ioctl(settings->video_fd, VIDIOCMCAPTURE, &(settings->mm)) < 0)
-         return 0;
+      if( info->software_encoding == 2 )
+      {
+          if( set_format_part2( settings->video_fd, *num ) )
+              return 0;
+      }
+      else
+      {
+          if (ioctl(settings->video_fd, VIDIOCMCAPTURE, &(settings->mm)) < 0)
+             return 0;
+      }
 
       pthread_mutex_lock(&(settings->queue_mutex));
       settings->queue_left++;
@@ -1746,7 +1968,8 @@ static void *lavrec_software_sync_thread(void* arg)
 retry:
       if (ioctl(settings->video_fd, VIDIOCSYNC, &frame) < 0)
       {
-         if (errno==EINTR && info->software_encoding) goto retry; /* BTTV sync got interrupted */
+         if( errno==EINTR && info->software_encoding )
+		goto retry; /* BTTV sync got interrupted */
          pthread_mutex_lock(&(settings->software_sync_mutex));
          settings->software_sync_ready[frame] = -1;
          pthread_cond_broadcast(&(settings->software_sync_wait[frame]));
