@@ -38,6 +38,24 @@ which enables MJPEG\-video\-capture from many generic video4linux
 devices (such as Bt848/Bt878\-based ones).
 
 .TP 8
+.BR \-\-software\-encoding\-yuvp
+This option adds support for the EM28XX USB driver. As this driver 
+is V4L2. As the original BTTV software implementation assumes that 
+the driver supports V4L it will not work with the EM28XX driver, not 
+even with the V4L1 emulation layer. This option enables two things:
+  It enables the V4L2 calls to make interaction with this driver possible
+  It select the cards YUV Packed format and converts this in software to YUV Planar
+The process is after this the same as for the BTTV driver.
+ome things of note are the fact that the EM28XX driver expects 48KHz 
+audio recording. If you choose slower things will work, but a lot of 
+deleted/inserted frames will occur. The lower the sample rate, the 
+worse this problem gets. Recording at 48KHz is therefore recommended.
+This code was tested and found working with a DVC100 Pinnacle Dazzle. 
+This option should work with any EM28XX, but this hasnt been tested. 
+It might work for any other V4L2 device that outputs YUV packed format, 
+this has however not been tested. Feedback would be appreciated.
+
+.TP 8
 .BR \-f/\-\-format " [" a | A | q | m ]
 The format in which the video should be saved to the harddisk.
   a - MJPEG AVI
