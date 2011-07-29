@@ -216,6 +216,9 @@ unsigned int SUBPStream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 	subtitle_header_v3_t &header = vobsub.header;
 	bs.GetBytes((uint8_t*) &vobsub,sizeof(vobsub));
 	int16_t skip_len = header.header_length-sizeof(header);
+
+	if (minor_version(header.header_version) ==0)
+		skip_len -= sizeof(header.discont_ctr); // not in minor version 0
 	if (strncmp(vobsub.marker,SUBPHEADER,strlen(SUBPHEADER)) != 0)
 	{
 		mjpeg_error( "Subtitle: expected header %s!",SUBPHEADER);
