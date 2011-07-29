@@ -32,6 +32,9 @@ typedef struct {
 
   unsigned int lpts;
   double rpts;
+  
+  // version 0x00030001
+  unsigned int discont_ctr;
 
 } subtitle_header_v3_t;
 
@@ -122,6 +125,10 @@ bool SUBPStream::ParseAUBitwise()
 		return false; 
 	}
 	int16_t skip_len = header.header_length-sizeof(header);
+	// version header =0;
+	if (minor_version(header.header_version) ==0)
+		skip_len -= sizeof(header.discont_ctr); // not in minor version 0
+
 	if (skip_len)
 	{
 		assert (skip_len>0);
