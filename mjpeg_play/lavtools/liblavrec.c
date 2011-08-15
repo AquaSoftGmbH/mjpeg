@@ -97,6 +97,12 @@
 
 #define VALUE_NOT_FILLED -10000
 
+struct YUVP_convert
+{
+	unsigned char	*mmap;
+	unsigned char	*YUVP_buff;
+};
+
 typedef struct {
    int    interlaced;                         /* is the video interlaced (even/odd-first)? */
    int    width;                              /* width of the captured frames */
@@ -109,7 +115,7 @@ typedef struct {
    struct video_mbuf softreq;                 /* Software capture (YUV) buffer requests */
    uint8_t *MJPG_buff;                         /* the MJPEG buffer */
    struct video_mmap mm;                      /* software (YUV) capture info */
-   unsigned char **YUV_packed_buff;           /* in case of software encoding and YUV422 packed */
+   struct YUVP_convert	*YUVP_convert;        /* Software (YUVP) info */
    unsigned char *YUV_buff;                   /* in case of software encoding: the YUV buffer */
    lav_file_t *video_file;                    /* current lav_io.c file we're recording to */
    lav_file_t *video_file_old;                /* previous lav_io.c file we're recording to (finish audio/close) */
@@ -952,16 +958,6 @@ static void *lavrec_encoding_thread(void* arg)
 
    lavrec_msg(LAVREC_MSG_DEBUG, info,
       "Starting software encoding thread");
-   if( settings->YUV_packed_buff != NULL )
-   {
-      buffer=(uint8_t *) malloc( info->geometry->h * info->geometry->w * 2 );
-      if( buffer == NULL )
-      {
-         lavrec_msg(LAVREC_MSG_ERROR, info, "Error allocating thread buffer\n");
-         lavrec_change_state( info, LAVREC_STATE_STOP );
-         pthread_exit(NULL);
-      }
-   }
 
    /* Allow easy shutting down by other processes... */
    /* PTHREAD_CANCEL_ASYNCHRONOUS is evil
@@ -993,11 +989,11 @@ static void *lavrec_encoding_thread(void* arg)
 	 pthread_cleanup_push((void (*)(void*))pthread_mutex_lock, &settings->encoding_mutex);
          pthread_mutex_unlock(&(settings->encoding_mutex));
 
-         if( settings->YUV_packed_buff )
+         if( settings->YUVP_convert )
          {
-              memcpy( buffer, settings->YUV_packed_buff[current_frame], (info->geometry->h * info->geometry->w * 2) );
+              memcpy( settings->YUVP_convert[current_frame].YUVP_buff, settings->YUVP_convert[current_frame].mmap, (info->geometry->h * info->geometry->w * 2) );
               source=settings->YUV_buff + (info->geometry->h * info->geometry->w * 2)*current_frame;
-              frame_YUV422_to_planar_42x( source, buffer, info->geometry->w, info->geometry->h, Y4M_CHROMA_422 );
+              frame_YUV422_to_planar_42x( source, settings->YUVP_convert[current_frame].YUVP_buff, info->geometry->w, info->geometry->h, Y4M_CHROMA_422 );
          }
          else
          {
@@ -1274,17 +1270,29 @@ static int lavrec_software_init(lavrec_t *info)
        int   loop;
        size_t size;
        off_t  offset;
-       settings->YUV_packed_buff=(uint8_t **) malloc( settings->softreq.frames * sizeof( uint8_t * ) );
-       if( settings->YUV_packed_buff == NULL )
+       settings->YUVP_convert=(struct YUVP_convert *) malloc( settings->softreq.frames * sizeof( struct YUVP_convert ) );
+       if( settings->YUVP_convert == NULL )
        {
            lavrec_msg (LAVREC_MSG_ERROR, info,
               "Malloc error, you\'re probably out of memory");
            return 0;
        }
+       settings->YUVP_convert[0].YUVP_buff=(unsigned char *) malloc( settings->mm.width * settings->mm.height * 2 * settings->softreq.frames );
+       if( settings->YUVP_convert[0].YUVP_buff == NULL )
+       {
+           lavrec_msg (LAVREC_MSG_ERROR, info,
+              "Malloc error for temp buffers, you\'re probably out of memory");
+           free( settings->YUVP_convert );
+           return 0;
+       }
+
+       for( loop=1; loop < settings->softreq.frames; loop++ )
+           settings->YUVP_convert[loop].YUVP_buff=settings->YUVP_convert[0].YUVP_buff + (loop * settings->mm.width * settings->mm.height * 2);
 
        if( set_format_part1( settings->video_fd, settings->mm.width, settings->mm.height ) )
        {
-           free( settings->YUV_packed_buff );
+           free( settings->YUVP_convert[0].YUVP_buff );
+           free( settings->YUVP_convert );
            lavrec_msg( LAVREC_MSG_ERROR, info, "ioctl error on set_format_part1.\n" );
            return 0;
        }
@@ -1294,16 +1302,18 @@ static int lavrec_software_init(lavrec_t *info)
           if( get_size_offset( settings->video_fd, &size, &offset, loop ) )
           {
               lavrec_msg( LAVREC_MSG_ERROR, info, "Can't get mmap settings" );
-              free( settings->YUV_packed_buff );
+              free( settings->YUVP_convert[0].YUVP_buff );
+              free( settings->YUVP_convert );
               return 0;
           }
-          settings->YUV_packed_buff[loop]=mmap( 0, size, PROT_READ|PROT_WRITE, MAP_SHARED, settings->video_fd,
+          settings->YUVP_convert[loop].mmap=mmap( 0, size, PROT_READ|PROT_WRITE, MAP_SHARED, settings->video_fd,
                                                 offset );
-          if( settings->YUV_packed_buff[loop] == NULL )
+          if( settings->YUVP_convert[loop].mmap == NULL )
           {
               lavrec_msg (LAVREC_MSG_ERROR, info,
                  "Packed YUV mmap error");
-              free( settings->YUV_packed_buff );
+              free( settings->YUVP_convert[0].YUVP_buff );
+              free( settings->YUVP_convert );
               return 0;
           }
        }
@@ -1311,14 +1321,15 @@ static int lavrec_software_init(lavrec_t *info)
        settings->YUV_buff=(uint8_t *) malloc( settings->softreq.size * info->num_encoders );
        if( settings->YUV_buff == NULL )
        {
-           free( settings->YUV_packed_buff );
+           free( settings->YUVP_convert[0].YUVP_buff );
+           free( settings->YUVP_convert );
            lavrec_msg( LAVREC_MSG_ERROR, info, "malloc error on YUV_buff.\n" );
            return 0;
        }
    }
    else
    {
-       settings->YUV_packed_buff=NULL;
+       settings->YUVP_convert=NULL;
        /* Map the buffers */
        settings->YUV_buff = mmap(0, settings->softreq.size, 
           PROT_READ|PROT_WRITE, MAP_SHARED, settings->video_fd, 0);
@@ -1355,8 +1366,11 @@ static int lavrec_software_init(lavrec_t *info)
    settings->MJPG_buff = (uint8_t *) malloc(sizeof(uint8_t)*settings->breq.size*settings->breq.count);
    if (!settings->MJPG_buff)
    {
-      if( settings->YUV_packed_buff )
-	free( settings->YUV_packed_buff );
+      if( settings->YUVP_convert )
+      {
+        free( settings->YUVP_convert[0].YUVP_buff );
+	free( settings->YUVP_convert );
+      }
       lavrec_msg (LAVREC_MSG_ERROR, info,
          "Malloc error, you\'re probably out of memory");
       return 0;
