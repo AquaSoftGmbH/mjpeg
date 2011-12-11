@@ -605,7 +605,7 @@ bool CmdLineMultiplexJob::ParseWorkaroundOpt( const char *optarg )
             std::string message( "Illegal work-around option: not one of " );
             flag = 0;
             char sep[] = ",";
-            do
+            while( flag_table[flag].longname != 0 )
             {
                 message += flag_table[flag].longname;
                 message += sep;
@@ -614,7 +614,6 @@ bool CmdLineMultiplexJob::ParseWorkaroundOpt( const char *optarg )
                 if( flag_table[flag].longname != 0 )
                     message += sep;
             }
-            while( flag_table[flag].longname != 0 );
             mjpeg_error( message.c_str() );
             return false;
         }
