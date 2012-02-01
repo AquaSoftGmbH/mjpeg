@@ -628,7 +628,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 		CHAPTERS = 256
 	};
 static const char   short_options[]=
-        "l:a:f:x:y:n:b:z:T:B:q:o:S:I:r:M:4:2:A:Q:X:D:g:G:v:V:F:N:pdsHcCPK:E:R:t:L:Z:";
+        "l:a:f:x:y:n:b:z:T:B:q:o:S:I:r:M:4:2:A:Q:X:D:g:G:v:V:F:N:updsHcCPK:E:R:t:L:Z:";
 
 #ifdef HAVE_GETOPT_LONG
 
