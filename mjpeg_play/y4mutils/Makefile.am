@@ -3,7 +3,7 @@
 MAINTAINERCLEANFILES = Makefile.in
 
 AM_CFLAGS   = @PROGRAM_NOPIC@
-AM_CPPFLAGS = -I$(top_srcdir) -I$(includedir) -I$(top_srcdir)/utils
+AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/utils
 
 LIBMJPEGUTILS = $(top_builddir)/utils/libmjpegutils.la
 if HAVE_ALTIVEC
