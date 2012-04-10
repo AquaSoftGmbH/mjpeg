@@ -2196,7 +2196,7 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	{
 		// This region is too small to be bothered with.
 		// Just get rid of it.
-		DeleteRegion (a_pRegion);
+		this->DeleteRegion (a_pRegion);
 	}
 	else
 	{
