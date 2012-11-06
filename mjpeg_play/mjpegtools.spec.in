@@ -122,6 +122,12 @@ of the mjpegtools package.
 %{_libdir}/*.so
 
 %changelog
+* Sat Nov 2012 Bernhard Praschinger <shadowlord@utanet.at>
+  This release has no major change, but a lot of bugfixes. 
+  A lot of patches and fixes are included. There are no major changes, 
+  but some small enhancements.
+  Depending on the feedback the next release will be during christmas.
+
 * Sat Mai 21 2011 Bernhard Praschinger <shadowlord@utanet.at>
   This is it, after more than 10 years on Sourcefogre we named this 
   release 2.0.0. For further changes and fixes please take a look at the
