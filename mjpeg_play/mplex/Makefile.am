@@ -15,15 +15,6 @@ bin_PROGRAMS = mplex
 
 lib_LTLIBRARIES = libmplex2.la
 
-# ZALPHA is dead (or close enough to being in that state).  If you want to
-# enable NON-COMPILABLE code then switch the comment status of the lines below
-
-# ZALPHA_FILES = zalphastrm.hpp zalphastrm_in.cpp zalphastrm_out.cpp
-# ZALPHA_FLAGS = -DZALPHA
-ZALPHA_FILES =
-ZALPHA_FLAGS =
-
-
 libmplex2_la_SOURCES = \
 	ac3strm_in.cpp \
 	audiostrm_out.cpp \
@@ -41,8 +32,7 @@ libmplex2_la_SOURCES = \
 	systems.cpp \
 	videostrm_in.cpp \
 	videostrm_out.cpp \
-	subpstream.cpp \
-	$(ZALPHA_FILES)
+	subpstream.cpp
 
 libmplex_includedir = $(pkgincludedir)/mplex
 
@@ -78,7 +68,7 @@ if HAVE_ALTIVEC
 libmplex2_la_LIBADD += $(top_builddir)/mpeg2enc/libmpeg2encpp.la
 endif
 
-libmplex2_la_CXXFLAGS = $(ZALPHA_FLAGS)
+libmplex2_la_CXXFLAGS =
 
 mplex_SOURCES = main.cpp 
 

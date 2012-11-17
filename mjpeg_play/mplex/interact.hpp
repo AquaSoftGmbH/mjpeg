@@ -95,10 +95,6 @@ enum StreamKind
     DTS_AUDIO,
     MPEG_VIDEO,
     SUBP_STREAM,
-#ifdef ZALPHA
-    ,
-    Z_ALPHA
-#endif
   };
 
 class JobStream
@@ -136,9 +132,6 @@ public:
   unsigned int video_tracks;
   unsigned int subtitle_tracks;
   unsigned int lpcm_tracks;
-#ifdef ZALPHA
-  unsigned int z_alpha_tracks;
-#endif
 };
 
 

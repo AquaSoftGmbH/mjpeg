@@ -31,9 +31,6 @@
 #include "interact.hpp"
 #include "videostrm.hpp"
 #include "audiostrm.hpp"
-#ifdef ZALPHA
-#include "zalphastrm.hpp"
-#endif
 #include "mplexconsts.hpp"
 #include "aunit.hpp"
 
@@ -82,9 +79,6 @@ MultiplexJob::MultiplexJob()
     video_tracks = 0;
     subtitle_tracks = 0;
     lpcm_tracks = 0;
-#ifdef ZALPHA
-    z_alpha_tracks = 0;
-#endif
     vdr_index_pathname = 0;
     outfile_pattern = 0;
 }
@@ -199,19 +193,6 @@ void MultiplexJob::SetupInputStreams( std::vector< IBitStream *> &inputs )
             continue;
         }
 
-
-#ifdef ZALPHA
-        if( ZAlphaStream::Probe( *bs ) )
-        {
-            mjpeg_info ("File %s looks like an Z/Alpha Video stream.",
-                        bs->StreamName());
-            bs->UndoChanges( undo );
-            streams.push_back( new JobStream( bs, Z_ALPHA) );
-            ++video_tracks;
-            ++z_alpha_tracks;
-            continue;
-        }
-#endif
         bad_file = true;
         mjpeg_error ("File %s unrecogniseable!", bs->StreamName());
         delete bs;

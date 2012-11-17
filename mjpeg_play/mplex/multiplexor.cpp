@@ -32,9 +32,6 @@
 #include "videostrm.hpp"
 #include "stillsstream.hpp"
 #include "audiostrm.hpp"
-#ifdef ZALPHA
-#include "zalphastrm.hpp"
-#endif
 #include "multiplexor.hpp"
 
 
@@ -472,17 +469,6 @@ void Multiplexor::InitInputStreamsForVideo(MultiplexJob & job )
             ++subp_track;
         }
         break;
-#ifdef ZALPHA
-        // just copies the video parameters from the first video stream
-        case Z_ALPHA :
-        {
-            ZAlphaStream *zalphaStrm = new ZAlphaStream( *(*i)->bs, *(job.video_param.begin()), *this);
-            zalphaStrm->Init (0);
-            estreams.push_back(zalphaStrm);
-            vstreams.push_back(zalphaStrm);
-            //++vidparm;
-        }
-#endif		
         }
     }
 }
