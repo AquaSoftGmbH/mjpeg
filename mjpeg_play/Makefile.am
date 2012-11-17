@@ -22,6 +22,7 @@ SUBDIRS = \
 	yuvfilters \
 	yuvdeinterlace \
 	y4mdenoise \
+	y4mscaler \
 	y4munsharp \
         y4mutils \
 	debian

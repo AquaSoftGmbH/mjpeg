@@ -597,6 +597,7 @@ AC_CONFIG_FILES([
      utils/altivec/Makefile
      utils/mmxsse/Makefile
      y4mdenoise/Makefile
+     y4mscaler/Makefile
      mjpegtools.pc
      mjpegtools.spec
      ])

@@ -7,7 +7,7 @@ man_MANS = lavplay.1  lavrec.1  mjpegtools.1  mpeg2enc.1  mplex.1 \
         pgmtoy4m.1 ppmtoy4m.1 y4mtoppm.1 y4mcolorbars.1 \
 	y4mtopnm.1 pnmtoy4m.1 \
         yuvkineco.1 yuvycsnoise.1 yuvmedianfilter.1 \
-	y4munsharp.1 \
+	y4munsharp.1 y4mscaler.1 \
 	lav2mpeg.1 yuv4mpeg.5 yuvfps.1 yuvinactive.1 y4mdenoise.1
 
 info_INFO = mjpeg-howto.info
