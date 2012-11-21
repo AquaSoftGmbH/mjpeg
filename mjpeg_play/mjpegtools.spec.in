@@ -126,7 +126,8 @@ of the mjpegtools package.
   This release has no major change, but a lot of bugfixes. 
   A lot of patches and fixes are included. There are no major changes, 
   but some small enhancements.
-  Depending on the feedback the next release will be during christmas.
+  Steven Schultz added y4mscaler to the CVS and included it to the build
+  process
 
 * Sat Mai 21 2011 Bernhard Praschinger <shadowlord@utanet.at>
   This is it, after more than 10 years on Sourcefogre we named this 
