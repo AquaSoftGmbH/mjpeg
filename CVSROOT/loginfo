@@ -25,4 +25,7 @@
 # or
 #DEFAULT (echo ""; id; echo %{sVv}; date; cat) >> $CVSROOT/CVSROOT/commitlog
 #
-DEFAULT  $CVSROOT/CVSROOT/logmail.py %{sVv} mjpeg-cvs@lists.sourceforge.net
+CVSROOT /cvsroot/sitedocs/CVSROOT/cvstools/syncmail %{sVv} waldvierlter@users.sourceforge.net
+DEFAULT /cvsroot/sitedocs/CVSROOT/cvstools/syncmail %{sVv} mjpeg-cvs@lists.sourceforge.net
+
+#DEFAULT  $CVSROOT/CVSROOT/logmail.py %{sVv} mjpeg-cvs@lists.sourceforge.net
