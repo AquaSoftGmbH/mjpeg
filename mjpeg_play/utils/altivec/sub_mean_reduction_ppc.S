@@ -18,7 +18,7 @@
  */
 
 /* register, local label and global macros */
-#ifdef __linux__
+#if defined(__linux__) || defined(__FreeBSD__)
 #define R(register_number) register_number
 #define L(label_name) .L##label_name
 #define G(global_name) global_name
