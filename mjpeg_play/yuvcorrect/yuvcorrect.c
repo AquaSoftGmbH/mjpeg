@@ -17,8 +17,6 @@
   *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   */
 // September/October 2002: First version 
-// TODO:
-// Slow down possibility at 1:2 => all preprocessing in a new utility called yuvcorrect
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -52,8 +50,6 @@ const char TOP_FORWARD[] = "TOP_FORWARD";
 const char BOTT_FORWARD[] = "BOTT_FORWARD";
 const char RGBFIRST[] = "RGBFIRST";
 
-
-#define yuvcorrect_VERSION "16-11-2002"
 // Prototypes specific to yuvcorrect
 void yuvcorrect_print_usage (void);
 void yuvcorrect_print_information (general_correction_t * gen_correct,
@@ -62,7 +58,6 @@ void yuvcorrect_print_information (general_correction_t * gen_correct,
 void yuvcorrect_handle_args (int argc, char *argv[], overall_t * overall,
 			     general_correction_t * gen_correct);
 
-// *************************************************************************************
 void
 yuvcorrect_print_usage (void)
 {
@@ -120,9 +115,6 @@ yuvcorrect_print_usage (void)
   exit (1);
 }
 
-// *************************************************************************************
-
-// ***********************************************************************
 void
 handle_args_overall (int argc, char *argv[], overall_t * overall)
 {
@@ -157,9 +149,6 @@ handle_args_overall (int argc, char *argv[], overall_t * overall)
     yuvcorrect_print_usage ();
 }
 
-// *************************************************************************************
-
-// *************************************************************************************
 void
 yuvcorrect_handle_args (int argc, char *argv[], overall_t * overall,
 	     general_correction_t * gen_correct)
@@ -251,10 +240,6 @@ yuvcorrect_handle_args (int argc, char *argv[], overall_t * overall,
 
 }
 
-// *************************************************************************************
-
-
-// *************************************************************************************
 void
 yuvcorrect_print_information (general_correction_t * gen_correct,
 			      yuv_correction_t * yuv_correct,
@@ -334,12 +319,6 @@ yuvcorrect_print_information (general_correction_t * gen_correct,
 
 }
 
-// *************************************************************************************
-
-
-// *************************************************************************************
-// MAIN
-// *************************************************************************************
 int
 main (int argc, char *argv[])
 {
@@ -358,13 +337,6 @@ main (int argc, char *argv[])
 
   y4m_accept_extensions(1);
 
-  // Information output
-  mjpeg_info("yuvcorrect "VERSION" ("yuvcorrect_VERSION") is a general image correction utility for yuv frames");
-  mjpeg_info
-    ("(C) 2002 Xavier Biquard <xbiquard@free.fr>, yuvcorrect -h for usage, or man yuvcorrect");
-
-  // START OF INITIALISATION 
-  // START OF INITIALISATION 
   // START OF INITIALISATION 
   // yuvcorrect overall structure initialisation
   if (!(overall = (overall_t *) malloc (sizeof (overall_t))))
@@ -414,9 +386,6 @@ main (int argc, char *argv[])
 
   mjpeg_debug ("End of Initialisation");
   // END OF INITIALISATION
-  // END OF INITIALISATION
-  // END OF INITIALISATION
-
 
   // Eventually output file header
   if (gen_correct->no_header == 0)
@@ -524,8 +493,6 @@ out_error:
   mjpeg_error_exit1 ("Unable to write to output - aborting!");
   return 1;
 }
-
-// *************************************************************************************
 
 /* 
  * Local variables:

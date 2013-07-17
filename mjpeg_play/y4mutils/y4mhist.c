@@ -465,7 +465,7 @@ void make_stat()
 static void
 usage(void)
 	{
-	fprintf(stderr, "usage: [-t]  [-v num]\n");
+	fprintf(stderr, "usage: [-t] [-p] [-s num] \n");
 	fprintf(stderr, "  -t      emit text summary even if graphical mode enabled\n");
 	fprintf(stderr, "  -p      label the scale in percent not absolute numbers\n");
 	fprintf(stderr, "  -s num  enable also the vectorscope, allowed numbers 1-16\n");
