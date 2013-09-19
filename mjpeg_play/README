@@ -146,6 +146,6 @@ the developers, the main mailing list for the MJPEG-tools is:
 Although little bits have been done by everyone the main work was
 roughly as follows:
 
-lav* : Rainer@Johanni.de and Gernot Ziegler <gz@lysator.liu.se>
+lav* : Rainer Johanni and Gernot Ziegler <gz@lysator.liu.se>
 mpeg2enc mplex : Andrew.Stevens@nexgo.de
 libmjpeg: Gernot Ziegler <gz@lysator.liu.se>
