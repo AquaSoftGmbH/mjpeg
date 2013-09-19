@@ -122,6 +122,9 @@ of the mjpegtools package.
 %{_libdir}/*.so
 
 %changelog
+* Sat Sept 2012 Bernhard Praschinger <shadowlord@utanet.at>
+  This some more change for the release made
+
 * Sat Nov 2012 Bernhard Praschinger <shadowlord@utanet.at>
   This release has no major change, but a lot of bugfixes. 
   A lot of patches and fixes are included. There are no major changes, 
