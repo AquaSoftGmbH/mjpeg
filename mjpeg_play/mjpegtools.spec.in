@@ -86,7 +86,6 @@ make prefix=${RPM_BUILD_ROOT}%{prefix} INSTALL_INFO= install
 %{_bindir}/lav*
 %{_bindir}/yuv*
 %{_bindir}/jpeg2yuv
-%{_bindir}/testrec
 %{_bindir}/y4m*
 %{_bindir}/ppm*
 %{_bindir}/glav

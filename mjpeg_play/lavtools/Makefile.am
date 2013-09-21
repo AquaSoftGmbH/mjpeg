@@ -96,7 +96,7 @@ if HAVE_SDL
   bin_PROGRAMS += yuvplay
 endif
 if HAVE_V4L
-  bin_PROGRAMS += lavrec testrec lavvideo
+  bin_PROGRAMS += lavrec lavvideo
 endif
 if HAVE_V4L_OR_SDL
   bin_PROGRAMS += lavplay
@@ -140,9 +140,6 @@ lavrec_SOURCES = lavrec.c
 lavrec_LDADD = $(LIBMJPEGUTILS) \
 	liblavrec.la liblavfile.la liblavjpeg.la \
 	@LIBGETOPT_LIB@ @PTHREAD_LIBS@
-
-testrec_SOURCES = testrec.c audiolib.c
-testrec_LDADD = @PTHREAD_LIBS@ $(LIBMJPEGUTILS)
 
 lav2yuv_SOURCES = lav2yuv.c lav_common.c
 lav2yuv_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS)
