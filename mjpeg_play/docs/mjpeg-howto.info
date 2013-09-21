@@ -37,18 +37,17 @@ File: mjpeg-howto.info,  Node: Introduction,  Next: Unsorted list of useful Hint
 **************
 
 I wrote this things down, because I had many sheets with notes on them.
-This should be some kind of summary of collected knowledge of this
-sheets.  Andrew Stevens helped with encoding and VCD knowledge and
-hints.
+This should be some kind of summary of collected knowledge over a long
+period of time.  Andrew Stevens helped with encoding and VCD knowledge
+and hints.
 
-   The mjpegtools are a set of programs that can do recording,
-playback, editing and eventual MPEG compression of audio and video
-under Linux.
+   Mjpegtools is a set of programs that can do recording, playback,
+editing and eventual MPEG compression of audio and video under Linux.
 
    Although primarily intended for use with capture / playback boards
-based on the Zoran ZR36067 MJPEG codec chip, the mjpegtools can easily
-be used to process and compress MJPEG video streams captured using
-xawtv using simple frame-buffer devices.
+based on the Zoran ZR36067 MJPEG codec chip mjpegtools can easily be
+used to process and compress MJPEG video streams captured using xawtv
+using simple frame-buffer devices.
 
    The HOWTO for the tools intended to give an an introduction to the
 MJPEG-tools and the creation of MPEG 1/2 videos. VCD, SVCD and DVD and
@@ -60,17 +59,17 @@ man-page.
    Achtung es gibt auch eine deutsche Version bei:
 `http://sourceforge.net/projects/mjpeg'
 
-   There is also a manpage of this text, you can read it with "man
+   There is also a manpage of this text. You can read it with "man
 mjpegtools" if installed.  We also have a info version you should be
 able to read it with info
 
-   The text version of this text is available via cvs, you should get
-it with a tarball or the precompiled package (RPM and deb).
+   The text version of this text is available via cvs. You should get
+it with the tarball or the precompiled package (RPM and deb).
 
    In the following picture you see the typical workflow when you
-record a video.  Cut it afterwards and encode it. In the picture you
-also see the connections to other programs. These parts are in grey,
-the parts in blue can be done with the mjpegtools.
+record a video, cut it afterwards and encode it. In the picture you
+also see the connections to other programs. These parts are in grey.
+The parts in blue can be done with the mjpegtools.
 
                         Video encoding workflow
 
@@ -87,22 +86,22 @@ If you do not want to compile it, you can download the mjpeg .RPM or
 with your distribution.
 
    There is a script in the scripts/ directory. This script is
-something that show's you a way how it can be done. It also creates
-(under certain circumstances) videos that look quite good. Better
-videos you only get by tuning the parameters yourself.
+something that shows you a way it can be done. It also creates (under
+certain circumstances) videos that look quite good. Better videos you
+will only get by tuning the parameters.
 
-   If you use a Linux kernel from the 2.4 series, you will usually have
-to load the drivers for the Buz or DC10 or LML33 cards.So you have to
-run the update script providing as option the name of your card you
-have. The script is usually in /usr/src/driver-zoran/.  The zoran
-kernel driver below the kernel 2.4.4 do not work.  You have to use the
-driver available from: `http://mjpeg.sourceforge.net/driver-zoran'
+   If you use a Linux kernel from the 2.4 series you will usually have
+to load the drivers for the Buz or DC10 or LML33 cards. You have to run
+the update script providing as option the name of your card you have.
+The script is usually in /usr/src/driver-zoran/.  The zoran kernel
+driver below the kernel 2.4.4 do not work.  You have to use the driver
+available from: `http://mjpeg.sourceforge.net/driver-zoran'
 
    In the 2.6. Linux kernel is the driver for the zoran cards included,
-you just need to make soure that it is loaded correct. If you have a
-x64 machine and an kernel that is newer than 2.6.30 we'd be happy to
-hear that you are able to record from the zoran based card. I'm not
-soure if that combination works.
+you just need to make sure that it is loaded correct. If you have a x64
+machine and an kernel that is newer than 2.6.30 we'd be happy to hear
+that you are able to record from the zoran based card. I'm not soure if
+that combination works.
 
    The driver for the Matrox Marvel card also works, more information
 about it: `http://marvel.sourceforge.net'
@@ -227,7 +226,7 @@ File: mjpeg-howto.info,  Node: lavrec examples,  Next: Other recording hints,  U
 3.1 lavrec examples
 ===================
 
-Recording with lavrec look's like this:
+Recording with lavrec looks like this:
 
    `> lavrec -f a -i P -d 2 record.avi'
 
@@ -320,10 +319,9 @@ DC30: 768x576
      Here lavrec creates the first file named record00.avi after the
      file has reached a size of 1.6GB (after about 20 Minutes
      recording) it starts a new sequence named record01.avi and so on
-     till the recording is stopped or the disk is full. With the
-     release of the 1.9.0 Version, the mjpegtools are able to handle
-     AVI files larger than 2GB. So that option is not needed any more
-     if you want to record more data that fits into a 2GB file.
+     till the recording is stopped or the disk is full.  With the
+     release of the 1.9.0 Version mjpegtools is able to handle AVI
+     files larger than 2GB. So that option is present for compatibility.
 
 
    Other example:
@@ -372,8 +370,8 @@ File: mjpeg-howto.info,  Node: Other recording hints,  Next: Some information ab
 3.2 Other recording hints
 =========================
 
-All lavtools accept a file description like file*.avi, so you do not
-have to name each file, but that would also be a posibillity to do.
+All lavtools accept a file description like file*.avi so you do not have
+to name each file but that is a posibility.
 
    Note: More options are described in the man-page, but with this you
 should be able to get started.
@@ -437,10 +435,10 @@ File: mjpeg-howto.info,  Node: Notes about "interlace field order - what can go 
 
 Firstly, what does it mean for interlace field order to be wrong?
 
-   The whole mjpegtools image processing chain is frame-oriented. Since
-it is video material that is captured each frame comprised a top field
-(the 0th, 2nd, 4th and so lines) and a bottom field (the 1st, 3rd, 5th
-and so on lines).
+   The mjpegtools image processing chain is frame-oriented. Since it is
+video material that is captured each frame comprised of a top field (the
+0th, 2nd, 4th and so lines) and a bottom field (the 1st, 3rd, 5th and so
+on lines).
 
 * Menu:
 
@@ -466,8 +464,7 @@ File: mjpeg-howto.info,  Node: There are three bad things that can happen with f
      fields played back is exactly the same as the sequence of fields
      broadcast. Unfortunately, playing back on a Computer monitor where
      both fields of a frame appear at once it looks *terrible* because
-     each frame is effectively mixing two moments in time 1/25sec
-     apparent.
+     each frame is effectively mixing two moments 1/25sec apart in time.
 
   2.  The two fields can simply be swapped somehow so that top gets
      treat as bottom and bottom treat as top. Juddering and "slicing"
@@ -488,13 +485,13 @@ File: mjpeg-howto.info,  Node: How can I recognize if I have one of these Proble
 
   1. This can be hard to spot. If you have mysteriously flickery
      pictures during playback try encoding a snippet with the reverse
-     field-order forced (see below). If things improve drastically you
-     know what the problem was and what the solution is!
+     field-order forced (see below). If things improve you know what the
+     problem was and what the solution is!
 
   2. The two fields can simply be swapped somehow so that top gets treat
      as bottom and bottom treat as top. Juddering and "slicing" is the
      result. This occasionally seems to happen due to hardware glitches
-     in the capture card. That problem lookes like that:
+     in the capture card. That problem looks like that:
 
                             Interlacing problem
 
@@ -505,8 +502,8 @@ File: mjpeg-howto.info,  Node: How can I recognize if I have one of these Proble
      sampled later. Weird "juddering" effects are the result.
 
    If you use glav or lavplay be sure that you also use the
-*-F/-flicker* option. This disables some things that make the picture
-look better.
+*-F/-flicker* option. This disables some things that improve the
+picture.
 
    If you want to look at the video you can also use yuvplay:
 
@@ -545,10 +542,10 @@ a look at them:*
 pnm/image%d.pnm > rm pnm/image?.pnm > cd pnm > xv
 
    First we create a directory where we store the images. The lav2yuv
--f 40 writes only the first 40 frames to stdout. The mjpegtools
-y4mtoppm converts the frames to pnm images and the pnmsplit splits the
-picture into two frames in the picture to two single pictures. Then we
-remove the first 10 images because pnmsplit does not support the %0xd
+-f 40 writes only the first 40 frames to stdout. The program y4mtoppm
+converts the frames to pnm images and the pnmsplit splits the picture
+into two frames in the picture to two single pictures. Then we remove
+the first 10 images because pnmsplit does not support the %0xd
 numbering. Without a leading zero in the number, the files will be
 sorted in the wrong order, leading to confusing playback.
 
@@ -571,15 +568,15 @@ TOP_FORWARD*. You can also have the problem that the field order
 (top/bottom) is still wrong. You may have to use yuvcorrect a second
 time with *-M LINE_SWITCH*, or use the mpeg2enc *-z (b|t)* option.
 
-   To see if you guessed correctly, extract the frames again,
-reordering them using yuvcorrect:
+   To see if you guessed correctly extract the frames again and reorder
+them using yuvcorrect:
 
    `> lav2yuv -f 40 video.avi | yuvcorrect -T OPTION | y4mtoppm |
 pnmsplit - pnm/image%d.pnm '
 
-   Where "OPTION" is what you think it will corrects the problem.  This
-is for material converted from film. Material produced directly for TV
-is addressed below.
+   Where "OPTION" is what you think will correct the problem.  This is
+for material converted from film. Material produced directly for TV is
+addressed below.
 
 
 File: mjpeg-howto.info,  Node: Hey what about NTSC movies ?,  Prev: How can you fix it?,  Up: Notes about "interlace field order - what can go wrong and how to fix it"
@@ -593,13 +590,12 @@ from 2 frames. To undo this effect for efficient MPEG encoding you need
 to use yuvkineco.
 
    If you have an interlaced source like a TV camera you have a frame
-consists of two fields that are recorded at different points in time
-and shown after each other. Spotting the problem here is harder. You
-need to find something moving horizontally from the left to the right.
-When you extract the fields, the thing should move in small steps from
-the left to the right, not one large step forward, small step back,
-large forward, small back......  You have to use the same options
-mentioned aboth to correct the problem.
+consists of two fields that are recorded at different points in time.
+Spotting the problem here is harder. You need to find something moving
+horizontally from the left to the right. When you extract the fields,
+the thing should move in small steps from the left to the right, not one
+large step forward, small step back, large forward, small back......
+You have to use the same options mentioned aboth to correct the problem.
 
    Do not expect that the field order is always the same (top- or
 bottom-first) It may change between the channels, between the films,
@@ -624,7 +620,7 @@ existing MPEG-2* section.
 
 * Creating videos from images::
 * Decoding streams with mplayer::
-* Decoding MPEG2 streams with mpeg2dec::
+* Decoding MPEG-2 streams with mpeg2dec::
 * Other things to know::
 
 
@@ -667,7 +663,7 @@ mpeg2enc -f 4 -o video.m2v'
    You can use the -b option to set the number of the image to start
 with. The number of images to be processed can be specified with the -n
 number. For example, if your first image is image01.jpg rather than
-image00.jpg, and you only want 60 images to be processed type:
+image00.jpg and you only want 60 images to be processed type:
 
    `>jpeg2yuv -b 1 -f 25 -I p -n 60 -j image*.jpg | yuv2lav -o
 stream_without_sound.avi'
@@ -680,11 +676,11 @@ stream_with_sound.avi'
    For ppm input there is the ppmtoy4m util. There is a manpage for
 ppmtoy4m that should be consulted for additional information.
 
-   So to create a mpeg video try this:
+   To create a mpeg video try this:
 
    `>cat *.ppm | ppmtoy4m -o 75 -n 60 -F 25:1 | mpeg2enc -o output.m1v'
 
-   Cat's each *.ppm file to ppmtoy4m. There the first 75 frames
+   cat each *.ppm file to ppmtoy4m. There the first 75 frames
 (pictures) are ignored and next 60 are encoded by mpeg2enc to
 output.m1v. You can run it without the -o and -n option. The -F
 options sets the frame rate, default is NTSC (30000:1001), for PAL you
@@ -698,8 +694,8 @@ ppm.
    A list of filenames (ls *.tga) is given to xargs that executes the
 tgatoppm with one (-n 1) argument per call, and feeds the output into
 ppmtoy4m.  This time the video is only shown on the screen. The xargs
-is only needed if the converter (tgatoppm), can only operate on a
-single image at a time.
+is only needed if the converter (tgatoppm) can only operate on a single
+image at a time.
 
    If you want to use the ImageMagick 'convert' tool (a Swiss Army
 Knife) try:
@@ -707,19 +703,18 @@ Knife) try:
    `>convert *.gif ppm:- | ppmtoy4m | yuvplay'
 
    That means take all '.jpg' images in directory, convert to PPM
-format, and pipe to stdout, then ppmtoy4m processes them ....
+format, pipe to stdout, then to ppmtoy4m for conversion to y4m ....
 
 
-File: mjpeg-howto.info,  Node: Decoding streams with mplayer,  Next: Decoding MPEG2 streams with mpeg2dec,  Prev: Creating videos from images,  Up: Creating videos from other sources
+File: mjpeg-howto.info,  Node: Decoding streams with mplayer,  Next: Decoding MPEG-2 streams with mpeg2dec,  Prev: Creating videos from images,  Up: Creating videos from other sources
 
 4.2 Decoding streams with mplayer
 =================================
 
 Decoding the streams with mplayer is a nice way of bringing every video
-that mplayer can play back to something you can edit or encode directly
-to a mpeg video with the mjpegtools. This method has been tested with
-mplayer 1.0rc2. And should work with modifications of the mplayer
-commandline also with newer and older versions
+that mplayer can play back to something you can edit or encode to mpeg
+with mjpegtools. This method has been tested with mplayer 1.0rc2 and
+should work with newer versions
 
    `>mkfifo stream.yuv'
 
@@ -729,9 +724,9 @@ commandline also with newer and older versions
 
    `>mplayer -vo null -ao pcm:file=anyfile.wav anyfile.mpg'
 
-   Now you have for example a mjpeg encoded AVI without sound. The
-sound will be in anyfile.wav. Now you can choose if you want to add the
-sound to the AVI with `lavaddwav' and edit the file and encode it.
+   Now you have an example of a mjpeg encoded AVI without sound. The
+sound will be in anyfile.wav. You can choose if you want to add the
+sound to the AVI with `lavaddwav' and edit the file before encoding.
 
    You can also use instead of yuv2lav, mpeg2enc or any other tool from
 the mjpeg tools so your command might also look like that:
@@ -739,21 +734,21 @@ the mjpeg tools so your command might also look like that:
    `> cat stream.yuv | yuvdenoise | yuvscaler -O SVCD | mpeg2enc -f 4
 -o video_svcd.m2v'
 
-   And cat the wav file into `mp2enc' to encode it to MP2 audio. The
-*-vo yuv4mpeg* option works well with other input types mentioned in
-the mplayer documentation.
+   cat the wav file into `mp2enc' to encode it to MP2 audio. The *-vo
+yuv4mpeg* option works well with other input types mentioned in the
+mplayer documentation.
 
 
-File: mjpeg-howto.info,  Node: Decoding MPEG2 streams with mpeg2dec,  Next: Other things to know,  Prev: Decoding streams with mplayer,  Up: Creating videos from other sources
+File: mjpeg-howto.info,  Node: Decoding MPEG-2 streams with mpeg2dec,  Next: Other things to know,  Prev: Decoding streams with mplayer,  Up: Creating videos from other sources
 
-4.3 Decoding MPEG2 streams with mpeg2dec
-========================================
+4.3 Decoding MPEG-2 streams with mpeg2dec
+=========================================
 
 You can decode mpeg2 streams with the patched mpeg2dec version which
 creates yuv streams. You can pipe that into any other mjpegtools
 program.  Or you use a mpeg2dec version directly from the libmpeg2
 project and use the output mode pgmpipe. With the `pgmtoy4m' program
-from the mjpegtools you can convert that pgm output back to yuv.
+you can convert that pgm output back to yuv.
 
    If you ask yourself why there is a patched version and pgmtoy4m.
 The answer is that the patch for yuv output was sent several times to
@@ -767,15 +762,14 @@ around that problem. Decoding looks like this:
 existing MPEG-2* Section.
 
 
-File: mjpeg-howto.info,  Node: Other things to know,  Prev: Decoding MPEG2 streams with mpeg2dec,  Up: Creating videos from other sources
+File: mjpeg-howto.info,  Node: Other things to know,  Prev: Decoding MPEG-2 streams with mpeg2dec,  Up: Creating videos from other sources
 
 4.4 Other things to know
 ========================
 
-If you have Transport Streams from your DVB card, or os Satelite
-Receiver you might want to demultiplex or cut them. A nice tool for
-that is *Project X* available from:
-`http://www.lucike.info/page_projectx.htm'
+If you have Transport streams from your DVB card, or Satelite Receiver
+you might want to demultiplex or cut them. A nice tool for that is
+*Project X* available from: `http://www.lucike.info/page_projectx.htm'
 
    You can process the streams afterwards as you would do with any mpeg
 movie or demultiplexed audio video. So the *Transcoding of existing
@@ -802,8 +796,8 @@ on the system.  The advantage of this method is you don't need xawtv.
    `>lavplay -p H record.avi'
 
    The video is decoded and played by the hardware. The system load is
-now very low. This will play it back on-screen using the hardware
-rather than software decoding.
+very low.  This will play it back on-screen using the hardware rather
+than software decoding.
 
    You might also try:
 
@@ -835,8 +829,8 @@ HW-Playback. Don't forget to close xawtv !!
    *NOTE2:* Do not try to send glav an lavplay into background, wont
 work correct !!!
 
-   *NOTE3:* SECAM playback is now (12.3.2001) only in monochrome, but
-the recording and encoding is done right.
+   *NOTE3:* SECAM playback is now (12.3.2001) only in monochrome but the
+recording and encoding is done right.
 
    *NOTE4:*Bad cables may reduce the quality of the image. Normally you
 can't see this but when there is text you might notice a small shadow.
@@ -918,7 +912,7 @@ record_n.avi'
      specifies the output format, quicktime in this case
 
 
-   This is usually not needed. Keep in your mind that there is the 2GB
+   This is usually not needed. Keep in your mind that there is a 2GB
 file-size-limit on 32Bit systems with an older glibc. Usually not a
 problem these days
 
@@ -972,7 +966,7 @@ File: mjpeg-howto.info,  Node: Creating movie transitions,  Prev: Separate image
 6.5 Creating movie transitions
 ==============================
 
-Thanks to Philipp Zabel's lavpipe, we can now make simple transitions
+Thanks to Philipp Zabel's lavpipe we can now make simple transitions
 between movies or combine multiple layers of movies.
 
    Philipp wrote this HOWTO on how to make transitions:
@@ -1007,11 +1001,10 @@ long.
    *-o 255*, the offset, tells lav2yuv to begin with frame # 225 and *
 -f 25* makes it output 25 frames from there on.
 
-   Another possibility is:
+   Another possibility (because negative offsets are counted from the
+end)is:
 
    `> lav2yuv -o -25 intro.avi'
-
-   Since negative offsets are counted from the end.
 
    And the first 25 frames of epilogue.mov:
 
@@ -1073,8 +1066,8 @@ compressed jpeg frames of quality 80.
 epilogue.mov" | transist.flt -o 0 -O 255 -d 25 | yuv2lav -f a -q 80 -o
 transition.avi'
 
-   The resulting video can be written as a LAV Edit List, a plain text
-file containing the following lines:
+   The resulting video can be written as a LAV Edit List (a plain text
+file) containing the following lines:
 
      LAV Edit List
      PAL
@@ -1124,11 +1117,11 @@ output:
 options and find out which ones work best for you. These are discussed
 below.
 
-   The creation of MPEG1 movies is explained with more examples and in
-greater detail because most of the things that can be used for MPEG1
+   The creation of MPEG-1 movies is explained with more examples and in
+greater detail because most of the things that can be used for MPEG-1
 also work for the other output formats
 
-   For the creation of of VCD/SVCD Stills sequences (-f 6, -f 7 in
+   For the creation of of VCD/SVCD Stills sequences (-f 6 / -f 7 in
 mpeg2enc) you should see: `http://www.mir.com/DMG/' Still sequences are
 needed for the creation of menus in VCD/SVCD. The creation of menus is
 described in the doku of vcdimager.
@@ -1138,9 +1131,9 @@ described in the doku of vcdimager.
 * Creating sound::
 * Converting video::
 * Putting the streams together::
-* Creating MPEG1 Videos::
-* Creating MPEG2 Videos::
-* Creating Video-CD's::
+* Creating MPEG-1 Videos::
+* Creating MPEG-2 Videos::
+* Creating Video CDs (VCDs)::
 * Creating SVCD::
 * Creating DVD's::
 * Creating DIVX Videos::
@@ -1151,20 +1144,19 @@ File: mjpeg-howto.info,  Node: Creating sound,  Next: Converting video,  Up: Con
 7.1 Creating sound
 ==================
 
-MPEG-1 videos need MPEG1-layer2 sound files. For MPEG-2 videos you can
-use MPEG1-Layer2 and MPEG1-Layer3 (MP3).    Layer 3 (MP3) audio is not
-an offically valid audio format but many VCD players will recognize it.
- MP3 audio is not valid for DVDs.  You should stick to MPEG1-Layer2
-because most of the MPEG2 players (DVD Player for example usually the
-different Windows Versions have great problems with this too) are not
-able to play MPEG2-Video and MPEG1-Layer3 sound.
+MPEG-1 videos need MPEG-1-Layer2 (MP2) sound files. For MPEG-2 videos
+you can use MPEG-1-Layer2 and MPEG1-Layer3 (MP3). MP3 audio is not an
+offically valid audio format but many VCD players will recognize it.
+MP3 audio is not valid for DVDs.  You should stick to MP2 because many
+of the MPEG-2 players (DVD Player for example, usually the Windows
+Versions have great problems with this too) are not able to play
+MPEG2-Video and MP3 sound.
 
-   mp2enc is a MPEG1-layer 2 Audio encoder. The toolame encoder is also
-able to produce an layer 2 file. You can use that one as well.
-Toolame is much faster than mp2enc but toolame does not peform
-resampling (48000 to 44100 samples/second).  Many hardware players will
-play SVCDs using 48000 rate audio.  For mp3 creation I'm be sure you
-have an encoder.
+   mp2enc is a MP2 Audio encoder. The toolame encoder is also able to
+produce an MP2 file. Toolame is much faster than mp2enc but toolame
+does not peform resampling (48000 to 44100 samples/second).  Many
+hardware players will play SVCDs using 48000 rate audio.  For MP3
+creation I'm be sure you have an encoder.
 
    Example:
 
@@ -1189,9 +1181,10 @@ of sec of audio already encoded.
 
    `> plaympeg sound.mp2'
 
-   *NOTE_* plaympeg is a MPEG1 Player for Linux, you can use other
-players as well, for MPEG audio testing you can also use mpg123. Or a
-more universal player like VLC.
+   *NOTE_* plaympeg is a MPEG-1 Player for Linux, you can use other
+players as wellr. For audio testing you can also use mpg123. For both
+audio and video playing there are the universal player like VLC mplayer
+and others.
 
 
 File: mjpeg-howto.info,  Node: Converting video,  Next: Putting the streams together,  Prev: Creating sound,  Up: Converting the stream to MPEG or DIVx videos
@@ -1199,7 +1192,7 @@ File: mjpeg-howto.info,  Node: Converting video,  Next: Putting the streams toge
 7.2 Converting video
 ====================
 
-You can create MPEG1 and MPEG2 videos.
+Creating MPEG-1 and MPEG-2 videos.
 
    Normally the first video you create is not the best. For optimal
 quality/size you need to play with the bitrate, search radius, noise
@@ -1302,8 +1295,8 @@ sar=PAL_Wide | mpeg2enc video.m1v '
 
    In this example y4mscaler will take the input stream and scale it to
 the coresponding PAL size. The sar option tell to scale is to a wide
-format (16:9).  The infer clip will tells y4mscaler that is can clip
-the top and bottom bars away to scale it to the resulting size.
+format (16:9).  The `infer=clip' option will tells y4mscaler that it
+can clip the top and bottom bars away to scale it to the resulting size.
 
    Example:
 
@@ -1319,14 +1312,14 @@ interesting center.  The SAR is the sample aspect ratio get lost
 somewhere so we specify it in the beginning.  So it is specified again,
 than you tell y4mscaller the active size of the picture it shall use to
 scale up. The active keyword is treated different in y4mscaler and
-yuvscaler.  And the DVD is a preset for the output format you want.
-From the stream parameters y4mscaler know that it PAL stream and the
-the output parameters. If you wanted a 16:9 output you would have to
-use the keyword: DVD_WIDE.
+yuvscaler.  The DVD is a preset for the output format you want. From
+the stream parameters y4mscaler knows that it is a PAL stream and the
+output parameters. If you wanted a 16:9 output you would have to use
+the keyword: DVD_WIDE.
 
    Testing is done by:
 
-   `> plaympeg video.m1v'
+   `> mplayer video.m1v'
 
    *NOTE_*These are only examples. There are more options you can use.
 You can use most of them together to create high quality videos with the
@@ -1336,9 +1329,10 @@ lowest possible bitrate.
 conversion will take. In general the more options used the longer
 encoding takes.
 
-   *NOTE3:*MPEG1 was not designed to be a VBR (variable bitrate stream)
-!!  So if you encode with -q 15 mpeg2enc sets the maximal bitrate -b to
-1152. If you want a VBR MPEG1 you have to set -b very high (2500).
+   *NOTE3:*MPEG-1 was not designed to be a VBR (variable bitrate
+stream) !!  So if you encode with -q 15 mpeg2enc sets the maximal
+bitrate -b to 1152. If you want a VBR MPEG-1 you have to set -b very
+high (2500).
 
    *NOTE4:*Maybe you should give better names than video.mpg. A good
 idea is to use the options as part of the filename (for example:
@@ -1348,7 +1342,7 @@ MPEG-2 video files ".m2v" Easy to see what's happening then. Reserve
 .mpg for multiplexed MPEG-1/2 streams.
 
 
-File: mjpeg-howto.info,  Node: Putting the streams together,  Next: Creating MPEG1 Videos,  Prev: Converting video,  Up: Converting the stream to MPEG or DIVx videos
+File: mjpeg-howto.info,  Node: Putting the streams together,  Next: Creating MPEG-1 Videos,  Prev: Converting video,  Up: Converting the stream to MPEG or DIVx videos
 
 7.3 Putting the streams together
 ================================
@@ -1389,11 +1383,11 @@ of 400K.
 
    `> mplex -V -r 1740 audio.mp2 video_vbr.m1v -o vbr_stream.mpg'
 
-   Here we multiplex a variable bitrate stream. mplex is now a single
-pass multiplexer so it can't detect the maximal bitrate and we have to
+   Here we multiplex a variable bitrate stream. mplex is a single pass
+multiplexer so it can't detect the maximal bitrate and we have to
 specify it. The data rate for the output stream is: audio bitrate +
-peak videobitrate + 1-2% for mplex information. If audio (-b 224) has
-224kBit, video has 1500kBit (was encoded with -b 1500 -q 9) then we
+peak videobitrate + 1-2% for mplex information. If audio (-b 224) is
+224kBit and the video is 1500kBit (encoded with -b 1500 -q 9) then we
 have 1724 * 1.01 or about 1740kBit.
 
    Example:
@@ -1405,33 +1399,33 @@ have 1724 * 1.01 or about 1740kBit.
    `> mplayer my_video.mpg'
 
 
-File: mjpeg-howto.info,  Node: Creating MPEG1 Videos,  Next: Creating MPEG2 Videos,  Prev: Putting the streams together,  Up: Converting the stream to MPEG or DIVx videos
+File: mjpeg-howto.info,  Node: Creating MPEG-1 Videos,  Next: Creating MPEG-2 Videos,  Prev: Putting the streams together,  Up: Converting the stream to MPEG or DIVx videos
 
-7.4 Creating MPEG1 Videos
-=========================
+7.4 Creating MPEG-1 Videos
+==========================
 
-For MPEG1 you can use mpeg layer 2 Audio and mpeg1 video. A subset of
-MPEG1 movies are VCD's. You can use VBR (Variable BitRate) for the
+For MPEG-1 videos you can use MP2 audio and MPEG-1 video. A subset of
+MPEG-1 movies are VCD's. You can use VBR (Variable BitRate) for the
 Video (although VCDs are almost always use CBR video) but the Audio has
 to be CBR (Constant BitRate).
 
-   MPEG1 is recommended for picture sizes up to 352x288 for PAL and
-352x240 for NTSC for larger sizes MPEG2 is the better choice.  There is
-no exact resolution where MPEG1 is better than MPEG2.  Just to make
-soure, MPEG1 can't handle interlaced sources. If you video is
-interlaced you need MPEG2 to get it proper encoded.
+   MPEG-1 is recommended for picture sizes up to 352x288 for PAL and
+352x240 for NTSC for larger sizes MPEG-2 is the better choice.  There
+is no exact resolution where MPEG-1 is better than MPEG-2.  Just to
+make soure, MPEG-1 can't handle interlaced sources. If you video is
+interlaced you need MPEG-2 to get it proper encoded.
 
 * Menu:
 
-* MPEG1 Audio creation Example::
-* MPEG1 Video creation Example::
-* MPEG1 Multiplexing Example::
+* MPEG-1 Audio creation Example::
+* MPEG-1 Video creation example::
+* MPEG-1 Multiplexing Example::
 
 
-File: mjpeg-howto.info,  Node: MPEG1 Audio creation Example,  Next: MPEG1 Video creation Example,  Up: Creating MPEG1 Videos
+File: mjpeg-howto.info,  Node: MPEG-1 Audio creation Example,  Next: MPEG-1 Video creation example,  Up: Creating MPEG-1 Videos
 
-7.4.1 MPEG1 Audio creation Example
-----------------------------------
+7.4.1 MPEG-1 Audio creation Example
+-----------------------------------
 
 `> lav2wav editlist.eli | mp2enc -r 44100 -o sound.mp2'
 
@@ -1448,10 +1442,10 @@ handed over to mp2enc.  You do NOT have to create an edited stream with
 lavtrans to get it converted properly.
 
 
-File: mjpeg-howto.info,  Node: MPEG1 Video creation Example,  Next: MPEG1 Multiplexing Example,  Prev: MPEG1 Audio creation Example,  Up: Creating MPEG1 Videos
+File: mjpeg-howto.info,  Node: MPEG-1 Video creation example,  Next: MPEG-1 Multiplexing Example,  Prev: MPEG-1 Audio creation Example,  Up: Creating MPEG-1 Videos
 
-7.4.2 MPEG1 Video creation Example
-----------------------------------
+7.4.2 MPEG-1 Video creation example
+-----------------------------------
 
 `> lav2yuv editlist.eli | mpeg2enc -b 2000 -r 24 -q 6 -o video.m1v'
 
@@ -1473,7 +1467,7 @@ Setting the 'q' flag tells mpeg2enc to generate variable bit-rate
 streams. For such streams the bit-rate specified is simply the maximum
 permissible. The 'q' parameter specifies the minimum degree of
 compression to be applied by specifying how exactly picture information
-is recorded. Typically, 'q' would be set so that quiet scenes would use
+is recorded. Typically 'q' would be set so that quiet scenes would use
 less than the specified maximum (around 6 or 8) but fast moving scenes
 would still be bit-rate limited. For archival purposes setting a
 maximum bit-rate high enough never to be reached (e.g. 10Mbps) and a q
@@ -1487,7 +1481,7 @@ of 2 or 3 are reasonable choices.
    Usually there is at the top and at the bottom a nearly black border
 and a lot of bandwidth is used for something you do not like. The
 yuvscaler -I ACTIVE option sets everything that is not in the described
-area to black, but the imagesize (352x288) is not changed.  So you have
+area to black but the imagesize (352x288) is not changed.  So you have
 a real black border the encoder only uses a few bits for encoding them.
 You are still compatible with the VCD's format in this example.  To
 determine the active window extract one frame to the jpeg format:
@@ -1498,10 +1492,10 @@ determine the active window extract one frame to the jpeg format:
 active size.  The -4 1 and -2 1 options improves the quality about 10%
 but conversion is slower.
 
-   At the size of 352x288 (1/2 PAL size, created when using the -d 2
+   At the size of 352x288 (1/2 PAL size created when using the -d 2
 option when recording) the needed bitrate is/should be between 1000 -
 1500kBit/s. For NTSC it should be about the same, because the image is
-smaller, but there are more frames per second than in PAL.
+smaller but there are more frames per second than in PAL.
 
    Anyways, the major factor is quality of the original and the degree
 of filtering. Poor quality unfiltered material typically needs a higher
@@ -1551,10 +1545,10 @@ information. For further information take a look at the encoding
 scripts in the scripts directory.
 
 
-File: mjpeg-howto.info,  Node: MPEG1 Multiplexing Example,  Prev: MPEG1 Video creation Example,  Up: Creating MPEG1 Videos
+File: mjpeg-howto.info,  Node: MPEG-1 Multiplexing Example,  Prev: MPEG-1 Video creation example,  Up: Creating MPEG-1 Videos
 
-7.4.3 MPEG1 Multiplexing Example
---------------------------------
+7.4.3 MPEG-1 Multiplexing Example
+---------------------------------
 
 Example:
 
@@ -1576,60 +1570,59 @@ peak videobitrate + 1-2% for mplex information*. If audio (-b 224) has
 have 1724 * 1.01 or about 1740kBit.
 
 
-File: mjpeg-howto.info,  Node: Creating MPEG2 Videos,  Next: Creating Video-CD's,  Prev: Creating MPEG1 Videos,  Up: Converting the stream to MPEG or DIVx videos
+File: mjpeg-howto.info,  Node: Creating MPEG-2 Videos,  Next: Creating Video CDs (VCDs),  Prev: Creating MPEG-1 Videos,  Up: Converting the stream to MPEG or DIVx videos
 
-7.5 Creating MPEG2 Videos
-=========================
+7.5 Creating MPEG-2 Videos
+==========================
 
-MPEG2 is recommended for sources with a greater picture than 352x240
-for NTSC and 352x288 for PAL. MPEG2 can also handle interlaced sources
+MPEG-2 is recommended for sources with a greater picture than 352x240
+for NTSC and 352x288 for PAL. MPEG-2 can also handle interlaced sources
 like recording from TV at full resolution.
 
-   MPEG2 allows the usage of mpeg layer 3 (mp3) sound. So you can use
+   MPEG-2 allows the usage of mpeg layer 3 (mp3) sound. So you can use
 your favorite mp3encoder for the creation of the sound.  However, MP3
 audio is not valid for DVDs.  It is best to use MP2 (Layer 2) audio.
-The audio can also be a VBR Stream.
+The audio can also be a VBR stream.
 
-   MPEG2 is usually a VBR Stream. MPEG2 creation with optimization
+   MPEG-2 is usually a VBR stream. MPEG-2 creation with optimization
 requires a lot of CPU power.  A film with the double resolution is NOT
-4 times larger than an MPEG1 Stream. Depending on your quality settings
-it will be about 1.5 up to 3 times larger than the MPEG1 Stream at its
-lower resolution.
+4 times larger than an MPEG-1 stream. Depending on your quality
+settings it will be about 1.5 up to 3 times larger than the MPEG-1
+stream at its lower resolution.
 
 * Menu:
 
-* MPEG2 Audio creation Example::
-* MPEG2 Video creation Example::
-* MPEG2 Multiplexing Example::
+* MPEG-2 audio creation example::
+* MPEG-2 Video creation example::
+* MPEG-2 Multiplexing example::
 
 
-File: mjpeg-howto.info,  Node: MPEG2 Audio creation Example,  Next: MPEG2 Video creation Example,  Up: Creating MPEG2 Videos
+File: mjpeg-howto.info,  Node: MPEG-2 audio creation example,  Next: MPEG-2 Video creation example,  Up: Creating MPEG-2 Videos
 
-7.5.1 MPEG2 Audio creation Example
-----------------------------------
+7.5.1 MPEG-2 audio creation example
+-----------------------------------
 
 `> lav2wav editlist.eli | mp2enc -o sound.mp2'
 
-   This will fit the MPEG2 quite well. You can save some bits by telling
-mp2enc to use a lower bitrate (-b option) like 160 or 192 kBit/s. And
-might want to add -r 44100 so that mpeg2enc generates a 44.1kHz
-sampling rate audio file. I hope I don't need to explain the usage of
-an MP3 Encoder.  But you should not use all the fancy options that are
-available.
+   You can save some bits by telling mp2enc to use a lower bitrate (-b
+option) like 160 or 192 kBit/s. You might want to add -r 44100 so that
+mpeg2enc generates 44.1kHz sampling rate audio.  I hope I don't need to
+explain the usage of an MP3 Encoder.  But you should not use all the
+fancy options that are available.
 
 
-File: mjpeg-howto.info,  Node: MPEG2 Video creation Example,  Next: MPEG2 Multiplexing Example,  Prev: MPEG2 Audio creation Example,  Up: Creating MPEG2 Videos
+File: mjpeg-howto.info,  Node: MPEG-2 Video creation example,  Next: MPEG-2 Multiplexing example,  Prev: MPEG-2 audio creation example,  Up: Creating MPEG-2 Videos
 
-7.5.2 MPEG2 Video creation Example
-----------------------------------
+7.5.2 MPEG-2 Video creation example
+-----------------------------------
 
 `> lav2yuv editlist.eli | mpeg2enc -f 3 -b 3000 -q 9 -o video.m2v'
 
-   A very simple example for MPEG2 Video.  The most important option is
-the -f 3. That tells mpeg2enc that it should create a MPEG2 stream.
-Because it is a generic MPEG2 you have to use the -b bitrate options.
+   A very simple example for MPEG-2 Video.  The most important option
+is the -f 3. That tells mpeg2enc that it should create a MPEG-2 stream.
+Because it is a generic MPEG-2 you have to use the -b bitrate options.
 And should use the -q option because you usually want a space saving
-VBR Stream. When using VBR streams the -b option tells mpeg2enc the
+VBR stream. When using VBR streams the -b option tells mpeg2enc the
 maximum bitrate that can be used. The -q option tell mpeg2enc what
 quality the streams should have.  The bitrate has an upper bound of the
 value specified by -b.
@@ -1637,8 +1630,8 @@ value specified by -b.
    `> lav2yuv editlist.eli | mpeg2enc -f 3 -4 1 -2 1 -q7 -b 4500 -V 300
 -P -g 6 -G 18 -I 1 -o video.m2v'
 
-   This will generate a higher quality MPEG2 stream because the -4 1 and
--2 1 options were used.  With -b 4500 -q 7 you tell mpeg2enc the
+   This will generate a higher quality MPEG-2 stream because the -4 1
+and -2 1 options were used.  With -b 4500 -q 7 you tell mpeg2enc the
 maximal bitrate and the quality factor.  -V is the video buffer size
 used for decoding the stream. For SW playback it can be much higher
 than the default. Dynamic GOP is set with -g and -G.  A larger GOP size
@@ -1664,14 +1657,14 @@ in the following sections.
 
 * Menu:
 
-* Which values should be used for VBR Encoding::
+* Which values should be used for VBR Encoding?::
 * Encoding destination TV (interlaced) or Monitor (progressive)::
 
 
-File: mjpeg-howto.info,  Node: Which values should be used for VBR Encoding,  Next: Encoding destination TV (interlaced) or Monitor (progressive),  Up: MPEG2 Video creation Example
+File: mjpeg-howto.info,  Node: Which values should be used for VBR Encoding?,  Next: Encoding destination TV (interlaced) or Monitor (progressive),  Up: MPEG-2 Video creation example
 
-7.5.2.1 Which values should be used for VBR Encoding
-....................................................
+7.5.2.1 Which values should be used for VBR Encoding?
+.....................................................
 
 The -q option controls the minimum quantization of the output stream.
 Quantization controls the precision with which image information is
@@ -1693,15 +1686,16 @@ wrong value for the maximal bitrate or a quality factor that is too
 high.
 
    A combination that will produce more artifacts than you can count is
-a SVCD with a maximal video bitrate of 2500kBit and a qualitfactor set
-to 1 or 2.  For SVCD with a video limit of 2500kBit a quality factor of
+a SVCD with a maximal video bitrate of 2500kBit and a quality factor of
+1 or 2.  For SVCD with a video limit of 2500kBit a quality factor of
 7-11 fits quite good (8 is the default). If you use filter programs or
 have a very good source like digital TV, DVD like material or rendered
 pictures you can use a quality factor of 6 when creating SVCDs.  If
-your SVCD/DVD player supports higher bitrates than the official
-2788kBit/sec for the video and audio.   When using a higher bitrate and
-quality factor action scenes will look much better but of course the
-playing time of the disc will be less.
+your SVCD/DVD player supports non-standard bitrates  you can increase
+the bitrate above the standard maximum of 2788 kBit/sec (video plus
+audio).  When using a higher bitrate and quality factor action scenes
+will look much better but of course the playing time of the disc will
+be less.
 
    The same (7-11) quality factor for a full size picture and a top
 bitrate of 3500 to 4000 kBit will produce few artifacts.
@@ -1714,18 +1708,18 @@ maximal bitrate is not set too low:
 still sequences might look blocky
 
 
-File: mjpeg-howto.info,  Node: Encoding destination TV (interlaced) or Monitor (progressive),  Prev: Which values should be used for VBR Encoding,  Up: MPEG2 Video creation Example
+File: mjpeg-howto.info,  Node: Encoding destination TV (interlaced) or Monitor (progressive),  Prev: Which values should be used for VBR Encoding?,  Up: MPEG-2 Video creation example
 
 7.5.2.2 Encoding destination TV (interlaced) or Monitor (progressive)
 .....................................................................
 
-MPEG2 supports interlaced data in addition to the progressive format.
-A MPEG2 movie can be interlaced or progressive. It depends on the source
-(film or broadcast) and on the viewing device.
+MPEG-2 supports interlaced data in addition to the progressive format.
+A MPEG-2 movie can be interlaced or progressive. It depends on the
+source (film or broadcast) and on the viewing device.
 
    If you encode a film both fields should be the same. Deinterlace the
 stream with yuvdeinterlace, or if you have a high quality source, and
-don't need to use the denoiser, with yuvcorrect -T NOT_INTERLACED. Also
+don't need to use the denoiser with yuvcorrect -T NOT_INTERLACED. Also
 set the mpeg2enc interlace-mode (-I) option to 0. This means that there
 is no interlacing.  We do not really need deinterlacing here because
 there is no motion between the fields of the frame. We only need to
@@ -1736,7 +1730,7 @@ problems.
 
    If you have an interlaced source (broadcast) you can encode it as
 interlaced stream. Or deinterlace the stream and encode it as
-progressive stream. If you deinterlace it with yuvdeinterlace, you will
+progressive stream. If you deinterlace it with yuvdeinterlace you will
 lose details.  But if you plan to play the recorded stream on your DVD
 player and your TV it would not be wise to perform deinterlacing.  If
 you only want to play it back on the Monitor (progressive display) the
@@ -1745,7 +1739,7 @@ player you use can do deinterlacing it does not matter if your encoded
 video has interlaced frames or progressive frames.
 
    If you plan to deinterlace the stream you can only do this with
-yuvdeinterlace, and set the mpeg2enc -I 0. If you do not want to
+yuvdeinterlace and set the mpeg2enc -I 0. If you do not want to
 deinterlace the stream you do not need to set any special option (do
 not use yuvdeinterlace and mpeg2enc -I 0)
 
@@ -1763,10 +1757,10 @@ film sequences with good stills then deinterlace (using yuvdeinterlace
 and mpeg2enc -I 0).
 
 
-File: mjpeg-howto.info,  Node: MPEG2 Multiplexing Example,  Prev: MPEG2 Video creation Example,  Up: Creating MPEG2 Videos
+File: mjpeg-howto.info,  Node: MPEG-2 Multiplexing example,  Prev: MPEG-2 Video creation example,  Up: Creating MPEG-2 Videos
 
-7.5.3 MPEG2 Multiplexing Example
---------------------------------
+7.5.3 MPEG-2 Multiplexing example
+---------------------------------
 
 `> mplex -f 3 -b 300 -r 4750 -V audio.mp3 video.m2v -o final.mpg'
 
@@ -1777,24 +1771,24 @@ size option with the same value used when encoding the video. -*r* is
 that rate of video + audio +1-2% of mplex information.
 
    The *-V*option tells that your source for mplexing is a VBR stream.
-If you don't use this option mplex creates something like a CBR Stream
+If you don't use this option mplex creates something like a CBR stream
 with the bitrate you have told it with the *-r* option.  These streams
 are usually get BIG.
 
 
-File: mjpeg-howto.info,  Node: Creating Video-CD's,  Next: Creating SVCD,  Prev: Creating MPEG2 Videos,  Up: Converting the stream to MPEG or DIVx videos
+File: mjpeg-howto.info,  Node: Creating Video CDs (VCDs),  Next: Creating SVCD,  Prev: Creating MPEG-2 Videos,  Up: Converting the stream to MPEG or DIVx videos
 
-7.6 Creating Video-CD's
-=======================
+7.6 Creating Video CDs (VCDs)
+=============================
 
-VCD is a constrained version of MEPG1 streams.  VCD format was defined
+VCD is a constrained version of MPEG-1 video.  VCD format was defined
 by Philips. The goal was to use a single speed CD-drive and other cheap
-hardware (not flexible) to have a cheap HW-Player.  Because of that
-there are some limitations on VCD's.  The bitrate for video is 1152kBit
-and for audio layer 2 audio 224kBit stereo.  You are not allowed to use
-the -q option, dynamic GOP sizes and the video buffer is limited to
-46kB.  The image size is limited to 352x240 for NTSC, an to 352x288 for
-PAL.
+hardware (not flexible) to have a cheap HW-Player. Because of that
+there are limitations for video and audio used to make a VCD. The
+bitrate for video is 1152kBit and 224kBit/sec MP2 audio.  You are not
+allowed to use the -q option, dynamic GOP sizes and the video buffer is
+limited to 46kB.  The image size is limited to 352x240 for NTSC, an to
+352x288 for PAL.
 
    If you have no VCD (only) player and you plan to use your DVD player
 then it is quite possible that the DVD player will be flexible enough
@@ -1811,7 +1805,7 @@ on
 * Storing MPEGs::
 
 
-File: mjpeg-howto.info,  Node: VCD Audio creation Example,  Next: VCD Video creation Example,  Up: Creating Video-CD's
+File: mjpeg-howto.info,  Node: VCD Audio creation Example,  Next: VCD Video creation Example,  Up: Creating Video CDs (VCDs)
 
 7.6.1 VCD Audio creation Example
 --------------------------------
@@ -1825,7 +1819,7 @@ to be 64, 96 or 192kBit/sec. If you have stereo audio you can choose
 to 44.1 224kBps Stereo layer 2 Audio.
 
 
-File: mjpeg-howto.info,  Node: VCD Video creation Example,  Next: VCD Multiplexing Example,  Prev: VCD Audio creation Example,  Up: Creating Video-CD's
+File: mjpeg-howto.info,  Node: VCD Video creation Example,  Next: VCD Multiplexing Example,  Prev: VCD Audio creation Example,  Up: Creating Video CDs (VCDs)
 
 7.6.2 VCD Video creation Example
 --------------------------------
@@ -1833,7 +1827,7 @@ File: mjpeg-howto.info,  Node: VCD Video creation Example,  Next: VCD Multiplexi
 `> lav2yuv stream.avi | yuvscaler -O VCD | mpeg2enc -f 1 -r 16 -o
 video.mpg'
 
-   For a VCD compatible output the -f 1 sets all options in mpeg2enc as
+   For VCD compatible output the -f 1 sets all options in mpeg2enc as
 needed. It seems that many VCD players (Avex for example) are not able
 to play MPEG streams that are encoded with a search radius greater than
 16 so do not use the -r option to override the default of 16.
@@ -1846,18 +1840,18 @@ generates a new stream every 630MB. One important thing is the use of
 the *-B* option which specifies the non-video (audio and mplex
 information) bitrate. The -B value of 260 should be fine for audio with
 224kBit and mplex information. For further information take a look at
-the encoding scripts in the scripts directory. So the multiplexed
-streams should easily fit on a CD with 650MB.
+the encoding scripts in the scripts directory. The multiplexed streams
+should easily fit on a 650MB CD.
 
    The default value (-B) is 700MB for the video. mpeg2enc marks
 automatically every stream at that size if the -B option is not used to
 set a different value.  If you have a CD where you can write more data
-(perhaps as much as 800MB), you have to set the -S option or otherwise
+(perhaps as much as 800MB) you have to set the -S option or otherwise
 mpeg2enc will mark the stream at 700 MB, and mplex will split the
 stream there.  Which is almost certainly not what you want.
 
 
-File: mjpeg-howto.info,  Node: VCD Multiplexing Example,  Next: Creating the CD,  Prev: VCD Video creation Example,  Up: Creating Video-CD's
+File: mjpeg-howto.info,  Node: VCD Multiplexing Example,  Next: Creating the CD,  Prev: VCD Video creation Example,  Up: Creating Video CDs (VCDs)
 
 7.6.3 VCD Multiplexing Example
 ------------------------------
@@ -1868,7 +1862,7 @@ File: mjpeg-howto.info,  Node: VCD Multiplexing Example,  Next: Creating the CD,
 place in a respectable multiplexer!
 
 
-File: mjpeg-howto.info,  Node: Creating the CD,  Next: Notes,  Prev: VCD Multiplexing Example,  Up: Creating Video-CD's
+File: mjpeg-howto.info,  Node: Creating the CD,  Next: Notes,  Prev: VCD Multiplexing Example,  Up: Creating Video CDs (VCDs)
 
 7.6.4 Creating the CD
 ---------------------
@@ -1885,7 +1879,7 @@ used as control file for cdrdao.
 Sourceforge project which is found at: `http://cdrdao.sourceforge.net/'
 
 
-File: mjpeg-howto.info,  Node: Notes,  Next: Storing MPEGs,  Prev: Creating the CD,  Up: Creating Video-CD's
+File: mjpeg-howto.info,  Node: Notes,  Next: Storing MPEGs,  Prev: Creating the CD,  Up: Creating Video CDs (VCDs)
 
 7.6.5 Notes
 -----------
@@ -1897,17 +1891,17 @@ minute movie from an analog broadcast a constant bit-rate of around
 For pure digital sources (DTV or DVD streams and similar) VCD 1152
 works fine.
 
-   *Note_* If you encode VBR MPEG1 (-q) remember the Hardware was
+   *Note_* If you encode VBR MPEG-1 (-q) remember the Hardware was
 probably not designed to do the playback because it is not in the
 specifications. If it works be very happy. I've noticed that it helps
-when you have an MPEG1 Stream to tell vcdimager that it is an SVCD.
+when you have an MPEG-1 stream to tell vcdimager that it is an SVCD.
 vcdimager complains (but only with a warning and not a fatal error) but
 you should be able to burn it. This could convince the player to use
-different routines in its firmware and play it back correct, but there
-is no guarantee of that.
+different routines in its firmware and play it back correct but there is
+no guarantee of that.
 
 
-File: mjpeg-howto.info,  Node: Storing MPEGs,  Prev: Notes,  Up: Creating Video-CD's
+File: mjpeg-howto.info,  Node: Storing MPEGs,  Prev: Notes,  Up: Creating Video CDs (VCDs)
 
 7.6.6 Storing MPEGs
 -------------------
@@ -1925,10 +1919,10 @@ hardware and software can readily produced using mpeg2enc/mplex
    If your player doesn't support SVCD you may well find it can handle
 VCD streams that have much higher than standard bit-rates. Often as
 much as 2500kBit/sec is possible. The several brands of DVD players can
-also play wilding out of spec SVCD and VCD discs.  With higher
-bit-rates and good quality source material it is worth trying
-mpeg2enc's -h flag which produce a stream that is as sharp as the
-limits of the VCD standard permits.
+also play wildly out of spec SVCD and VCD discs.  With higher bit-rates
+and good quality source material it is worth trying mpeg2enc's -h flag
+which produce a stream that is as sharp as the limits of the VCD
+standard permits.
 
    However, if your player supports it and you have the patience for the
 longer encoding times SVCD is a much better alternative. Using a more
@@ -1936,7 +1930,7 @@ efficient MPEG format SVCD more than doubles VCD's resolution while
 typically producing files that are less than twice as big.
 
 
-File: mjpeg-howto.info,  Node: Creating SVCD,  Next: Creating DVD's,  Prev: Creating Video-CD's,  Up: Converting the stream to MPEG or DIVx videos
+File: mjpeg-howto.info,  Node: Creating SVCD,  Next: Creating DVD's,  Prev: Creating Video CDs (VCDs),  Up: Converting the stream to MPEG or DIVx videos
 
 7.7 Creating SVCD
 =================
@@ -1954,12 +1948,12 @@ you should record at full size.
 * Menu:
 
 * SVCD Audio creation Example::
-* SVCD Video creation Example::
-* SVCD Multiplexing Example::
-* SVCD Creating the CD::
+* SVCD Video creation example::
+* SVCD multiplexing example::
+* SVCD creating the CD::
 
 
-File: mjpeg-howto.info,  Node: SVCD Audio creation Example,  Next: SVCD Video creation Example,  Up: Creating SVCD
+File: mjpeg-howto.info,  Node: SVCD Audio creation Example,  Next: SVCD Video creation example,  Up: Creating SVCD
 
 7.7.1 SVCD Audio creation Example
 ---------------------------------
@@ -1970,22 +1964,22 @@ File: mjpeg-howto.info,  Node: SVCD Audio creation Example,  Next: SVCD Video cr
 it is not necessary to use 224 kBit/sec. Any audio rate between 32 and
 384 kBit/sec is permitted. The audio may be VBR (Variable Bit Rate).
 The -e enables the CRC error protection for the audio. The CRC has to
-be enabled to be SVCD conform. But it seems that most players don't pay
-attention to the CRC information. The CRC information need 2 bytes per
-Audio frame
+be enabled to be SVCD standard compliant but it seems that most players
+don't pay attention to the CRC information. The CRC information need 2
+bytes per Audio frame
 
    The approximate frame length formula for MPEG-1 layer-II is:
 
    [frame length in bytes) = 144 * (byte rate) / (sample rate]
 
    If you have the typical VCD settings the CRC data needs about 0,27%
-of the whole data. In the worst case, where you have a MONO 32k Bitrate
-stream, the CRC data needs 1,92%.
+of the whole data. In the worst case where you have a MONO 32k Bitrate
+stream the CRC data needs 1,92%.
 
 
-File: mjpeg-howto.info,  Node: SVCD Video creation Example,  Next: SVCD Multiplexing Example,  Prev: SVCD Audio creation Example,  Up: Creating SVCD
+File: mjpeg-howto.info,  Node: SVCD Video creation example,  Next: SVCD multiplexing example,  Prev: SVCD Audio creation Example,  Up: Creating SVCD
 
-7.7.2 SVCD Video creation Example
+7.7.2 SVCD Video creation example
 ---------------------------------
 
 `> lav2yuv stream.avi | yuvscaler -O SVCD | mpeg2enc -f 4 -q 7 -I 1 -V
@@ -2005,13 +1999,13 @@ File: mjpeg-howto.info,  Node: SVCD Video creation Example,  Next: SVCD Multiple
      PAL
 
 
-   You can use lower bitrates, but the SVCD standard limits *total
+   You can use lower bitrates but the SVCD standard limits *total
 bit-rate (audio and video) to 2788800 Bit/sec*. So with 224Kbps audio
 and overhead 2550 may already be marginally too tight. Since the SVCD
 format permits any audio rate between 32 and 384 kBit/sec you can save
 a few bits/sec by using 192k audio (or for non-musical material 160k).
 
-   SVCD supports variable bitrate (VBR), because MPEG2 is usually VBR,
+   SVCD supports variable bitrate (VBR), because MPEG-2 is usually VBR,
 but with the top video bitrate limit of 2500kBit/sec. With the -f 4
 flag the encoder also sets dynamic GOP with a low limit of -g 6 and a
 high limit of -G 18. This saves a few bits/sec and improves the picture
@@ -2040,9 +2034,9 @@ movie means half the frames in an NTSC *are* field interlaced.
 stream to fit on a CD don't you ?
 
 
-File: mjpeg-howto.info,  Node: SVCD Multiplexing Example,  Next: SVCD Creating the CD,  Prev: SVCD Video creation Example,  Up: Creating SVCD
+File: mjpeg-howto.info,  Node: SVCD multiplexing example,  Next: SVCD creating the CD,  Prev: SVCD Video creation example,  Up: Creating SVCD
 
-7.7.3 SVCD Multiplexing Example
+7.7.3 SVCD multiplexing example
 -------------------------------
 
 `> mplex -f 4 -b 300 -r 2750 sound.mp2 video.m2v -o svcd_out.mpg'
@@ -2060,9 +2054,9 @@ File: mjpeg-howto.info,  Node: SVCD Multiplexing Example,  Next: SVCD Creating t
 
 
 
-File: mjpeg-howto.info,  Node: SVCD Creating the CD,  Prev: SVCD Multiplexing Example,  Up: Creating SVCD
+File: mjpeg-howto.info,  Node: SVCD creating the CD,  Prev: SVCD multiplexing example,  Up: Creating SVCD
 
-7.7.4 SVCD Creating the CD
+7.7.4 SVCD creating the CD
 --------------------------
 
 Example:
@@ -2087,10 +2081,9 @@ File: mjpeg-howto.info,  Node: Creating DVD's,  Next: Creating DIVX Videos,  Pre
 7.8 Creating DVD's
 ==================
 
-That statement was correct a few years ago: Everything in this section
-is very new. So it can change every day.  The limitations I mention
-here might not exist in the current version.  Currently (Dec. 2007) DVD
-creating is working.
+This statement was correct a few years ago: Everything in this section
+is new.  The limitations I mention here might not exist in the current
+version.  Currently (Dec. 2007) DVD creating is working.
 
    You need obviously a DVD writer. I did own a Ricoh DVD+RW that
 works, and I know of a DVD-RAM writer that is able to to burn DVD-R.
@@ -2104,15 +2097,15 @@ dvdauthor. Aviable from Sourceforge (you might have guessed it)
 
 * Menu:
 
-* DVD Audio creation Example::
-* DVD Video creation Example::
-* DVD Multiplexing Example::
-* DVD creation Example::
+* DVD Audio creation example::
+* DVD Video creation example::
+* DVD multiplexing example::
+* DVD creation example::
 
 
-File: mjpeg-howto.info,  Node: DVD Audio creation Example,  Next: DVD Video creation Example,  Up: Creating DVD's
+File: mjpeg-howto.info,  Node: DVD Audio creation example,  Next: DVD Video creation example,  Up: Creating DVD's
 
-7.8.1 DVD Audio creation Example
+7.8.1 DVD Audio creation example
 --------------------------------
 
 `> lav2wav stream.eli | mp2enc -o sound.mp2'
@@ -2125,9 +2118,9 @@ File: mjpeg-howto.info,  Node: DVD Audio creation Example,  Next: DVD Video crea
 
 
 
-File: mjpeg-howto.info,  Node: DVD Video creation Example,  Next: DVD Multiplexing Example,  Prev: DVD Audio creation Example,  Up: Creating DVD's
+File: mjpeg-howto.info,  Node: DVD Video creation example,  Next: DVD multiplexing example,  Prev: DVD Audio creation example,  Up: Creating DVD's
 
-7.8.2 DVD Video creation Example
+7.8.2 DVD Video creation example
 --------------------------------
 
 `> lav2yuv stream.eli | mpeg2enc -f 8 -o video.m2v'
@@ -2150,9 +2143,9 @@ this:
 0 -N -o video_DVD.m2v'
 
 
-File: mjpeg-howto.info,  Node: DVD Multiplexing Example,  Next: DVD creation Example,  Prev: DVD Video creation Example,  Up: Creating DVD's
+File: mjpeg-howto.info,  Node: DVD multiplexing example,  Next: DVD creation example,  Prev: DVD Video creation example,  Up: Creating DVD's
 
-7.8.3 DVD Multiplexing Example
+7.8.3 DVD multiplexing example
 ------------------------------
 
 `> mplex -f 8 sound.mp2 video.m2v -o my_dvdlikestream.mpg'
@@ -2167,9 +2160,9 @@ File: mjpeg-howto.info,  Node: DVD Multiplexing Example,  Next: DVD creation Exa
 
 
 
-File: mjpeg-howto.info,  Node: DVD creation Example,  Prev: DVD Multiplexing Example,  Up: Creating DVD's
+File: mjpeg-howto.info,  Node: DVD creation example,  Prev: DVD multiplexing example,  Up: Creating DVD's
 
-7.8.4 DVD creation Example
+7.8.4 DVD creation example
 --------------------------
 
 This topic will be covered by the documentation of the dvdauthor
@@ -2249,7 +2242,7 @@ For encoding of all parts it uses unix pipes. This mean that you DO NOT
 need additional space on your hard drive where all glav manipulations
 will be done. For audio encoding the script uses a FIFO queue.
 
-   If you want to tweak the script for your own needs, use these hints:
+   If you want to tweak the script for your own needs use these hints:
 
    * Output of 1st step is file called *frameno.avi* with encoded audio
 
@@ -2259,7 +2252,7 @@ will be done. For audio encoding the script uses a FIFO queue.
    * 3rd step is using *frameno.avi* and `lavc_stats.txt' for encoding
      the stream to the output file *movie2.avi*
 
-   * If you want change only video bitrate, keep the file *frameno.avi*
+   * If you want change only video bitrate keep the file *frameno.avi*
      comment out the 1st step encoding and repeate 2nd and 3rd step.
      Dont forget to remove the line where the *frameno.avi* is removed.
 
@@ -2449,9 +2442,9 @@ might save up to 40%. But you might save less, that depends on the
 video you encode!!!
 
    If you ask yourself why not alyways use all of the above filters?
-Hmmm, hard question. The image softens, and the encoding time increases.
-Each filter needs about the same amount of time as mpeg2enc needs for
-encoding the video.
+The answers are that the image softens (loss of detail) and the encoding
+time increases.  Most of the filters each require about the same amount
+of time as mpeg2enc needs for encoding the video.
 
    If you have very high quality material and want to keep every detail
 you should try to use the mpeg2enc -keep-hf|-h on the other hand.
@@ -2502,8 +2495,8 @@ File: mjpeg-howto.info,  Node: Scaling and offset correction,  Next: Frame rate 
 
 The basic scaling is described in the *Converting video* section
 
-   The scaling, takes a part of the picture, and scales it to a larger
-or smaler size. The scaling is done by yuvscaler:
+   The scaling takes a part of the picture and scales it to a larger or
+smaller size. The scaling is done by yuvscaler:
 
    `lav2yuv test.eli | yuvscaler -I USE_400x400+50+100 | yuvplay'
 
@@ -2532,9 +2525,9 @@ The inserted pixels are set to black.
 
    Some might wonder why the image is not centered and there is a black
 border around the image when you view what you have recorded. The
-reason for the black border is the TV (CRT = Catode Ray Tube) and a
-really interresting storry about how the TV standart was definden. But
-tha topic is described in other books.
+reason for the black border is in history of the CRT (Cathode Ray Tube)
+TV technology.  The history of the TV standard s a very interesting
+story but that topic is described in other (large) books.
 
    The TV does not show the full picture. A part of the picture is not
 shown because the TV sets overscan (sometimes as much as 10% but more
@@ -2558,7 +2551,7 @@ framerate from 24FPS to 24000:1001 for conversation from a film frame
 rate to a valid NTSC frame rate.
 
    Than *yuvfps* is your program. It can lower the framerate by dropping
-frames, or create a higher framerate by replicating frames. If you have
+frames or create a higher framerate by replicating frames. If you have
 a wrong framerate in the header you can only change the header of the
 YUV stream and not modify the stream.
 
@@ -2572,7 +2565,7 @@ about the factor 480/576 (NTSC lines / PAL lines).  If you lower the
 frame rate from PAL to NTSC (at 24000:1001) or NTSC FILM (24FPS) the
 bitrate will be about (480 Lines * 24 FPS) / (576 Lines * 25FPS).  If
 you change the frame rate before denoising the yuvdenoise will have
-problems finding the noise across the frames, so the needed bandwith
+problems finding the noise across the frames and the needed bandwith
 will slightly increase.
 
    Example
@@ -2620,9 +2613,9 @@ File: mjpeg-howto.info,  Node: Transcoding of existing MPEG-2,  Next: Trading Qu
 
 For transcoding existing MPEG-2 streams from digital TV cards or DVD a
 lower data-rate than for broadcast will give good results.  Standard
-VCD 1152 kbps typically works just fine for MPEG1. The difference is in
-the Signal/Noise ratio of the original. The noise in the analog stuff
-makes it much harder to compress.
+VCD 1152 kbps typically works just fine for MPEG-1. The difference is
+in the Signal/Noise ratio of the original. The noise in the analog
+stuff makes it much harder to compress.
 
    You will also need to manually adjust the audio delay offset
 relative to video when multiplexing. Very often around 150ms delay
@@ -2630,7 +2623,7 @@ seems to do the trick.
 
    You have to download the ac3dec and mpeg2dec packages. You can find
 them at their homepage: mpeg2dec ( `http://libmpeg2.sourceforge.net/' )
-and ac3dec.  For decoding the audio streams mpg123, and mplayer can be
+and ac3dec.  For decoding the audio streams mpg123 and mplayer can be
 very helpfull.  You also need sox and toolame.
 
    In the scripts directory there is a *mpegtranscode* script that does
@@ -2805,8 +2798,8 @@ mpeg2enc -f 4 -q 9 -V 230 -o video_svcd.mpg'
 | yuvscaler -O SIZE_320x200 -O NOT_INTERLACED | mpeg2enc -o
 strange_video.m1v'
 
-   If you want to edit mpeg streams, this also works, but in a slightly
-different way. For demultiplexing you can use bbdmux, from the bbtools
+   If you want to edit mpeg streams this also works but in a slightly
+different way. For demultiplexing you can use bbdmux from the bbtools
 package. Splits out either video or audio very cleanly.  You can't get
 it any more from the homepage from Brent Beyler, it can still be found
 when you search for it using that keywords " bbtools linux -suse
@@ -2882,7 +2875,7 @@ quality is modest (but noticeable).
    Reducing the radius of the search for matching sections of images
 also increases speed. However due to the way the search algorithm works
 the search radius is in effect rounded to the nearest multiple of 8.
-Furthermore, on modern CPU's the speed gained by reducing the radius
+Furthermore on modern CPU's the speed gained by reducing the radius
 below 16 is not large enough to make the marked quality reduction
 worthwhile for most applications.
 
@@ -2900,7 +2893,7 @@ Usually MPEG player software is much more flexible than the hardware
 built into DVD and VCD players. This flexibility allows for
 significantly better compression to be achieved for the same quality.
 The trick is to generate video streams that use big video buffers
-(500KB or more) and variable bitrate encoding (the -f, -q flag to
+(500KB or more) and variable bitrate encoding (the -f / -q flag to
 mpeg2enc). Software players will often also correctly play back the
 more efficient MPEG layer 3 (yes, "MP3" audio format.  A good MP3
 encoder like lame will produce results comparable to layer 2 at 224Kbps
@@ -2919,7 +2912,7 @@ interresting for the average computer
    The degree to which mpeg2enc tries to split work between concurrently
 executing threads is controlled by the -M or -multi-thread [0..32]
 option. This optimizes mpeg2enc for the specified number of CPUs. By
-default (-M 1), mpeg2enc runs with just a little multi-threading:
+default (-M 1) mpeg2enc runs with just a little multi-threading:
 reading of frames happens concurrently with compression. This is done
 to allow encoding pipelines that are split across several machines (see
 below) to work efficiently without the need for special buffering
@@ -3014,7 +3007,7 @@ on:
 
    * vlc `http://www.videolan.org/'
 
-   * MPEG1 only: gtv
+   * MPEG-1 only: gtv
      `http://packages.debian.org/stable/graphics/smpeg-gtv'
 
    * MS Media player version 6 and 7 and later version
@@ -3041,72 +3034,72 @@ hints, *thanks*
 Tag Table:
 Node: Top141
 Node: Introduction792
-Node: Unsorted list of useful Hints2489
-Node: Some books we found usefull7485
-Node: Recording videos8196
-Node: lavrec examples8580
-Node: Other recording hints12365
-Node: Some information about the typical lavrec output while recording13897
-Node: Notes about "interlace field order - what can go wrong and how to fix it"15452
-Node: There are three bad things that can happen with fields16297
-Node: How can I recognize if I have one of these Problems ?18082
-Node: How can you fix it?19699
-Node: Hey what about NTSC movies ?23004
-Node: Creating videos from other sources24327
-Node: Creating videos from images24912
-Node: Decoding streams with mplayer28088
-Node: Decoding MPEG2 streams with mpeg2dec29464
-Node: Other things to know30518
-Node: Checking if recording was successful31118
-Node: Edit the video33384
-Node: Edit with glav33692
-Node: Unify videos35140
-Node: Separate sound35630
-Node: Separate images36057
-Node: Creating movie transitions37052
-Node: Converting the stream to MPEG or DIVx videos40773
-Node: Creating sound42515
-Node: Converting video44357
-Node: Scaling46127
-Node: High quality scaling y4mscaler47484
-Node: Putting the streams together50428
-Node: Creating MPEG1 Videos52721
-Node: MPEG1 Audio creation Example53618
-Node: MPEG1 Video creation Example54425
-Node: MPEG1 Multiplexing Example58969
-Node: Creating MPEG2 Videos59844
-Node: MPEG2 Audio creation Example60899
-Node: MPEG2 Video creation Example61506
-Node: Which values should be used for VBR Encoding63947
-Node: Encoding destination TV (interlaced) or Monitor (progressive)66264
-Node: MPEG2 Multiplexing Example68820
-Node: Creating Video-CD's69654
-Node: VCD Audio creation Example70728
-Node: VCD Video creation Example71287
-Node: VCD Multiplexing Example72814
-Node: Creating the CD73180
-Node: Notes73745
-Node: Storing MPEGs74748
-Node: Creating SVCD76091
-Node: SVCD Audio creation Example76906
-Node: SVCD Video creation Example77888
-Node: SVCD Multiplexing Example80315
-Node: SVCD Creating the CD80862
-Node: Creating DVD's81550
-Node: DVD Audio creation Example82612
-Node: DVD Video creation Example83169
-Node: DVD Multiplexing Example84154
-Node: DVD creation Example84673
-Node: Creating DIVX Videos85746
-Node: lav2avi-sh85951
-Node: Optimizing the stream88562
-Node: Scaling and offset correction99289
-Node: Frame rate conversion101803
-Node: Transcoding of existing MPEG-2104658
-Node: If you want to do every step on your own it will look something like this107939
-Node: Trading Quality/Speed112250
-Node: Creating streams to be played from disk using Software players113476
-Node: SMP and distributed Encoding114299
-Node: Interoperability118124
+Node: Unsorted list of useful Hints2492
+Node: Some books we found usefull7475
+Node: Recording videos8186
+Node: lavrec examples8570
+Node: Other recording hints12292
+Node: Some information about the typical lavrec output while recording13804
+Node: Notes about "interlace field order - what can go wrong and how to fix it"15359
+Node: There are three bad things that can happen with fields16201
+Node: How can I recognize if I have one of these Problems ?17978
+Node: How can you fix it?19573
+Node: Hey what about NTSC movies ?22870
+Node: Creating videos from other sources24165
+Node: Creating videos from images24751
+Node: Decoding streams with mplayer27926
+Node: Decoding MPEG-2 streams with mpeg2dec29216
+Node: Other things to know30253
+Node: Checking if recording was successful30851
+Node: Edit the video33113
+Node: Edit with glav33421
+Node: Unify videos34869
+Node: Separate sound35357
+Node: Separate images35784
+Node: Creating movie transitions36779
+Node: Converting the stream to MPEG or DIVx videos40498
+Node: Creating sound42251
+Node: Converting video44070
+Node: Scaling45836
+Node: High quality scaling y4mscaler47193
+Node: Putting the streams together50145
+Node: Creating MPEG-1 Videos52436
+Node: MPEG-1 Audio creation Example53347
+Node: MPEG-1 Video creation example54159
+Node: MPEG-1 Multiplexing Example58705
+Node: Creating MPEG-2 Videos59585
+Node: MPEG-2 audio creation example60660
+Node: MPEG-2 Video creation example61230
+Node: Which values should be used for VBR Encoding?63682
+Node: Encoding destination TV (interlaced) or Monitor (progressive)66044
+Node: MPEG-2 Multiplexing example68601
+Node: Creating Video CDs (VCDs)69440
+Node: VCD Audio creation Example70538
+Node: VCD Video creation Example71103
+Node: VCD Multiplexing Example72625
+Node: Creating the CD72997
+Node: Notes73568
+Node: Storing MPEGs74578
+Node: Creating SVCD75926
+Node: SVCD Audio creation Example76747
+Node: SVCD Video creation example77737
+Node: SVCD multiplexing example80164
+Node: SVCD creating the CD80711
+Node: Creating DVD's81399
+Node: DVD Audio creation example82428
+Node: DVD Video creation example82985
+Node: DVD multiplexing example83970
+Node: DVD creation example84489
+Node: Creating DIVX Videos85562
+Node: lav2avi-sh85767
+Node: Optimizing the stream88376
+Node: Scaling and offset correction99135
+Node: Frame rate conversion101668
+Node: Transcoding of existing MPEG-2104522
+Node: If you want to do every step on your own it will look something like this107803
+Node: Trading Quality/Speed112111
+Node: Creating streams to be played from disk using Software players113336
+Node: SMP and distributed Encoding114160
+Node: Interoperability117984
 
 End Tag Table
