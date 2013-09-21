@@ -122,17 +122,17 @@ of the mjpegtools package.
 %{_libdir}/*.so
 
 %changelog
-* Sat Sept 2012 Bernhard Praschinger <shadowlord@utanet.at>
+* Sat Sep 21 2013 Bernhard Praschinger <shadowlord@utanet.at>
   This some more change for the release made
 
-* Sat Nov 2012 Bernhard Praschinger <shadowlord@utanet.at>
+* Sat Nov 17 2012 Bernhard Praschinger <shadowlord@utanet.at>
   This release has no major change, but a lot of bugfixes. 
   A lot of patches and fixes are included. There are no major changes, 
   but some small enhancements.
   Steven Schultz added y4mscaler to the CVS and included it to the build
   process
 
-* Sat Mai 21 2011 Bernhard Praschinger <shadowlord@utanet.at>
+* Sat May 21 2011 Bernhard Praschinger <shadowlord@utanet.at>
   This is it, after more than 10 years on Sourcefogre we named this 
   release 2.0.0. For further changes and fixes please take a look at the
   Changelog. 
