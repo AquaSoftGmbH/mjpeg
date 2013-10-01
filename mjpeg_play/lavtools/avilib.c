@@ -2037,7 +2037,7 @@ avi_t *AVI_open_input_file(char *filename, int getIndex)
   
   /* Open the file */
   
-  AVI->fdes = open(filename,O_RDONLY);
+  AVI->fdes = open(filename,O_RDONLY|O_BINARY);
   if(AVI->fdes < 0)
     {
       AVI_errno = AVI_ERR_OPEN;
@@ -2289,6 +2289,7 @@ int avi_parse_input_file(avi_t *AVI, int getIndex)
          if(AVI->idx==0) ERR_EXIT(AVI_ERR_NO_MEM)
          if(avi_read(AVI->fdes, (char *) AVI->idx, n) != n ) {
 	     free ( AVI->idx); AVI->idx=NULL;
+             AVI->max_idx = 0;
 	     AVI->n_idx = 0;
 	 }
       }
